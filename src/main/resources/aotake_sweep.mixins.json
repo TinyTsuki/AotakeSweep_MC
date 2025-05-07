@@ -1,0 +1,14 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "xin.vanilla.aotake.mixin",
+  "compatibilityLevel": "JAVA_8",
+  "refmap": "aotake_sweep.refmap.json",
+  "mixins": [],
+  "client": [
+    "MinecraftClientMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}
