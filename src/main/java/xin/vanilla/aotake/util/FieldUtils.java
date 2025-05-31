@@ -10,16 +10,22 @@ import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.List;
 
+@SuppressWarnings("sunapi")
 public class FieldUtils {
     private static final Logger LOGGER = LogManager.getLogger();
 
+    private static final String UNSAFE_FIELD_NAME;
     private static final Unsafe UNSAFE;
 
     static {
         try {
-            Field theUnsafe = Unsafe.class.getDeclaredField("theUnsafe");
-            theUnsafe.setAccessible(true);
-            UNSAFE = (Unsafe) theUnsafe.get(null);
+            List<String> names = getPrivateFieldNames(Unsafe.class, Unsafe.class);
+            if (CollectionUtils.isNotNullOrEmpty(names)) {
+                UNSAFE_FIELD_NAME = names.get(0);
+            } else {
+                UNSAFE_FIELD_NAME = "theUnsafe";
+            }
+            UNSAFE = (Unsafe) getPrivateFieldValue(Unsafe.class, null, UNSAFE_FIELD_NAME);
         } catch (Exception e) {
             throw new RuntimeException("Unable to access Unsafe instance", e);
         }
@@ -97,6 +103,16 @@ public class FieldUtils {
         Object base = UNSAFE.staticFieldBase(field);
         long offset = UNSAFE.staticFieldOffset(field);
         UNSAFE.putObject(base, offset, value);
+    }
+
+    public static Object newInstanceFromClassName(String className) {
+        try {
+            Class<?> clazz = Class.forName(className);
+            return clazz.getDeclaredConstructor().newInstance();
+        } catch (Exception e) {
+            LOGGER.error("Failed to create instance of class {}", className, e);
+        }
+        return null;
     }
 
     private static String LANGUAGE_FIELD_NAME;

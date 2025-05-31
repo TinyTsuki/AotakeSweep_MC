@@ -2,10 +2,15 @@ package xin.vanilla.aotake.util;
 
 
 import lombok.NonNull;
-import xin.vanilla.aotake.enums.EMCColor;
+import xin.vanilla.aotake.enums.EnumMCColor;
 
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -418,7 +423,7 @@ public class StringUtils {
         return "§" + argbToMinecraftColor(color).getCode();
     }
 
-    public static EMCColor argbToMinecraftColor(int color) {
+    public static EnumMCColor argbToMinecraftColor(int color) {
         // 获取 RGB 分量
         int red = (color >> 16) & 0xFF;
         int green = (color >> 8) & 0xFF;
@@ -426,8 +431,8 @@ public class StringUtils {
         // 颜色匹配
         double closestDistance = Double.MAX_VALUE;
         // 默认为白色
-        EMCColor result = EMCColor.WHITE;
-        for (EMCColor mcColor : EMCColor.values()) {
+        EnumMCColor result = EnumMCColor.WHITE;
+        for (EnumMCColor mcColor : EnumMCColor.values()) {
             int colorRGB = mcColor.getColor();
             int r = (colorRGB >> 16) & 0xFF;
             int g = (colorRGB >> 8) & 0xFF;
@@ -506,6 +511,65 @@ public class StringUtils {
         if (isWordString(input)) return input;
         return "'" + input.replaceAll("'", "\\\\'") + "'";
     }
+
+    /**
+     * 计算字符串的 MD5 值
+     *
+     * @param input 输入字符串
+     * @return 32位小写 MD5 值
+     */
+    public static String md5(String input) {
+        if (input == null) return null;
+        try {
+            MessageDigest md = MessageDigest.getInstance("MD5");
+            byte[] digest = md.digest(input.getBytes());
+            return bytesToHex(digest);
+        } catch (NoSuchAlgorithmException e) {
+            throw new RuntimeException("MD5 algorithm not found", e);
+        }
+    }
+
+    /**
+     * 计算文件的 MD5 值
+     *
+     * @param file 目标文件
+     * @return 32位小写 MD5 值
+     */
+    public static String md5(File file) {
+        if (file == null || !file.isFile()) return null;
+
+        try (FileInputStream in = new FileInputStream(file)) {
+            MessageDigest md = MessageDigest.getInstance("MD5");
+            byte[] buffer = new byte[8192];
+            int length;
+
+            while ((length = in.read(buffer)) != -1) {
+                md.update(buffer, 0, length);
+            }
+            return bytesToHex(md.digest());
+        } catch (IOException | NoSuchAlgorithmException e) {
+            throw new RuntimeException("Failed to calculate file MD5", e);
+        }
+    }
+
+    /**
+     * 将字节数组转换为十六进制字符串
+     *
+     * @param bytes 字节数组
+     * @return 小写十六进制字符串
+     */
+    private static String bytesToHex(byte[] bytes) {
+        StringBuilder hexString = new StringBuilder();
+        for (byte b : bytes) {
+            String hex = Integer.toHexString(0xff & b);
+            if (hex.length() == 1) {
+                hexString.append('0');
+            }
+            hexString.append(hex);
+        }
+        return hexString.toString();
+    }
+
 
     public static void main(String[] args) {
         // 测试案例：不同类型的参数与格式字符串

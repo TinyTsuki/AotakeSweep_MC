@@ -11,17 +11,24 @@ import net.minecraftforge.fml.ModLoadingContext;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.config.ModConfig;
 import net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent;
+import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent;
 import net.minecraftforge.fml.event.server.FMLServerStartedEvent;
 import net.minecraftforge.fml.event.server.FMLServerStartingEvent;
 import net.minecraftforge.fml.event.server.FMLServerStoppingEvent;
 import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import xin.vanilla.aotake.command.AotakeCommand;
+import xin.vanilla.aotake.config.CommonConfig;
+import xin.vanilla.aotake.config.CustomConfig;
 import xin.vanilla.aotake.config.ServerConfig;
+import xin.vanilla.aotake.event.ClientModEventHandler;
+import xin.vanilla.aotake.network.ModNetworkHandler;
 import xin.vanilla.aotake.network.SplitPacket;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
 import java.util.concurrent.ConcurrentHashMap;
 
 @Mod(AotakeSweep.MODID)
@@ -51,14 +58,24 @@ public class AotakeSweep {
     private static final Map<String, List<? extends SplitPacket>> packetCache = new ConcurrentHashMap<>();
 
     /**
+     * 玩家当前浏览的垃圾箱页数
+     */
+    @Getter
+    private static final Map<String, Integer> playerDustbinPage = new ConcurrentHashMap<>();
+
+    /**
      * 命令调度器
      */
     private CommandDispatcher<CommandSource> dispatcher;
 
+    public static final Random RANDOM = new Random();
+
+    // public static final Item JUNK_BALL = new JunkBall();
+
     public AotakeSweep() {
 
         // 注册网络通道
-        // ModNetworkHandler.registerPackets();
+        ModNetworkHandler.registerPackets();
 
         // 注册服务器启动和关闭事件
         MinecraftForge.EVENT_BUS.addListener(this::onServerStarting);
@@ -68,11 +85,14 @@ public class AotakeSweep {
         // 注册当前实例到事件总线
         MinecraftForge.EVENT_BUS.register(this);
 
-        // 注册服务端配置
+        // 注册配置
+        ModLoadingContext.get().registerConfig(ModConfig.Type.COMMON, CommonConfig.COMMON_CONFIG);
         ModLoadingContext.get().registerConfig(ModConfig.Type.SERVER, ServerConfig.SERVER_CONFIG);
 
         // 注册客户端设置事件
         FMLJavaModLoadingContext.get().getModEventBus().addListener(this::onClientSetup);
+        // 注册公共设置事件
+        FMLJavaModLoadingContext.get().getModEventBus().addListener(this::onCommonSetup);
     }
 
     /**
@@ -82,11 +102,19 @@ public class AotakeSweep {
     public void onClientSetup(final FMLClientSetupEvent event) {
         // 注册键绑定
         LOGGER.debug("Registering key bindings");
-        // ClientEventHandler.registerKeyBindings();
+        ClientModEventHandler.registerKeyBindings();
+    }
+
+    /**
+     * 公共设置阶段事件
+     */
+    @SubscribeEvent
+    public void onCommonSetup(final FMLCommonSetupEvent event) {
+        CustomConfig.loadCustomConfig();
     }
 
     private void onServerStarting(FMLServerStartingEvent event) {
-        serverInstance = event.getServer();
+        AotakeSweep.serverInstance = event.getServer();
     }
 
     private void onServerStarted(FMLServerStartedEvent event) {
@@ -108,7 +136,7 @@ public class AotakeSweep {
         if (serverStarted && dispatcher != null) {
             LOGGER.debug("Registering commands");
             // 注册指令
-            // AotakeCommand.register(this.dispatcher);
+            AotakeCommand.register(this.dispatcher);
         }
     }
 

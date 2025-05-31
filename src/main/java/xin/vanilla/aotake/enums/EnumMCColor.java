@@ -3,7 +3,7 @@ package xin.vanilla.aotake.enums;
 import lombok.Getter;
 
 @Getter
-public enum EMCColor {
+public enum EnumMCColor {
     BLACK('0', 0),
     DARK_BLUE('1', 170),
     DARK_GREEN('2', 43520),
@@ -24,7 +24,7 @@ public enum EMCColor {
     private final char code;
     private final int color;
 
-    EMCColor(char code, int color) {
+    EnumMCColor(char code, int color) {
         this.code = code;
         this.color = color;
     }

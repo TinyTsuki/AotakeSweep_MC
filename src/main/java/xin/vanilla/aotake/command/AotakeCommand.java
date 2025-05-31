@@ -1,4 +1,755 @@
 package xin.vanilla.aotake.command;
 
+import com.mojang.brigadier.Command;
+import com.mojang.brigadier.CommandDispatcher;
+import com.mojang.brigadier.arguments.BoolArgumentType;
+import com.mojang.brigadier.arguments.IntegerArgumentType;
+import com.mojang.brigadier.arguments.StringArgumentType;
+import com.mojang.brigadier.builder.LiteralArgumentBuilder;
+import com.mojang.brigadier.context.CommandContext;
+import com.mojang.brigadier.exceptions.CommandSyntaxException;
+import com.mojang.brigadier.suggestion.SuggestionProvider;
+import lombok.NonNull;
+import net.minecraft.command.CommandSource;
+import net.minecraft.command.Commands;
+import net.minecraft.command.arguments.DimensionArgument;
+import net.minecraft.command.arguments.EntityArgument;
+import net.minecraft.entity.Entity;
+import net.minecraft.entity.item.ItemEntity;
+import net.minecraft.entity.player.ServerPlayerEntity;
+import net.minecraft.inventory.Inventory;
+import net.minecraft.item.ItemStack;
+import net.minecraft.util.text.TextFormatting;
+import net.minecraft.util.text.event.ClickEvent;
+import net.minecraft.util.text.event.HoverEvent;
+import net.minecraft.world.server.ServerWorld;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+import xin.vanilla.aotake.AotakeSweep;
+import xin.vanilla.aotake.config.CommonConfig;
+import xin.vanilla.aotake.config.ServerConfig;
+import xin.vanilla.aotake.data.Coordinate;
+import xin.vanilla.aotake.data.KeyValue;
+import xin.vanilla.aotake.data.SweepResult;
+import xin.vanilla.aotake.data.player.IPlayerSweepData;
+import xin.vanilla.aotake.data.player.PlayerSweepDataCapability;
+import xin.vanilla.aotake.data.world.WorldTrashData;
+import xin.vanilla.aotake.enums.EnumCommandType;
+import xin.vanilla.aotake.enums.EnumI18nType;
+import xin.vanilla.aotake.enums.EnumMCColor;
+import xin.vanilla.aotake.enums.EnumOperationType;
+import xin.vanilla.aotake.util.*;
+
+import java.util.*;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
+
 public class AotakeCommand {
+    private static final Logger LOGGER = LogManager.getLogger();
+
+    public static List<KeyValue<String, EnumCommandType>> HELP_MESSAGE;
+
+    private static void refreshHelpMessage() {
+        HELP_MESSAGE = Arrays.stream(EnumCommandType.values())
+                .map(type -> {
+                    String command = AotakeUtils.getCommand(type);
+                    if (StringUtils.isNotNullOrEmpty(command)) {
+                        return new KeyValue<>(command, type);
+                    }
+                    return null;
+                })
+                .filter(Objects::nonNull)
+                .filter(command -> !command.getValue().isIgnore())
+                .sorted(Comparator.comparing(command -> command.getValue().getSort()))
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * 注册命令
+     *
+     * @param dispatcher 命令调度器
+     */
+    public static void register(CommandDispatcher<CommandSource> dispatcher) {
+        // 刷新帮助信息
+        refreshHelpMessage();
+
+        Command<CommandSource> helpCommand = context -> {
+            ServerPlayerEntity player = context.getSource().getPlayerOrException();
+            String command;
+            int page;
+            try {
+                command = StringArgumentType.getString(context, "command");
+                page = StringUtils.toInt(command);
+            } catch (IllegalArgumentException ignored) {
+                command = "";
+                page = 1;
+            }
+            Component helpInfo;
+            if (page > 0) {
+                int pages = (int) Math.ceil((double) HELP_MESSAGE.size() / ServerConfig.HELP_INFO_NUM_PER_PAGE.get());
+                helpInfo = Component.literal(StringUtils.format(ServerConfig.HELP_HEADER.get() + "\n", page, pages));
+                for (int i = 0; (page - 1) * ServerConfig.HELP_INFO_NUM_PER_PAGE.get() + i < HELP_MESSAGE.size() && i < ServerConfig.HELP_INFO_NUM_PER_PAGE.get(); i++) {
+                    KeyValue<String, EnumCommandType> keyValue = HELP_MESSAGE.get((page - 1) * ServerConfig.HELP_INFO_NUM_PER_PAGE.get() + i);
+                    Component commandTips;
+                    if (keyValue.getValue().name().toLowerCase().contains("concise")) {
+                        commandTips = Component.translatable(AotakeUtils.getPlayerLanguage(player), EnumI18nType.COMMAND, "concise", AotakeUtils.getCommand(keyValue.getValue().replaceConcise()));
+                    } else {
+                        commandTips = Component.translatable(AotakeUtils.getPlayerLanguage(player), EnumI18nType.COMMAND, keyValue.getValue().name().toLowerCase());
+                    }
+                    commandTips.setColor(TextFormatting.GRAY.getColor());
+                    String com = "/" + keyValue.getKey();
+                    helpInfo.append(Component.literal(com)
+                                    .setClickEvent(new ClickEvent(ClickEvent.Action.SUGGEST_COMMAND, com))
+                                    .setHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT
+                                            , Component.translatable(AotakeUtils.getPlayerLanguage(player), EnumI18nType.MESSAGE, "click_to_suggest").toTextComponent()))
+                            )
+                            .append(new Component(" -> ").setColor(TextFormatting.YELLOW.getColor()))
+                            .append(commandTips);
+                    if (i != HELP_MESSAGE.size() - 1) {
+                        helpInfo.append("\n");
+                    }
+                }
+                // 添加翻页按钮
+                if (pages > 1) {
+                    helpInfo.append("\n");
+                    Component prevButton = Component.literal("<<< ");
+                    if (page > 1) {
+                        prevButton.setColor(EnumMCColor.AQUA.getColor())
+                                .setClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND,
+                                        String.format("/%s %s %d", AotakeUtils.getCommandPrefix(), "help", page - 1)))
+                                .setHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT,
+                                        Component.translatable(AotakeUtils.getPlayerLanguage(player), EnumI18nType.MESSAGE, "previous_page").toTextComponent()));
+                    } else {
+                        prevButton.setColor(EnumMCColor.DARK_AQUA.getColor());
+                    }
+                    helpInfo.append(prevButton);
+
+                    helpInfo.append(Component.literal(String.format(" %s/%s "
+                                    , StringUtils.padOptimizedLeft(page, String.valueOf(pages).length(), " ")
+                                    , pages))
+                            .setColor(EnumMCColor.WHITE.getColor()));
+
+                    Component nextButton = Component.literal(" >>>");
+                    if (page < pages) {
+                        nextButton.setColor(EnumMCColor.AQUA.getColor())
+                                .setClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND,
+                                        String.format("/%s %s %d", AotakeUtils.getCommandPrefix(), "help", page + 1)))
+                                .setHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT,
+                                        Component.translatable(AotakeUtils.getPlayerLanguage(player), EnumI18nType.MESSAGE, "next_page").toTextComponent()));
+                    } else {
+                        nextButton.setColor(EnumMCColor.DARK_AQUA.getColor());
+                    }
+                    helpInfo.append(nextButton);
+                }
+            } else {
+                EnumCommandType type = EnumCommandType.valueOf(command);
+                helpInfo = Component.empty();
+                helpInfo.append("/").append(AotakeUtils.getCommand(type))
+                        .append("\n")
+                        .append(Component.translatable(AotakeUtils.getPlayerLanguage(player), EnumI18nType.COMMAND, command.toLowerCase() + "_detail").setColor(TextFormatting.GRAY.getColor()));
+            }
+            AotakeUtils.sendMessage(player, helpInfo);
+            return 1;
+        };
+        SuggestionProvider<CommandSource> helpSuggestions = (context, builder) -> {
+            String input = getStringEmpty(context, "command");
+            boolean isInputEmpty = StringUtils.isNullOrEmpty(input);
+            int totalPages = (int) Math.ceil((double) HELP_MESSAGE.size() / ServerConfig.HELP_INFO_NUM_PER_PAGE.get());
+            for (int i = 0; i < totalPages && isInputEmpty; i++) {
+                builder.suggest(i + 1);
+            }
+            for (EnumCommandType type : Arrays.stream(EnumCommandType.values())
+                    .filter(type -> type != EnumCommandType.HELP)
+                    .filter(type -> !type.isIgnore())
+                    .filter(type -> !type.name().toLowerCase().contains("concise"))
+                    .filter(type -> isInputEmpty || type.name().toLowerCase().contains(input.toLowerCase()))
+                    .sorted(Comparator.comparing(EnumCommandType::getSort))
+                    .collect(Collectors.toList())) {
+                builder.suggest(type.name());
+            }
+            return builder.buildFuture();
+        };
+
+
+        Command<CommandSource> languageCommand = context -> {
+            ServerPlayerEntity player = context.getSource().getPlayerOrException();
+            IPlayerSweepData signInData = PlayerSweepDataCapability.getData(player);
+            String language = StringArgumentType.getString(context, "language");
+            if (I18nUtils.getI18nFiles().contains(language)) {
+                signInData.setLanguage(language);
+                AotakeUtils.sendMessage(player, Component.translatable(player, EnumI18nType.MESSAGE, "player_default_language", language));
+            } else if ("server".equalsIgnoreCase(language) || "client".equalsIgnoreCase(language)) {
+                signInData.setLanguage(language);
+                AotakeUtils.sendMessage(player, Component.translatable(player, EnumI18nType.MESSAGE, "player_default_language", language));
+            } else {
+                AotakeUtils.sendMessage(player, Component.translatable(player, EnumI18nType.MESSAGE, "language_not_exist").setColor(0xFFFF0000));
+            }
+            return 1;
+        };
+        Command<CommandSource> virtualOpCommand = context -> {
+            notifyHelp(context);
+            CommandSource source = context.getSource();
+            // 如果命令来自玩家
+            if (source.getEntity() == null || source.getEntity() instanceof ServerPlayerEntity) {
+                EnumOperationType type = EnumOperationType.fromString(StringArgumentType.getString(context, "operation"));
+                EnumCommandType[] rules;
+                try {
+                    rules = Arrays.stream(StringArgumentType.getString(context, "rules").split(","))
+                            .filter(StringUtils::isNotNullOrEmpty)
+                            .map(String::trim)
+                            .map(String::toUpperCase)
+                            .map(EnumCommandType::valueOf).toArray(EnumCommandType[]::new);
+                } catch (IllegalArgumentException ignored) {
+                    rules = new EnumCommandType[]{};
+                }
+                List<ServerPlayerEntity> targetList = new ArrayList<>();
+                try {
+                    targetList.addAll(EntityArgument.getPlayers(context, "player"));
+                } catch (IllegalArgumentException ignored) {
+                }
+                String language = ServerConfig.DEFAULT_LANGUAGE.get();
+                if (source.getEntity() != null && source.getEntity() instanceof ServerPlayerEntity) {
+                    language = AotakeUtils.getPlayerLanguage(source.getPlayerOrException());
+                }
+                for (ServerPlayerEntity target : targetList) {
+                    switch (type) {
+                        case ADD:
+                            VirtualPermissionManager.addVirtualPermission(target, rules);
+                            break;
+                        case SET:
+                            VirtualPermissionManager.setVirtualPermission(target, rules);
+                            break;
+                        case DEL:
+                        case REMOVE:
+                            VirtualPermissionManager.delVirtualPermission(target, rules);
+                            break;
+                        case CLEAR:
+                            VirtualPermissionManager.clearVirtualPermission(target);
+                            break;
+                    }
+                    String permissions = VirtualPermissionManager.buildPermissionsString(VirtualPermissionManager.getVirtualPermission(target));
+                    AotakeUtils.sendTranslatableMessage(target, I18nUtils.getKey(EnumI18nType.MESSAGE, "player_virtual_op"), target.getDisplayName().getString(), permissions);
+                    if (source.getEntity() != null && source.getEntity() instanceof ServerPlayerEntity) {
+                        ServerPlayerEntity player = source.getPlayerOrException();
+                        if (!target.getStringUUID().equalsIgnoreCase(player.getStringUUID())) {
+                            AotakeUtils.sendTranslatableMessage(player, I18nUtils.getKey(EnumI18nType.MESSAGE, "player_virtual_op"), target.getDisplayName().getString(), permissions);
+                        }
+                    } else {
+                        source.sendSuccess(Component.translatable(language, EnumI18nType.MESSAGE, "player_virtual_op", target.getDisplayName().getString(), permissions).toChatComponent(), true);
+                    }
+                    // 更新权限信息
+                    source.getServer().getPlayerList().sendPlayerPermissionLevel(target);
+                }
+            }
+            return 1;
+        };
+        Command<CommandSource> openDustbinCommand = context -> {
+            ServerPlayerEntity player = context.getSource().getPlayerOrException();
+            int page = getIntDefault(context, "page", 1);
+            return dustbin(player, page);
+        };
+        Command<CommandSource> sweepCommand = context -> {
+            int range = getIntDefault(context, "range", 0);
+            ServerWorld dimension = getDimensionDefault(context, "dimension", null);
+            List<Entity> entities = new ArrayList<>();
+            if (dimension == null) {
+                AotakeSweep.getServerInstance().getAllLevels().forEach(level -> entities.addAll(level.getEntities().collect(Collectors.toList())));
+            } else if (range > 0) {
+                ServerPlayerEntity player = context.getSource().getPlayerOrException();
+                entities.addAll(player.level.getEntitiesOfClass(Entity.class, player.getBoundingBox().inflate(range)));
+            }
+            Entity entity = context.getSource().getEntity();
+            AotakeUtils.sweep(entity instanceof ServerPlayerEntity ? (ServerPlayerEntity) entity : null, entities, true);
+            return 1;
+        };
+        Command<CommandSource> clearDropCommand = context -> {
+            boolean withEntity = getBooleanDefault(context, "withEntity", false);
+            int range = getIntDefault(context, "range", 0);
+            ServerWorld dimension = getDimensionDefault(context, "dimension", null);
+
+            List<Entity> entities = new ArrayList<>();
+            if (dimension == null) {
+                AotakeSweep.getServerInstance().getAllLevels().forEach(level -> entities.addAll(level.getEntities().collect(Collectors.toList())));
+            } else if (range > 0) {
+                ServerPlayerEntity player = context.getSource().getPlayerOrException();
+                entities.addAll(player.level.getEntitiesOfClass(Entity.class, player.getBoundingBox().inflate(range)));
+            }
+            SweepResult result = new SweepResult();
+            entities.stream()
+                    .filter(Objects::nonNull)
+                    .filter(entity -> entity instanceof ItemEntity
+                            || (withEntity && ServerConfig.JUNK_ENTITY.get().contains(entity.getType().getRegistryName().toString()))
+                    ).forEach(entity -> {
+                        if (entity instanceof ItemEntity) {
+                            result.plusItemCount(((ItemEntity) entity).getItem().getCount());
+                        } else {
+                            result.plusEntityCount();
+                        }
+                        AotakeUtils.removeEntity((ServerWorld) entity.level, entity, false);
+                    });
+            AotakeSweep.getServerInstance()
+                    .getPlayerList()
+                    .getPlayers()
+                    .forEach(player -> AotakeUtils.sendMessage(player
+                            , AotakeUtils.getWarningMessage(result.getItemCount() == 0
+                                            && result.getEntityCount() == 0
+                                            ? -1 : 0
+                                    , AotakeUtils.getPlayerLanguage(player)
+                                    , result
+                            )
+                    ));
+            return 1;
+        };
+        Command<CommandSource> clearDustbinCommand = context -> {
+            int page = getIntDefault(context, "page", 0);
+            if (page == 0) {
+                WorldTrashData.get().getInventoryList().forEach(Inventory::clearContent);
+            } else {
+                WorldTrashData.get().getInventoryList().get(page - 1).clearContent();
+            }
+            Component message = Component.translatable(EnumI18nType.MESSAGE
+                    , "dustbin_cleared"
+                    , page == 0 ? "" : String.format(" %s ", page)
+                    , context.getSource().getEntity() instanceof ServerPlayerEntity
+                            ? context.getSource().getPlayerOrException().getDisplayName().getString()
+                            : "server"
+            );
+            AotakeSweep.getServerInstance()
+                    .getPlayerList()
+                    .getPlayers()
+                    .forEach(p -> AotakeUtils.sendMessage(p, message));
+            return 1;
+        };
+        Command<CommandSource> dropDustbinCommand = context -> {
+            ServerPlayerEntity player = context.getSource().getPlayerOrException();
+            int page = getIntDefault(context, "page", 0);
+            List<Inventory> inventories = new ArrayList<>();
+            if (page == 0) {
+                inventories.addAll(WorldTrashData.get().getInventoryList());
+            } else {
+                inventories.add(WorldTrashData.get().getInventoryList().get(page - 1));
+            }
+            inventories.forEach(inventory -> inventory.removeAllItems()
+                    .forEach(item -> {
+                        if (!item.isEmpty()) {
+                            Entity entity = AotakeUtils.getEntityFromItem(player.getLevel(), item);
+                            entity.moveTo(player.getX(), player.getY(), player.getZ(), player.yRot, player.xRot);
+                            player.getLevel().addFreshEntity(entity);
+                        }
+                    })
+            );
+            Component message = Component.translatable(EnumI18nType.MESSAGE
+                    , "dustbin_dropped"
+                    , page == 0 ? "" : String.format(" %s ", page)
+                    , context.getSource().getEntity() instanceof ServerPlayerEntity
+                            ? context.getSource().getPlayerOrException().getDisplayName().getString()
+                            : "server"
+            );
+            AotakeSweep.getServerInstance()
+                    .getPlayerList()
+                    .getPlayers()
+                    .forEach(p -> AotakeUtils.sendMessage(p, message));
+            return 1;
+        };
+        Command<CommandSource> clearCacheCommand = context -> {
+            WorldTrashData.get().getDropList().clear();
+            Component message = Component.translatable(EnumI18nType.MESSAGE
+                    , "cache_cleared"
+                    , context.getSource().getEntity() instanceof ServerPlayerEntity
+                            ? context.getSource().getPlayerOrException().getDisplayName().getString()
+                            : "server"
+            );
+            AotakeSweep.getServerInstance()
+                    .getPlayerList()
+                    .getPlayers()
+                    .forEach(p -> AotakeUtils.sendMessage(p, message));
+            return 1;
+        };
+        Command<CommandSource> dropCacheCommand = context -> {
+            boolean originalPos = getBooleanDefault(context, "originalPos", true);
+            ServerPlayerEntity player = context.getSource().getPlayerOrException();
+            List<KeyValue<Coordinate, ItemStack>> items = new ArrayList<>(WorldTrashData.get().getDropList());
+            WorldTrashData.get().getDropList().clear();
+            items.forEach(kv -> {
+                if (!kv.getValue().isEmpty()) {
+                    Coordinate coordinate;
+                    if (originalPos) {
+                        coordinate = kv.getKey();
+                    } else {
+                        coordinate = new Coordinate(player);
+                    }
+                    ServerWorld level = AotakeUtils.getWorld(coordinate.getDimension());
+                    Entity entity = AotakeUtils.getEntityFromItem(level, kv.getValue());
+                    entity.moveTo(coordinate.getX(), coordinate.getY(), coordinate.getZ(), (float) coordinate.getYaw(), (float) coordinate.getPitch());
+                    level.addFreshEntity(entity);
+                }
+            });
+            Component message = Component.translatable(EnumI18nType.MESSAGE
+                    , "cache_dropped"
+                    , context.getSource().getEntity() instanceof ServerPlayerEntity
+                            ? context.getSource().getPlayerOrException().getDisplayName().getString()
+                            : "server"
+            );
+            AotakeSweep.getServerInstance()
+                    .getPlayerList()
+                    .getPlayers()
+                    .forEach(p -> AotakeUtils.sendMessage(p, message));
+            return 1;
+        };
+
+
+        LiteralArgumentBuilder<CommandSource> language = // region language
+                Commands.literal(CommonConfig.COMMAND_LANGUAGE.get())
+                        .then(Commands.argument("language", StringArgumentType.word())
+                                .suggests((context, builder) -> {
+                                    builder.suggest("client");
+                                    builder.suggest("server");
+                                    I18nUtils.getI18nFiles().forEach(builder::suggest);
+                                    return builder.buildFuture();
+                                })
+                                .executes(languageCommand)
+                        ); // endregion language
+        LiteralArgumentBuilder<CommandSource> virtualOp = // region virtualOp
+                Commands.literal(CommonConfig.COMMAND_VIRTUAL_OP.get())
+                        .requires(source -> AotakeUtils.hasCommandPermission(source, EnumCommandType.VIRTUAL_OP))
+                        .then(Commands.argument("operation", StringArgumentType.word())
+                                .suggests((context, builder) -> {
+                                    builder.suggest(EnumOperationType.ADD.name().toLowerCase());
+                                    builder.suggest(EnumOperationType.SET.name().toLowerCase());
+                                    builder.suggest(EnumOperationType.DEL.name().toLowerCase());
+                                    builder.suggest(EnumOperationType.CLEAR.name().toLowerCase());
+                                    builder.suggest(EnumOperationType.GET.name().toLowerCase());
+                                    return builder.buildFuture();
+                                })
+                                .then(Commands.argument("player", EntityArgument.players())
+                                        .executes(virtualOpCommand)
+                                        .then(Commands.argument("rules", StringArgumentType.greedyString())
+                                                .suggests((context, builder) -> {
+                                                    String operation = StringArgumentType.getString(context, "operation");
+                                                    if (operation.equalsIgnoreCase(EnumOperationType.GET.name().toLowerCase())
+                                                            || operation.equalsIgnoreCase(EnumOperationType.CLEAR.name().toLowerCase())
+                                                            || operation.equalsIgnoreCase(EnumOperationType.LIST.name().toLowerCase())) {
+                                                        return builder.buildFuture();
+                                                    }
+                                                    String input = getStringEmpty(context, "rules").replace(" ", ",");
+                                                    String[] split = input.split(",");
+                                                    String current = input.endsWith(",") ? "" : split[split.length - 1];
+                                                    for (EnumCommandType value : Arrays.stream(EnumCommandType.values())
+                                                            .filter(EnumCommandType::isOp)
+                                                            .filter(type -> Arrays.stream(split).noneMatch(in -> in.equalsIgnoreCase(type.name())))
+                                                            .filter(type -> StringUtils.isNullOrEmptyEx(current) || type.name().toLowerCase().contains(current.toLowerCase()))
+                                                            .sorted(Comparator.comparing(EnumCommandType::getSort))
+                                                            .collect(Collectors.toList())) {
+                                                        String suggest = value.name();
+                                                        if (input.endsWith(",")) {
+                                                            suggest = input + suggest;
+                                                        }
+                                                        builder.suggest(suggest);
+                                                    }
+                                                    return builder.buildFuture();
+                                                })
+                                                .executes(virtualOpCommand)
+                                        )
+                                )
+                        ); // endregion virtualOp
+        LiteralArgumentBuilder<CommandSource> openDustbin = // region openDustbin
+                Commands.literal(CommonConfig.COMMAND_DUSTBIN_OPEN.get())
+                        .executes(openDustbinCommand)
+                        .then(Commands.argument("page", IntegerArgumentType.integer(1, CommonConfig.DUSTBIN_PAGE_LIMIT.get()))
+                                .suggests((context, builder) -> {
+                                    IntStream.range(1, CommonConfig.DUSTBIN_PAGE_LIMIT.get() + 1)
+                                            .filter(i -> i == 1
+                                                    || i == CommonConfig.DUSTBIN_PAGE_LIMIT.get()
+                                                    || !WorldTrashData.get().getInventoryList().get(i - 1).isEmpty())
+                                            .forEach(builder::suggest);
+                                    return builder.buildFuture();
+                                })
+                                .executes(openDustbinCommand)
+                        ); // endregion openDustbin
+        LiteralArgumentBuilder<CommandSource> sweep = // region sweep
+                Commands.literal(CommonConfig.COMMAND_SWEEP.get())
+                        .requires(source -> AotakeUtils.hasCommandPermission(source, EnumCommandType.SWEEP))
+                        .executes(sweepCommand)
+                        .then(Commands.argument("dimension", DimensionArgument.dimension())
+                                .executes(sweepCommand)
+                        )
+                        .then(Commands.argument("range", IntegerArgumentType.integer(0))
+                                .executes(sweepCommand)
+                        ); // endregion sweep
+        LiteralArgumentBuilder<CommandSource> clearDrop = // region clearDrop
+                Commands.literal(CommonConfig.COMMAND_CLEAR_DROP.get())
+                        .requires(source -> AotakeUtils.hasCommandPermission(source, EnumCommandType.CLEAR_DROP))
+                        .executes(clearDropCommand)
+                        .then(Commands.argument("withEntity", BoolArgumentType.bool())
+                                .executes(clearDropCommand)
+                                .then(Commands.argument("dimension", DimensionArgument.dimension())
+                                        .executes(clearDropCommand)
+                                )
+                                .then(Commands.argument("range", IntegerArgumentType.integer(0))
+                                        .executes(clearDropCommand)
+                                )
+                        ); // endregion clearDrop
+        LiteralArgumentBuilder<CommandSource> clearDustbin = // region clearDustbin
+                Commands.literal(CommonConfig.COMMAND_DUSTBIN_CLEAR.get())
+                        .requires(source -> AotakeUtils.hasCommandPermission(source, EnumCommandType.DUSTBIN_CLEAR))
+                        .executes(clearDustbinCommand)
+                        .then(Commands.argument("page", IntegerArgumentType.integer(1, CommonConfig.DUSTBIN_PAGE_LIMIT.get()))
+                                .suggests((context, builder) -> {
+                                    IntStream.range(1, CommonConfig.DUSTBIN_PAGE_LIMIT.get() + 1)
+                                            .filter(i -> i == 1
+                                                    || i == CommonConfig.DUSTBIN_PAGE_LIMIT.get()
+                                                    || !WorldTrashData.get().getInventoryList().get(i - 1).isEmpty())
+                                            .forEach(builder::suggest);
+                                    return builder.buildFuture();
+                                })
+                                .executes(clearDustbinCommand)
+                        ); // endregion clearDustbin
+        LiteralArgumentBuilder<CommandSource> dropDustbin = // region dropDustbin
+                Commands.literal(CommonConfig.COMMAND_DUSTBIN_DROP.get())
+                        .requires(source -> AotakeUtils.hasCommandPermission(source, EnumCommandType.DUSTBIN_DROP))
+                        .executes(dropDustbinCommand)
+                        .then(Commands.argument("page", IntegerArgumentType.integer(1, CommonConfig.DUSTBIN_PAGE_LIMIT.get()))
+                                .suggests((context, builder) -> {
+                                    IntStream.range(1, CommonConfig.DUSTBIN_PAGE_LIMIT.get() + 1)
+                                            .filter(i -> i == 1
+                                                    || i == CommonConfig.DUSTBIN_PAGE_LIMIT.get()
+                                                    || !WorldTrashData.get().getInventoryList().get(i - 1).isEmpty())
+                                            .forEach(builder::suggest);
+                                    return builder.buildFuture();
+                                })
+                                .executes(dropDustbinCommand)
+                        ); // endregion dropDustbin
+        LiteralArgumentBuilder<CommandSource> clearCache = // region clearCache
+                Commands.literal(CommonConfig.COMMAND_CACHE_CLEAR.get())
+                        .requires(source -> AotakeUtils.hasCommandPermission(source, EnumCommandType.CACHE_CLEAR))
+                        .executes(clearCacheCommand); // endregion clearCache
+        LiteralArgumentBuilder<CommandSource> dropCache = // region dropCache
+                Commands.literal(CommonConfig.COMMAND_CACHE_DROP.get())
+                        .requires(source -> AotakeUtils.hasCommandPermission(source, EnumCommandType.CACHE_DROP))
+                        .executes(dropCacheCommand)
+                        .then(Commands.argument("originalPos", BoolArgumentType.bool())
+                                .executes(dropCacheCommand)
+                        ); // endregion dropCache
+
+
+        // 注册简短的指令
+        {
+            // 设置语言 /language
+            if (CommonConfig.CONCISE_LANGUAGE.get()) {
+                dispatcher.register(language);
+            }
+
+            // 设置虚拟权限 /opv
+            if (CommonConfig.CONCISE_VIRTUAL_OP.get()) {
+                dispatcher.register(virtualOp);
+            }
+
+            // 打开垃圾箱 /dustbin
+            if (CommonConfig.CONCISE_DUSTBIN_OPEN.get()) {
+                dispatcher.register(openDustbin);
+            }
+
+            // 扫地 /sweep
+            if (CommonConfig.CONCISE_SWEEP.get()) {
+                dispatcher.register(sweep);
+            }
+
+            // 清除掉落物 /killitem
+            if (CommonConfig.CONCISE_CLEAR_DROP.get()) {
+                dispatcher.register(clearDrop);
+            }
+
+            // 清空垃圾箱 /cleardustbin
+            if (CommonConfig.CONCISE_DUSTBIN_CLEAR.get()) {
+                dispatcher.register(clearDustbin);
+            }
+
+            // 将垃圾箱物品掉落到世界 /dropdustbin
+            if (CommonConfig.CONCISE_DUSTBIN_DROP.get()) {
+                dispatcher.register(dropDustbin);
+            }
+
+            // 清空缓存 /clearcache
+            if (CommonConfig.CONCISE_CACHE_CLEAR.get()) {
+                dispatcher.register(clearCache);
+            }
+
+            // 将缓存内物品掉落至世界 /dropcache
+            if (CommonConfig.CONCISE_CACHE_DROP.get()) {
+                dispatcher.register(dropCache);
+            }
+
+        }
+
+        // 注册有前缀的指令
+        {
+            dispatcher.register(Commands.literal(AotakeUtils.getCommandPrefix())
+                    .executes(helpCommand)
+                    .then(Commands.literal("help")
+                            .executes(helpCommand)
+                            .then(Commands.argument("command", StringArgumentType.word())
+                                    .suggests(helpSuggestions)
+                                    .executes(helpCommand)
+                            )
+                    )
+                    // 设置语言 /aotake language
+                    .then(language)
+                    // 设置虚拟权限 /aotake opv
+                    .then(virtualOp)
+                    // 打开垃圾箱 /aotake dustbin
+                    .then(openDustbin)
+                    // 扫地 /aotake sweep
+                    .then(sweep)
+                    // 清除掉落物 /aotake killitem
+                    .then(clearDrop)
+                    // 清空垃圾箱 /aotake cleardustbin
+                    .then(clearDustbin)
+                    // 将垃圾箱物品掉落到世界 /aotake dropdustbin
+                    .then(dropDustbin)
+                    // 清空缓存 /aotake clearcache
+                    .then(clearCache)
+                    // 将缓存内物品掉落至世界 /aotake dropcache
+                    .then(dropCache)
+                    // 获取服务器配置 /aotake config
+                    .then(Commands.literal("config")
+                            // 修改服务器配置
+                            .then(Commands.literal("set")
+                                    .requires(source -> AotakeUtils.hasCommandPermission(source, EnumCommandType.VIRTUAL_OP))
+                                    .then(Commands.literal("mode")
+                                            .then(Commands.argument("mode", IntegerArgumentType.integer(0, 2))
+                                                    .suggests((context, builder) -> {
+                                                        builder.suggest(0);
+                                                        builder.suggest(1);
+                                                        builder.suggest(2);
+                                                        return builder.buildFuture();
+                                                    })
+                                                    .executes(context -> {
+                                                        int mode = IntegerArgumentType.getInteger(context, "mode");
+                                                        CommandSource source = context.getSource();
+                                                        String lang = ServerConfig.DEFAULT_LANGUAGE.get();
+                                                        if (source.getEntity() != null && source.getEntity() instanceof ServerPlayerEntity) {
+                                                            lang = AotakeUtils.getPlayerLanguage(source.getPlayerOrException());
+                                                        }
+                                                        switch (mode) {
+                                                            case 0:
+                                                                ServerConfig.resetConfig();
+                                                                CommonConfig.resetConfig();
+                                                                break;
+                                                            case 1:
+                                                                ServerConfig.resetConfigWithMode1();
+                                                                CommonConfig.resetConfigWithMode1();
+                                                                break;
+                                                            case 2:
+                                                                ServerConfig.resetConfigWithMode2();
+                                                                CommonConfig.resetConfigWithMode2();
+                                                                break;
+                                                            default: {
+                                                                throw new IllegalArgumentException("Mode " + mode + " does not exist");
+                                                            }
+                                                        }
+                                                        Component component = Component.translatable(lang, EnumI18nType.MESSAGE, "server_config_mode", mode);
+                                                        source.sendSuccess(component.toChatComponent(lang), false);
+
+                                                        // 更新权限信息
+                                                        source.getServer().getPlayerList().getPlayers()
+                                                                .forEach(player -> source.getServer()
+                                                                        .getPlayerList()
+                                                                        .sendPlayerPermissionLevel(player)
+                                                                );
+                                                        return 1;
+                                                    })
+                                            )
+                                    )
+                                    .then(Commands.literal("language")
+                                            .then(Commands.argument("language", StringArgumentType.word())
+                                                    .suggests((context, builder) -> {
+                                                        I18nUtils.getI18nFiles().forEach(builder::suggest);
+                                                        return builder.buildFuture();
+                                                    })
+                                                    .executes(context -> {
+                                                        String code = StringArgumentType.getString(context, "language");
+                                                        ServerConfig.DEFAULT_LANGUAGE.set(code);
+                                                        ServerPlayerEntity player = context.getSource().getPlayerOrException();
+                                                        AotakeUtils.broadcastMessage(player, Component.translatable(player, EnumI18nType.MESSAGE, "server_default_language", ServerConfig.DEFAULT_LANGUAGE.get()));
+                                                        return 1;
+                                                    })
+                                            )
+                                    )
+                            )
+                    )
+            );
+        }
+    }
+
+    public static String getStringEmpty(CommandContext<?> context, String name) {
+        return getStringDefault(context, name, "");
+    }
+
+    public static String getStringDefault(CommandContext<?> context, String name, String defaultValue) {
+        String result;
+        try {
+            result = StringArgumentType.getString(context, name);
+        } catch (IllegalArgumentException ignored) {
+            result = defaultValue;
+        }
+        return result;
+    }
+
+    public static int getIntDefault(CommandContext<?> context, String name, int defaultValue) {
+        int result;
+        try {
+            result = IntegerArgumentType.getInteger(context, name);
+        } catch (IllegalArgumentException ignored) {
+            result = defaultValue;
+        }
+        return result;
+    }
+
+    public static boolean getBooleanDefault(CommandContext<?> context, String name, boolean defaultValue) {
+        boolean result;
+        try {
+            result = BoolArgumentType.getBool(context, name);
+        } catch (IllegalArgumentException ignored) {
+            result = defaultValue;
+        }
+        return result;
+    }
+
+    public static ServerWorld getDimensionDefault(CommandContext<CommandSource> context, String name, ServerWorld defaultDimension) {
+        ServerWorld result;
+        try {
+            result = DimensionArgument.getDimension(context, name);
+        } catch (IllegalArgumentException | CommandSyntaxException e) {
+            result = defaultDimension;
+        }
+        return result;
+    }
+
+    /**
+     * 若为第一次使用指令则进行提示
+     */
+    public static void notifyHelp(CommandContext<CommandSource> context) {
+        CommandSource source = context.getSource();
+        Entity entity = source.getEntity();
+        if (entity instanceof ServerPlayerEntity) {
+            ServerPlayerEntity player = (ServerPlayerEntity) entity;
+            IPlayerSweepData data = PlayerSweepDataCapability.getData(player);
+            if (!data.isNotified()) {
+                Component button = Component.literal("/" + AotakeUtils.getCommandPrefix())
+                        .setColor(EnumMCColor.AQUA.getColor())
+                        .setClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/" + AotakeUtils.getCommandPrefix()))
+                        .setHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT, Component.literal("/" + AotakeUtils.getCommandPrefix())
+                                .toTextComponent())
+                        );
+                AotakeUtils.sendMessage(player, Component.translatable(EnumI18nType.MESSAGE, "notify_help", button));
+                data.setNotified(true);
+            }
+        }
+    }
+
+    private static int dustbin(@NonNull ServerPlayerEntity player, int page) {
+        int result = player.openMenu(WorldTrashData.getTrashContainer(player, page)).orElse(0);
+        if (result > 0) AotakeSweep.getPlayerDustbinPage().put(AotakeUtils.getPlayerUUIDString(player), page);
+        return result;
+    }
 }

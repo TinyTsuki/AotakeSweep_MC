@@ -16,6 +16,8 @@ plugins {
     // 若以上行报错则大概率为网络问题, 请切换网络并刷新Gradle
 }
 
+def javaVer = 8
+
 apply plugin: 'org.spongepowered.mixin'
 
 group = mod_group_id
@@ -26,7 +28,7 @@ base {
 }
 
 java {
-    toolchain.languageVersion = JavaLanguageVersion.of(8)
+    toolchain.languageVersion = JavaLanguageVersion.of(javaVer)
 }
 
 minecraft {
@@ -126,9 +128,14 @@ repositories {
 
     // If you have mod jar dependencies in ./libs, you can declare them as a repository like so.
     // See https://docs.gradle.org/current/userguide/declaring_repositories.html#sub:flat_dir_resolver
-    // flatDir {
-    //     dir 'libs'
-    // }
+    flatDir {
+        dir 'libs'
+    }
+    mavenLocal()
+    // IE
+    maven { name = "BlameJared"; url = "https://maven.blamejared.com/" }
+    // JEI
+    maven { name = "DVS1 Maven FS"; url = "https://dvs1.progwml6.com/files/maven" }
 }
 
 dependencies {
@@ -151,14 +158,20 @@ dependencies {
 
     // Example mod dependency with JEI - using fg.deobf() ensures the dependency is remapped to your development mappings
     // The JEI API is declared for compile time use, while the full JEI artifact is used at runtime
-    // compileOnly fg.deobf("mezz.jei:jei-${mc_version}-common-api:${jei_version}")
-    // compileOnly fg.deobf("mezz.jei:jei-${mc_version}-forge-api:${jei_version}")
-    // runtimeOnly fg.deobf("mezz.jei:jei-${mc_version}-forge:${jei_version}")
+    // compileOnly fg.deobf("mezz.jei:jei-${minecraft_version}-common-api:${jei_version}")
+    // compileOnly fg.deobf("mezz.jei:jei-${minecraft_version}-forge-api:${jei_version}")
+    runtimeOnly fg.deobf("mezz.jei:jei-${minecraft_version}:${jei_version}")
 
     // Example mod dependency using a mod jar from ./libs with a flat dir repository
-    // This maps to ./libs/coolmod-${mc_version}-${coolmod_version}.jar
+    // This maps to ./libs/coolmod-${minecraft_version}-${coolmod_version}.jar
     // The group id is ignored when searching -- in this case, it is "blank"
-    // implementation fg.deobf("blank:coolmod-${mc_version}:${coolmod_version}")
+    // implementation fg.deobf("blank:coolmod-${minecraft_version}:${coolmod_version}")
+    runtimeOnly fg.deobf("blank:InventoryProfilesNext-forge-1.16:1.10.602")
+    runtimeOnly fg.deobf("blank:kotlinforforge-1.17.0:obf")
+    runtimeOnly fg.deobf("blank:libIPN-forge-1.16:3.0.2")
+
+    // IE
+    runtimeOnly fg.deobf("blusunrize.immersiveengineering:ImmersiveEngineering:${ie_version}")
 
     // For more info:
     // http://www.gradle.org/docs/current/userguide/artifact_dependencies_tutorial.html
