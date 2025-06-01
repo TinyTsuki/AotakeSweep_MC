@@ -13,11 +13,15 @@ import javax.annotation.Nullable;
  * 玩家传送数据
  */
 public class PlayerSweepData implements IPlayerSweepData {
+    private String language = "client";
     /**
      * 是否已发送使用说明
      */
     private boolean notified;
-    private String language = "client";
+    /**
+     * 是否显示清理结果
+     */
+    private boolean showSweepResult = true;
 
     @Override
     public String getLanguage() {
@@ -45,33 +49,48 @@ public class PlayerSweepData implements IPlayerSweepData {
         this.notified = notified;
     }
 
+    @Override
+    public boolean isShowSweepResult() {
+        return this.showSweepResult;
+    }
+
+    @Override
+    public void setShowSweepResult(boolean showSweepResult) {
+        this.showSweepResult = showSweepResult;
+    }
+
     public void writeToBuffer(PacketBuffer buffer) {
-        buffer.writeBoolean(this.notified);
         buffer.writeUtf(this.getLanguage());
+        buffer.writeBoolean(this.notified);
+        buffer.writeBoolean(this.showSweepResult);
     }
 
     public void readFromBuffer(PacketBuffer buffer) {
-        this.notified = buffer.readBoolean();
         this.language = buffer.readUtf();
+        this.notified = buffer.readBoolean();
+        this.showSweepResult = buffer.readBoolean();
     }
 
     public void copyFrom(IPlayerSweepData capability) {
-        this.notified = capability.isNotified();
         this.language = capability.getLanguage();
+        this.notified = capability.isNotified();
+        this.showSweepResult = capability.isShowSweepResult();
     }
 
     @Override
     public CompoundNBT serializeNBT() {
         CompoundNBT tag = new CompoundNBT();
-        tag.putBoolean("notified", this.notified);
         tag.putString("language", this.getLanguage());
+        tag.putBoolean("notified", this.notified);
+        tag.putBoolean("showSweepResult", this.showSweepResult);
         return tag;
     }
 
     @Override
     public void deserializeNBT(CompoundNBT nbt) {
-        this.notified = nbt.getBoolean("notified");
         this.setLanguage(nbt.getString("language"));
+        this.notified = nbt.getBoolean("notified");
+        this.showSweepResult = nbt.getBoolean("showSweepResult");
     }
 
     @Override

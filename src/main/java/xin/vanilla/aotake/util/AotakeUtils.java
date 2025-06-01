@@ -25,6 +25,8 @@ import net.minecraft.util.*;
 import net.minecraft.util.text.ChatType;
 import net.minecraft.util.text.ITextComponent;
 import net.minecraft.util.text.TranslationTextComponent;
+import net.minecraft.util.text.event.ClickEvent;
+import net.minecraft.util.text.event.HoverEvent;
 import net.minecraft.world.World;
 import net.minecraft.world.server.ServerWorld;
 import net.minecraftforge.entity.PartEntity;
@@ -40,6 +42,7 @@ import xin.vanilla.aotake.data.player.PlayerSweepDataCapability;
 import xin.vanilla.aotake.data.world.WorldTrashData;
 import xin.vanilla.aotake.enums.EnumCommandType;
 import xin.vanilla.aotake.enums.EnumI18nType;
+import xin.vanilla.aotake.enums.EnumMCColor;
 import xin.vanilla.aotake.enums.EnumSelfCleanMode;
 import xin.vanilla.aotake.network.ModNetworkHandler;
 
@@ -52,6 +55,33 @@ import java.util.stream.Collectors;
 public class AotakeUtils {
     private static final Logger LOGGER = LogManager.getLogger();
 
+    private static final List<BlockState> SAFE_BLOCKS_STATE = CommonConfig.SAFE_BLOCKS.get().stream()
+            .map(AotakeUtils::deserializeBlockState)
+            .filter(Objects::nonNull)
+            .distinct()
+            .collect(Collectors.toList());
+    private static final List<String> SAFE_BLOCKS = CommonConfig.SAFE_BLOCKS.get().stream()
+            .filter(Objects::nonNull)
+            .distinct()
+            .collect(Collectors.toList());
+    private static final List<BlockState> SAFE_BLOCKS_BELOW_STATE = CommonConfig.SAFE_BLOCKS_BELOW.get().stream()
+            .map(AotakeUtils::deserializeBlockState)
+            .filter(Objects::nonNull)
+            .distinct()
+            .collect(Collectors.toList());
+    private static final List<String> SAFE_BLOCKS_BELOW = CommonConfig.SAFE_BLOCKS_BELOW.get().stream()
+            .filter(Objects::nonNull)
+            .distinct()
+            .collect(Collectors.toList());
+    private static final List<BlockState> SAFE_BLOCKS_ABOVE_STATE = CommonConfig.SAFE_BLOCKS_ABOVE.get().stream()
+            .map(AotakeUtils::deserializeBlockState)
+            .filter(Objects::nonNull)
+            .distinct()
+            .collect(Collectors.toList());
+    private static final List<String> SAFE_BLOCKS_ABOVE = CommonConfig.SAFE_BLOCKS_ABOVE.get().stream()
+            .filter(Objects::nonNull)
+            .distinct()
+            .collect(Collectors.toList());
 
     // region 指令相关
 
@@ -382,11 +412,11 @@ public class AotakeUtils {
         AotakeUtils.sweep(null, entities);
     }
 
-    public static void sweep(ServerPlayerEntity player, List<Entity> entities) {
-        sweep(player, entities, false);
-    }
+    public static void sweep(@Nullable ServerPlayerEntity player, List<Entity> entities) {
+        List<ServerPlayerEntity> players = AotakeSweep.getServerInstance().getPlayerList().getPlayers();
+        // 若服务器没有玩家
+        if (CollectionUtils.isNullOrEmpty(players) && !CommonConfig.SWEEP_WHEN_NO_PLAYER.get()) return;
 
-    public static void sweep(@Nullable ServerPlayerEntity player, List<Entity> entities, boolean chatMsg) {
         List<Entity> list = entities.stream()
                 // 物品实体 与 垃圾实体
                 .filter(entity -> entity instanceof ItemEntity
@@ -394,17 +424,38 @@ public class AotakeUtils {
                 )
                 // 掉落时间超过配置时间
                 .filter(entity -> !(entity instanceof ItemEntity)
-                        || ((ItemEntity) entity).getAge() >= ServerConfig.SWEEP_ITEM_AGE.get()
+                        || entity.tickCount >= ServerConfig.SWEEP_ITEM_AGE.get()
                 )
-                // 不在白名单
+                // 物品不在白名单
                 .filter(entity -> !(entity instanceof ItemEntity)
                         || ServerConfig.ITEM_WHITELIST.get().isEmpty()
                         || !ServerConfig.ITEM_WHITELIST.get().contains(getItemRegistryName(((ItemEntity) entity).getItem()))
                 )
-                // 仅在黑名单
+                // 物品仅在黑名单
                 .filter(entity -> !(entity instanceof ItemEntity)
                         || ServerConfig.ITEM_BLACKLIST.get().isEmpty()
                         || ServerConfig.ITEM_BLACKLIST.get().contains(getItemRegistryName(((ItemEntity) entity).getItem()))
+                )
+                // 实体不在方块中
+                .filter(entity -> {
+                            BlockState blockState = entity.level.getBlockState(entity.blockPosition());
+                            return !SAFE_BLOCKS.contains(AotakeUtils.getBlockRegistryName(blockState))
+                                    && !SAFE_BLOCKS_STATE.contains(blockState);
+                        }
+                )
+                // 实体不在方块上
+                .filter(entity -> {
+                            BlockState blockState = entity.level.getBlockState(entity.blockPosition().below());
+                            return !SAFE_BLOCKS_BELOW.contains(AotakeUtils.getBlockRegistryName(blockState))
+                                    && !SAFE_BLOCKS_BELOW_STATE.contains(blockState);
+                        }
+                )
+                // 实体不在方块下
+                .filter(entity -> {
+                            BlockState blockState = entity.level.getBlockState(entity.blockPosition().above());
+                            return !SAFE_BLOCKS_ABOVE.contains(AotakeUtils.getBlockRegistryName(blockState))
+                                    && !SAFE_BLOCKS_ABOVE_STATE.contains(blockState);
+                        }
                 )
                 .collect(Collectors.toList());
 
@@ -418,15 +469,25 @@ public class AotakeUtils {
             result = WorldTrashData.get().addDrops(list);
         }
 
-        for (ServerPlayerEntity p : AotakeSweep.getServerInstance().getPlayerList().getPlayers()) {
-            Component msg = getWarningMessage(result == null
-                            || (result.getItemCount() == 0
-                            && result.getEntityCount() == 0)
-                            ? -1 : 0
+        for (ServerPlayerEntity p : players) {
+            Component msg = getWarningMessage(result == null || result.isEmpty() ? -1 : 0
                     , getPlayerLanguage(p)
                     , result);
-            if (chatMsg) {
-                AotakeUtils.sendMessage(p, msg);
+            if (PlayerSweepDataCapability.getData(p).isShowSweepResult()) {
+                String openCom = "/" + AotakeUtils.getCommand(EnumCommandType.DUSTBIN_OPEN);
+                msg.setClickEvent(new ClickEvent(ClickEvent.Action.SUGGEST_COMMAND, openCom))
+                        .setHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT
+                                , Component.literal(openCom).toTextComponent())
+                        );
+                AotakeUtils.sendMessage(p, Component.empty()
+                        .append(msg)
+                        .append(Component.translatable(EnumI18nType.MESSAGE, "not_show_button")
+                                .setColor(EnumMCColor.RED.getColor())
+                                .setClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND
+                                        , "/" + AotakeUtils.getCommandPrefix() + " config showSweepResult false")
+                                )
+                        )
+                );
             } else {
                 AotakeUtils.sendActionBarMessage(p, msg);
             }

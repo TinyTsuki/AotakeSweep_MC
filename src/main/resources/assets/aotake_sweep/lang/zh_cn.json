@@ -29,6 +29,7 @@
   "word.aotake_sweep.disabled": "已禁用",
   "message.aotake_sweep.previous_page": "上一页",
   "message.aotake_sweep.next_page": "下一页",
+  "message.aotake_sweep.not_show_button": "[关闭聊天提醒]",
   "message.aotake_sweep.click_to_suggest": "点击以填充",
   "message.aotake_sweep.command_disabled": "§e该指令已被服务器禁用！",
   "message.aotake_sweep.server_config_status": "服务器%s配置： %s",
@@ -42,5 +43,6 @@
   "message.aotake_sweep.dustbin_cleared": "§e垃圾箱%s§e被『%s§e』清空了。",
   "message.aotake_sweep.dustbin_dropped": "§e垃圾箱%s§e被『%s§e』倒掉了。",
   "message.aotake_sweep.cache_cleared": "§e垃圾缓存区被『%s§e』清空了。",
-  "message.aotake_sweep.cache_dropped": "§e垃圾缓存区被『%s§e』倒掉了。"
+  "message.aotake_sweep.cache_dropped": "§e垃圾缓存区被『%s§e』倒掉了。",
+  "message.aotake_sweep.player_show_sweep_result": "显示扫地结果消息被设置为了：%s。"
 }

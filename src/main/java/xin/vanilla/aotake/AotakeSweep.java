@@ -110,7 +110,7 @@ public class AotakeSweep {
      */
     @SubscribeEvent
     public void onCommonSetup(final FMLCommonSetupEvent event) {
-        CustomConfig.loadCustomConfig();
+        CustomConfig.loadCustomConfig(false);
     }
 
     private void onServerStarting(FMLServerStartingEvent event) {

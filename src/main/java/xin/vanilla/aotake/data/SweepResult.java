@@ -74,4 +74,8 @@ public class SweepResult {
         this.recycledEntityCount += other.recycledEntityCount;
         return this;
     }
+
+    public boolean isEmpty() {
+        return this.itemCount == 0 && this.entityCount == 0;
+    }
 }

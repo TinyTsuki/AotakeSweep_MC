@@ -42,6 +42,8 @@ public class EventHandlerProxy {
 
     private static long lastSweepTime = System.currentTimeMillis();
     private static long lastSelfCleanTime = System.currentTimeMillis();
+    private static long lastSaveConfTime = System.currentTimeMillis();
+    private static long lastReadConfTime = System.currentTimeMillis();
     private static Queue<Integer> warnQueue;
 
     public static void onServerTick(TickEvent.ServerTickEvent event) {
@@ -107,8 +109,14 @@ public class EventHandlerProxy {
             }
 
             // 保存通用配置
-            if (AotakeSweep.getServerInstance().getTickCount() % (20 * 10) == 0) {
+            if (System.currentTimeMillis() - lastSaveConfTime >= 10 * 1000) {
+                lastSaveConfTime = System.currentTimeMillis();
                 CustomConfig.saveCustomConfig();
+            }
+            // 读取通用配置
+            else if (System.currentTimeMillis() - lastReadConfTime >= 2 * 60 * 1000) {
+                lastReadConfTime = System.currentTimeMillis();
+                CustomConfig.loadCustomConfig(true);
             }
         }
     }

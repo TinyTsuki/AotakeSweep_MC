@@ -29,6 +29,7 @@
   "word.aotake_sweep.disabled": "disabled",
   "message.aotake_sweep.previous_page": "Previous Page",
   "message.aotake_sweep.next_page": "Next Page",
+  "message.aotake_sweep.not_show_button": "[Close Chat Reminder]",
   "message.aotake_sweep.click_to_suggest": "Click to suggest",
   "message.aotake_sweep.command_disabled": "§eThe command is disabled!",
   "message.aotake_sweep.server_config_status": "The server has %s the config: %s.",
@@ -42,5 +43,6 @@
   "message.aotake_sweep.dustbin_cleared": "§eDustbin%s§ehas been cleared by '%s§e'.",
   "message.aotake_sweep.dustbin_dropped": "§eDustbin%s§ehas been dropped by '%s§e'.",
   "message.aotake_sweep.cache_cleared": "§eCache area has been cleared by '%s§e'.",
-  "message.aotake_sweep.cache_dropped": "§eCache area has been dropped by '%s§e'."
+  "message.aotake_sweep.cache_dropped": "§eCache area has been dropped by '%s§e'.",
+  "message.aotake_sweep.player_show_sweep_result": "Show sweep result message is set to: %s."
 }

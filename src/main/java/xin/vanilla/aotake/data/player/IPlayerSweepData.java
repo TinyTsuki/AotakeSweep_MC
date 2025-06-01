@@ -34,6 +34,10 @@ public interface IPlayerSweepData extends INBTSerializable<CompoundNBT> {
 
     void setNotified(boolean notified);
 
+    boolean isShowSweepResult();
+
+    void setShowSweepResult(boolean showSweepResult);
+
     void writeToBuffer(PacketBuffer buffer);
 
     void readFromBuffer(PacketBuffer buffer);

@@ -34,18 +34,23 @@ public class CustomConfig {
 
     /**
      * 加载 JSON 数据
+     *
+     * @param notDirty 是否仅在数据不为脏时读取
      */
-    public static void loadCustomConfig() {
+    public static void loadCustomConfig(boolean notDirty) {
         File dir = getConfigDirectory().toFile();
         if (!dir.exists()) {
             dir.mkdirs();
         }
         File file = new File(dir, FILE_NAME);
         if (file.exists()) {
-            try {
-                customConfig = JsonUtils.PRETTY_GSON.fromJson(new String(Files.readAllBytes(Paths.get(file.getPath()))), JsonObject.class);
-            } catch (Exception e) {
-                LOGGER.error("Error loading custom common config: ", e);
+            if (!notDirty || !isDirty()) {
+                try {
+                    customConfig = JsonUtils.PRETTY_GSON.fromJson(new String(Files.readAllBytes(Paths.get(file.getPath()))), JsonObject.class);
+                    LOGGER.info("Loaded custom common config.");
+                } catch (Exception e) {
+                    LOGGER.error("Error loading custom common config: ", e);
+                }
             }
         } else {
             // 如果文件不存在，初始化默认值
@@ -89,6 +94,7 @@ public class CustomConfig {
                 try {
                     accessFile.write(JsonUtils.PRETTY_GSON.toJson(customConfig).getBytes());
                     setDirty(false);
+                    LOGGER.info("Saved custom common config.");
                 } catch (Exception e) {
                     LOGGER.error("Error saving custom common config: ", e);
                 }

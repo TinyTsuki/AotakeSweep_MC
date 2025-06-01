@@ -172,6 +172,7 @@ public class AotakeCommand {
 
 
         Command<CommandSource> languageCommand = context -> {
+            notifyHelp(context);
             ServerPlayerEntity player = context.getSource().getPlayerOrException();
             IPlayerSweepData signInData = PlayerSweepDataCapability.getData(player);
             String language = StringArgumentType.getString(context, "language");
@@ -244,11 +245,13 @@ public class AotakeCommand {
             return 1;
         };
         Command<CommandSource> openDustbinCommand = context -> {
+            notifyHelp(context);
             ServerPlayerEntity player = context.getSource().getPlayerOrException();
             int page = getIntDefault(context, "page", 1);
             return dustbin(player, page);
         };
         Command<CommandSource> sweepCommand = context -> {
+            notifyHelp(context);
             int range = getIntDefault(context, "range", 0);
             ServerWorld dimension = getDimensionDefault(context, "dimension", null);
             List<Entity> entities = new ArrayList<>();
@@ -259,10 +262,11 @@ public class AotakeCommand {
                 entities.addAll(player.level.getEntitiesOfClass(Entity.class, player.getBoundingBox().inflate(range)));
             }
             Entity entity = context.getSource().getEntity();
-            AotakeUtils.sweep(entity instanceof ServerPlayerEntity ? (ServerPlayerEntity) entity : null, entities, true);
+            AotakeUtils.sweep(entity instanceof ServerPlayerEntity ? (ServerPlayerEntity) entity : null, entities);
             return 1;
         };
         Command<CommandSource> clearDropCommand = context -> {
+            notifyHelp(context);
             boolean withEntity = getBooleanDefault(context, "withEntity", false);
             int range = getIntDefault(context, "range", 0);
             ServerWorld dimension = getDimensionDefault(context, "dimension", null);
@@ -291,9 +295,7 @@ public class AotakeCommand {
                     .getPlayerList()
                     .getPlayers()
                     .forEach(player -> AotakeUtils.sendMessage(player
-                            , AotakeUtils.getWarningMessage(result.getItemCount() == 0
-                                            && result.getEntityCount() == 0
-                                            ? -1 : 0
+                            , AotakeUtils.getWarningMessage(result.isEmpty() ? -1 : 0
                                     , AotakeUtils.getPlayerLanguage(player)
                                     , result
                             )
@@ -301,6 +303,7 @@ public class AotakeCommand {
             return 1;
         };
         Command<CommandSource> clearDustbinCommand = context -> {
+            notifyHelp(context);
             int page = getIntDefault(context, "page", 0);
             if (page == 0) {
                 WorldTrashData.get().getInventoryList().forEach(Inventory::clearContent);
@@ -321,6 +324,7 @@ public class AotakeCommand {
             return 1;
         };
         Command<CommandSource> dropDustbinCommand = context -> {
+            notifyHelp(context);
             ServerPlayerEntity player = context.getSource().getPlayerOrException();
             int page = getIntDefault(context, "page", 0);
             List<Inventory> inventories = new ArrayList<>();
@@ -352,6 +356,7 @@ public class AotakeCommand {
             return 1;
         };
         Command<CommandSource> clearCacheCommand = context -> {
+            notifyHelp(context);
             WorldTrashData.get().getDropList().clear();
             Component message = Component.translatable(EnumI18nType.MESSAGE
                     , "cache_cleared"
@@ -366,6 +371,7 @@ public class AotakeCommand {
             return 1;
         };
         Command<CommandSource> dropCacheCommand = context -> {
+            notifyHelp(context);
             boolean originalPos = getBooleanDefault(context, "originalPos", true);
             ServerPlayerEntity player = context.getSource().getPlayerOrException();
             List<KeyValue<Coordinate, ItemStack>> items = new ArrayList<>(WorldTrashData.get().getDropList());
@@ -674,6 +680,23 @@ public class AotakeCommand {
                                                         return 1;
                                                     })
                                             )
+                                    )
+                            )
+                            // 显示打扫结果信息
+                            .then(Commands.literal("showSweepResult")
+                                    .then(Commands.argument("show", BoolArgumentType.bool())
+                                            .executes(context -> {
+                                                boolean show = BoolArgumentType.getBool(context, "show");
+                                                ServerPlayerEntity player = context.getSource().getPlayerOrException();
+                                                PlayerSweepDataCapability.getData(player).setShowSweepResult(show);
+                                                AotakeUtils.sendMessage(player
+                                                        , Component.translatable(EnumI18nType.MESSAGE
+                                                                , "player_show_sweep_result"
+                                                                , I18nUtils.enabled(AotakeUtils.getPlayerLanguage(player), show)
+                                                        )
+                                                );
+                                                return 1;
+                                            })
                                     )
                             )
                     )
