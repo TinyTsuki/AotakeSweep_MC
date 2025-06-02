@@ -1,0 +1,111 @@
+
+#Base Settings
+#基础设置
+[common]
+	#The header content of the help command.
+	#帮助指令信息头部内容。
+	helpHeader = "-----==== Aotake Sweep Help (%d/%d) ====-----"
+	#The number of help information displayed per page.
+	#每页显示的帮助信息数量。
+	#Range: 1 ~ 9999
+	helpInfoNumPerPage = 5
+	#The default language of the server.
+	#服务器默认语言。
+	defaultLanguage = "en_us"
+	#The interval of sweeping (in milliseconds).
+	#扫地间隔(毫秒)。
+	#Range: 0 ~ 604800000
+	sweepInterval = 300000
+	#The interval of self-cleaning (in milliseconds).
+	#自清洁间隔(毫秒)。
+	#Range: 0 ~ 604800000
+	selfCleanInterval = 3600000
+	#The interval for checking too many entities in chunks (in milliseconds), 0 to disable.
+	#区块实体过多检测间隔(毫秒)，0为禁用。
+	#Range: 0 ~ 604800000
+	chunkCheckInterval = 5000
+	#The threshold for checking too many entities in chunks.
+	#区块实体过多检测阈值。
+	#Range: > 1
+	chunkCheckLimit = 250
+	#The item used to capture the entity being cleaned up.
+	#使用以下物品捕获被清理的实体。
+	catchItem = ["minecraft:snowball", "minecraft:glass_bottle", "minecraft:music_disc_13", "minecraft:music_disc_cat", "minecraft:music_disc_blocks", "minecraft:music_disc_chirp", "minecraft:music_disc_far", "minecraft:music_disc_mall", "minecraft:music_disc_mellohi", "minecraft:music_disc_stal", "minecraft:music_disc_strad", "minecraft:music_disc_ward", "minecraft:music_disc_wait", "minecraft:music_disc_pigstep"]
+	#The entity that can be cleaned up.
+	#允许被清理的实体。
+	junkEntity = ["minecraft:arrow", "minecraft:spectral_arrow"]
+	#The entity that can be captured when cleaned up.
+	#清理时允许被捕获的实体。
+	catchEntity = ["minecraft:experience_orb"]
+	#The item whitelist for cleaning up items, the following items will not be cleaned.
+	#物品清理白名单，以下物品不会被清理。
+	itemWhitelist = []
+	#The item blacklist for cleaning up items, only the following items will be cleaned.
+	#物品清理黑名单，将只会清理以下物品。
+	itemBlacklist = []
+	#Whether to allow players to use items to capture entities.
+	#是否允许玩家使用物品捕获实体。
+	allowCatchItem = false
+	#Only clean up items that have been dropped for more than the specified ticks.
+	#仅清理掉落超过指定tick的物品。
+	#Range: 0 ~ 1728000
+	sweepItemDelay = 200
+	#The self-cleaning mode of the dustbin.
+	#NONE: No self-cleaning mode enabled;
+	#SWEEP_CLEAR: Clear the dustbin before sweeping;
+	#SWEEP_DELETE: Randomly delete items in the dustbin during sweeping;
+	#SCHEDULED_CLEAR: Scheduled clearing of the dustbin;
+	#SCHEDULED_DELETE: Scheduled random deletion of items in the dustbin.
+	#垃圾箱自清洁模式。
+	#NONE：不启用自清洁模式；
+	#SWEEP_CLEAR：在扫地前清空垃圾箱；
+	#SWEEP_DELETE：在扫地时随机删除垃圾箱内物品；
+	#SCHEDULED_CLEAR：定时清空垃圾箱；
+	#SCHEDULED_DELETE：定时随机删除垃圾箱内物品。
+	selfCleanMode = ["NONE"]
+	#The handling method when the dustbin overflows.
+	#KEEP: Store to cache and fill in empty space in the dustbin when opening it;
+	#REMOVE: Remove the overflowing items;
+	#REPLACE: Randomly replace items in the dustbin with overflowing items.
+	#垃圾箱溢出时的处理方式。
+	#KEEP：储存至缓存，并在打开垃圾箱时填充至垃圾箱的空位；
+	#REMOVE：移除溢出物品；
+	#REPLACE：将垃圾箱中的物品随机替换为溢出的物品。
+	dustbinOverflowMode = "KEEP"
+
+#Command Permission
+#指令权限
+[permission]
+	#The permission level required to use the 'Set virtual permission' command, and also used as the permission level for modifying server configuration.
+	#设置虚拟权限指令所需的权限等级，同时用于控制使用'修改服务器配置指令'的权限。
+	#Range: 0 ~ 4
+	permissionVirtualOp = 4
+	#The permission level required to use the 'Open dustbin' command.
+	#打开垃圾箱指令所需的权限等级。
+	#Range: 0 ~ 4
+	permissionDustbinOpen = 0
+	#The permission level required to use the 'Clear dustbin' command.
+	#清空垃圾箱指令所需的权限等级。
+	#Range: 0 ~ 4
+	permissionDustbinClear = 1
+	#The permission level required to use the 'Drop dustbin items' command.
+	#将垃圾箱物品掉落到世界指令所需的权限等级。
+	#Range: 0 ~ 4
+	permissionDustbinDrop = 1
+	#The permission level required to use the 'Clear cache' command.
+	#清空缓存指令所需的权限等级。
+	#Range: 0 ~ 4
+	permissionCacheClear = 1
+	#The permission level required to use the 'Drop cache items' command.
+	#将缓存内物品掉落至世界指令所需的权限等级。
+	#Range: 0 ~ 4
+	permissionCacheDrop = 1
+	#The permission level required to use the 'Trigger sweep' command.
+	#触发扫地指令所需的权限等级。
+	#Range: 0 ~ 4
+	permissionSweep = 0
+	#The permission level required to use the 'Clear dropped items' command.
+	#清除掉落物指令所需的权限等级。
+	#Range: 0 ~ 4
+	permissionClearDrop = 1
+

@@ -406,18 +406,20 @@ public class AotakeUtils {
 
     // region 扫地
 
-    public static void sweep() {
+    public static List<Entity> getAllEntities() {
         List<Entity> entities = new ArrayList<>();
-        AotakeSweep.getServerInstance().getAllLevels().forEach(level -> entities.addAll(level.getEntities().collect(Collectors.toList())));
-        AotakeUtils.sweep(null, entities);
+        AotakeSweep.getServerInstance().getAllLevels()
+                .forEach(level -> entities.addAll(level.getEntities()
+                        .collect(Collectors.toList()))
+                );
+        return entities;
     }
 
-    public static void sweep(@Nullable ServerPlayerEntity player, List<Entity> entities) {
-        List<ServerPlayerEntity> players = AotakeSweep.getServerInstance().getPlayerList().getPlayers();
-        // 若服务器没有玩家
-        if (CollectionUtils.isNullOrEmpty(players) && !CommonConfig.SWEEP_WHEN_NO_PLAYER.get()) return;
-
-        List<Entity> list = entities.stream()
+    public static List<Entity> getAllEntitiesByFilter(List<Entity> entities) {
+        if (CollectionUtils.isNullOrEmpty(entities)) {
+            entities = getAllEntities();
+        }
+        return entities.stream()
                 // 物品实体 与 垃圾实体
                 .filter(entity -> entity instanceof ItemEntity
                         || ServerConfig.JUNK_ENTITY.get().contains(getEntityTypeRegistryName(entity))
@@ -458,6 +460,19 @@ public class AotakeUtils {
                         }
                 )
                 .collect(Collectors.toList());
+    }
+
+    public static void sweep() {
+        List<Entity> entities = getAllEntities();
+        AotakeUtils.sweep(null, entities);
+    }
+
+    public static void sweep(@Nullable ServerPlayerEntity player, List<Entity> entities) {
+        List<ServerPlayerEntity> players = AotakeSweep.getServerInstance().getPlayerList().getPlayers();
+        // 若服务器没有玩家
+        if (CollectionUtils.isNullOrEmpty(players) && !CommonConfig.SWEEP_WHEN_NO_PLAYER.get()) return;
+
+        List<Entity> list = getAllEntitiesByFilter(entities);
 
         SweepResult result = null;
         if (CollectionUtils.isNotNullOrEmpty(list)) {
@@ -733,7 +748,7 @@ public class AotakeUtils {
         EntityType<?> entityType = entity.getType();
         ResourceLocation location = ForgeRegistries.ENTITIES.getKey(entityType);
         if (location == null) location = entityType.getRegistryName();
-        return location == null ? createResource("").toString() : location.toString();
+        return location == null ? emptyResource().toString() : location.toString();
     }
 
     public static String getItemCustomNameJson(@NonNull ItemStack itemStack) {

@@ -172,6 +172,7 @@ public class AotakeCommand {
 
 
         Command<CommandSource> languageCommand = context -> {
+            if (checkModStatus(context)) return 0;
             notifyHelp(context);
             ServerPlayerEntity player = context.getSource().getPlayerOrException();
             IPlayerSweepData signInData = PlayerSweepDataCapability.getData(player);
@@ -188,6 +189,7 @@ public class AotakeCommand {
             return 1;
         };
         Command<CommandSource> virtualOpCommand = context -> {
+            if (checkModStatus(context)) return 0;
             notifyHelp(context);
             CommandSource source = context.getSource();
             // 如果命令来自玩家
@@ -245,27 +247,33 @@ public class AotakeCommand {
             return 1;
         };
         Command<CommandSource> openDustbinCommand = context -> {
+            if (checkModStatus(context)) return 0;
             notifyHelp(context);
             ServerPlayerEntity player = context.getSource().getPlayerOrException();
             int page = getIntDefault(context, "page", 1);
             return dustbin(player, page);
         };
         Command<CommandSource> sweepCommand = context -> {
+            if (checkModStatus(context)) return 0;
             notifyHelp(context);
             int range = getIntDefault(context, "range", 0);
             ServerWorld dimension = getDimensionDefault(context, "dimension", null);
-            List<Entity> entities = new ArrayList<>();
+            List<Entity> entities;
             if (dimension == null) {
-                AotakeSweep.getServerInstance().getAllLevels().forEach(level -> entities.addAll(level.getEntities().collect(Collectors.toList())));
-            } else if (range > 0) {
-                ServerPlayerEntity player = context.getSource().getPlayerOrException();
-                entities.addAll(player.level.getEntitiesOfClass(Entity.class, player.getBoundingBox().inflate(range)));
+                entities = AotakeUtils.getAllEntities();
+            } else {
+                entities = new ArrayList<>();
+                if (range > 0) {
+                    ServerPlayerEntity player = context.getSource().getPlayerOrException();
+                    entities.addAll(player.level.getEntitiesOfClass(Entity.class, player.getBoundingBox().inflate(range)));
+                }
             }
             Entity entity = context.getSource().getEntity();
-            AotakeUtils.sweep(entity instanceof ServerPlayerEntity ? (ServerPlayerEntity) entity : null, entities);
+            new Thread(() -> AotakeUtils.sweep(entity instanceof ServerPlayerEntity ? (ServerPlayerEntity) entity : null, entities)).start();
             return 1;
         };
         Command<CommandSource> clearDropCommand = context -> {
+            if (checkModStatus(context)) return 0;
             notifyHelp(context);
             boolean withEntity = getBooleanDefault(context, "withEntity", false);
             int range = getIntDefault(context, "range", 0);
@@ -273,7 +281,7 @@ public class AotakeCommand {
 
             List<Entity> entities = new ArrayList<>();
             if (dimension == null) {
-                AotakeSweep.getServerInstance().getAllLevels().forEach(level -> entities.addAll(level.getEntities().collect(Collectors.toList())));
+                entities = AotakeUtils.getAllEntities();
             } else if (range > 0) {
                 ServerPlayerEntity player = context.getSource().getPlayerOrException();
                 entities.addAll(player.level.getEntitiesOfClass(Entity.class, player.getBoundingBox().inflate(range)));
@@ -303,6 +311,7 @@ public class AotakeCommand {
             return 1;
         };
         Command<CommandSource> clearDustbinCommand = context -> {
+            if (checkModStatus(context)) return 0;
             notifyHelp(context);
             int page = getIntDefault(context, "page", 0);
             if (page == 0) {
@@ -324,6 +333,7 @@ public class AotakeCommand {
             return 1;
         };
         Command<CommandSource> dropDustbinCommand = context -> {
+            if (checkModStatus(context)) return 0;
             notifyHelp(context);
             ServerPlayerEntity player = context.getSource().getPlayerOrException();
             int page = getIntDefault(context, "page", 0);
@@ -356,6 +366,7 @@ public class AotakeCommand {
             return 1;
         };
         Command<CommandSource> clearCacheCommand = context -> {
+            if (checkModStatus(context)) return 0;
             notifyHelp(context);
             WorldTrashData.get().getDropList().clear();
             Component message = Component.translatable(EnumI18nType.MESSAGE
@@ -371,6 +382,7 @@ public class AotakeCommand {
             return 1;
         };
         Command<CommandSource> dropCacheCommand = context -> {
+            if (checkModStatus(context)) return 0;
             notifyHelp(context);
             boolean originalPos = getBooleanDefault(context, "originalPos", true);
             ServerPlayerEntity player = context.getSource().getPlayerOrException();
@@ -681,11 +693,28 @@ public class AotakeCommand {
                                                     })
                                             )
                                     )
+                                    .then(Commands.literal("disable")
+                                            .then(Commands.argument("disable", BoolArgumentType.bool())
+                                                    .executes(context -> {
+                                                        AotakeSweep.setDisable(BoolArgumentType.getBool(context, "disable"));
+                                                        AotakeUtils.broadcastMessage(context.getSource().getServer()
+                                                                , Component.translatable(EnumI18nType.MESSAGE
+                                                                        , "mod_status"
+                                                                        , Component.translatable(EnumI18nType.KEY, "categories")
+                                                                        , I18nUtils.enabled(ServerConfig.DEFAULT_LANGUAGE.get(), !AotakeSweep.isDisable())
+                                                                )
+                                                        );
+                                                        return 1;
+                                                    })
+                                            )
+                                    )
                             )
                             // 显示打扫结果信息
                             .then(Commands.literal("showSweepResult")
                                     .then(Commands.argument("show", BoolArgumentType.bool())
                                             .executes(context -> {
+                                                if (checkModStatus(context)) return 0;
+                                                notifyHelp(context);
                                                 boolean show = BoolArgumentType.getBool(context, "show");
                                                 ServerPlayerEntity player = context.getSource().getPlayerOrException();
                                                 PlayerSweepDataCapability.getData(player).setShowSweepResult(show);
@@ -768,6 +797,17 @@ public class AotakeCommand {
                 data.setNotified(true);
             }
         }
+    }
+
+    public static boolean checkModStatus(CommandContext<CommandSource> context) {
+        if (AotakeSweep.isDisable()) {
+            CommandSource source = context.getSource();
+            Entity entity = source.getEntity();
+            if (entity instanceof ServerPlayerEntity) {
+                AotakeUtils.sendMessage((ServerPlayerEntity) entity, Component.translatable(EnumI18nType.MESSAGE, "mod_disabled"));
+            }
+        }
+        return AotakeSweep.isDisable();
     }
 
     private static int dustbin(@NonNull ServerPlayerEntity player, int page) {

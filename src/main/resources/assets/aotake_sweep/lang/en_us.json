@@ -35,7 +35,7 @@
   "message.aotake_sweep.server_config_status": "The server has %s the config: %s.",
   "message.aotake_sweep.player_virtual_op": "Virtual permission list of player '%s':\n%s",
   "message.aotake_sweep.server_config_mode": "Server configuration has been reset to mode %s. Some settings will take effect only after restarting the server.",
-  "message.aotake_sweep.notify_help": "Welcome to NarcissusFarewell! Use the command '%s' to view the help message.",
+  "message.aotake_sweep.notify_help": "Welcome to AotakeSweep! Use the command '%s' to view the help message.",
   "message.aotake_sweep.server_default_language": "The default language of the server is set to %s.",
   "message.aotake_sweep.player_default_language": "The default language of the player is set to %s.",
   "message.aotake_sweep.cleanup_will_start": "§r§eThe cleanup will start in §r§e%s§r§e seconds.",
@@ -44,5 +44,8 @@
   "message.aotake_sweep.dustbin_dropped": "§eDustbin%s§ehas been dropped by '%s§e'.",
   "message.aotake_sweep.cache_cleared": "§eCache area has been cleared by '%s§e'.",
   "message.aotake_sweep.cache_dropped": "§eCache area has been dropped by '%s§e'.",
-  "message.aotake_sweep.player_show_sweep_result": "Show sweep result message is set to: %s."
+  "message.aotake_sweep.player_show_sweep_result": "Show sweep result message is set to: %s.",
+  "message.aotake_sweep.mod_status": "%s's enable status is set to: %s.",
+  "message.aotake_sweep.mod_disabled": "§cMOD has been temporarily disabled.",
+  "message.aotake_sweep.chunk_check_msg": "%s§e and other chunk entities exceed the threshold, cleaning will be performed soon."
 }

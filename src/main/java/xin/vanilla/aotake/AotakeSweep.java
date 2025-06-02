@@ -2,6 +2,7 @@ package xin.vanilla.aotake;
 
 import com.mojang.brigadier.CommandDispatcher;
 import lombok.Getter;
+import lombok.Setter;
 import net.minecraft.command.CommandSource;
 import net.minecraft.server.MinecraftServer;
 import net.minecraftforge.common.MinecraftForge;
@@ -69,6 +70,10 @@ public class AotakeSweep {
     private CommandDispatcher<CommandSource> dispatcher;
 
     public static final Random RANDOM = new Random();
+
+    @Getter
+    @Setter
+    private static boolean disable = false;
 
     // public static final Item JUNK_BALL = new JunkBall();
 

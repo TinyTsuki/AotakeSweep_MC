@@ -17,6 +17,8 @@ import net.minecraftforge.event.AttachCapabilitiesEvent;
 import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.event.entity.player.*;
 import net.minecraftforge.eventbus.api.Event;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import xin.vanilla.aotake.AotakeSweep;
 import xin.vanilla.aotake.config.CommonConfig;
 import xin.vanilla.aotake.config.CustomConfig;
@@ -27,26 +29,28 @@ import xin.vanilla.aotake.data.player.IPlayerSweepData;
 import xin.vanilla.aotake.data.player.PlayerSweepDataCapability;
 import xin.vanilla.aotake.data.player.PlayerSweepDataProvider;
 import xin.vanilla.aotake.data.world.WorldTrashData;
+import xin.vanilla.aotake.enums.EnumI18nType;
 import xin.vanilla.aotake.enums.EnumSelfCleanMode;
 import xin.vanilla.aotake.util.AotakeUtils;
 import xin.vanilla.aotake.util.CollectionUtils;
 import xin.vanilla.aotake.util.Component;
 
-import java.util.ArrayDeque;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Queue;
+import java.util.*;
+import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 public class EventHandlerProxy {
+    private static final Logger LOGGER = LogManager.getLogger();
 
     private static long lastSweepTime = System.currentTimeMillis();
     private static long lastSelfCleanTime = System.currentTimeMillis();
     private static long lastSaveConfTime = System.currentTimeMillis();
     private static long lastReadConfTime = System.currentTimeMillis();
+    private static long lastChunkCheckTime = System.currentTimeMillis();
     private static Queue<Integer> warnQueue;
 
     public static void onServerTick(TickEvent.ServerTickEvent event) {
+        if (AotakeSweep.isDisable()) return;
         if (event.phase == TickEvent.Phase.END
                 && AotakeSweep.getServerInstance() != null
                 && AotakeSweep.getServerInstance().isRunning()
@@ -80,7 +84,7 @@ public class EventHandlerProxy {
             // 扫地
             if (ServerConfig.SWEEP_INTERVAL.get() <= swept) {
                 lastSweepTime = System.currentTimeMillis();
-                AotakeUtils.sweep();
+                new Thread(AotakeUtils::sweep).start();
             }
 
             // 自清洁
@@ -105,6 +109,39 @@ public class EventHandlerProxy {
                                 .findAny()
                                 .ifPresent(i -> inventory.setItem(i, ItemStack.EMPTY));
                     }
+                }
+            }
+
+            // 检查区块实体数量
+            if (ServerConfig.CHUNK_CHECK_INTERVAL.get() > 0
+                    && ServerConfig.CHUNK_CHECK_INTERVAL.get() <= System.currentTimeMillis() - lastChunkCheckTime
+            ) {
+                lastChunkCheckTime = System.currentTimeMillis();
+                List<Map.Entry<String, Long>> entryList = AotakeUtils.getAllEntitiesByFilter(null).stream()
+                        .collect(Collectors.groupingBy(entity -> {
+                            // 获取区块维度和坐标
+                            String dimension = entity.level != null
+                                    ? entity.level.dimension().location().toString()
+                                    : "unknown";
+                            int chunkX = entity.blockPosition().getX() / 16;
+                            int chunkY = entity.blockPosition().getY() / 16;
+                            return "<" + dimension + ">:" + chunkX + "," + chunkY;
+                        }, Collectors.counting()))
+                        .entrySet().stream()
+                        .filter(entry -> entry.getValue() > ServerConfig.CHUNK_CHECK_LIMIT.get())
+                        .collect(Collectors.toList());
+                if (CollectionUtils.isNotNullOrEmpty(entryList)) {
+                    LOGGER.info("Chunk check info: {}", entryList.stream().map(entry -> entry.getKey() + " has " + entry.getValue()).collect(Collectors.joining("\n")));
+                    for (ServerPlayerEntity player : AotakeSweep.getServerInstance().getPlayerList().getPlayers()) {
+                        AotakeUtils.sendActionBarMessage(player, Component.translatable(EnumI18nType.MESSAGE, "chunk_check_msg", entryList.get(0).getKey()));
+                    }
+                    new Thread(() -> {
+                        try {
+                            Thread.sleep(1000);
+                        } catch (InterruptedException ignored) {
+                        }
+                        AotakeUtils.sweep();
+                    }).start();
                 }
             }
 
@@ -140,6 +177,7 @@ public class EventHandlerProxy {
     }
 
     public static void onPlayerUseItem(PlayerInteractEvent.RightClickItem event) {
+        if (AotakeSweep.isDisable()) return;
         if (event.getPlayer() instanceof ServerPlayerEntity) {
             CompoundNBT tag = event.getItemStack().getTag();
             if (tag != null && tag.contains(AotakeSweep.MODID)) {
@@ -153,6 +191,7 @@ public class EventHandlerProxy {
     }
 
     public static void onRightBlock(PlayerInteractEvent.RightClickBlock event) {
+        if (AotakeSweep.isDisable()) return;
         if (event.getPlayer() instanceof ServerPlayerEntity) {
             ServerPlayerEntity player = (ServerPlayerEntity) event.getPlayer();
             ItemStack original = event.getItemStack();
@@ -207,6 +246,7 @@ public class EventHandlerProxy {
     }
 
     public static void onRightEntity(PlayerInteractEvent.EntityInteractSpecific event) {
+        if (AotakeSweep.isDisable()) return;
         if (event.getPlayer() instanceof ServerPlayerEntity) {
             ServerPlayerEntity player = (ServerPlayerEntity) event.getPlayer();
             ItemStack original = event.getItemStack();
@@ -271,6 +311,7 @@ public class EventHandlerProxy {
     }
 
     public static void onPlayerUseItem(PlayerEvent event) {
+        if (AotakeSweep.isDisable()) return;
         if (event.getPlayer() == null) return;
         if (event.getPlayer().isCrouching() && ServerConfig.ALLOW_CATCH_ITEM.get()) {
             ItemStack item;
@@ -306,9 +347,11 @@ public class EventHandlerProxy {
     }
 
     public static void onContainerOpen(PlayerContainerEvent.Open event) {
+        if (AotakeSweep.isDisable()) return;
     }
 
     public static void onContainerClose(PlayerContainerEvent.Close event) {
+        if (AotakeSweep.isDisable()) return;
     }
 
 }

@@ -41,6 +41,16 @@ public class ServerConfig {
     public static final ForgeConfigSpec.LongValue SELF_CLEAN_INTERVAL;
 
     /**
+     * 区块实体过多检测间隔(毫秒)
+     */
+    public static final ForgeConfigSpec.LongValue CHUNK_CHECK_INTERVAL;
+
+    /**
+     * 区块实体过多检测阈值
+     */
+    public static final ForgeConfigSpec.IntValue CHUNK_CHECK_LIMIT;
+
+    /**
      * 使用以下物品捕获被清理的实体
      */
     public static final ForgeConfigSpec.ConfigValue<List<String>> CATCH_ITEM;
@@ -168,6 +178,18 @@ public class ServerConfig {
                     .comment("The interval of self-cleaning (in milliseconds)."
                             , "自清洁间隔(毫秒)。")
                     .defineInRange("selfCleanInterval", 60 * 60 * 1000, 0L, 7 * 24 * 60 * 60 * 1000);
+
+            // 区块实体过多检测间隔(毫秒)
+            CHUNK_CHECK_INTERVAL = SERVER_BUILDER
+                    .comment("The interval for checking too many entities in chunks (in milliseconds), 0 to disable."
+                            , "区块实体过多检测间隔(毫秒)，0为禁用。")
+                    .defineInRange("chunkCheckInterval", 5 * 1000, 0L, 7 * 24 * 60 * 60 * 1000);
+
+            // 区块实体过多检测阈值
+            CHUNK_CHECK_LIMIT = SERVER_BUILDER
+                    .comment("The threshold for checking too many entities in chunks."
+                            , "区块实体过多检测阈值。")
+                    .defineInRange("chunkCheckLimit", 250, 1, Integer.MAX_VALUE);
 
             // 使用以下物品捕获被清理的实体
             CATCH_ITEM = SERVER_BUILDER
@@ -329,6 +351,8 @@ public class ServerConfig {
         DEFAULT_LANGUAGE.set("en_us");
         SWEEP_INTERVAL.set(5 * 60 * 1000L);
         SELF_CLEAN_INTERVAL.set(60 * 60 * 1000L);
+        CHUNK_CHECK_INTERVAL.set(5 * 1000L);
+        CHUNK_CHECK_LIMIT.set(250);
         CATCH_ITEM.set(new ArrayList<String>() {{
             add(Items.SNOWBALL.getRegistryName().toString());
             add(Items.GLASS_BOTTLE.getRegistryName().toString());
