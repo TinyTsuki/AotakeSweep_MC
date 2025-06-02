@@ -19,7 +19,6 @@ import net.minecraft.entity.item.ItemEntity;
 import net.minecraft.entity.player.ServerPlayerEntity;
 import net.minecraft.inventory.Inventory;
 import net.minecraft.item.ItemStack;
-import net.minecraft.util.text.TextFormatting;
 import net.minecraft.util.text.event.ClickEvent;
 import net.minecraft.util.text.event.HoverEvent;
 import net.minecraft.world.server.ServerWorld;
@@ -96,14 +95,14 @@ public class AotakeCommand {
                     } else {
                         commandTips = Component.translatable(AotakeUtils.getPlayerLanguage(player), EnumI18nType.COMMAND, keyValue.getValue().name().toLowerCase());
                     }
-                    commandTips.setColor(TextFormatting.GRAY.getColor());
+                    commandTips.setColor(EnumMCColor.GRAY.getColor());
                     String com = "/" + keyValue.getKey();
                     helpInfo.append(Component.literal(com)
                                     .setClickEvent(new ClickEvent(ClickEvent.Action.SUGGEST_COMMAND, com))
                                     .setHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT
                                             , Component.translatable(AotakeUtils.getPlayerLanguage(player), EnumI18nType.MESSAGE, "click_to_suggest").toTextComponent()))
                             )
-                            .append(new Component(" -> ").setColor(TextFormatting.YELLOW.getColor()))
+                            .append(new Component(" -> ").setColor(EnumMCColor.YELLOW.getColor()))
                             .append(commandTips);
                     if (i != HELP_MESSAGE.size() - 1) {
                         helpInfo.append("\n");
@@ -146,7 +145,7 @@ public class AotakeCommand {
                 helpInfo = Component.empty();
                 helpInfo.append("/").append(AotakeUtils.getCommand(type))
                         .append("\n")
-                        .append(Component.translatable(AotakeUtils.getPlayerLanguage(player), EnumI18nType.COMMAND, command.toLowerCase() + "_detail").setColor(TextFormatting.GRAY.getColor()));
+                        .append(Component.translatable(AotakeUtils.getPlayerLanguage(player), EnumI18nType.COMMAND, command.toLowerCase() + "_detail").setColor(EnumMCColor.GRAY.getColor()));
             }
             AotakeUtils.sendMessage(player, helpInfo);
             return 1;
