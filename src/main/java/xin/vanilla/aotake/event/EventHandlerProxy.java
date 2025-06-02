@@ -1,16 +1,16 @@
 package xin.vanilla.aotake.event;
 
-import net.minecraft.entity.Entity;
-import net.minecraft.entity.EntityType;
-import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.entity.player.ServerPlayerEntity;
-import net.minecraft.inventory.Inventory;
-import net.minecraft.item.ItemStack;
-import net.minecraft.nbt.CompoundNBT;
-import net.minecraft.network.play.server.SSetPassengersPacket;
-import net.minecraft.util.ActionResultType;
-import net.minecraft.util.text.ITextComponent;
-import net.minecraft.util.text.StringTextComponent;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.network.chat.TextComponent;
+import net.minecraft.network.protocol.game.ClientboundSetPassengersPacket;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.InteractionResult;
+import net.minecraft.world.SimpleContainer;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
+import net.minecraftforge.common.capabilities.RegisterCapabilitiesEvent;
 import net.minecraftforge.common.util.LazyOptional;
 import net.minecraftforge.entity.PartEntity;
 import net.minecraftforge.event.AttachCapabilitiesEvent;
@@ -94,7 +94,7 @@ public class EventHandlerProxy {
                 // 清空
                 if (ServerConfig.SELF_CLEAN_MODE.get().contains(EnumSelfCleanMode.SCHEDULED_CLEAR)) {
                     worldTrashData.getDropList().clear();
-                    worldTrashData.getInventoryList().forEach(Inventory::clearContent);
+                    worldTrashData.getInventoryList().forEach(SimpleContainer::clearContent);
                 }
                 // 随机删除
                 else if (ServerConfig.SELF_CLEAN_MODE.get().contains(EnumSelfCleanMode.SCHEDULED_DELETE)) {
@@ -102,8 +102,8 @@ public class EventHandlerProxy {
                         List<KeyValue<Coordinate, ItemStack>> dropList = worldTrashData.getDropList();
                         dropList.remove(AotakeSweep.RANDOM.nextInt(dropList.size()));
                     } else {
-                        List<Inventory> inventories = worldTrashData.getInventoryList();
-                        Inventory inventory = inventories.get(AotakeSweep.RANDOM.nextInt(inventories.size()));
+                        List<SimpleContainer> inventories = worldTrashData.getInventoryList();
+                        SimpleContainer inventory = inventories.get(AotakeSweep.RANDOM.nextInt(inventories.size()));
                         IntStream.range(0, inventory.getContainerSize())
                                 .filter(i -> !inventory.getItem(i).isEmpty())
                                 .findAny()
@@ -129,10 +129,10 @@ public class EventHandlerProxy {
                         }, Collectors.counting()))
                         .entrySet().stream()
                         .filter(entry -> entry.getValue() > ServerConfig.CHUNK_CHECK_LIMIT.get())
-                        .collect(Collectors.toList());
+                        .toList();
                 if (CollectionUtils.isNotNullOrEmpty(entryList)) {
                     LOGGER.info("Chunk check info: {}", entryList.stream().map(entry -> entry.getKey() + " has " + entry.getValue()).collect(Collectors.joining("\n")));
-                    for (ServerPlayerEntity player : AotakeSweep.getServerInstance().getPlayerList().getPlayers()) {
+                    for (ServerPlayer player : AotakeSweep.getServerInstance().getPlayerList().getPlayers()) {
                         AotakeUtils.sendActionBarMessage(player, Component.translatable(EnumI18nType.MESSAGE, "chunk_check_msg", entryList.get(0).getKey()));
                     }
                     new Thread(() -> {
@@ -158,16 +158,21 @@ public class EventHandlerProxy {
         }
     }
 
+    public static void registerCaps(RegisterCapabilitiesEvent event) {
+        // 注册 PlayerDataCapability
+        event.register(IPlayerSweepData.class);
+    }
+
     public static void onAttachCapabilityEvent(AttachCapabilitiesEvent<Entity> event) {
-        if (event.getObject() instanceof PlayerEntity) {
+        if (event.getObject() instanceof Player) {
             event.addCapability(AotakeUtils.createResource("player_sweep_data"), new PlayerSweepDataProvider());
         }
     }
 
     public static void onPlayerCloned(PlayerEvent.Clone event) {
-        if (event.getPlayer() instanceof ServerPlayerEntity) {
-            ServerPlayerEntity original = (ServerPlayerEntity) event.getOriginal();
-            ServerPlayerEntity newPlayer = (ServerPlayerEntity) event.getPlayer();
+        if (event.getPlayer() instanceof ServerPlayer) {
+            ServerPlayer original = (ServerPlayer) event.getOriginal();
+            ServerPlayer newPlayer = (ServerPlayer) event.getPlayer();
             original.revive();
             AotakeUtils.clonePlayerLanguage(original, newPlayer);
             LazyOptional<IPlayerSweepData> oldDataCap = original.getCapability(PlayerSweepDataCapability.PLAYER_DATA);
@@ -178,13 +183,13 @@ public class EventHandlerProxy {
 
     public static void onPlayerUseItem(PlayerInteractEvent.RightClickItem event) {
         if (AotakeSweep.isDisable()) return;
-        if (event.getPlayer() instanceof ServerPlayerEntity) {
-            CompoundNBT tag = event.getItemStack().getTag();
+        if (event.getPlayer() instanceof ServerPlayer) {
+            CompoundTag tag = event.getItemStack().getTag();
             if (tag != null && tag.contains(AotakeSweep.MODID)) {
-                CompoundNBT aotake = tag.getCompound(AotakeSweep.MODID);
+                CompoundTag aotake = tag.getCompound(AotakeSweep.MODID);
                 if (aotake.isEmpty()) tag.remove(AotakeSweep.MODID);
                 event.setResult(Event.Result.DENY);
-                event.setCancellationResult(ActionResultType.FAIL);
+                event.setCancellationResult(InteractionResult.FAIL);
                 event.setCanceled(true);
             }
         }
@@ -192,8 +197,7 @@ public class EventHandlerProxy {
 
     public static void onRightBlock(PlayerInteractEvent.RightClickBlock event) {
         if (AotakeSweep.isDisable()) return;
-        if (event.getPlayer() instanceof ServerPlayerEntity) {
-            ServerPlayerEntity player = (ServerPlayerEntity) event.getPlayer();
+        if (event.getPlayer() instanceof ServerPlayer player) {
             ItemStack original = event.getItemStack();
             releaseEntity(event, player, original, new Coordinate(event.getHitVec().getLocation().x(), event.getHitVec().getLocation().y(), event.getHitVec().getLocation().z()));
         }
@@ -202,41 +206,41 @@ public class EventHandlerProxy {
     /**
      * 释放实体
      */
-    private static Entity releaseEntity(PlayerInteractEvent event, ServerPlayerEntity player, ItemStack original, Coordinate coordinate) {
+    private static Entity releaseEntity(PlayerInteractEvent event, ServerPlayer player, ItemStack original, Coordinate coordinate) {
         ItemStack copy = original.copy();
         copy.setCount(1);
 
-        CompoundNBT tag = copy.getTag();
+        CompoundTag tag = copy.getTag();
         if (tag != null && tag.contains(AotakeSweep.MODID)) {
-            CompoundNBT aotake = tag.getCompound(AotakeSweep.MODID);
+            CompoundTag aotake = tag.getCompound(AotakeSweep.MODID);
             if (aotake.isEmpty()) {
                 tag.remove(AotakeSweep.MODID);
             }
             //
             else {
                 original.shrink(1);
-                CompoundNBT entityData = aotake.getCompound("entity");
+                CompoundTag entityData = aotake.getCompound("entity");
                 Entity entity = EntityType.loadEntityRecursive(entityData, player.getLevel(), e -> e);
                 if (entity != null) {
                     // 释放实体
                     entity.moveTo(coordinate.getX(), coordinate.getY(), coordinate.getZ(), (float) coordinate.getYaw(), (float) coordinate.getPitch());
                     player.getLevel().addFreshEntity(entity);
                     // 恢复物品原来的名称
-                    ITextComponent name = AotakeUtils.textComponentFromJson(aotake.getString("name"));
+                    net.minecraft.network.chat.Component name = AotakeUtils.textComponentFromJson(aotake.getString("name"));
                     if (name != null) copy.setHoverName(name);
                     else copy.resetHoverName();
                     // 清空节点下nbt
-                    tag.put(AotakeSweep.MODID, new CompoundNBT());
+                    tag.put(AotakeSweep.MODID, new CompoundTag());
                     if (!aotake.getBoolean("byPlayer")) {
                         copy.shrink(1);
                     }
                     player.addItem(copy);
 
-                    player.displayClientMessage(new StringTextComponent("实体已释放！"), true);
+                    player.displayClientMessage(new TextComponent("实体已释放！"), true);
 
                     event.setCanceled(true);
                     event.setResult(Event.Result.DENY);
-                    event.setCancellationResult(ActionResultType.FAIL);
+                    event.setCancellationResult(InteractionResult.FAIL);
 
                     return entity;
                 }
@@ -247,20 +251,19 @@ public class EventHandlerProxy {
 
     public static void onRightEntity(PlayerInteractEvent.EntityInteractSpecific event) {
         if (AotakeSweep.isDisable()) return;
-        if (event.getPlayer() instanceof ServerPlayerEntity) {
-            ServerPlayerEntity player = (ServerPlayerEntity) event.getPlayer();
+        if (event.getPlayer() instanceof ServerPlayer player) {
             ItemStack original = event.getItemStack();
             ItemStack copy = original.copy();
             copy.setCount(1);
 
-            CompoundNBT tag = copy.getTag();
+            CompoundTag tag = copy.getTag();
             // 检查是否已包含实体
             Entity entity = event.getTarget();
             if (entity instanceof PartEntity) {
                 entity = ((PartEntity<?>) entity).getParent();
             }
             if (tag != null && tag.contains(AotakeSweep.MODID)) {
-                CompoundNBT aotake = tag.getCompound(AotakeSweep.MODID);
+                CompoundTag aotake = tag.getCompound(AotakeSweep.MODID);
                 if (!aotake.isEmpty()) {
                     Coordinate coordinate = new Coordinate(entity.getX(), entity.getY(), entity.getZ());
                     Entity back = releaseEntity(event, player, original, coordinate);
@@ -268,7 +271,7 @@ public class EventHandlerProxy {
                         // 让实体骑乘
                         back.startRiding(entity, true);
                         // 同步客户端状态
-                        AotakeUtils.broadcastPacket(new SSetPassengersPacket(entity));
+                        AotakeUtils.broadcastPacket(new ClientboundSetPassengersPacket(entity));
                         return;
                     }
                 }
@@ -282,7 +285,7 @@ public class EventHandlerProxy {
                 original.shrink(1);
 
                 tag = copy.getOrCreateTag();
-                CompoundNBT aotake = new CompoundNBT();
+                CompoundTag aotake = new CompoundTag();
 
                 aotake.putBoolean("byPlayer", true);
                 aotake.put("entity", entity.serializeNBT());
@@ -295,17 +298,17 @@ public class EventHandlerProxy {
                     PartEntity<?>[] parts = entity.getParts();
                     if (CollectionUtils.isNotNullOrEmpty(parts)) {
                         for (PartEntity<?> part : parts) {
-                            part.remove(true);
+                            part.remove(Entity.RemovalReason.KILLED);
                         }
                     }
                 }
                 player.getLevel().removeEntity(entity, true);
                 // entity.remove(true);
-                player.displayClientMessage(new StringTextComponent("实体已捕获！"), true);
+                player.displayClientMessage(new TextComponent("实体已捕获！"), true);
 
                 event.setCanceled(true);
                 event.setResult(Event.Result.DENY);
-                event.setCancellationResult(ActionResultType.FAIL);
+                event.setCancellationResult(InteractionResult.FAIL);
             }
         }
     }

@@ -1,10 +1,9 @@
 package xin.vanilla.aotake.event;
 
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.screen.inventory.ChestScreen;
-import net.minecraft.client.gui.screen.inventory.ContainerScreen;
-import net.minecraft.client.gui.widget.button.Button;
-import net.minecraft.entity.Entity;
+import net.minecraft.client.gui.components.Button;
+import net.minecraft.client.gui.screens.inventory.ContainerScreen;
+import net.minecraft.world.entity.Entity;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.client.event.ClientPlayerNetworkEvent;
 import net.minecraftforge.client.event.GuiScreenEvent;
@@ -129,7 +128,7 @@ public class ClientGameEventHandler {
 
     @SubscribeEvent
     public static void onRenderScreen(GuiScreenEvent event) {
-        if (event.getGui() instanceof ChestScreen
+        if (event.getGui() instanceof ContainerScreen
                 && Minecraft.getInstance().player != null
                 && event.getGui().getTitle().getContents()
                 .startsWith(MOD_NAME.toTextComponent(AotakeUtils.getPlayerLanguage(Minecraft.getInstance().player)).getContents())
@@ -150,8 +149,7 @@ public class ClientGameEventHandler {
                                 , Component.literal("▼").toTextComponent()
                                 , button -> AotakeUtils.sendPacketToServer(new OpenDustbinNotice(1)))
                 );
-            } else if (event instanceof GuiScreenEvent.KeyboardKeyPressedEvent.Pre) {
-                GuiScreenEvent.KeyboardKeyPressedEvent.Pre keyEvent = (GuiScreenEvent.KeyboardKeyPressedEvent.Pre) event;
+            } else if (event instanceof GuiScreenEvent.KeyboardKeyPressedEvent.Pre keyEvent) {
                 if (keyEvent.getModifiers() != 0) return;
                 if (keyEvent.getKeyCode() == ClientModEventHandler.DUSTBIN_KEY.getKey().getValue()) {
                     if (!keyDown) {
@@ -171,12 +169,6 @@ public class ClientGameEventHandler {
                 } else {
                     keyDown = false;
                 }
-            }
-        }
-
-        if (event.getGui() instanceof ContainerScreen) {
-            if (event instanceof GuiScreenEvent.KeyboardKeyPressedEvent.Pre) {
-
             }
         }
     }

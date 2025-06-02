@@ -1,10 +1,8 @@
 package xin.vanilla.aotake.util;
 
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
-import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.world.entity.player.Player;
 import xin.vanilla.aotake.config.CustomConfig;
 import xin.vanilla.aotake.enums.EnumCommandType;
 import xin.vanilla.aotake.enums.EnumOperationType;
@@ -20,35 +18,35 @@ public class VirtualPermissionManager {
     /**
      * 添加权限（合并原有权限）
      */
-    public static void addVirtualPermission(PlayerEntity player, EnumCommandType... types) {
+    public static void addVirtualPermission(Player player, EnumCommandType... types) {
         modifyPermissions(player.getStringUUID(), EnumOperationType.ADD, types);
     }
 
     /**
      * 设置权限（覆盖原有权限）
      */
-    public static void setVirtualPermission(PlayerEntity player, EnumCommandType... types) {
+    public static void setVirtualPermission(Player player, EnumCommandType... types) {
         modifyPermissions(player.getStringUUID(), EnumOperationType.SET, types);
     }
 
     /**
      * 删除权限
      */
-    public static void delVirtualPermission(PlayerEntity player, EnumCommandType... types) {
+    public static void delVirtualPermission(Player player, EnumCommandType... types) {
         modifyPermissions(player.getStringUUID(), EnumOperationType.REMOVE, types);
     }
 
     /**
      * 清空所有权限
      */
-    public static void clearVirtualPermission(PlayerEntity player) {
+    public static void clearVirtualPermission(Player player) {
         modifyPermissions(player.getStringUUID(), EnumOperationType.CLEAR);
     }
 
     /**
      * 获取当前权限列表
      */
-    public static Set<EnumCommandType> getVirtualPermission(PlayerEntity player) {
+    public static Set<EnumCommandType> getVirtualPermission(Player player) {
         return getExistingPermissions(player.getStringUUID());
     }
 

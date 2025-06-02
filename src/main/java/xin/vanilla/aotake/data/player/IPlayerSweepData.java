@@ -1,10 +1,10 @@
 package xin.vanilla.aotake.data.player;
 
 import lombok.NonNull;
-import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.entity.player.ServerPlayerEntity;
-import net.minecraft.nbt.CompoundNBT;
-import net.minecraft.network.PacketBuffer;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.entity.player.Player;
 import net.minecraftforge.common.util.INBTSerializable;
 
 import javax.annotation.Nullable;
@@ -12,7 +12,7 @@ import javax.annotation.Nullable;
 /**
  * 玩家传送数据
  */
-public interface IPlayerSweepData extends INBTSerializable<CompoundNBT> {
+public interface IPlayerSweepData extends INBTSerializable<CompoundTag> {
 
     /**
      * 获取语言
@@ -28,7 +28,7 @@ public interface IPlayerSweepData extends INBTSerializable<CompoundNBT> {
      * 获取有效的语言
      */
     @NonNull
-    String getValidLanguage(@Nullable PlayerEntity player);
+    String getValidLanguage(@Nullable Player player);
 
     boolean isNotified();
 
@@ -38,11 +38,11 @@ public interface IPlayerSweepData extends INBTSerializable<CompoundNBT> {
 
     void setShowSweepResult(boolean showSweepResult);
 
-    void writeToBuffer(PacketBuffer buffer);
+    void writeToBuffer(FriendlyByteBuf buffer);
 
-    void readFromBuffer(PacketBuffer buffer);
+    void readFromBuffer(FriendlyByteBuf buffer);
 
     void copyFrom(IPlayerSweepData capability);
 
-    void save(ServerPlayerEntity player);
+    void save(ServerPlayer player);
 }

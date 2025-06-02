@@ -1,6 +1,6 @@
 package xin.vanilla.aotake.util;
 
-import net.minecraft.entity.player.ServerPlayerEntity;
+import net.minecraft.server.level.ServerPlayer;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import sun.misc.Unsafe;
@@ -120,11 +120,11 @@ public class FieldUtils {
     /**
      * 获取玩家语言字段名称
      */
-    public static String getPlayerLanguageFieldName(ServerPlayerEntity player) {
+    public static String getPlayerLanguageFieldName(ServerPlayer player) {
         if (StringUtils.isNotNullOrEmpty(LANGUAGE_FIELD_NAME)) return LANGUAGE_FIELD_NAME;
         try {
-            for (String field : FieldUtils.getPrivateFieldNames(ServerPlayerEntity.class, String.class)) {
-                String lang = (String) FieldUtils.getPrivateFieldValue(ServerPlayerEntity.class, player, field);
+            for (String field : FieldUtils.getPrivateFieldNames(ServerPlayer.class, String.class)) {
+                String lang = (String) FieldUtils.getPrivateFieldValue(ServerPlayer.class, player, field);
                 if (StringUtils.isNotNullOrEmpty(lang) && lang.matches("^[a-zA-Z]{2}_[a-zA-Z]{2}$")) {
                     LANGUAGE_FIELD_NAME = field;
                 }

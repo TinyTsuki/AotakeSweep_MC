@@ -1,7 +1,7 @@
 package xin.vanilla.aotake.network;
 
-import net.minecraftforge.fml.network.NetworkRegistry;
-import net.minecraftforge.fml.network.simple.SimpleChannel;
+import net.minecraftforge.fmllegacy.network.NetworkRegistry;
+import net.minecraftforge.fmllegacy.network.simple.SimpleChannel;
 import xin.vanilla.aotake.AotakeSweep;
 import xin.vanilla.aotake.network.packet.OpenDustbinNotice;
 import xin.vanilla.aotake.util.AotakeUtils;

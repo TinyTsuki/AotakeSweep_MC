@@ -1,7 +1,7 @@
 package xin.vanilla.aotake.config;
 
-import net.minecraft.entity.EntityType;
-import net.minecraft.item.Items;
+import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.item.Items;
 import net.minecraftforge.common.ForgeConfigSpec;
 import xin.vanilla.aotake.enums.EnumOverflowMode;
 import xin.vanilla.aotake.enums.EnumSelfCleanMode;
@@ -195,7 +195,7 @@ public class ServerConfig {
             CATCH_ITEM = SERVER_BUILDER
                     .comment("The item used to capture the entity being cleaned up."
                             , "使用以下物品捕获被清理的实体。")
-                    .define("catchItem", new ArrayList<String>() {{
+                    .define("catchItem", new ArrayList<>() {{
                         add(Items.SNOWBALL.getRegistryName().toString());
                         add(Items.GLASS_BOTTLE.getRegistryName().toString());
                         add(Items.MUSIC_DISC_13.getRegistryName().toString());
@@ -216,7 +216,7 @@ public class ServerConfig {
             JUNK_ENTITY = SERVER_BUILDER
                     .comment("The entity that can be cleaned up."
                             , "允许被清理的实体。")
-                    .define("junkEntity", new ArrayList<String>() {{
+                    .define("junkEntity", new ArrayList<>() {{
                                 add(EntityType.ARROW.getRegistryName().toString());
                                 add(EntityType.SPECTRAL_ARROW.getRegistryName().toString());
                             }}
@@ -226,7 +226,7 @@ public class ServerConfig {
             CATCH_ENTITY = SERVER_BUILDER
                     .comment("The entity that can be captured when cleaned up."
                             , "清理时允许被捕获的实体。")
-                    .define("catchEntity", new ArrayList<String>() {{
+                    .define("catchEntity", new ArrayList<>() {{
                         add(EntityType.EXPERIENCE_ORB.getRegistryName().toString());
                     }});
 
@@ -234,14 +234,14 @@ public class ServerConfig {
             ITEM_WHITELIST = SERVER_BUILDER
                     .comment("The item whitelist for cleaning up items, the following items will not be cleaned."
                             , "物品清理白名单，以下物品不会被清理。")
-                    .define("itemWhitelist", new ArrayList<String>() {{
+                    .define("itemWhitelist", new ArrayList<>() {{
                     }});
 
             // 物品清理黑名单
             ITEM_BLACKLIST = SERVER_BUILDER
                     .comment("The item blacklist for cleaning up items, only the following items will be cleaned."
                             , "物品清理黑名单，将只会清理以下物品。")
-                    .define("itemBlacklist", new ArrayList<String>() {{
+                    .define("itemBlacklist", new ArrayList<>() {{
                     }});
 
             // 是否允许玩家使用物品捕获实体
@@ -270,7 +270,7 @@ public class ServerConfig {
                             , "SWEEP_DELETE：在扫地时随机删除垃圾箱内物品；"
                             , "SCHEDULED_CLEAR：定时清空垃圾箱；"
                             , "SCHEDULED_DELETE：定时随机删除垃圾箱内物品。")
-                    .define("selfCleanMode", new ArrayList<EnumSelfCleanMode>() {{
+                    .define("selfCleanMode", new ArrayList<>() {{
                         add(EnumSelfCleanMode.NONE);
                     }});
 
@@ -353,7 +353,7 @@ public class ServerConfig {
         SELF_CLEAN_INTERVAL.set(60 * 60 * 1000L);
         CHUNK_CHECK_INTERVAL.set(5 * 1000L);
         CHUNK_CHECK_LIMIT.set(250);
-        CATCH_ITEM.set(new ArrayList<String>() {{
+        CATCH_ITEM.set(new ArrayList<>() {{
             add(Items.SNOWBALL.getRegistryName().toString());
             add(Items.GLASS_BOTTLE.getRegistryName().toString());
             add(Items.MUSIC_DISC_13.getRegistryName().toString());
@@ -369,18 +369,18 @@ public class ServerConfig {
             add(Items.MUSIC_DISC_WAIT.getRegistryName().toString());
             add(Items.MUSIC_DISC_PIGSTEP.getRegistryName().toString());
         }});
-        JUNK_ENTITY.set(new ArrayList<String>() {{
+        JUNK_ENTITY.set(new ArrayList<>() {{
             add(EntityType.ARROW.getRegistryName().toString());
             add(EntityType.SPECTRAL_ARROW.getRegistryName().toString());
         }});
-        CATCH_ENTITY.set(new ArrayList<String>() {{
+        CATCH_ENTITY.set(new ArrayList<>() {{
             add(EntityType.EXPERIENCE_ORB.getRegistryName().toString());
         }});
         ITEM_WHITELIST.set(new ArrayList<>());
         ITEM_BLACKLIST.set(new ArrayList<>());
         ALLOW_CATCH_ITEM.set(false);
         SWEEP_ITEM_AGE.set(200);
-        SELF_CLEAN_MODE.set(new ArrayList<EnumSelfCleanMode>() {{
+        SELF_CLEAN_MODE.set(new ArrayList<>() {{
             add(EnumSelfCleanMode.NONE);
         }});
         DUSTBIN_OVERFLOW_MODE.set(EnumOverflowMode.KEEP);

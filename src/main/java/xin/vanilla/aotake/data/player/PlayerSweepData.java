@@ -1,10 +1,10 @@
 package xin.vanilla.aotake.data.player;
 
 import lombok.NonNull;
-import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.entity.player.ServerPlayerEntity;
-import net.minecraft.nbt.CompoundNBT;
-import net.minecraft.network.PacketBuffer;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.entity.player.Player;
 import xin.vanilla.aotake.util.AotakeUtils;
 
 import javax.annotation.Nullable;
@@ -35,7 +35,7 @@ public class PlayerSweepData implements IPlayerSweepData {
 
     @NonNull
     @Override
-    public String getValidLanguage(@Nullable PlayerEntity player) {
+    public String getValidLanguage(@Nullable Player player) {
         return AotakeUtils.getValidLanguage(player, this.getLanguage());
     }
 
@@ -59,13 +59,13 @@ public class PlayerSweepData implements IPlayerSweepData {
         this.showSweepResult = showSweepResult;
     }
 
-    public void writeToBuffer(PacketBuffer buffer) {
+    public void writeToBuffer(FriendlyByteBuf buffer) {
         buffer.writeUtf(this.getLanguage());
         buffer.writeBoolean(this.notified);
         buffer.writeBoolean(this.showSweepResult);
     }
 
-    public void readFromBuffer(PacketBuffer buffer) {
+    public void readFromBuffer(FriendlyByteBuf buffer) {
         this.language = buffer.readUtf();
         this.notified = buffer.readBoolean();
         this.showSweepResult = buffer.readBoolean();
@@ -78,8 +78,8 @@ public class PlayerSweepData implements IPlayerSweepData {
     }
 
     @Override
-    public CompoundNBT serializeNBT() {
-        CompoundNBT tag = new CompoundNBT();
+    public CompoundTag serializeNBT() {
+        CompoundTag tag = new CompoundTag();
         tag.putString("language", this.getLanguage());
         tag.putBoolean("notified", this.notified);
         tag.putBoolean("showSweepResult", this.showSweepResult);
@@ -87,14 +87,14 @@ public class PlayerSweepData implements IPlayerSweepData {
     }
 
     @Override
-    public void deserializeNBT(CompoundNBT nbt) {
+    public void deserializeNBT(CompoundTag nbt) {
         this.setLanguage(nbt.getString("language"));
         this.notified = nbt.getBoolean("notified");
         this.showSweepResult = nbt.getBoolean("showSweepResult");
     }
 
     @Override
-    public void save(ServerPlayerEntity player) {
+    public void save(ServerPlayer player) {
         player.getCapability(PlayerSweepDataCapability.PLAYER_DATA).ifPresent(this::copyFrom);
     }
 }

@@ -1,6 +1,6 @@
 package xin.vanilla.aotake.event;
 
-import net.minecraft.entity.Entity;
+import net.minecraft.world.entity.Entity;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.event.AttachCapabilitiesEvent;
 import net.minecraftforge.event.TickEvent;

@@ -1,8 +1,8 @@
 package xin.vanilla.aotake.network.packet;
 
-import net.minecraft.entity.player.ServerPlayerEntity;
-import net.minecraft.network.PacketBuffer;
-import net.minecraftforge.fml.network.NetworkEvent;
+import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraftforge.fmllegacy.network.NetworkEvent;
 import xin.vanilla.aotake.AotakeSweep;
 import xin.vanilla.aotake.data.world.WorldTrashData;
 import xin.vanilla.aotake.util.AotakeUtils;
@@ -16,17 +16,17 @@ public class OpenDustbinNotice {
         this.offset = offset;
     }
 
-    public OpenDustbinNotice(PacketBuffer buf) {
+    public OpenDustbinNotice(FriendlyByteBuf buf) {
         this.offset = buf.readInt();
     }
 
-    public void toBytes(PacketBuffer buf) {
+    public void toBytes(FriendlyByteBuf buf) {
         buf.writeInt(this.offset);
     }
 
     public static void handle(OpenDustbinNotice packet, Supplier<NetworkEvent.Context> ctx) {
         ctx.get().enqueueWork(() -> {
-            ServerPlayerEntity player = ctx.get().getSender();
+            ServerPlayer player = ctx.get().getSender();
             if (player != null) {
                 String playerUUID = AotakeUtils.getPlayerUUIDString(player);
                 Integer page = AotakeSweep.getPlayerDustbinPage().getOrDefault(playerUUID, 1);

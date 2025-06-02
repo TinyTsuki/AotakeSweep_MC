@@ -179,7 +179,7 @@ public class CommonConfig {
             SWEEP_WARNING_SECOND = SERVER_BUILDER
                     .comment("A warning will be issued the specified number of seconds before the cleanup."
                             , "将会在打扫前的以下指定秒数进行提示。")
-                    .define("sweepWarningSecond", new ArrayList<Integer>() {{
+                    .define("sweepWarningSecond", new ArrayList<>() {{
                         add(-1);
                         add(0);
                         add(1);
@@ -197,7 +197,7 @@ public class CommonConfig {
                     .comment("The content of the warning before the cleanup."
                             , "打扫前提示内容，配合`sweepWarningSecond`使用，留空将使用内置提示。",
                             "[entityCount], [itemCount], [recycledItemCount], [recycledEntityCount]")
-                    .define("sweepWarningContent", new ArrayList<String>() {{
+                    .define("sweepWarningContent", new ArrayList<>() {{
                         add("§r§e香草酱什么也没吃到，失落地离开了。");
                         add("§r§e香草酱吃掉了[itemCount]个物品与[entityCount]个实体，并满意地离开了。");
                         add("§r§e饥肠辘辘的香草酱将会在§r§e%s§r§e秒后到来！");
@@ -216,7 +216,7 @@ public class CommonConfig {
                             , "Allow blocks with states, such as: minecraft:lava[level=0]."
                             , "实体处于该方块中时不会被清理。"
                             , "支持带状态的方块id，如：minecraft:lava[level=0]")
-                    .define("safeBlocks", new ArrayList<String>() {{
+                    .define("safeBlocks", new ArrayList<>() {{
                         add("immersiveengineering:conveyor_basic");
                         add("immersiveengineering:conveyor_covered");
                         add("immersiveengineering:conveyor_dropper");
@@ -236,7 +236,7 @@ public class CommonConfig {
                             , "Allow blocks with states, such as: minecraft:lava[level=0]."
                             , "实体处于该方块上时不会被清理。"
                             , "支持带状态的方块id，如：minecraft:lava[level=0]")
-                    .define("safeBlocksBelow", new ArrayList<String>() {{
+                    .define("safeBlocksBelow", new ArrayList<>() {{
                     }});
 
 
@@ -246,7 +246,7 @@ public class CommonConfig {
                             , "Allow blocks with states, such as: minecraft:lava[level=0]."
                             , "实体处于该方块下时不会被清理。"
                             , "支持带状态的方块id，如：minecraft:lava[level=0]")
-                    .define("safeBlocksAbove", new ArrayList<String>() {{
+                    .define("safeBlocksAbove", new ArrayList<>() {{
                     }});
 
             SERVER_BUILDER.pop();
@@ -385,7 +385,7 @@ public class CommonConfig {
     public static void resetConfig() {
         DUSTBIN_PAGE_LIMIT.set(1);
         SWEEP_WHEN_NO_PLAYER.set(false);
-        SWEEP_WARNING_SECOND.set(new ArrayList<Integer>() {{
+        SWEEP_WARNING_SECOND.set(new ArrayList<>() {{
             add(-1);
             add(0);
             add(1);
@@ -397,7 +397,7 @@ public class CommonConfig {
             add(30);
             add(60);
         }});
-        SWEEP_WARNING_CONTENT.set(new ArrayList<String>() {{
+        SWEEP_WARNING_CONTENT.set(new ArrayList<>() {{
             add("§r§e香草酱什么也没吃到，失落地离开了。");
             add("§r§e香草酱吃掉了[itemCount]个物品与[entityCount]个实体，并满意地离开了。");
             add("§r§e饥肠辘辘的香草酱将会在%s秒后到来！");
@@ -409,7 +409,7 @@ public class CommonConfig {
             add("§r§e饥肠辘辘的香草酱将会在%s秒后到来。");
             add("§r§e饥肠辘辘的香草酱将会在%s秒后到来。");
         }});
-        SAFE_BLOCKS.set(new ArrayList<String>() {{
+        SAFE_BLOCKS.set(new ArrayList<>() {{
             add("immersiveengineering:conveyor_basic");
             add("immersiveengineering:conveyor_covered");
             add("immersiveengineering:conveyor_dropper");
@@ -422,9 +422,9 @@ public class CommonConfig {
             add("immersiveengineering:conveyor_vertical");
             add("immersiveengineering:conveyor_verticalcovered");
         }});
-        SAFE_BLOCKS_BELOW.set(new ArrayList<String>() {{
+        SAFE_BLOCKS_BELOW.set(new ArrayList<>() {{
         }});
-        SAFE_BLOCKS_ABOVE.set(new ArrayList<String>() {{
+        SAFE_BLOCKS_ABOVE.set(new ArrayList<>() {{
         }});
 
         COMMAND_PREFIX.set(AotakeSweep.DEFAULT_COMMAND_PREFIX);
@@ -454,7 +454,7 @@ public class CommonConfig {
     public static void resetConfigWithMode1() {
         resetConfig();
 
-        SWEEP_WARNING_SECOND.set(new ArrayList<Integer>() {{
+        SWEEP_WARNING_SECOND.set(new ArrayList<>() {{
             add(-1);
             add(0);
             add(1);
@@ -466,7 +466,7 @@ public class CommonConfig {
             add(30);
             add(60);
         }});
-        SWEEP_WARNING_CONTENT.set(new ArrayList<String>() {{
+        SWEEP_WARNING_CONTENT.set(new ArrayList<>() {{
             add("§r§e世界很干净。");
             add("§r§e清理了[itemCount]个物品与[entityCount]个实体。");
             add("§r§e清理将会在§r§e%s§r§e秒后开始！");
@@ -485,7 +485,7 @@ public class CommonConfig {
     public static void resetConfigWithMode2() {
         resetConfig();
 
-        SWEEP_WARNING_SECOND.set(new ArrayList<Integer>() {{
+        SWEEP_WARNING_SECOND.set(new ArrayList<>() {{
             add(-1);
             add(0);
             add(1);
@@ -497,7 +497,7 @@ public class CommonConfig {
             add(30);
             add(60);
         }});
-        SWEEP_WARNING_CONTENT.set(new ArrayList<String>() {{
+        SWEEP_WARNING_CONTENT.set(new ArrayList<>() {{
             add("§r§eCleaned up nothing.");
             add("§r§eCleaned up [itemCount] items and [entityCount] entities.");
             add("§r§eThe cleanup will start in §r§e%s§r§e seconds!");

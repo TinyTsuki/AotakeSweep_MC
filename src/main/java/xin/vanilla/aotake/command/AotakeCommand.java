@@ -10,18 +10,18 @@ import com.mojang.brigadier.context.CommandContext;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import com.mojang.brigadier.suggestion.SuggestionProvider;
 import lombok.NonNull;
-import net.minecraft.command.CommandSource;
-import net.minecraft.command.Commands;
-import net.minecraft.command.arguments.DimensionArgument;
-import net.minecraft.command.arguments.EntityArgument;
-import net.minecraft.entity.Entity;
-import net.minecraft.entity.item.ItemEntity;
-import net.minecraft.entity.player.ServerPlayerEntity;
-import net.minecraft.inventory.Inventory;
-import net.minecraft.item.ItemStack;
-import net.minecraft.util.text.event.ClickEvent;
-import net.minecraft.util.text.event.HoverEvent;
-import net.minecraft.world.server.ServerWorld;
+import net.minecraft.commands.CommandSourceStack;
+import net.minecraft.commands.Commands;
+import net.minecraft.commands.arguments.DimensionArgument;
+import net.minecraft.commands.arguments.EntityArgument;
+import net.minecraft.network.chat.ClickEvent;
+import net.minecraft.network.chat.HoverEvent;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.SimpleContainer;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.item.ItemEntity;
+import net.minecraft.world.item.ItemStack;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import xin.vanilla.aotake.AotakeSweep;
@@ -68,12 +68,12 @@ public class AotakeCommand {
      *
      * @param dispatcher 命令调度器
      */
-    public static void register(CommandDispatcher<CommandSource> dispatcher) {
+    public static void register(CommandDispatcher<CommandSourceStack> dispatcher) {
         // 刷新帮助信息
         refreshHelpMessage();
 
-        Command<CommandSource> helpCommand = context -> {
-            ServerPlayerEntity player = context.getSource().getPlayerOrException();
+        Command<CommandSourceStack> helpCommand = context -> {
+            ServerPlayer player = context.getSource().getPlayerOrException();
             String command;
             int page;
             try {
@@ -150,7 +150,7 @@ public class AotakeCommand {
             AotakeUtils.sendMessage(player, helpInfo);
             return 1;
         };
-        SuggestionProvider<CommandSource> helpSuggestions = (context, builder) -> {
+        SuggestionProvider<CommandSourceStack> helpSuggestions = (context, builder) -> {
             String input = getStringEmpty(context, "command");
             boolean isInputEmpty = StringUtils.isNullOrEmpty(input);
             int totalPages = (int) Math.ceil((double) HELP_MESSAGE.size() / ServerConfig.HELP_INFO_NUM_PER_PAGE.get());
@@ -163,17 +163,17 @@ public class AotakeCommand {
                     .filter(type -> !type.name().toLowerCase().contains("concise"))
                     .filter(type -> isInputEmpty || type.name().toLowerCase().contains(input.toLowerCase()))
                     .sorted(Comparator.comparing(EnumCommandType::getSort))
-                    .collect(Collectors.toList())) {
+                    .toList()) {
                 builder.suggest(type.name());
             }
             return builder.buildFuture();
         };
 
 
-        Command<CommandSource> languageCommand = context -> {
+        Command<CommandSourceStack> languageCommand = context -> {
             if (checkModStatus(context)) return 0;
             notifyHelp(context);
-            ServerPlayerEntity player = context.getSource().getPlayerOrException();
+            ServerPlayer player = context.getSource().getPlayerOrException();
             IPlayerSweepData signInData = PlayerSweepDataCapability.getData(player);
             String language = StringArgumentType.getString(context, "language");
             if (I18nUtils.getI18nFiles().contains(language)) {
@@ -187,12 +187,12 @@ public class AotakeCommand {
             }
             return 1;
         };
-        Command<CommandSource> virtualOpCommand = context -> {
+        Command<CommandSourceStack> virtualOpCommand = context -> {
             if (checkModStatus(context)) return 0;
             notifyHelp(context);
-            CommandSource source = context.getSource();
+            CommandSourceStack source = context.getSource();
             // 如果命令来自玩家
-            if (source.getEntity() == null || source.getEntity() instanceof ServerPlayerEntity) {
+            if (source.getEntity() == null || source.getEntity() instanceof ServerPlayer) {
                 EnumOperationType type = EnumOperationType.fromString(StringArgumentType.getString(context, "operation"));
                 EnumCommandType[] rules;
                 try {
@@ -204,16 +204,16 @@ public class AotakeCommand {
                 } catch (IllegalArgumentException ignored) {
                     rules = new EnumCommandType[]{};
                 }
-                List<ServerPlayerEntity> targetList = new ArrayList<>();
+                List<ServerPlayer> targetList = new ArrayList<>();
                 try {
                     targetList.addAll(EntityArgument.getPlayers(context, "player"));
                 } catch (IllegalArgumentException ignored) {
                 }
                 String language = ServerConfig.DEFAULT_LANGUAGE.get();
-                if (source.getEntity() != null && source.getEntity() instanceof ServerPlayerEntity) {
+                if (source.getEntity() != null && source.getEntity() instanceof ServerPlayer) {
                     language = AotakeUtils.getPlayerLanguage(source.getPlayerOrException());
                 }
-                for (ServerPlayerEntity target : targetList) {
+                for (ServerPlayer target : targetList) {
                     switch (type) {
                         case ADD:
                             VirtualPermissionManager.addVirtualPermission(target, rules);
@@ -231,8 +231,8 @@ public class AotakeCommand {
                     }
                     String permissions = VirtualPermissionManager.buildPermissionsString(VirtualPermissionManager.getVirtualPermission(target));
                     AotakeUtils.sendTranslatableMessage(target, I18nUtils.getKey(EnumI18nType.MESSAGE, "player_virtual_op"), target.getDisplayName().getString(), permissions);
-                    if (source.getEntity() != null && source.getEntity() instanceof ServerPlayerEntity) {
-                        ServerPlayerEntity player = source.getPlayerOrException();
+                    if (source.getEntity() != null && source.getEntity() instanceof ServerPlayer) {
+                        ServerPlayer player = source.getPlayerOrException();
                         if (!target.getStringUUID().equalsIgnoreCase(player.getStringUUID())) {
                             AotakeUtils.sendTranslatableMessage(player, I18nUtils.getKey(EnumI18nType.MESSAGE, "player_virtual_op"), target.getDisplayName().getString(), permissions);
                         }
@@ -245,44 +245,44 @@ public class AotakeCommand {
             }
             return 1;
         };
-        Command<CommandSource> openDustbinCommand = context -> {
+        Command<CommandSourceStack> openDustbinCommand = context -> {
             if (checkModStatus(context)) return 0;
             notifyHelp(context);
-            ServerPlayerEntity player = context.getSource().getPlayerOrException();
+            ServerPlayer player = context.getSource().getPlayerOrException();
             int page = getIntDefault(context, "page", 1);
             return dustbin(player, page);
         };
-        Command<CommandSource> sweepCommand = context -> {
+        Command<CommandSourceStack> sweepCommand = context -> {
             if (checkModStatus(context)) return 0;
             notifyHelp(context);
             int range = getIntDefault(context, "range", 0);
-            ServerWorld dimension = getDimensionDefault(context, "dimension", null);
+            ServerLevel dimension = getDimensionDefault(context, "dimension", null);
             List<Entity> entities;
             if (dimension == null) {
                 entities = AotakeUtils.getAllEntities();
             } else {
                 entities = new ArrayList<>();
                 if (range > 0) {
-                    ServerPlayerEntity player = context.getSource().getPlayerOrException();
+                    ServerPlayer player = context.getSource().getPlayerOrException();
                     entities.addAll(player.level.getEntitiesOfClass(Entity.class, player.getBoundingBox().inflate(range)));
                 }
             }
             Entity entity = context.getSource().getEntity();
-            new Thread(() -> AotakeUtils.sweep(entity instanceof ServerPlayerEntity ? (ServerPlayerEntity) entity : null, entities)).start();
+            new Thread(() -> AotakeUtils.sweep(entity instanceof ServerPlayer ? (ServerPlayer) entity : null, entities)).start();
             return 1;
         };
-        Command<CommandSource> clearDropCommand = context -> {
+        Command<CommandSourceStack> clearDropCommand = context -> {
             if (checkModStatus(context)) return 0;
             notifyHelp(context);
             boolean withEntity = getBooleanDefault(context, "withEntity", false);
             int range = getIntDefault(context, "range", 0);
-            ServerWorld dimension = getDimensionDefault(context, "dimension", null);
+            ServerLevel dimension = getDimensionDefault(context, "dimension", null);
 
             List<Entity> entities = new ArrayList<>();
             if (dimension == null) {
                 entities = AotakeUtils.getAllEntities();
             } else if (range > 0) {
-                ServerPlayerEntity player = context.getSource().getPlayerOrException();
+                ServerPlayer player = context.getSource().getPlayerOrException();
                 entities.addAll(player.level.getEntitiesOfClass(Entity.class, player.getBoundingBox().inflate(range)));
             }
             SweepResult result = new SweepResult();
@@ -296,7 +296,7 @@ public class AotakeCommand {
                         } else {
                             result.plusEntityCount();
                         }
-                        AotakeUtils.removeEntity((ServerWorld) entity.level, entity, false);
+                        AotakeUtils.removeEntity((ServerLevel) entity.level, entity, false);
                     });
             AotakeSweep.getServerInstance()
                     .getPlayerList()
@@ -309,19 +309,19 @@ public class AotakeCommand {
                     ));
             return 1;
         };
-        Command<CommandSource> clearDustbinCommand = context -> {
+        Command<CommandSourceStack> clearDustbinCommand = context -> {
             if (checkModStatus(context)) return 0;
             notifyHelp(context);
             int page = getIntDefault(context, "page", 0);
             if (page == 0) {
-                WorldTrashData.get().getInventoryList().forEach(Inventory::clearContent);
+                WorldTrashData.get().getInventoryList().forEach(SimpleContainer::clearContent);
             } else {
                 WorldTrashData.get().getInventoryList().get(page - 1).clearContent();
             }
             Component message = Component.translatable(EnumI18nType.MESSAGE
                     , "dustbin_cleared"
                     , page == 0 ? "" : String.format(" %s ", page)
-                    , context.getSource().getEntity() instanceof ServerPlayerEntity
+                    , context.getSource().getEntity() instanceof ServerPlayer
                             ? context.getSource().getPlayerOrException().getDisplayName().getString()
                             : "server"
             );
@@ -331,12 +331,12 @@ public class AotakeCommand {
                     .forEach(p -> AotakeUtils.sendMessage(p, message));
             return 1;
         };
-        Command<CommandSource> dropDustbinCommand = context -> {
+        Command<CommandSourceStack> dropDustbinCommand = context -> {
             if (checkModStatus(context)) return 0;
             notifyHelp(context);
-            ServerPlayerEntity player = context.getSource().getPlayerOrException();
+            ServerPlayer player = context.getSource().getPlayerOrException();
             int page = getIntDefault(context, "page", 0);
-            List<Inventory> inventories = new ArrayList<>();
+            List<SimpleContainer> inventories = new ArrayList<>();
             if (page == 0) {
                 inventories.addAll(WorldTrashData.get().getInventoryList());
             } else {
@@ -346,7 +346,7 @@ public class AotakeCommand {
                     .forEach(item -> {
                         if (!item.isEmpty()) {
                             Entity entity = AotakeUtils.getEntityFromItem(player.getLevel(), item);
-                            entity.moveTo(player.getX(), player.getY(), player.getZ(), player.yRot, player.xRot);
+                            entity.moveTo(player.getX(), player.getY(), player.getZ(), player.getYRot(), player.getXRot());
                             player.getLevel().addFreshEntity(entity);
                         }
                     })
@@ -354,7 +354,7 @@ public class AotakeCommand {
             Component message = Component.translatable(EnumI18nType.MESSAGE
                     , "dustbin_dropped"
                     , page == 0 ? "" : String.format(" %s ", page)
-                    , context.getSource().getEntity() instanceof ServerPlayerEntity
+                    , context.getSource().getEntity() instanceof ServerPlayer
                             ? context.getSource().getPlayerOrException().getDisplayName().getString()
                             : "server"
             );
@@ -364,13 +364,13 @@ public class AotakeCommand {
                     .forEach(p -> AotakeUtils.sendMessage(p, message));
             return 1;
         };
-        Command<CommandSource> clearCacheCommand = context -> {
+        Command<CommandSourceStack> clearCacheCommand = context -> {
             if (checkModStatus(context)) return 0;
             notifyHelp(context);
             WorldTrashData.get().getDropList().clear();
             Component message = Component.translatable(EnumI18nType.MESSAGE
                     , "cache_cleared"
-                    , context.getSource().getEntity() instanceof ServerPlayerEntity
+                    , context.getSource().getEntity() instanceof ServerPlayer
                             ? context.getSource().getPlayerOrException().getDisplayName().getString()
                             : "server"
             );
@@ -380,11 +380,11 @@ public class AotakeCommand {
                     .forEach(p -> AotakeUtils.sendMessage(p, message));
             return 1;
         };
-        Command<CommandSource> dropCacheCommand = context -> {
+        Command<CommandSourceStack> dropCacheCommand = context -> {
             if (checkModStatus(context)) return 0;
             notifyHelp(context);
             boolean originalPos = getBooleanDefault(context, "originalPos", true);
-            ServerPlayerEntity player = context.getSource().getPlayerOrException();
+            ServerPlayer player = context.getSource().getPlayerOrException();
             List<KeyValue<Coordinate, ItemStack>> items = new ArrayList<>(WorldTrashData.get().getDropList());
             WorldTrashData.get().getDropList().clear();
             items.forEach(kv -> {
@@ -395,7 +395,7 @@ public class AotakeCommand {
                     } else {
                         coordinate = new Coordinate(player);
                     }
-                    ServerWorld level = AotakeUtils.getWorld(coordinate.getDimension());
+                    ServerLevel level = AotakeUtils.getWorld(coordinate.getDimension());
                     Entity entity = AotakeUtils.getEntityFromItem(level, kv.getValue());
                     entity.moveTo(coordinate.getX(), coordinate.getY(), coordinate.getZ(), (float) coordinate.getYaw(), (float) coordinate.getPitch());
                     level.addFreshEntity(entity);
@@ -403,7 +403,7 @@ public class AotakeCommand {
             });
             Component message = Component.translatable(EnumI18nType.MESSAGE
                     , "cache_dropped"
-                    , context.getSource().getEntity() instanceof ServerPlayerEntity
+                    , context.getSource().getEntity() instanceof ServerPlayer
                             ? context.getSource().getPlayerOrException().getDisplayName().getString()
                             : "server"
             );
@@ -415,7 +415,7 @@ public class AotakeCommand {
         };
 
 
-        LiteralArgumentBuilder<CommandSource> language = // region language
+        LiteralArgumentBuilder<CommandSourceStack> language = // region language
                 Commands.literal(CommonConfig.COMMAND_LANGUAGE.get())
                         .then(Commands.argument("language", StringArgumentType.word())
                                 .suggests((context, builder) -> {
@@ -426,7 +426,7 @@ public class AotakeCommand {
                                 })
                                 .executes(languageCommand)
                         ); // endregion language
-        LiteralArgumentBuilder<CommandSource> virtualOp = // region virtualOp
+        LiteralArgumentBuilder<CommandSourceStack> virtualOp = // region virtualOp
                 Commands.literal(CommonConfig.COMMAND_VIRTUAL_OP.get())
                         .requires(source -> AotakeUtils.hasCommandPermission(source, EnumCommandType.VIRTUAL_OP))
                         .then(Commands.argument("operation", StringArgumentType.word())
@@ -456,7 +456,7 @@ public class AotakeCommand {
                                                             .filter(type -> Arrays.stream(split).noneMatch(in -> in.equalsIgnoreCase(type.name())))
                                                             .filter(type -> StringUtils.isNullOrEmptyEx(current) || type.name().toLowerCase().contains(current.toLowerCase()))
                                                             .sorted(Comparator.comparing(EnumCommandType::getSort))
-                                                            .collect(Collectors.toList())) {
+                                                            .toList()) {
                                                         String suggest = value.name();
                                                         if (input.endsWith(",")) {
                                                             suggest = input + suggest;
@@ -469,7 +469,7 @@ public class AotakeCommand {
                                         )
                                 )
                         ); // endregion virtualOp
-        LiteralArgumentBuilder<CommandSource> openDustbin = // region openDustbin
+        LiteralArgumentBuilder<CommandSourceStack> openDustbin = // region openDustbin
                 Commands.literal(CommonConfig.COMMAND_DUSTBIN_OPEN.get())
                         .executes(openDustbinCommand)
                         .then(Commands.argument("page", IntegerArgumentType.integer(1, CommonConfig.DUSTBIN_PAGE_LIMIT.get()))
@@ -483,7 +483,7 @@ public class AotakeCommand {
                                 })
                                 .executes(openDustbinCommand)
                         ); // endregion openDustbin
-        LiteralArgumentBuilder<CommandSource> sweep = // region sweep
+        LiteralArgumentBuilder<CommandSourceStack> sweep = // region sweep
                 Commands.literal(CommonConfig.COMMAND_SWEEP.get())
                         .requires(source -> AotakeUtils.hasCommandPermission(source, EnumCommandType.SWEEP))
                         .executes(sweepCommand)
@@ -493,7 +493,7 @@ public class AotakeCommand {
                         .then(Commands.argument("range", IntegerArgumentType.integer(0))
                                 .executes(sweepCommand)
                         ); // endregion sweep
-        LiteralArgumentBuilder<CommandSource> clearDrop = // region clearDrop
+        LiteralArgumentBuilder<CommandSourceStack> clearDrop = // region clearDrop
                 Commands.literal(CommonConfig.COMMAND_CLEAR_DROP.get())
                         .requires(source -> AotakeUtils.hasCommandPermission(source, EnumCommandType.CLEAR_DROP))
                         .executes(clearDropCommand)
@@ -506,7 +506,7 @@ public class AotakeCommand {
                                         .executes(clearDropCommand)
                                 )
                         ); // endregion clearDrop
-        LiteralArgumentBuilder<CommandSource> clearDustbin = // region clearDustbin
+        LiteralArgumentBuilder<CommandSourceStack> clearDustbin = // region clearDustbin
                 Commands.literal(CommonConfig.COMMAND_DUSTBIN_CLEAR.get())
                         .requires(source -> AotakeUtils.hasCommandPermission(source, EnumCommandType.DUSTBIN_CLEAR))
                         .executes(clearDustbinCommand)
@@ -521,7 +521,7 @@ public class AotakeCommand {
                                 })
                                 .executes(clearDustbinCommand)
                         ); // endregion clearDustbin
-        LiteralArgumentBuilder<CommandSource> dropDustbin = // region dropDustbin
+        LiteralArgumentBuilder<CommandSourceStack> dropDustbin = // region dropDustbin
                 Commands.literal(CommonConfig.COMMAND_DUSTBIN_DROP.get())
                         .requires(source -> AotakeUtils.hasCommandPermission(source, EnumCommandType.DUSTBIN_DROP))
                         .executes(dropDustbinCommand)
@@ -536,11 +536,11 @@ public class AotakeCommand {
                                 })
                                 .executes(dropDustbinCommand)
                         ); // endregion dropDustbin
-        LiteralArgumentBuilder<CommandSource> clearCache = // region clearCache
+        LiteralArgumentBuilder<CommandSourceStack> clearCache = // region clearCache
                 Commands.literal(CommonConfig.COMMAND_CACHE_CLEAR.get())
                         .requires(source -> AotakeUtils.hasCommandPermission(source, EnumCommandType.CACHE_CLEAR))
                         .executes(clearCacheCommand); // endregion clearCache
-        LiteralArgumentBuilder<CommandSource> dropCache = // region dropCache
+        LiteralArgumentBuilder<CommandSourceStack> dropCache = // region dropCache
                 Commands.literal(CommonConfig.COMMAND_CACHE_DROP.get())
                         .requires(source -> AotakeUtils.hasCommandPermission(source, EnumCommandType.CACHE_DROP))
                         .executes(dropCacheCommand)
@@ -642,9 +642,9 @@ public class AotakeCommand {
                                                     })
                                                     .executes(context -> {
                                                         int mode = IntegerArgumentType.getInteger(context, "mode");
-                                                        CommandSource source = context.getSource();
+                                                        CommandSourceStack source = context.getSource();
                                                         String lang = ServerConfig.DEFAULT_LANGUAGE.get();
-                                                        if (source.getEntity() != null && source.getEntity() instanceof ServerPlayerEntity) {
+                                                        if (source.getEntity() != null && source.getEntity() instanceof ServerPlayer) {
                                                             lang = AotakeUtils.getPlayerLanguage(source.getPlayerOrException());
                                                         }
                                                         switch (mode) {
@@ -686,7 +686,7 @@ public class AotakeCommand {
                                                     .executes(context -> {
                                                         String code = StringArgumentType.getString(context, "language");
                                                         ServerConfig.DEFAULT_LANGUAGE.set(code);
-                                                        ServerPlayerEntity player = context.getSource().getPlayerOrException();
+                                                        ServerPlayer player = context.getSource().getPlayerOrException();
                                                         AotakeUtils.broadcastMessage(player, Component.translatable(player, EnumI18nType.MESSAGE, "server_default_language", ServerConfig.DEFAULT_LANGUAGE.get()));
                                                         return 1;
                                                     })
@@ -715,7 +715,7 @@ public class AotakeCommand {
                                                 if (checkModStatus(context)) return 0;
                                                 notifyHelp(context);
                                                 boolean show = BoolArgumentType.getBool(context, "show");
-                                                ServerPlayerEntity player = context.getSource().getPlayerOrException();
+                                                ServerPlayer player = context.getSource().getPlayerOrException();
                                                 PlayerSweepDataCapability.getData(player).setShowSweepResult(show);
                                                 AotakeUtils.sendMessage(player
                                                         , Component.translatable(EnumI18nType.MESSAGE
@@ -766,8 +766,8 @@ public class AotakeCommand {
         return result;
     }
 
-    public static ServerWorld getDimensionDefault(CommandContext<CommandSource> context, String name, ServerWorld defaultDimension) {
-        ServerWorld result;
+    public static ServerLevel getDimensionDefault(CommandContext<CommandSourceStack> context, String name, ServerLevel defaultDimension) {
+        ServerLevel result;
         try {
             result = DimensionArgument.getDimension(context, name);
         } catch (IllegalArgumentException | CommandSyntaxException e) {
@@ -779,11 +779,10 @@ public class AotakeCommand {
     /**
      * 若为第一次使用指令则进行提示
      */
-    public static void notifyHelp(CommandContext<CommandSource> context) {
-        CommandSource source = context.getSource();
+    public static void notifyHelp(CommandContext<CommandSourceStack> context) {
+        CommandSourceStack source = context.getSource();
         Entity entity = source.getEntity();
-        if (entity instanceof ServerPlayerEntity) {
-            ServerPlayerEntity player = (ServerPlayerEntity) entity;
+        if (entity instanceof ServerPlayer player) {
             IPlayerSweepData data = PlayerSweepDataCapability.getData(player);
             if (!data.isNotified()) {
                 Component button = Component.literal("/" + AotakeUtils.getCommandPrefix())
@@ -798,18 +797,18 @@ public class AotakeCommand {
         }
     }
 
-    public static boolean checkModStatus(CommandContext<CommandSource> context) {
+    public static boolean checkModStatus(CommandContext<CommandSourceStack> context) {
         if (AotakeSweep.isDisable()) {
-            CommandSource source = context.getSource();
+            CommandSourceStack source = context.getSource();
             Entity entity = source.getEntity();
-            if (entity instanceof ServerPlayerEntity) {
-                AotakeUtils.sendMessage((ServerPlayerEntity) entity, Component.translatable(EnumI18nType.MESSAGE, "mod_disabled"));
+            if (entity instanceof ServerPlayer) {
+                AotakeUtils.sendMessage((ServerPlayer) entity, Component.translatable(EnumI18nType.MESSAGE, "mod_disabled"));
             }
         }
         return AotakeSweep.isDisable();
     }
 
-    private static int dustbin(@NonNull ServerPlayerEntity player, int page) {
+    private static int dustbin(@NonNull ServerPlayer player, int page) {
         int result = player.openMenu(WorldTrashData.getTrashContainer(player, page)).orElse(0);
         if (result > 0) AotakeSweep.getPlayerDustbinPage().put(AotakeUtils.getPlayerUUIDString(player), page);
         return result;

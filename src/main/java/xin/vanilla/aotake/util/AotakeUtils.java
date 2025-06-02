@@ -3,34 +3,36 @@ package xin.vanilla.aotake.util;
 import com.mojang.brigadier.StringReader;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import lombok.NonNull;
-import net.minecraft.block.Block;
-import net.minecraft.block.BlockState;
+import net.minecraft.Util;
 import net.minecraft.client.Minecraft;
-import net.minecraft.command.CommandSource;
-import net.minecraft.command.arguments.BlockStateParser;
-import net.minecraft.entity.Entity;
-import net.minecraft.entity.EntityType;
-import net.minecraft.entity.item.ItemEntity;
-import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.entity.player.ServerPlayerEntity;
-import net.minecraft.inventory.Inventory;
-import net.minecraft.item.Item;
-import net.minecraft.item.ItemStack;
-import net.minecraft.nbt.CompoundNBT;
-import net.minecraft.nbt.JsonToNBT;
-import net.minecraft.network.IPacket;
-import net.minecraft.network.play.server.SChatPacket;
+import net.minecraft.commands.CommandSourceStack;
+import net.minecraft.commands.arguments.blocks.BlockStateParser;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.TagParser;
+import net.minecraft.network.chat.ChatType;
+import net.minecraft.network.chat.ClickEvent;
+import net.minecraft.network.chat.HoverEvent;
+import net.minecraft.network.chat.TranslatableComponent;
+import net.minecraft.network.protocol.Packet;
+import net.minecraft.resources.ResourceKey;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
-import net.minecraft.util.*;
-import net.minecraft.util.text.ChatType;
-import net.minecraft.util.text.ITextComponent;
-import net.minecraft.util.text.TranslationTextComponent;
-import net.minecraft.util.text.event.ClickEvent;
-import net.minecraft.util.text.event.HoverEvent;
-import net.minecraft.world.World;
-import net.minecraft.world.server.ServerWorld;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.sounds.SoundEvent;
+import net.minecraft.sounds.SoundSource;
+import net.minecraft.world.SimpleContainer;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.item.ItemEntity;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.state.BlockState;
 import net.minecraftforge.entity.PartEntity;
-import net.minecraftforge.fml.network.PacketDistributor;
+import net.minecraftforge.fmllegacy.network.PacketDistributor;
 import net.minecraftforge.registries.ForgeRegistries;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -59,29 +61,29 @@ public class AotakeUtils {
             .map(AotakeUtils::deserializeBlockState)
             .filter(Objects::nonNull)
             .distinct()
-            .collect(Collectors.toList());
+            .toList();
     private static final List<String> SAFE_BLOCKS = CommonConfig.SAFE_BLOCKS.get().stream()
             .filter(Objects::nonNull)
             .distinct()
-            .collect(Collectors.toList());
+            .toList();
     private static final List<BlockState> SAFE_BLOCKS_BELOW_STATE = CommonConfig.SAFE_BLOCKS_BELOW.get().stream()
             .map(AotakeUtils::deserializeBlockState)
             .filter(Objects::nonNull)
             .distinct()
-            .collect(Collectors.toList());
+            .toList();
     private static final List<String> SAFE_BLOCKS_BELOW = CommonConfig.SAFE_BLOCKS_BELOW.get().stream()
             .filter(Objects::nonNull)
             .distinct()
-            .collect(Collectors.toList());
+            .toList();
     private static final List<BlockState> SAFE_BLOCKS_ABOVE_STATE = CommonConfig.SAFE_BLOCKS_ABOVE.get().stream()
             .map(AotakeUtils::deserializeBlockState)
             .filter(Objects::nonNull)
             .distinct()
-            .collect(Collectors.toList());
+            .toList();
     private static final List<String> SAFE_BLOCKS_ABOVE = CommonConfig.SAFE_BLOCKS_ABOVE.get().stream()
             .filter(Objects::nonNull)
             .distinct()
-            .collect(Collectors.toList());
+            .toList();
 
     // region 指令相关
 
@@ -97,139 +99,73 @@ public class AotakeUtils {
     }
 
     /**
-     * 判断指令类型是否开启
-     */
-    public static boolean isCommandEnabled(EnumCommandType type) {
-        switch (type) {
-            default:
-                return true;
-        }
-    }
-
-    /**
      * 获取完整的指令
      */
     public static String getCommand(EnumCommandType type) {
         String prefix = AotakeUtils.getCommandPrefix();
-        switch (type) {
-            case HELP:
-                return prefix + " help";
-            case LANGUAGE:
-                return prefix + " " + CommonConfig.COMMAND_LANGUAGE.get();
-            case LANGUAGE_CONCISE:
-                return isConciseEnabled(type) ? CommonConfig.COMMAND_LANGUAGE.get() : "";
-            case VIRTUAL_OP:
-                return prefix + " " + CommonConfig.COMMAND_VIRTUAL_OP.get();
-            case VIRTUAL_OP_CONCISE:
-                return isConciseEnabled(type) ? CommonConfig.COMMAND_VIRTUAL_OP.get() : "";
-            case DUSTBIN_OPEN:
-                return prefix + " " + CommonConfig.COMMAND_DUSTBIN_OPEN.get();
-            case DUSTBIN_OPEN_CONCISE:
-                return isConciseEnabled(type) ? CommonConfig.COMMAND_DUSTBIN_OPEN.get() : "";
-            case DUSTBIN_CLEAR:
-                return prefix + " " + CommonConfig.COMMAND_DUSTBIN_CLEAR.get();
-            case DUSTBIN_CLEAR_CONCISE:
-                return isConciseEnabled(type) ? CommonConfig.COMMAND_DUSTBIN_CLEAR.get() : "";
-            case DUSTBIN_DROP:
-                return prefix + " " + CommonConfig.COMMAND_DUSTBIN_DROP.get();
-            case DUSTBIN_DROP_CONCISE:
-                return isConciseEnabled(type) ? CommonConfig.COMMAND_DUSTBIN_DROP.get() : "";
-            case CACHE_CLEAR:
-                return prefix + " " + CommonConfig.COMMAND_CACHE_CLEAR.get();
-            case CACHE_CLEAR_CONCISE:
-                return isConciseEnabled(type) ? CommonConfig.COMMAND_CACHE_CLEAR.get() : "";
-            case CACHE_DROP:
-                return prefix + " " + CommonConfig.COMMAND_CACHE_DROP.get();
-            case CACHE_DROP_CONCISE:
-                return isConciseEnabled(type) ? CommonConfig.COMMAND_CACHE_DROP.get() : "";
-            case SWEEP:
-                return prefix + " " + CommonConfig.COMMAND_SWEEP.get();
-            case SWEEP_CONCISE:
-                return isConciseEnabled(type) ? CommonConfig.COMMAND_SWEEP.get() : "";
-            case CLEAR_DROP:
-                return prefix + " " + CommonConfig.COMMAND_CLEAR_DROP.get();
-            case CLEAR_DROP_CONCISE:
-                return isConciseEnabled(type) ? CommonConfig.COMMAND_CLEAR_DROP.get() : "";
-            default:
-                return "";
-        }
+        return switch (type) {
+            case HELP -> prefix + " help";
+            case LANGUAGE -> prefix + " " + CommonConfig.COMMAND_LANGUAGE.get();
+            case LANGUAGE_CONCISE -> isConciseEnabled(type) ? CommonConfig.COMMAND_LANGUAGE.get() : "";
+            case VIRTUAL_OP -> prefix + " " + CommonConfig.COMMAND_VIRTUAL_OP.get();
+            case VIRTUAL_OP_CONCISE -> isConciseEnabled(type) ? CommonConfig.COMMAND_VIRTUAL_OP.get() : "";
+            case DUSTBIN_OPEN -> prefix + " " + CommonConfig.COMMAND_DUSTBIN_OPEN.get();
+            case DUSTBIN_OPEN_CONCISE -> isConciseEnabled(type) ? CommonConfig.COMMAND_DUSTBIN_OPEN.get() : "";
+            case DUSTBIN_CLEAR -> prefix + " " + CommonConfig.COMMAND_DUSTBIN_CLEAR.get();
+            case DUSTBIN_CLEAR_CONCISE -> isConciseEnabled(type) ? CommonConfig.COMMAND_DUSTBIN_CLEAR.get() : "";
+            case DUSTBIN_DROP -> prefix + " " + CommonConfig.COMMAND_DUSTBIN_DROP.get();
+            case DUSTBIN_DROP_CONCISE -> isConciseEnabled(type) ? CommonConfig.COMMAND_DUSTBIN_DROP.get() : "";
+            case CACHE_CLEAR -> prefix + " " + CommonConfig.COMMAND_CACHE_CLEAR.get();
+            case CACHE_CLEAR_CONCISE -> isConciseEnabled(type) ? CommonConfig.COMMAND_CACHE_CLEAR.get() : "";
+            case CACHE_DROP -> prefix + " " + CommonConfig.COMMAND_CACHE_DROP.get();
+            case CACHE_DROP_CONCISE -> isConciseEnabled(type) ? CommonConfig.COMMAND_CACHE_DROP.get() : "";
+            case SWEEP -> prefix + " " + CommonConfig.COMMAND_SWEEP.get();
+            case SWEEP_CONCISE -> isConciseEnabled(type) ? CommonConfig.COMMAND_SWEEP.get() : "";
+            case CLEAR_DROP -> prefix + " " + CommonConfig.COMMAND_CLEAR_DROP.get();
+            case CLEAR_DROP_CONCISE -> isConciseEnabled(type) ? CommonConfig.COMMAND_CLEAR_DROP.get() : "";
+            default -> "";
+        };
     }
 
     /**
      * 获取指令权限等级
      */
     public static int getCommandPermissionLevel(EnumCommandType type) {
-        switch (type) {
-            case VIRTUAL_OP:
-            case VIRTUAL_OP_CONCISE:
-                return ServerConfig.PERMISSION_VIRTUAL_OP.get();
-            case DUSTBIN_OPEN:
-            case DUSTBIN_OPEN_CONCISE:
-                return ServerConfig.PERMISSION_DUSTBIN_OPEN.get();
-            case DUSTBIN_CLEAR:
-            case DUSTBIN_CLEAR_CONCISE:
-                return ServerConfig.PERMISSION_DUSTBIN_CLEAR.get();
-            case DUSTBIN_DROP:
-            case DUSTBIN_DROP_CONCISE:
-                return ServerConfig.PERMISSION_DUSTBIN_DROP.get();
-            case CACHE_CLEAR:
-            case CACHE_CLEAR_CONCISE:
-                return ServerConfig.PERMISSION_CACHE_CLEAR.get();
-            case CACHE_DROP:
-            case CACHE_DROP_CONCISE:
-                return ServerConfig.PERMISSION_CACHE_DROP.get();
-            case SWEEP:
-            case SWEEP_CONCISE:
-                return ServerConfig.PERMISSION_SWEEP.get();
-            case CLEAR_DROP:
-            case CLEAR_DROP_CONCISE:
-                return ServerConfig.PERMISSION_CLEAR_DROP.get();
-            default:
-                return 0;
-        }
+        return switch (type) {
+            case VIRTUAL_OP, VIRTUAL_OP_CONCISE -> ServerConfig.PERMISSION_VIRTUAL_OP.get();
+            case DUSTBIN_OPEN, DUSTBIN_OPEN_CONCISE -> ServerConfig.PERMISSION_DUSTBIN_OPEN.get();
+            case DUSTBIN_CLEAR, DUSTBIN_CLEAR_CONCISE -> ServerConfig.PERMISSION_DUSTBIN_CLEAR.get();
+            case DUSTBIN_DROP, DUSTBIN_DROP_CONCISE -> ServerConfig.PERMISSION_DUSTBIN_DROP.get();
+            case CACHE_CLEAR, CACHE_CLEAR_CONCISE -> ServerConfig.PERMISSION_CACHE_CLEAR.get();
+            case CACHE_DROP, CACHE_DROP_CONCISE -> ServerConfig.PERMISSION_CACHE_DROP.get();
+            case SWEEP, SWEEP_CONCISE -> ServerConfig.PERMISSION_SWEEP.get();
+            case CLEAR_DROP, CLEAR_DROP_CONCISE -> ServerConfig.PERMISSION_CLEAR_DROP.get();
+            default -> 0;
+        };
     }
 
     /**
      * 判断指令是否启用简短模式
      */
     public static boolean isConciseEnabled(EnumCommandType type) {
-        switch (type) {
-            case LANGUAGE:
-            case LANGUAGE_CONCISE:
-                return CommonConfig.CONCISE_LANGUAGE.get();
-            case VIRTUAL_OP:
-            case VIRTUAL_OP_CONCISE:
-                return CommonConfig.CONCISE_VIRTUAL_OP.get();
-            case DUSTBIN_OPEN:
-            case DUSTBIN_OPEN_CONCISE:
-                return CommonConfig.CONCISE_DUSTBIN_OPEN.get();
-            case DUSTBIN_CLEAR:
-            case DUSTBIN_CLEAR_CONCISE:
-                return CommonConfig.CONCISE_DUSTBIN_CLEAR.get();
-            case DUSTBIN_DROP:
-            case DUSTBIN_DROP_CONCISE:
-                return CommonConfig.CONCISE_DUSTBIN_DROP.get();
-            case CACHE_CLEAR:
-            case CACHE_CLEAR_CONCISE:
-                return CommonConfig.CONCISE_CACHE_CLEAR.get();
-            case CACHE_DROP:
-            case CACHE_DROP_CONCISE:
-                return CommonConfig.CONCISE_CACHE_DROP.get();
-            case SWEEP:
-            case SWEEP_CONCISE:
-                return CommonConfig.CONCISE_SWEEP.get();
-            case CLEAR_DROP:
-            case CLEAR_DROP_CONCISE:
-                return CommonConfig.CONCISE_CLEAR_DROP.get();
-            default:
-                return false;
-        }
+        return switch (type) {
+            case LANGUAGE, LANGUAGE_CONCISE -> CommonConfig.CONCISE_LANGUAGE.get();
+            case VIRTUAL_OP, VIRTUAL_OP_CONCISE -> CommonConfig.CONCISE_VIRTUAL_OP.get();
+            case DUSTBIN_OPEN, DUSTBIN_OPEN_CONCISE -> CommonConfig.CONCISE_DUSTBIN_OPEN.get();
+            case DUSTBIN_CLEAR, DUSTBIN_CLEAR_CONCISE -> CommonConfig.CONCISE_DUSTBIN_CLEAR.get();
+            case DUSTBIN_DROP, DUSTBIN_DROP_CONCISE -> CommonConfig.CONCISE_DUSTBIN_DROP.get();
+            case CACHE_CLEAR, CACHE_CLEAR_CONCISE -> CommonConfig.CONCISE_CACHE_CLEAR.get();
+            case CACHE_DROP, CACHE_DROP_CONCISE -> CommonConfig.CONCISE_CACHE_DROP.get();
+            case SWEEP, SWEEP_CONCISE -> CommonConfig.CONCISE_SWEEP.get();
+            case CLEAR_DROP, CLEAR_DROP_CONCISE -> CommonConfig.CONCISE_CLEAR_DROP.get();
+            default -> false;
+        };
     }
 
     /**
      * 判断是否拥有指令权限
      */
-    public static boolean hasCommandPermission(CommandSource source, EnumCommandType type) {
+    public static boolean hasCommandPermission(CommandSourceStack source, EnumCommandType type) {
         return source.hasPermission(getCommandPermissionLevel(type)) || hasVirtualPermission(source.getEntity(), type);
     }
 
@@ -238,8 +174,8 @@ public class AotakeUtils {
      */
     public static boolean hasVirtualPermission(Entity source, EnumCommandType type) {
         // 若为玩家
-        if (source instanceof PlayerEntity) {
-            return VirtualPermissionManager.getVirtualPermission((PlayerEntity) source).stream()
+        if (source instanceof Player) {
+            return VirtualPermissionManager.getVirtualPermission((Player) source).stream()
                     .filter(Objects::nonNull)
                     .anyMatch(s -> s.replaceConcise() == type.replaceConcise());
         } else {
@@ -258,8 +194,8 @@ public class AotakeUtils {
      * @param player  发送者
      * @param message 消息
      */
-    public static void broadcastMessage(ServerPlayerEntity player, Component message) {
-        player.server.getPlayerList().broadcastMessage(new TranslationTextComponent("chat.type.announcement", player.getDisplayName(), message.toChatComponent()), ChatType.SYSTEM, Util.NIL_UUID);
+    public static void broadcastMessage(ServerPlayer player, Component message) {
+        player.server.getPlayerList().broadcastMessage(new TranslatableComponent("chat.type.announcement", player.getDisplayName(), message.toChatComponent()), ChatType.SYSTEM, Util.NIL_UUID);
     }
 
     /**
@@ -269,7 +205,7 @@ public class AotakeUtils {
      * @param message 消息
      */
     public static void broadcastMessage(MinecraftServer server, Component message) {
-        server.getPlayerList().broadcastMessage(new TranslationTextComponent("chat.type.announcement", "Server", message.toChatComponent()), ChatType.SYSTEM, Util.NIL_UUID);
+        server.getPlayerList().broadcastMessage(new TranslatableComponent("chat.type.announcement", "Server", message.toChatComponent()), ChatType.SYSTEM, Util.NIL_UUID);
     }
 
     /**
@@ -278,7 +214,7 @@ public class AotakeUtils {
      * @param player  玩家
      * @param message 消息
      */
-    public static void sendMessage(PlayerEntity player, Component message) {
+    public static void sendMessage(Player player, Component message) {
         player.sendMessage(message.toChatComponent(AotakeUtils.getPlayerLanguage(player)), player.getUUID());
     }
 
@@ -288,7 +224,7 @@ public class AotakeUtils {
      * @param player  玩家
      * @param message 消息
      */
-    public static void sendMessage(PlayerEntity player, String message) {
+    public static void sendMessage(Player player, String message) {
         player.sendMessage(Component.literal(message).toChatComponent(), player.getUUID());
     }
 
@@ -299,7 +235,7 @@ public class AotakeUtils {
      * @param key    翻译键
      * @param args   参数
      */
-    public static void sendTranslatableMessage(PlayerEntity player, String key, Object... args) {
+    public static void sendTranslatableMessage(Player player, String key, Object... args) {
         player.sendMessage(Component.translatable(key, args).setLanguageCode(AotakeUtils.getPlayerLanguage(player)).toChatComponent(), player.getUUID());
     }
 
@@ -311,8 +247,8 @@ public class AotakeUtils {
      * @param key     翻译键
      * @param args    参数
      */
-    public static void sendTranslatableMessage(CommandSource source, boolean success, String key, Object... args) {
-        if (source.getEntity() != null && source.getEntity() instanceof ServerPlayerEntity) {
+    public static void sendTranslatableMessage(CommandSourceStack source, boolean success, String key, Object... args) {
+        if (source.getEntity() != null && source.getEntity() instanceof ServerPlayer) {
             try {
                 sendTranslatableMessage(source.getPlayerOrException(), key, args);
             } catch (CommandSyntaxException ignored) {
@@ -327,8 +263,8 @@ public class AotakeUtils {
     /**
      * 发送操作栏消息
      */
-    public static void sendActionBarMessage(ServerPlayerEntity player, Component message) {
-        player.connection.send(new SChatPacket(message.toChatComponent(AotakeUtils.getPlayerLanguage(player)), ChatType.GAME_INFO, player.getUUID()));
+    public static void sendActionBarMessage(ServerPlayer player, Component message) {
+        player.displayClientMessage(message.toChatComponent(AotakeUtils.getPlayerLanguage(player)), true);
     }
 
     /**
@@ -336,7 +272,7 @@ public class AotakeUtils {
      *
      * @param packet 数据包
      */
-    public static void broadcastPacket(IPacket<?> packet) {
+    public static void broadcastPacket(Packet<?> packet) {
         AotakeSweep.getServerInstance().getPlayerList().getPlayers().forEach(player -> player.connection.send(packet));
     }
 
@@ -350,7 +286,7 @@ public class AotakeUtils {
     /**
      * 发送数据包至玩家
      */
-    public static <MSG> void sendPacketToPlayer(MSG msg, ServerPlayerEntity player) {
+    public static <MSG> void sendPacketToPlayer(MSG msg, ServerPlayer player) {
         ModNetworkHandler.INSTANCE.send(PacketDistributor.PLAYER.with(() -> player), msg);
     }
 
@@ -359,7 +295,7 @@ public class AotakeUtils {
 
     // region 玩家语言相关
 
-    public static String getPlayerLanguage(@NonNull PlayerEntity player) {
+    public static String getPlayerLanguage(@NonNull Player player) {
         try {
             return PlayerSweepDataCapability.getData(player).getValidLanguage(player);
         } catch (IllegalArgumentException i) {
@@ -367,11 +303,11 @@ public class AotakeUtils {
         }
     }
 
-    public static String getValidLanguage(@Nullable PlayerEntity player, @Nullable String language) {
+    public static String getValidLanguage(@Nullable Player player, @Nullable String language) {
         String result;
         if (StringUtils.isNullOrEmptyEx(language) || "client".equalsIgnoreCase(language)) {
-            if (player instanceof ServerPlayerEntity) {
-                result = AotakeUtils.getServerPlayerLanguage((ServerPlayerEntity) player);
+            if (player instanceof ServerPlayer) {
+                result = AotakeUtils.getServerPlayerLanguage((ServerPlayer) player);
             } else {
                 result = AotakeUtils.getClientLanguage();
             }
@@ -383,7 +319,7 @@ public class AotakeUtils {
         return result;
     }
 
-    public static String getServerPlayerLanguage(ServerPlayerEntity player) {
+    public static String getServerPlayerLanguage(ServerPlayer player) {
         return player.getLanguage();
     }
 
@@ -393,8 +329,8 @@ public class AotakeUtils {
      * @param originalPlayer 原始玩家
      * @param targetPlayer   目标玩家
      */
-    public static void clonePlayerLanguage(ServerPlayerEntity originalPlayer, ServerPlayerEntity targetPlayer) {
-        FieldUtils.setPrivateFieldValue(ServerPlayerEntity.class, targetPlayer, FieldUtils.getPlayerLanguageFieldName(originalPlayer), getServerPlayerLanguage(originalPlayer));
+    public static void clonePlayerLanguage(ServerPlayer originalPlayer, ServerPlayer targetPlayer) {
+        FieldUtils.setPrivateFieldValue(ServerPlayer.class, targetPlayer, FieldUtils.getPlayerLanguageFieldName(originalPlayer), getServerPlayerLanguage(originalPlayer));
     }
 
     public static String getClientLanguage() {
@@ -409,8 +345,7 @@ public class AotakeUtils {
     public static List<Entity> getAllEntities() {
         List<Entity> entities = new ArrayList<>();
         AotakeSweep.getServerInstance().getAllLevels()
-                .forEach(level -> entities.addAll(level.getEntities()
-                        .collect(Collectors.toList()))
+                .forEach(level -> level.getEntities().getAll().forEach(entities::add)
                 );
         return entities;
     }
@@ -467,8 +402,8 @@ public class AotakeUtils {
         AotakeUtils.sweep(null, entities);
     }
 
-    public static void sweep(@Nullable ServerPlayerEntity player, List<Entity> entities) {
-        List<ServerPlayerEntity> players = AotakeSweep.getServerInstance().getPlayerList().getPlayers();
+    public static void sweep(@Nullable ServerPlayer player, List<Entity> entities) {
+        List<ServerPlayer> players = AotakeSweep.getServerInstance().getPlayerList().getPlayers();
         // 若服务器没有玩家
         if (CollectionUtils.isNullOrEmpty(players) && !CommonConfig.SWEEP_WHEN_NO_PLAYER.get()) return;
 
@@ -479,12 +414,12 @@ public class AotakeUtils {
             // 清空旧的物品
             if (ServerConfig.SELF_CLEAN_MODE.get().contains(EnumSelfCleanMode.SWEEP_CLEAR)) {
                 WorldTrashData.get().getDropList().clear();
-                WorldTrashData.get().getInventoryList().forEach(Inventory::clearContent);
+                WorldTrashData.get().getInventoryList().forEach(SimpleContainer::clearContent);
             }
             result = WorldTrashData.get().addDrops(list);
         }
 
-        for (ServerPlayerEntity p : players) {
+        for (ServerPlayer p : players) {
             Component msg = getWarningMessage(result == null || result.isEmpty() ? -1 : 0
                     , getPlayerLanguage(p)
                     , result);
@@ -521,17 +456,17 @@ public class AotakeUtils {
             PartEntity<?>[] parts = entity.getParts();
             if (CollectionUtils.isNotNullOrEmpty(parts)) {
                 for (PartEntity<?> part : parts) {
-                    part.remove(keepData);
+                    part.remove(Entity.RemovalReason.KILLED);
                 }
             }
         }
-        entity.remove(keepData);
+        entity.remove(Entity.RemovalReason.KILLED);
     }
 
     /**
      * 移除实体
      */
-    public static void removeEntity(ServerWorld level, Entity entity, boolean keepData) {
+    public static void removeEntity(ServerLevel level, Entity entity, boolean keepData) {
         if (entity instanceof PartEntity) {
             entity = ((PartEntity<?>) entity).getParent();
         }
@@ -549,12 +484,12 @@ public class AotakeUtils {
     /**
      * 将物品转为实体
      */
-    public static Entity getEntityFromItem(ServerWorld level, ItemStack itemStack) {
+    public static Entity getEntityFromItem(ServerLevel level, ItemStack itemStack) {
         Entity result = null;
 
-        CompoundNBT tag = itemStack.getTag();
+        CompoundTag tag = itemStack.getTag();
         if (tag != null && tag.contains(AotakeSweep.MODID)) {
-            CompoundNBT aotake = tag.getCompound(AotakeSweep.MODID);
+            CompoundTag aotake = tag.getCompound(AotakeSweep.MODID);
             if (aotake.contains("entity")) {
                 try {
                     result = EntityType.loadEntityRecursive(aotake.getCompound("entity"), level, e -> e);
@@ -633,7 +568,7 @@ public class AotakeUtils {
     /**
      * 获取指定维度的世界实例
      */
-    public static ServerWorld getWorld(RegistryKey<World> dimension) {
+    public static ServerLevel getWorld(ResourceKey<Level> dimension) {
         return AotakeSweep.getServerInstance().getLevel(dimension);
     }
 
@@ -645,10 +580,10 @@ public class AotakeUtils {
      * @param volume 音量
      * @param pitch  音调
      */
-    public static void playSound(ServerPlayerEntity player, ResourceLocation sound, float volume, float pitch) {
+    public static void playSound(ServerPlayer player, ResourceLocation sound, float volume, float pitch) {
         SoundEvent soundEvent = ForgeRegistries.SOUND_EVENTS.getValue(sound);
         if (soundEvent != null) {
-            player.playNotifySound(soundEvent, SoundCategory.PLAYERS, volume, pitch);
+            player.playNotifySound(soundEvent, SoundSource.PLAYERS, volume, pitch);
         }
     }
 
@@ -702,7 +637,7 @@ public class AotakeUtils {
     public static ItemStack deserializeItemStack(@NonNull String item) {
         ItemStack itemStack;
         try {
-            itemStack = ItemStack.of(JsonToNBT.parseTag(item));
+            itemStack = ItemStack.of(TagParser.parseTag(item));
         } catch (Exception e) {
             itemStack = null;
             LOGGER.error("Invalid unsafe item: {}", item, e);
@@ -753,19 +688,19 @@ public class AotakeUtils {
 
     public static String getItemCustomNameJson(@NonNull ItemStack itemStack) {
         String result = "";
-        CompoundNBT compoundnbt = itemStack.getTagElement("display");
-        if (compoundnbt != null && compoundnbt.contains("Name", 8)) {
-            result = compoundnbt.getString("Name");
+        CompoundTag CompoundTag = itemStack.getTagElement("display");
+        if (CompoundTag != null && CompoundTag.contains("Name", 8)) {
+            result = CompoundTag.getString("Name");
         }
         return result;
     }
 
-    public static ITextComponent getItemCustomName(@NonNull ItemStack itemStack) {
-        ITextComponent result = null;
+    public static net.minecraft.network.chat.Component getItemCustomName(@NonNull ItemStack itemStack) {
+        net.minecraft.network.chat.Component result = null;
         String nameJson = getItemCustomNameJson(itemStack);
         if (StringUtils.isNotNullOrEmpty(nameJson)) {
             try {
-                result = ITextComponent.Serializer.fromJson(nameJson);
+                result = net.minecraft.network.chat.Component.Serializer.fromJson(nameJson);
             } catch (Exception e) {
                 LOGGER.error("Invalid unsafe item name: {}", nameJson, e);
             }
@@ -773,11 +708,11 @@ public class AotakeUtils {
         return result;
     }
 
-    public static ITextComponent textComponentFromJson(String json) {
-        ITextComponent result = null;
+    public static net.minecraft.network.chat.Component textComponentFromJson(String json) {
+        net.minecraft.network.chat.Component result = null;
         if (StringUtils.isNotNullOrEmpty(json)) {
             try {
-                result = ITextComponent.Serializer.fromJson(json);
+                result = net.minecraft.network.chat.Component.Serializer.fromJson(json);
             } catch (Exception e) {
                 LOGGER.error("Invalid unsafe item name: {}", json, e);
             }
@@ -785,7 +720,7 @@ public class AotakeUtils {
         return result;
     }
 
-    public static String getPlayerUUIDString(@NonNull PlayerEntity player) {
+    public static String getPlayerUUIDString(@NonNull Player player) {
         return player.getUUID().toString();
     }
 

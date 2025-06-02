@@ -1,7 +1,7 @@
 package xin.vanilla.aotake.data.player;
 
-import net.minecraft.nbt.CompoundNBT;
-import net.minecraft.util.Direction;
+import net.minecraft.core.Direction;
+import net.minecraft.nbt.CompoundTag;
 import net.minecraftforge.common.capabilities.Capability;
 import net.minecraftforge.common.capabilities.ICapabilityProvider;
 import net.minecraftforge.common.util.INBTSerializable;
@@ -14,7 +14,7 @@ import javax.annotation.Nullable;
  * 玩家传送数据提供者类
  * 用于管理和序列化玩家的传送数据
  */
-public class PlayerSweepDataProvider implements ICapabilityProvider, INBTSerializable<CompoundNBT> {
+public class PlayerSweepDataProvider implements ICapabilityProvider, INBTSerializable<CompoundTag> {
 
     /**
      * 玩家数据实例
@@ -47,7 +47,7 @@ public class PlayerSweepDataProvider implements ICapabilityProvider, INBTSeriali
      * 序列化玩家数据为NBT格式
      */
     @Override
-    public CompoundNBT serializeNBT() {
+    public CompoundTag serializeNBT() {
         return this.getOrCreateCapability().serializeNBT();
     }
 
@@ -55,7 +55,7 @@ public class PlayerSweepDataProvider implements ICapabilityProvider, INBTSeriali
      * 从NBT格式的数据中反序列化玩家数据
      */
     @Override
-    public void deserializeNBT(CompoundNBT nbt) {
+    public void deserializeNBT(CompoundTag nbt) {
         this.getOrCreateCapability().deserializeNBT(nbt);
     }
 }

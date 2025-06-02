@@ -2,22 +2,21 @@ package xin.vanilla.aotake.data.world;
 
 import lombok.Getter;
 import lombok.NonNull;
-import net.minecraft.entity.Entity;
-import net.minecraft.entity.item.ItemEntity;
-import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.entity.player.PlayerInventory;
-import net.minecraft.entity.player.ServerPlayerEntity;
-import net.minecraft.inventory.Inventory;
-import net.minecraft.inventory.container.ChestContainer;
-import net.minecraft.inventory.container.Container;
-import net.minecraft.inventory.container.INamedContainerProvider;
-import net.minecraft.item.ItemStack;
-import net.minecraft.nbt.CompoundNBT;
-import net.minecraft.nbt.INBT;
-import net.minecraft.nbt.ListNBT;
-import net.minecraft.util.text.ITextComponent;
-import net.minecraft.world.server.ServerWorld;
-import net.minecraftforge.common.util.WorldCapabilityData;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.ListTag;
+import net.minecraft.nbt.Tag;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.MenuProvider;
+import net.minecraft.world.SimpleContainer;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.item.ItemEntity;
+import net.minecraft.world.entity.player.Inventory;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.inventory.AbstractContainerMenu;
+import net.minecraft.world.inventory.ChestMenu;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.saveddata.SavedData;
 import net.minecraftforge.entity.PartEntity;
 import xin.vanilla.aotake.AotakeSweep;
 import xin.vanilla.aotake.config.CommonConfig;
@@ -32,19 +31,19 @@ import xin.vanilla.aotake.util.AotakeUtils;
 import xin.vanilla.aotake.util.CollectionUtils;
 import xin.vanilla.aotake.util.Component;
 
+import javax.annotation.ParametersAreNonnullByDefault;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 /**
  * 世界垃圾数据
  */
 @Getter
-public class WorldTrashData extends WorldCapabilityData {
+public class WorldTrashData extends SavedData {
     private static final String DATA_NAME = "world_trash_data";
 
-    private List<Inventory> inventoryList = new ArrayList<>();
+    private List<SimpleContainer> inventoryList = new ArrayList<>();
 
     /**
      * 掉落物列表
@@ -56,60 +55,61 @@ public class WorldTrashData extends WorldCapabilityData {
     private List<KeyValue<Coordinate, KeyValue<Long, String>>> dropCount = new ArrayList<>();
 
     public WorldTrashData() {
-        super(DATA_NAME);
     }
 
-    public void load(CompoundNBT nbt) {
-        this.dropList = new ArrayList<>();
-        ListNBT dropListNBT = nbt.getList("dropList", 10);
+    public static WorldTrashData load(CompoundTag nbt) {
+        WorldTrashData data = new WorldTrashData();
+        data.dropList = new ArrayList<>();
+        ListTag dropListTag = nbt.getList("dropList", 10);
         List<KeyValue<Coordinate, ItemStack>> drops = new ArrayList<>();
-        for (int i = 0; i < dropListNBT.size(); i++) {
-            CompoundNBT drop = dropListNBT.getCompound(i);
+        for (int i = 0; i < dropListTag.size(); i++) {
+            CompoundTag drop = dropListTag.getCompound(i);
             ItemStack item = ItemStack.of(drop.getCompound("item"));
             drops.add(new KeyValue<>(
                     Coordinate.readFromNBT(drop.getCompound("coordinate"))
                     , item
             ));
         }
-        this.setDrops(drops);
+        data.setDrops(drops);
 
-        this.dropCount = new ArrayList<>();
-        ListNBT dropCountNBT = nbt.getList("dropCount", 10);
+        data.dropCount = new ArrayList<>();
+        ListTag dropCountNBT = nbt.getList("dropCount", 10);
         List<KeyValue<Coordinate, KeyValue<Long, String>>> dropCounts = new ArrayList<>();
         for (int i = 0; i < dropCountNBT.size(); i++) {
-            CompoundNBT drop = dropCountNBT.getCompound(i);
+            CompoundTag drop = dropCountNBT.getCompound(i);
             dropCounts.add(new KeyValue<>(
                     Coordinate.readFromNBT(drop.getCompound("coordinate"))
                     , new KeyValue<>(drop.getLong("count"), drop.getString("name"))
             ));
         }
-        this.setDropCount(dropCounts);
+        data.setDropCount(dropCounts);
 
-        this.inventoryList = new ArrayList<>();
-        ListNBT inventoryListNBT = nbt.getList("inventoryList", 9);
-        for (INBT inbt : inventoryListNBT) {
-            Inventory inventory = new Inventory(6 * 9);
-            inventory.fromTag((ListNBT) inbt);
-            this.inventoryList.add(inventory);
+        data.inventoryList = new ArrayList<>();
+        ListTag inventoryListTag = nbt.getList("inventoryList", 9);
+        for (Tag inbt : inventoryListTag) {
+            SimpleContainer inventory = new SimpleContainer(6 * 9);
+            inventory.fromTag((ListTag) inbt);
+            data.inventoryList.add(inventory);
         }
-
+        return data;
     }
 
-    @Override
     @NonNull
-    public CompoundNBT save(CompoundNBT nbt) {
-        ListNBT dropsNBT = new ListNBT();
+    @Override
+    @ParametersAreNonnullByDefault
+    public CompoundTag save(CompoundTag nbt) {
+        ListTag dropsNBT = new ListTag();
         for (KeyValue<Coordinate, ItemStack> drop : this.getDropList()) {
-            CompoundNBT dropTag = new CompoundNBT();
+            CompoundTag dropTag = new CompoundTag();
             dropTag.put("item", drop.getValue().serializeNBT());
             dropTag.put("coordinate", drop.getKey().writeToNBT());
             dropsNBT.add(dropTag);
         }
         nbt.put("dropList", dropsNBT);
 
-        ListNBT dropCountNBT = new ListNBT();
+        ListTag dropCountNBT = new ListTag();
         for (KeyValue<Coordinate, KeyValue<Long, String>> drop : this.getDropCount()) {
-            CompoundNBT dropTag = new CompoundNBT();
+            CompoundTag dropTag = new CompoundTag();
             dropTag.putLong("count", drop.getValue().getKey());
             dropTag.putString("name", drop.getValue().getValue());
             dropTag.put("coordinate", drop.getKey().writeToNBT());
@@ -117,8 +117,8 @@ public class WorldTrashData extends WorldCapabilityData {
         }
         nbt.put("dropCount", dropCountNBT);
 
-        ListNBT inventoryNBT = new ListNBT();
-        for (Inventory inventory : this.getInventoryList()) {
+        ListTag inventoryNBT = new ListTag();
+        for (SimpleContainer inventory : this.getInventoryList()) {
             inventoryNBT.add(inventory.createTag());
         }
         nbt.put("inventoryList", inventoryNBT);
@@ -156,7 +156,7 @@ public class WorldTrashData extends WorldCapabilityData {
             item = ((ItemEntity) entity).getItem();
             typeKey = AotakeUtils.getItemRegistryName(item);
             result.setItemCount(item.getCount());
-            AotakeUtils.removeEntity((ServerWorld) entity.level, entity, false);
+            AotakeUtils.removeEntity((ServerLevel) entity.level, entity, false);
         } else if (!ServerConfig.CATCH_ITEM.get().isEmpty()) {
             if (entity instanceof PartEntity) {
                 entity = ((PartEntity<?>) entity).getParent();
@@ -168,8 +168,8 @@ public class WorldTrashData extends WorldCapabilityData {
             if (ServerConfig.CATCH_ENTITY.get().contains(typeKey)) {
                 String randomItem = CollectionUtils.getRandomElement(ServerConfig.CATCH_ITEM.get());
                 item = new ItemStack(AotakeUtils.deserializeItem(randomItem));
-                CompoundNBT tag = item.getOrCreateTag();
-                CompoundNBT aotake = new CompoundNBT();
+                CompoundTag tag = item.getOrCreateTag();
+                CompoundTag aotake = new CompoundTag();
                 aotake.putBoolean("byPlayer", false);
                 aotake.put("entity", entity.serializeNBT());
                 tag.put(AotakeSweep.MODID, aotake);
@@ -181,10 +181,10 @@ public class WorldTrashData extends WorldCapabilityData {
                 item = null;
             }
             result.setEntityCount(1);
-            AotakeUtils.removeEntity((ServerWorld) entity.level, entity, item != null);
+            AotakeUtils.removeEntity((ServerLevel) entity.level, entity, item != null);
         } else {
             item = null;
-            AotakeUtils.removeEntity((ServerWorld) entity.level, entity, false);
+            AotakeUtils.removeEntity((ServerLevel) entity.level, entity, false);
             result.setEntityCount(1);
         }
         if (item != null) {
@@ -193,14 +193,14 @@ public class WorldTrashData extends WorldCapabilityData {
 
             // 自清洁
             if (ServerConfig.SELF_CLEAN_MODE.get().contains(EnumSelfCleanMode.SWEEP_DELETE)) {
-                Inventory inventory = this.inventoryList.get(AotakeSweep.RANDOM.nextInt(this.inventoryList.size()));
+                SimpleContainer inventory = this.inventoryList.get(AotakeSweep.RANDOM.nextInt(this.inventoryList.size()));
                 IntStream.range(0, inventory.getContainerSize())
                         .filter(i -> !inventory.getItem(i).isEmpty())
                         .findAny()
                         .ifPresent(i -> inventory.setItem(i, ItemStack.EMPTY));
             }
 
-            Inventory box = this.inventoryList.stream()
+            SimpleContainer box = this.inventoryList.stream()
                     .filter(inventory -> inventory.canAddItem(item))
                     .findFirst().orElse(null);
             // 回收物品
@@ -223,7 +223,7 @@ public class WorldTrashData extends WorldCapabilityData {
                     }
                     break;
                     case REPLACE: {
-                        Inventory inventory = this.inventoryList.get(AotakeSweep.RANDOM.nextInt(this.inventoryList.size()));
+                        SimpleContainer inventory = this.inventoryList.get(AotakeSweep.RANDOM.nextInt(this.inventoryList.size()));
                         inventory.setItem(AotakeSweep.RANDOM.nextInt(inventory.getContainerSize()), item);
                         if (result.getItemCount() > 0) {
                             result.setRecycledItemCount(result.getItemCount());
@@ -246,21 +246,21 @@ public class WorldTrashData extends WorldCapabilityData {
         return get(AotakeSweep.getServerInstance().getAllLevels().iterator().next());
     }
 
-    public static WorldTrashData get(ServerPlayerEntity player) {
+    public static WorldTrashData get(ServerPlayer player) {
         return get(player.getLevel());
     }
 
-    public static WorldTrashData get(ServerWorld world) {
-        return world.getDataStorage().computeIfAbsent(WorldTrashData::new, DATA_NAME);
+    public static WorldTrashData get(ServerLevel world) {
+        return world.getDataStorage().computeIfAbsent(WorldTrashData::load, WorldTrashData::new, DATA_NAME);
     }
 
-    public static INamedContainerProvider getTrashContainer(ServerPlayerEntity player, int page) {
+    public static MenuProvider getTrashContainer(ServerPlayer player, int page) {
         int limit = CommonConfig.DUSTBIN_PAGE_LIMIT.get();
-        List<Inventory> inventories = get().getInventoryList();
+        List<SimpleContainer> inventories = get().getInventoryList();
         int size = inventories.size();
         if (inventories.isEmpty() || size < limit) {
             for (int i = 0; i < limit - size; i++) {
-                inventories.add(new Inventory(6 * 9));
+                inventories.add(new SimpleContainer(6 * 9));
             }
         } else if (size > limit) {
             for (int i = size - limit; i > 0; i--) {
@@ -273,21 +273,21 @@ public class WorldTrashData extends WorldCapabilityData {
         }
 
         // 将当前页垃圾箱填充满
-        Inventory inventory = inventories.get(page - 1);
+        SimpleContainer inventory = inventories.get(page - 1);
         List<KeyValue<Coordinate, ItemStack>> drops = get().getDropList();
         List<KeyValue<Coordinate, ItemStack>> toAdd = drops.stream()
                 .filter(kv -> inventory.canAddItem(kv.getValue()))
-                .collect(Collectors.toList());
+                .toList();
 
         toAdd.forEach(kv -> {
             drops.remove(kv);
             inventory.addItem(kv.getValue());
         });
 
-        return new INamedContainerProvider() {
+        return new MenuProvider() {
             @NonNull
             @Override
-            public ITextComponent getDisplayName() {
+            public net.minecraft.network.chat.Component getDisplayName() {
                 return Component.translatable(EnumI18nType.KEY, "categories")
                         .setColor(EnumMCColor.DARK_GREEN.getColor())
                         .append(String.format("(%s/%s)", page, limit))
@@ -295,8 +295,8 @@ public class WorldTrashData extends WorldCapabilityData {
             }
 
             @Override
-            public Container createMenu(int id, @NonNull PlayerInventory playerInventory, @NonNull PlayerEntity p) {
-                return ChestContainer.sixRows(id, playerInventory, inventory);
+            public AbstractContainerMenu createMenu(int id, @NonNull Inventory playerInventory, @NonNull Player p) {
+                return ChestMenu.sixRows(id, playerInventory, inventory);
             }
         };
     }

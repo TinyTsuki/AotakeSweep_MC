@@ -8,10 +8,8 @@ import lombok.NoArgsConstructor;
 import lombok.NonNull;
 import lombok.Setter;
 import lombok.experimental.Accessors;
-import net.minecraft.entity.player.ServerPlayerEntity;
-import net.minecraft.util.text.*;
-import net.minecraft.util.text.event.ClickEvent;
-import net.minecraft.util.text.event.HoverEvent;
+import net.minecraft.network.chat.*;
+import net.minecraft.server.level.ServerPlayer;
 import xin.vanilla.aotake.config.ServerConfig;
 import xin.vanilla.aotake.enums.EnumI18nType;
 
@@ -436,7 +434,7 @@ public class Component implements Cloneable, Serializable {
     public Style getStyle() {
         Style style = Style.EMPTY;
         if (!isColorEmpty() && getColor() != 0xFFFFFFFF)
-            style = style.withColor(Color.fromRgb(getColor()));
+            style = style.withColor(TextColor.fromRgb(getColor()));
         style = style.setUnderlined(this.isUnderlined())
                 .setStrikethrough(this.isStrikethrough())
                 .setObfuscated(this.isObfuscated())
@@ -513,7 +511,7 @@ public class Component implements Cloneable, Serializable {
             if (this.i18nType == EnumI18nType.PLAIN) {
                 result.append(this.text);
             } else if (i18nType == EnumI18nType.ORIGINAL) {
-                result.append(((ITextComponent) this.original).getString());
+                result.append(((net.minecraft.network.chat.Component) this.original).getString());
             } else {
                 result.append(I18nUtils.getTranslation(I18nUtils.getKey(this.i18nType, this.text), languageCode));
             }
@@ -526,7 +524,7 @@ public class Component implements Cloneable, Serializable {
     /**
      * 获取文本组件
      */
-    public ITextComponent toTextComponent() {
+    public net.minecraft.network.chat.Component toTextComponent() {
         return this.toTextComponent(this.getLanguageCode());
     }
 
@@ -535,10 +533,10 @@ public class Component implements Cloneable, Serializable {
      *
      * @param languageCode 语言代码
      */
-    public ITextComponent toTextComponent(String languageCode) {
-        List<IFormattableTextComponent> components = new ArrayList<>();
+    public net.minecraft.network.chat.Component toTextComponent(String languageCode) {
+        List<MutableComponent> components = new ArrayList<>();
         if (this.i18nType == EnumI18nType.ORIGINAL) {
-            components.add((IFormattableTextComponent) this.original);
+            components.add((MutableComponent) this.original);
         } else {
             // 如果颜色值为null则说明为透明，则不显示内容，所以返回空文本组件
             if (!this.isColorEmpty()) {
@@ -546,7 +544,7 @@ public class Component implements Cloneable, Serializable {
                     String text = I18nUtils.getTranslation(I18nUtils.getKey(this.i18nType, this.text), languageCode);
                     String[] split = text.split(StringUtils.FORMAT_REGEX, -1);
                     for (String s : split) {
-                        components.add(new StringTextComponent(s).withStyle(this.getStyle()));
+                        components.add(new TextComponent(s).withStyle(this.getStyle()));
                     }
                     Pattern pattern = Pattern.compile(StringUtils.FORMAT_REGEX);
                     Matcher matcher = pattern.matcher(text);
@@ -590,15 +588,15 @@ public class Component implements Cloneable, Serializable {
                         i++;
                     }
                 } else {
-                    components.add(new StringTextComponent(StringUtils.format(this.text, this.args.toArray())).withStyle(this.getStyle()));
+                    components.add(new TextComponent(StringUtils.format(this.text, this.args.toArray())).withStyle(this.getStyle()));
                 }
             }
         }
-        components.addAll(this.getChildren().stream().map(component -> (IFormattableTextComponent) component.toTextComponent(languageCode)).collect(Collectors.toList()));
+        components.addAll(this.getChildren().stream().map(component -> (MutableComponent) component.toTextComponent(languageCode)).collect(Collectors.toList()));
         if (components.isEmpty()) {
-            components.add(new StringTextComponent(""));
+            components.add(new TextComponent(""));
         }
-        IFormattableTextComponent result = components.get(0);
+        MutableComponent result = components.get(0);
         for (int j = 1; j < components.size(); j++) {
             result.append(components.get(j));
         }
@@ -608,8 +606,8 @@ public class Component implements Cloneable, Serializable {
     /**
      * 获取翻译文本组件
      */
-    public ITextComponent toTranslatedTextComponent() {
-        IFormattableTextComponent result = new StringTextComponent("");
+    public net.minecraft.network.chat.Component toTranslatedTextComponent() {
+        MutableComponent result = new TranslatableComponent("");
         if (!this.isColorEmpty() || !this.isBgColorEmpty()) {
             if (this.i18nType != EnumI18nType.PLAIN) {
                 Object[] objects = this.getArgs().stream().map(component -> {
@@ -620,12 +618,12 @@ public class Component implements Cloneable, Serializable {
                     }
                 }).toArray();
                 if (CollectionUtils.isNotNullOrEmpty(objects)) {
-                    result = new TranslationTextComponent(I18nUtils.getKey(this.i18nType, this.text), objects);
+                    result = new TranslatableComponent(I18nUtils.getKey(this.i18nType, this.text), objects);
                 } else {
-                    result = new TranslationTextComponent(I18nUtils.getKey(this.i18nType, this.text));
+                    result = new TranslatableComponent(I18nUtils.getKey(this.i18nType, this.text));
                 }
             } else {
-                result = new StringTextComponent(this.text).withStyle(this.getStyle());
+                result = new TextComponent(this.text).withStyle(this.getStyle());
             }
         }
         for (Component child : this.getChildren()) {
@@ -639,7 +637,7 @@ public class Component implements Cloneable, Serializable {
      *
      * @return 格式化颜色后的文本组件
      */
-    public ITextComponent toChatComponent() {
+    public net.minecraft.network.chat.Component toChatComponent() {
         return this.toChatComponent(this.getLanguageCode());
     }
 
@@ -648,20 +646,20 @@ public class Component implements Cloneable, Serializable {
      *
      * @return 格式化颜色后的文本组件
      */
-    public ITextComponent toChatComponent(String languageCode) {
+    public net.minecraft.network.chat.Component toChatComponent(String languageCode) {
         return rewriteColor(this.toTextComponent(languageCode));
     }
 
     // 😵‍💫
-    public static ITextComponent rewriteColor(ITextComponent component) {
-        if (component instanceof IFormattableTextComponent) {
-            Color color = component.getStyle().getColor();
+    public static net.minecraft.network.chat.Component rewriteColor(net.minecraft.network.chat.Component component) {
+        if (component instanceof MutableComponent) {
+            TextColor color = component.getStyle().getColor();
             if (color != null && color.serialize().startsWith("#")) {
-                Style style = component.getStyle().withColor(Color.parseColor(StringUtils.argbToMinecraftColor(StringUtils.argbToHex(color.serialize())).name().toLowerCase()));
-                ((IFormattableTextComponent) component).setStyle(style);
+                Style style = component.getStyle().withColor(TextColor.parseColor(StringUtils.argbToMinecraftColor(StringUtils.argbToHex(color.serialize())).name().toLowerCase()));
+                ((MutableComponent) component).setStyle(style);
             }
         }
-        for (ITextComponent sibling : component.getSiblings()) {
+        for (net.minecraft.network.chat.Component sibling : component.getSiblings()) {
             rewriteColor(sibling);
         }
         return component;
@@ -752,7 +750,7 @@ public class Component implements Cloneable, Serializable {
      * @param key    翻译键
      * @param args   参数
      */
-    public static Component translatable(ServerPlayerEntity player, EnumI18nType type, String key, Object... args) {
+    public static Component translatable(ServerPlayer player, EnumI18nType type, String key, Object... args) {
         return new Component(key, type).setLanguageCode(AotakeUtils.getPlayerLanguage(player)).appendArg(args);
     }
 

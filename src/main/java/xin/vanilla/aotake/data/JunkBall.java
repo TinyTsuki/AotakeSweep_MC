@@ -4,15 +4,15 @@ import lombok.Getter;
 import lombok.NonNull;
 import lombok.Setter;
 import lombok.experimental.Accessors;
-import net.minecraft.entity.Entity;
-import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.item.Item;
-import net.minecraft.item.ItemStack;
-import net.minecraft.item.ItemUseContext;
-import net.minecraft.util.ActionResult;
-import net.minecraft.util.ActionResultType;
-import net.minecraft.util.Hand;
-import net.minecraft.world.World;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.InteractionResult;
+import net.minecraft.world.InteractionResultHolder;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.context.UseOnContext;
+import net.minecraft.world.level.Level;
 
 @Setter
 @Getter
@@ -22,7 +22,7 @@ public class JunkBall extends Item {
 
     public JunkBall() {
         super(new Item.Properties()
-                // .tab(new ItemGroup("aotake_sweep") {
+                // .tab(new CreativeModeTab("aotake_sweep") {
                 //     @NonNull
                 //     @Override
                 //     public ItemStack makeIcon() {
@@ -43,16 +43,16 @@ public class JunkBall extends Item {
 
     @NonNull
     @Override
-    public ActionResult<ItemStack> use(World level, @NonNull PlayerEntity player, @NonNull Hand hand) {
+    public InteractionResultHolder<ItemStack> use(Level level, @NonNull Player player, @NonNull InteractionHand hand) {
         if (!level.isClientSide) {
 
         }
-        return ActionResult.success(player.getItemInHand(hand));
+        return InteractionResultHolder.success(player.getItemInHand(hand));
     }
 
     @NonNull
     @Override
-    public ActionResultType useOn(ItemUseContext context) {
+    public InteractionResult useOn(UseOnContext context) {
         if (!context.getLevel().isClientSide()) {
 
         }

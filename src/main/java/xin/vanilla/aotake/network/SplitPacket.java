@@ -1,7 +1,7 @@
 package xin.vanilla.aotake.network;
 
 import lombok.Data;
-import net.minecraft.network.PacketBuffer;
+import net.minecraft.network.FriendlyByteBuf;
 import xin.vanilla.aotake.AotakeSweep;
 
 import java.util.*;
@@ -26,7 +26,7 @@ public abstract class SplitPacket {
         this.id = String.format("%d.%d", System.currentTimeMillis(), new Random().nextInt(999999999));
     }
 
-    protected SplitPacket(PacketBuffer buf) {
+    protected SplitPacket(FriendlyByteBuf buf) {
         this.id = buf.readUtf();
         this.total = buf.readInt();
         this.sort = buf.readInt();
@@ -54,7 +54,7 @@ public abstract class SplitPacket {
         return result;
     }
 
-    protected void toBytes(PacketBuffer buf) {
+    protected void toBytes(FriendlyByteBuf buf) {
         buf.writeUtf(id);
         buf.writeInt(total);
         buf.writeInt(sort);
