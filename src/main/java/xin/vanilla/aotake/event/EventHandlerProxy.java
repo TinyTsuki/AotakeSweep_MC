@@ -294,15 +294,7 @@ public class EventHandlerProxy {
                 copy.setHoverName(Component.literal(String.format("%s%s", entity.getDisplayName().getString(), copy.getHoverName().getString())).toChatComponent());
                 player.addItem(copy);
 
-                if (entity.isMultipartEntity()) {
-                    PartEntity<?>[] parts = entity.getParts();
-                    if (CollectionUtils.isNotNullOrEmpty(parts)) {
-                        for (PartEntity<?> part : parts) {
-                            part.remove(Entity.RemovalReason.KILLED);
-                        }
-                    }
-                }
-                player.getLevel().removeEntity(entity, true);
+                AotakeUtils.removeEntity(entity, true);
                 // entity.remove(true);
                 player.displayClientMessage(new TextComponent("实体已捕获！"), true);
 

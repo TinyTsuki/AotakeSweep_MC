@@ -6,7 +6,7 @@ import net.minecraft.client.gui.screens.inventory.ContainerScreen;
 import net.minecraft.world.entity.Entity;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.client.event.ClientPlayerNetworkEvent;
-import net.minecraftforge.client.event.GuiScreenEvent;
+import net.minecraftforge.client.event.ScreenEvent;
 import net.minecraftforge.event.AttachCapabilitiesEvent;
 import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.event.entity.player.PlayerContainerEvent;
@@ -127,29 +127,29 @@ public class ClientGameEventHandler {
     private static final Component MOD_NAME = Component.translatable(EnumI18nType.KEY, "categories");
 
     @SubscribeEvent
-    public static void onRenderScreen(GuiScreenEvent event) {
-        if (event.getGui() instanceof ContainerScreen
+    public static void onRenderScreen(ScreenEvent event) {
+        if (event.getScreen() instanceof ContainerScreen
                 && Minecraft.getInstance().player != null
-                && event.getGui().getTitle().getContents()
+                && event.getScreen().getTitle().getContents()
                 .startsWith(MOD_NAME.toTextComponent(AotakeUtils.getPlayerLanguage(Minecraft.getInstance().player)).getContents())
         ) {
             // if (event.isCancelable()) event.setCanceled(false);
-            if (event instanceof GuiScreenEvent.InitGuiEvent.Post) {
-                ((GuiScreenEvent.InitGuiEvent.Post) event).addWidget(
-                        new Button(event.getGui().width / 2 - 88 - 21
-                                , event.getGui().height / 2 - 111
+            if (event instanceof ScreenEvent.InitScreenEvent.Post) {
+                ((ScreenEvent.InitScreenEvent.Post) event).addListener(
+                        new Button(event.getScreen().width / 2 - 88 - 21
+                                , event.getScreen().height / 2 - 111
                                 , 20, 20
                                 , Component.literal("▲").toTextComponent()
                                 , button -> AotakeUtils.sendPacketToServer(new OpenDustbinNotice(-1)))
                 );
-                ((GuiScreenEvent.InitGuiEvent.Post) event).addWidget(
-                        new Button(event.getGui().width / 2 - 88 - 21
-                                , event.getGui().height / 2 - 90
+                ((ScreenEvent.InitScreenEvent.Post) event).addListener(
+                        new Button(event.getScreen().width / 2 - 88 - 21
+                                , event.getScreen().height / 2 - 90
                                 , 20, 20
                                 , Component.literal("▼").toTextComponent()
                                 , button -> AotakeUtils.sendPacketToServer(new OpenDustbinNotice(1)))
                 );
-            } else if (event instanceof GuiScreenEvent.KeyboardKeyPressedEvent.Pre keyEvent) {
+            } else if (event instanceof ScreenEvent.KeyboardKeyPressedEvent.Pre keyEvent) {
                 if (keyEvent.getModifiers() != 0) return;
                 if (keyEvent.getKeyCode() == ClientModEventHandler.DUSTBIN_KEY.getKey().getValue()) {
                     if (!keyDown) {

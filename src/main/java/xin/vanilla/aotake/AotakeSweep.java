@@ -5,6 +5,9 @@ import lombok.Setter;
 import net.minecraft.server.MinecraftServer;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.RegisterCommandsEvent;
+import net.minecraftforge.event.server.ServerStartedEvent;
+import net.minecraftforge.event.server.ServerStartingEvent;
+import net.minecraftforge.event.server.ServerStoppingEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.ModLoadingContext;
 import net.minecraftforge.fml.common.Mod;
@@ -12,9 +15,6 @@ import net.minecraftforge.fml.config.ModConfig;
 import net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent;
 import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent;
 import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
-import net.minecraftforge.fmlserverevents.FMLServerStartedEvent;
-import net.minecraftforge.fmlserverevents.FMLServerStartingEvent;
-import net.minecraftforge.fmlserverevents.FMLServerStoppingEvent;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import xin.vanilla.aotake.command.AotakeCommand;
@@ -106,14 +106,14 @@ public class AotakeSweep {
         CustomConfig.loadCustomConfig(false);
     }
 
-    private void onServerStarting(FMLServerStartingEvent event) {
+    private void onServerStarting(ServerStartingEvent event) {
         AotakeSweep.serverInstance = event.getServer();
     }
 
-    private void onServerStarted(FMLServerStartedEvent event) {
+    private void onServerStarted(ServerStartedEvent event) {
     }
 
-    private void onServerStopping(FMLServerStoppingEvent event) {
+    private void onServerStopping(ServerStoppingEvent event) {
     }
 
     @SubscribeEvent

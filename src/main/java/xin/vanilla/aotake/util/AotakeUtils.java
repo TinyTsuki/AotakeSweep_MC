@@ -32,7 +32,7 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraftforge.entity.PartEntity;
-import net.minecraftforge.fmllegacy.network.PacketDistributor;
+import net.minecraftforge.network.PacketDistributor;
 import net.minecraftforge.registries.ForgeRegistries;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -467,18 +467,7 @@ public class AotakeUtils {
      * 移除实体
      */
     public static void removeEntity(ServerLevel level, Entity entity, boolean keepData) {
-        if (entity instanceof PartEntity) {
-            entity = ((PartEntity<?>) entity).getParent();
-        }
-        if (entity.isMultipartEntity()) {
-            PartEntity<?>[] parts = entity.getParts();
-            if (CollectionUtils.isNotNullOrEmpty(parts)) {
-                for (PartEntity<?> part : parts) {
-                    level.removeEntity(part, keepData);
-                }
-            }
-        }
-        level.removeEntity(entity, keepData);
+        removeEntity(entity, keepData);
     }
 
     /**

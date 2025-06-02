@@ -2,7 +2,7 @@ package xin.vanilla.aotake.network.packet;
 
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraftforge.fmllegacy.network.NetworkEvent;
+import net.minecraftforge.network.NetworkEvent;
 import xin.vanilla.aotake.AotakeSweep;
 import xin.vanilla.aotake.data.world.WorldTrashData;
 import xin.vanilla.aotake.util.AotakeUtils;
