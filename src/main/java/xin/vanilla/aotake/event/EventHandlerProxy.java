@@ -322,10 +322,6 @@ public class EventHandlerProxy {
             else if (event instanceof BonemealEvent) {
                 item = ((BonemealEvent) event).getStack();
             }
-            // 使用铲子
-            else if (event instanceof UseHoeEvent) {
-                item = event.getPlayer().getUseItem();
-            }
             // 其他
             else {
                 item = null;
