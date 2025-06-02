@@ -1,9 +1,7 @@
 package xin.vanilla.aotake;
 
-import com.mojang.brigadier.CommandDispatcher;
 import lombok.Getter;
 import lombok.Setter;
-import net.minecraft.command.CommandSource;
 import net.minecraft.server.MinecraftServer;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.RegisterCommandsEvent;
@@ -48,11 +46,6 @@ public class AotakeSweep {
     private static MinecraftServer serverInstance;
 
     /**
-     * 服务器是否已启动
-     */
-    private boolean serverStarted = false;
-
-    /**
      * 分片网络包缓存
      */
     @Getter
@@ -63,11 +56,6 @@ public class AotakeSweep {
      */
     @Getter
     private static final Map<String, Integer> playerDustbinPage = new ConcurrentHashMap<>();
-
-    /**
-     * 命令调度器
-     */
-    private CommandDispatcher<CommandSource> dispatcher;
 
     public static final Random RANDOM = new Random();
 
@@ -123,26 +111,15 @@ public class AotakeSweep {
     }
 
     private void onServerStarted(FMLServerStartedEvent event) {
-        this.serverStarted = true;
-        this.registerCommands();
     }
 
     private void onServerStopping(FMLServerStoppingEvent event) {
-        this.serverStarted = false;
     }
 
     @SubscribeEvent
     public void onRegisterCommands(RegisterCommandsEvent event) {
-        this.dispatcher = event.getDispatcher();
-        this.registerCommands();
-    }
-
-    private void registerCommands() {
-        if (serverStarted && dispatcher != null) {
-            LOGGER.debug("Registering commands");
-            // 注册指令
-            AotakeCommand.register(this.dispatcher);
-        }
+        LOGGER.debug("Registering commands");
+        AotakeCommand.register(event.getDispatcher());
     }
 
 }
