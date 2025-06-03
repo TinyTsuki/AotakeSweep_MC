@@ -30,7 +30,7 @@ public class ClientGameEventHandler {
     private static final Logger LOGGER = LogManager.getLogger();
 
     @SubscribeEvent
-    public static void onPlayerLoggedOut(ClientPlayerNetworkEvent.LoggedOutEvent event) {
+    public static void onPlayerLoggedOut(ClientPlayerNetworkEvent.LoggingOut event) {
         LOGGER.debug("Client: Player logged out.");
     }
 
@@ -130,26 +130,26 @@ public class ClientGameEventHandler {
     public static void onRenderScreen(ScreenEvent event) {
         if (event.getScreen() instanceof ContainerScreen
                 && Minecraft.getInstance().player != null
-                && event.getScreen().getTitle().getContents()
-                .startsWith(MOD_NAME.toTextComponent(AotakeUtils.getPlayerLanguage(Minecraft.getInstance().player)).getContents())
+                && event.getScreen().getTitle().getString()
+                .startsWith(MOD_NAME.toTextComponent(AotakeUtils.getPlayerLanguage(Minecraft.getInstance().player)).getString())
         ) {
             // if (event.isCancelable()) event.setCanceled(false);
-            if (event instanceof ScreenEvent.InitScreenEvent.Post) {
-                ((ScreenEvent.InitScreenEvent.Post) event).addListener(
+            if (event instanceof ScreenEvent.Init.Post) {
+                ((ScreenEvent.Init.Post) event).addListener(
                         new Button(event.getScreen().width / 2 - 88 - 21
                                 , event.getScreen().height / 2 - 111
                                 , 20, 20
                                 , Component.literal("▲").toTextComponent()
                                 , button -> AotakeUtils.sendPacketToServer(new OpenDustbinNotice(-1)))
                 );
-                ((ScreenEvent.InitScreenEvent.Post) event).addListener(
+                ((ScreenEvent.Init.Post) event).addListener(
                         new Button(event.getScreen().width / 2 - 88 - 21
                                 , event.getScreen().height / 2 - 90
                                 , 20, 20
                                 , Component.literal("▼").toTextComponent()
                                 , button -> AotakeUtils.sendPacketToServer(new OpenDustbinNotice(1)))
                 );
-            } else if (event instanceof ScreenEvent.KeyboardKeyPressedEvent.Pre keyEvent) {
+            } else if (event instanceof ScreenEvent.KeyPressed.Pre keyEvent) {
                 if (keyEvent.getModifiers() != 0) return;
                 if (keyEvent.getKeyCode() == ClientModEventHandler.DUSTBIN_KEY.getKey().getValue()) {
                     if (!keyDown) {

@@ -4,18 +4,19 @@ import lombok.Getter;
 import lombok.Setter;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
+import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.RegisterCommandsEvent;
 import net.minecraftforge.event.server.ServerStartedEvent;
 import net.minecraftforge.event.server.ServerStartingEvent;
 import net.minecraftforge.event.server.ServerStoppingEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.ModLoadingContext;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.config.ModConfig;
 import net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent;
 import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent;
 import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
+import net.minecraftforge.fml.loading.FMLEnvironment;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import xin.vanilla.aotake.command.AotakeCommand;
@@ -66,7 +67,7 @@ public class AotakeSweep {
 
     // public static final Item JUNK_BALL = new JunkBall();
 
-    public AotakeSweep() {
+    public AotakeSweep(FMLJavaModLoadingContext context) {
 
         // 注册网络通道
         ModNetworkHandler.registerPackets();
@@ -80,13 +81,17 @@ public class AotakeSweep {
         MinecraftForge.EVENT_BUS.register(this);
 
         // 注册配置
-        ModLoadingContext.get().registerConfig(ModConfig.Type.COMMON, CommonConfig.COMMON_CONFIG);
-        ModLoadingContext.get().registerConfig(ModConfig.Type.SERVER, ServerConfig.SERVER_CONFIG);
+        context.registerConfig(ModConfig.Type.COMMON, CommonConfig.COMMON_CONFIG);
+        context.registerConfig(ModConfig.Type.SERVER, ServerConfig.SERVER_CONFIG);
 
         // 注册客户端设置事件
-        FMLJavaModLoadingContext.get().getModEventBus().addListener(this::onClientSetup);
+        context.getModEventBus().addListener(this::onClientSetup);
         // 注册公共设置事件
-        FMLJavaModLoadingContext.get().getModEventBus().addListener(this::onCommonSetup);
+        context.getModEventBus().addListener(this::onCommonSetup);
+
+        if (FMLEnvironment.dist == Dist.CLIENT) {
+            context.getModEventBus().addListener(ClientModEventHandler::registerKeyBindings);
+        }
     }
 
     /**
@@ -94,9 +99,6 @@ public class AotakeSweep {
      */
     @SubscribeEvent
     public void onClientSetup(final FMLClientSetupEvent event) {
-        // 注册键绑定
-        LOGGER.debug("Registering key bindings");
-        ClientModEventHandler.registerKeyBindings();
     }
 
     /**

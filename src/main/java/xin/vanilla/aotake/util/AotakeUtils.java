@@ -3,16 +3,14 @@ package xin.vanilla.aotake.util;
 import com.mojang.brigadier.StringReader;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import lombok.NonNull;
-import net.minecraft.Util;
 import net.minecraft.client.Minecraft;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.arguments.blocks.BlockStateParser;
+import net.minecraft.core.Registry;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.TagParser;
-import net.minecraft.network.chat.ChatType;
 import net.minecraft.network.chat.ClickEvent;
 import net.minecraft.network.chat.HoverEvent;
-import net.minecraft.network.chat.TranslatableComponent;
 import net.minecraft.network.protocol.Packet;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
@@ -52,6 +50,7 @@ import javax.annotation.Nullable;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 public class AotakeUtils {
@@ -195,7 +194,7 @@ public class AotakeUtils {
      * @param message 消息
      */
     public static void broadcastMessage(ServerPlayer player, Component message) {
-        player.server.getPlayerList().broadcastMessage(new TranslatableComponent("chat.type.announcement", player.getDisplayName(), message.toChatComponent()), ChatType.SYSTEM, Util.NIL_UUID);
+        player.server.getPlayerList().broadcastSystemMessage(net.minecraft.network.chat.Component.translatable("chat.type.announcement", player.getDisplayName(), message.toChatComponent()), false);
     }
 
     /**
@@ -205,7 +204,7 @@ public class AotakeUtils {
      * @param message 消息
      */
     public static void broadcastMessage(MinecraftServer server, Component message) {
-        server.getPlayerList().broadcastMessage(new TranslatableComponent("chat.type.announcement", "Server", message.toChatComponent()), ChatType.SYSTEM, Util.NIL_UUID);
+        server.getPlayerList().broadcastSystemMessage(net.minecraft.network.chat.Component.translatable("chat.type.announcement", "Server", message.toChatComponent()), false);
     }
 
     /**
@@ -215,7 +214,7 @@ public class AotakeUtils {
      * @param message 消息
      */
     public static void sendMessage(Player player, Component message) {
-        player.sendMessage(message.toChatComponent(AotakeUtils.getPlayerLanguage(player)), player.getUUID());
+        player.sendSystemMessage(message.toChatComponent(AotakeUtils.getPlayerLanguage(player)));
     }
 
     /**
@@ -225,7 +224,7 @@ public class AotakeUtils {
      * @param message 消息
      */
     public static void sendMessage(Player player, String message) {
-        player.sendMessage(Component.literal(message).toChatComponent(), player.getUUID());
+        player.sendSystemMessage(Component.literal(message).toChatComponent());
     }
 
     /**
@@ -236,7 +235,7 @@ public class AotakeUtils {
      * @param args   参数
      */
     public static void sendTranslatableMessage(Player player, String key, Object... args) {
-        player.sendMessage(Component.translatable(key, args).setLanguageCode(AotakeUtils.getPlayerLanguage(player)).toChatComponent(), player.getUUID());
+        player.sendSystemMessage(Component.translatable(key, args).setLanguageCode(AotakeUtils.getPlayerLanguage(player)).toChatComponent());
     }
 
     /**
@@ -574,7 +573,7 @@ public class AotakeUtils {
      */
     public static BlockState deserializeBlockState(String block) {
         try {
-            return new BlockStateParser(new StringReader(block), false).parse(true).getState();
+            return BlockStateParser.parseForBlock(Registry.BLOCK, new StringReader(block), false).blockState();
         } catch (Exception e) {
             LOGGER.error("Invalid unsafe block: {}", block, e);
             return null;
@@ -593,10 +592,9 @@ public class AotakeUtils {
      * 获取方块注册ID
      */
     @NonNull
-    public static String getBlockRegistryName(@NonNull Block block) {
-        ResourceLocation location = ForgeRegistries.BLOCKS.getKey(block);
-        if (location == null) location = block.getRegistryName();
-        return location == null ? "" : location.toString();
+    public static String getBlockRegistryName(Block block) {
+        Optional<ResourceKey<Block>> key = block.defaultBlockState().getBlockHolder().unwrapKey();
+        return key.map(blockResourceKey -> blockResourceKey.location().toString()).orElse("");
     }
 
     /**
@@ -639,7 +637,6 @@ public class AotakeUtils {
     @NonNull
     public static String getItemRegistryName(@NonNull Item item) {
         ResourceLocation location = ForgeRegistries.ITEMS.getKey(item);
-        if (location == null) location = item.getRegistryName();
         return location == null ? "" : location.toString();
     }
 
@@ -648,9 +645,15 @@ public class AotakeUtils {
      */
     @NonNull
     public static String getEntityTypeRegistryName(@NonNull Entity entity) {
-        EntityType<?> entityType = entity.getType();
-        ResourceLocation location = ForgeRegistries.ENTITIES.getKey(entityType);
-        if (location == null) location = entityType.getRegistryName();
+        return getEntityTypeRegistryName(entity.getType());
+    }
+
+    /**
+     * 获取实体类型注册ID
+     */
+    @NonNull
+    public static String getEntityTypeRegistryName(@NonNull EntityType<?> entityType) {
+        ResourceLocation location = ForgeRegistries.ENTITY_TYPES.getKey(entityType);
         return location == null ? AotakeSweep.emptyResource().toString() : location.toString();
     }
 

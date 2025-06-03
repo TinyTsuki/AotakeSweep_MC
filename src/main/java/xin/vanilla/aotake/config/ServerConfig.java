@@ -3,6 +3,7 @@ package xin.vanilla.aotake.config;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.item.Items;
 import net.minecraftforge.common.ForgeConfigSpec;
+import net.minecraftforge.registries.ForgeRegistries;
 import xin.vanilla.aotake.enums.EnumOverflowMode;
 import xin.vanilla.aotake.enums.EnumSelfCleanMode;
 
@@ -196,20 +197,20 @@ public class ServerConfig {
                     .comment("The item used to capture the entity being cleaned up."
                             , "使用以下物品捕获被清理的实体。")
                     .define("catchItem", new ArrayList<>() {{
-                        add(Items.SNOWBALL.getRegistryName().toString());
-                        add(Items.GLASS_BOTTLE.getRegistryName().toString());
-                        add(Items.MUSIC_DISC_13.getRegistryName().toString());
-                        add(Items.MUSIC_DISC_CAT.getRegistryName().toString());
-                        add(Items.MUSIC_DISC_BLOCKS.getRegistryName().toString());
-                        add(Items.MUSIC_DISC_CHIRP.getRegistryName().toString());
-                        add(Items.MUSIC_DISC_FAR.getRegistryName().toString());
-                        add(Items.MUSIC_DISC_MALL.getRegistryName().toString());
-                        add(Items.MUSIC_DISC_MELLOHI.getRegistryName().toString());
-                        add(Items.MUSIC_DISC_STAL.getRegistryName().toString());
-                        add(Items.MUSIC_DISC_STRAD.getRegistryName().toString());
-                        add(Items.MUSIC_DISC_WARD.getRegistryName().toString());
-                        add(Items.MUSIC_DISC_WAIT.getRegistryName().toString());
-                        add(Items.MUSIC_DISC_PIGSTEP.getRegistryName().toString());
+                        add(ForgeRegistries.ITEMS.getKey(Items.SNOWBALL).toString());
+                        add(ForgeRegistries.ITEMS.getKey(Items.GLASS_BOTTLE).toString());
+                        add(ForgeRegistries.ITEMS.getKey(Items.MUSIC_DISC_13).toString());
+                        add(ForgeRegistries.ITEMS.getKey(Items.MUSIC_DISC_CAT).toString());
+                        add(ForgeRegistries.ITEMS.getKey(Items.MUSIC_DISC_BLOCKS).toString());
+                        add(ForgeRegistries.ITEMS.getKey(Items.MUSIC_DISC_CHIRP).toString());
+                        add(ForgeRegistries.ITEMS.getKey(Items.MUSIC_DISC_FAR).toString());
+                        add(ForgeRegistries.ITEMS.getKey(Items.MUSIC_DISC_MALL).toString());
+                        add(ForgeRegistries.ITEMS.getKey(Items.MUSIC_DISC_MELLOHI).toString());
+                        add(ForgeRegistries.ITEMS.getKey(Items.MUSIC_DISC_STAL).toString());
+                        add(ForgeRegistries.ITEMS.getKey(Items.MUSIC_DISC_STRAD).toString());
+                        add(ForgeRegistries.ITEMS.getKey(Items.MUSIC_DISC_WARD).toString());
+                        add(ForgeRegistries.ITEMS.getKey(Items.MUSIC_DISC_WAIT).toString());
+                        add(ForgeRegistries.ITEMS.getKey(Items.MUSIC_DISC_PIGSTEP).toString());
                     }});
 
             // 允许被清理的实体
@@ -217,8 +218,8 @@ public class ServerConfig {
                     .comment("The entity that can be cleaned up."
                             , "允许被清理的实体。")
                     .define("junkEntity", new ArrayList<>() {{
-                                add(EntityType.ARROW.getRegistryName().toString());
-                                add(EntityType.SPECTRAL_ARROW.getRegistryName().toString());
+                                add(ForgeRegistries.ENTITY_TYPES.getKey(EntityType.ARROW).toString());
+                                add(ForgeRegistries.ENTITY_TYPES.getKey(EntityType.SPECTRAL_ARROW).toString());
                             }}
                     );
 
@@ -227,7 +228,7 @@ public class ServerConfig {
                     .comment("The entity that can be captured when cleaned up."
                             , "清理时允许被捕获的实体。")
                     .define("catchEntity", new ArrayList<>() {{
-                        add(EntityType.EXPERIENCE_ORB.getRegistryName().toString());
+                        add(ForgeRegistries.ENTITY_TYPES.getKey(EntityType.EXPERIENCE_ORB).toString());
                     }});
 
             // 物品清理白名单
@@ -354,27 +355,27 @@ public class ServerConfig {
         CHUNK_CHECK_INTERVAL.set(5 * 1000L);
         CHUNK_CHECK_LIMIT.set(250);
         CATCH_ITEM.set(new ArrayList<>() {{
-            add(Items.SNOWBALL.getRegistryName().toString());
-            add(Items.GLASS_BOTTLE.getRegistryName().toString());
-            add(Items.MUSIC_DISC_13.getRegistryName().toString());
-            add(Items.MUSIC_DISC_CAT.getRegistryName().toString());
-            add(Items.MUSIC_DISC_BLOCKS.getRegistryName().toString());
-            add(Items.MUSIC_DISC_CHIRP.getRegistryName().toString());
-            add(Items.MUSIC_DISC_FAR.getRegistryName().toString());
-            add(Items.MUSIC_DISC_MALL.getRegistryName().toString());
-            add(Items.MUSIC_DISC_MELLOHI.getRegistryName().toString());
-            add(Items.MUSIC_DISC_STAL.getRegistryName().toString());
-            add(Items.MUSIC_DISC_STRAD.getRegistryName().toString());
-            add(Items.MUSIC_DISC_WARD.getRegistryName().toString());
-            add(Items.MUSIC_DISC_WAIT.getRegistryName().toString());
-            add(Items.MUSIC_DISC_PIGSTEP.getRegistryName().toString());
+            add(ForgeRegistries.ITEMS.getKey(Items.SNOWBALL).toString());
+            add(ForgeRegistries.ITEMS.getKey(Items.GLASS_BOTTLE).toString());
+            add(ForgeRegistries.ITEMS.getKey(Items.MUSIC_DISC_13).toString());
+            add(ForgeRegistries.ITEMS.getKey(Items.MUSIC_DISC_CAT).toString());
+            add(ForgeRegistries.ITEMS.getKey(Items.MUSIC_DISC_BLOCKS).toString());
+            add(ForgeRegistries.ITEMS.getKey(Items.MUSIC_DISC_CHIRP).toString());
+            add(ForgeRegistries.ITEMS.getKey(Items.MUSIC_DISC_FAR).toString());
+            add(ForgeRegistries.ITEMS.getKey(Items.MUSIC_DISC_MALL).toString());
+            add(ForgeRegistries.ITEMS.getKey(Items.MUSIC_DISC_MELLOHI).toString());
+            add(ForgeRegistries.ITEMS.getKey(Items.MUSIC_DISC_STAL).toString());
+            add(ForgeRegistries.ITEMS.getKey(Items.MUSIC_DISC_STRAD).toString());
+            add(ForgeRegistries.ITEMS.getKey(Items.MUSIC_DISC_WARD).toString());
+            add(ForgeRegistries.ITEMS.getKey(Items.MUSIC_DISC_WAIT).toString());
+            add(ForgeRegistries.ITEMS.getKey(Items.MUSIC_DISC_PIGSTEP).toString());
         }});
         JUNK_ENTITY.set(new ArrayList<>() {{
-            add(EntityType.ARROW.getRegistryName().toString());
-            add(EntityType.SPECTRAL_ARROW.getRegistryName().toString());
+            add(ForgeRegistries.ENTITY_TYPES.getKey(EntityType.ARROW).toString());
+            add(ForgeRegistries.ENTITY_TYPES.getKey(EntityType.SPECTRAL_ARROW).toString());
         }});
         CATCH_ENTITY.set(new ArrayList<>() {{
-            add(EntityType.EXPERIENCE_ORB.getRegistryName().toString());
+            add(ForgeRegistries.ENTITY_TYPES.getKey(EntityType.EXPERIENCE_ORB).toString());
         }});
         ITEM_WHITELIST.set(new ArrayList<>());
         ITEM_BLACKLIST.set(new ArrayList<>());

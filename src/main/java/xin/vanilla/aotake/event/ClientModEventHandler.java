@@ -2,7 +2,7 @@ package xin.vanilla.aotake.event;
 
 import net.minecraft.client.KeyMapping;
 import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.client.ClientRegistry;
+import net.minecraftforge.client.event.RegisterKeyMappingsEvent;
 import net.minecraftforge.common.capabilities.RegisterCapabilitiesEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
@@ -39,10 +39,12 @@ public class ClientModEventHandler {
     /**
      * 注册键绑定
      */
-    public static void registerKeyBindings() {
-        ClientRegistry.registerKeyBinding(DUSTBIN_KEY);
-        ClientRegistry.registerKeyBinding(DUSTBIN_PRE_KEY);
-        ClientRegistry.registerKeyBinding(DUSTBIN_NEXT_KEY);
+    public static void registerKeyBindings(RegisterKeyMappingsEvent event) {
+        // 注册键绑定
+        LOGGER.debug("Registering key bindings");
+        event.register(DUSTBIN_KEY);
+        event.register(DUSTBIN_PRE_KEY);
+        event.register(DUSTBIN_NEXT_KEY);
     }
 
     @SubscribeEvent

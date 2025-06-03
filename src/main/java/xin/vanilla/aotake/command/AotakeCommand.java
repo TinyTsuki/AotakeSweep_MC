@@ -289,7 +289,7 @@ public class AotakeCommand {
             entities.stream()
                     .filter(Objects::nonNull)
                     .filter(entity -> entity instanceof ItemEntity
-                            || (withEntity && ServerConfig.JUNK_ENTITY.get().contains(entity.getType().getRegistryName().toString()))
+                            || (withEntity && ServerConfig.JUNK_ENTITY.get().contains(AotakeUtils.getEntityTypeRegistryName(entity)))
                     ).forEach(entity -> {
                         if (entity instanceof ItemEntity) {
                             result.plusItemCount(((ItemEntity) entity).getItem().getCount());

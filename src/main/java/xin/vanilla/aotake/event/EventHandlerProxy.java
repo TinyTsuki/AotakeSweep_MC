@@ -1,7 +1,6 @@
 package xin.vanilla.aotake.event;
 
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.network.chat.TextComponent;
 import net.minecraft.network.protocol.game.ClientboundSetPassengersPacket;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionResult;
@@ -170,9 +169,9 @@ public class EventHandlerProxy {
     }
 
     public static void onPlayerCloned(PlayerEvent.Clone event) {
-        if (event.getPlayer() instanceof ServerPlayer) {
+        if (event.getEntity() instanceof ServerPlayer) {
             ServerPlayer original = (ServerPlayer) event.getOriginal();
-            ServerPlayer newPlayer = (ServerPlayer) event.getPlayer();
+            ServerPlayer newPlayer = (ServerPlayer) event.getEntity();
             original.revive();
             AotakeUtils.clonePlayerLanguage(original, newPlayer);
             LazyOptional<IPlayerSweepData> oldDataCap = original.getCapability(PlayerSweepDataCapability.PLAYER_DATA);
@@ -183,7 +182,7 @@ public class EventHandlerProxy {
 
     public static void onPlayerUseItem(PlayerInteractEvent.RightClickItem event) {
         if (AotakeSweep.isDisable()) return;
-        if (event.getPlayer() instanceof ServerPlayer) {
+        if (event.getEntity() instanceof ServerPlayer) {
             CompoundTag tag = event.getItemStack().getTag();
             if (tag != null && tag.contains(AotakeSweep.MODID)) {
                 CompoundTag aotake = tag.getCompound(AotakeSweep.MODID);
@@ -197,7 +196,7 @@ public class EventHandlerProxy {
 
     public static void onRightBlock(PlayerInteractEvent.RightClickBlock event) {
         if (AotakeSweep.isDisable()) return;
-        if (event.getPlayer() instanceof ServerPlayer player) {
+        if (event.getEntity() instanceof ServerPlayer player) {
             ItemStack original = event.getItemStack();
             releaseEntity(event, player, original, new Coordinate(event.getHitVec().getLocation().x(), event.getHitVec().getLocation().y(), event.getHitVec().getLocation().z()));
         }
@@ -236,7 +235,7 @@ public class EventHandlerProxy {
                     }
                     player.addItem(copy);
 
-                    player.displayClientMessage(new TextComponent("实体已释放！"), true);
+                    player.displayClientMessage(net.minecraft.network.chat.Component.literal("实体已释放！"), true);
 
                     event.setCanceled(true);
                     event.setResult(Event.Result.DENY);
@@ -251,7 +250,7 @@ public class EventHandlerProxy {
 
     public static void onRightEntity(PlayerInteractEvent.EntityInteractSpecific event) {
         if (AotakeSweep.isDisable()) return;
-        if (event.getPlayer() instanceof ServerPlayer player) {
+        if (event.getEntity() instanceof ServerPlayer player) {
             ItemStack original = event.getItemStack();
             ItemStack copy = original.copy();
             copy.setCount(1);
@@ -296,7 +295,7 @@ public class EventHandlerProxy {
 
                 AotakeUtils.removeEntity(entity, true);
                 // entity.remove(true);
-                player.displayClientMessage(new TextComponent("实体已捕获！"), true);
+                player.displayClientMessage(net.minecraft.network.chat.Component.literal("实体已捕获！"), true);
 
                 event.setCanceled(true);
                 event.setResult(Event.Result.DENY);
@@ -307,8 +306,8 @@ public class EventHandlerProxy {
 
     public static void onPlayerUseItem(PlayerEvent event) {
         if (AotakeSweep.isDisable()) return;
-        if (event.getPlayer() == null) return;
-        if (event.getPlayer().isCrouching() && ServerConfig.ALLOW_CATCH_ITEM.get()) {
+        if (event.getEntity() == null) return;
+        if (event.getEntity().isCrouching() && ServerConfig.ALLOW_CATCH_ITEM.get()) {
             ItemStack item;
             // 桶装牛奶事件
             if (event instanceof FillBucketEvent) {

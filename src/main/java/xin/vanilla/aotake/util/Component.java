@@ -544,7 +544,7 @@ public class Component implements Cloneable, Serializable {
                     String text = I18nUtils.getTranslation(I18nUtils.getKey(this.i18nType, this.text), languageCode);
                     String[] split = text.split(StringUtils.FORMAT_REGEX, -1);
                     for (String s : split) {
-                        components.add(new TextComponent(s).withStyle(this.getStyle()));
+                        components.add(net.minecraft.network.chat.Component.literal(s).withStyle(this.getStyle()));
                     }
                     Pattern pattern = Pattern.compile(StringUtils.FORMAT_REGEX);
                     Matcher matcher = pattern.matcher(text);
@@ -588,13 +588,13 @@ public class Component implements Cloneable, Serializable {
                         i++;
                     }
                 } else {
-                    components.add(new TextComponent(StringUtils.format(this.text, this.args.toArray())).withStyle(this.getStyle()));
+                    components.add(net.minecraft.network.chat.Component.literal(StringUtils.format(this.text, this.args.toArray())).withStyle(this.getStyle()));
                 }
             }
         }
         components.addAll(this.getChildren().stream().map(component -> (MutableComponent) component.toTextComponent(languageCode)).collect(Collectors.toList()));
         if (components.isEmpty()) {
-            components.add(new TextComponent(""));
+            components.add(net.minecraft.network.chat.Component.literal(""));
         }
         MutableComponent result = components.get(0);
         for (int j = 1; j < components.size(); j++) {
@@ -607,7 +607,7 @@ public class Component implements Cloneable, Serializable {
      * 获取翻译文本组件
      */
     public net.minecraft.network.chat.Component toTranslatedTextComponent() {
-        MutableComponent result = new TranslatableComponent("");
+        MutableComponent result = net.minecraft.network.chat.Component.translatable("");
         if (!this.isColorEmpty() || !this.isBgColorEmpty()) {
             if (this.i18nType != EnumI18nType.PLAIN) {
                 Object[] objects = this.getArgs().stream().map(component -> {
@@ -618,12 +618,12 @@ public class Component implements Cloneable, Serializable {
                     }
                 }).toArray();
                 if (CollectionUtils.isNotNullOrEmpty(objects)) {
-                    result = new TranslatableComponent(I18nUtils.getKey(this.i18nType, this.text), objects);
+                    result = net.minecraft.network.chat.Component.translatable(I18nUtils.getKey(this.i18nType, this.text), objects);
                 } else {
-                    result = new TranslatableComponent(I18nUtils.getKey(this.i18nType, this.text));
+                    result = net.minecraft.network.chat.Component.translatable(I18nUtils.getKey(this.i18nType, this.text));
                 }
             } else {
-                result = new TextComponent(this.text).withStyle(this.getStyle());
+                result = net.minecraft.network.chat.Component.literal(this.text).withStyle(this.getStyle());
             }
         }
         for (Component child : this.getChildren()) {
