@@ -1,6 +1,6 @@
 package xin.vanilla.aotake.config;
 
-import net.minecraftforge.common.ForgeConfigSpec;
+import net.neoforged.neoforge.common.ModConfigSpec;
 import xin.vanilla.aotake.AotakeSweep;
 
 import java.util.ArrayList;
@@ -8,7 +8,7 @@ import java.util.List;
 
 public class CommonConfig {
 
-    public static final ForgeConfigSpec COMMON_CONFIG;
+    public static final ModConfigSpec COMMON_CONFIG;
 
 
     // region 基础设置
@@ -16,37 +16,37 @@ public class CommonConfig {
     /**
      * 垃圾箱页数限制
      */
-    public static final ForgeConfigSpec.IntValue DUSTBIN_PAGE_LIMIT;
+    public static final ModConfigSpec.IntValue DUSTBIN_PAGE_LIMIT;
 
     /**
      * 服务器没人时是否打扫
      */
-    public static final ForgeConfigSpec.BooleanValue SWEEP_WHEN_NO_PLAYER;
+    public static final ModConfigSpec.BooleanValue SWEEP_WHEN_NO_PLAYER;
 
     /**
      * 打扫前提示序列
      */
-    public static final ForgeConfigSpec.ConfigValue<List<Integer>> SWEEP_WARNING_SECOND;
+    public static final ModConfigSpec.ConfigValue<List<? extends Integer>> SWEEP_WARNING_SECOND;
 
     /**
      * 打扫前提示内容
      */
-    public static final ForgeConfigSpec.ConfigValue<List<String>> SWEEP_WARNING_CONTENT;
+    public static final ModConfigSpec.ConfigValue<List<? extends String>> SWEEP_WARNING_CONTENT;
 
     /**
      * 实体处于该方块中时不会被清理
      */
-    public static final ForgeConfigSpec.ConfigValue<List<String>> SAFE_BLOCKS;
+    public static final ModConfigSpec.ConfigValue<List<? extends String>> SAFE_BLOCKS;
 
     /**
      * 实体处于该方块上时不会被清理
      */
-    public static final ForgeConfigSpec.ConfigValue<List<String>> SAFE_BLOCKS_BELOW;
+    public static final ModConfigSpec.ConfigValue<List<? extends String>> SAFE_BLOCKS_BELOW;
 
     /**
      * 实体处于该方块下时不会被清理
      */
-    public static final ForgeConfigSpec.ConfigValue<List<String>> SAFE_BLOCKS_ABOVE;
+    public static final ModConfigSpec.ConfigValue<List<? extends String>> SAFE_BLOCKS_ABOVE;
 
     // endregion 基础设置
 
@@ -56,52 +56,52 @@ public class CommonConfig {
     /**
      * 命令前缀
      */
-    public static final ForgeConfigSpec.ConfigValue<String> COMMAND_PREFIX;
+    public static final ModConfigSpec.ConfigValue<String> COMMAND_PREFIX;
 
     /**
      * 设置语言
      */
-    public static final ForgeConfigSpec.ConfigValue<String> COMMAND_LANGUAGE;
+    public static final ModConfigSpec.ConfigValue<String> COMMAND_LANGUAGE;
 
     /**
      * 设置虚拟权限
      */
-    public static final ForgeConfigSpec.ConfigValue<String> COMMAND_VIRTUAL_OP;
+    public static final ModConfigSpec.ConfigValue<String> COMMAND_VIRTUAL_OP;
 
     /**
      * 打开垃圾箱
      */
-    public static final ForgeConfigSpec.ConfigValue<String> COMMAND_DUSTBIN_OPEN;
+    public static final ModConfigSpec.ConfigValue<String> COMMAND_DUSTBIN_OPEN;
 
     /**
      * 清空垃圾箱
      */
-    public static final ForgeConfigSpec.ConfigValue<String> COMMAND_DUSTBIN_CLEAR;
+    public static final ModConfigSpec.ConfigValue<String> COMMAND_DUSTBIN_CLEAR;
 
     /**
      * 将垃圾箱物品掉落到世界
      */
-    public static final ForgeConfigSpec.ConfigValue<String> COMMAND_DUSTBIN_DROP;
+    public static final ModConfigSpec.ConfigValue<String> COMMAND_DUSTBIN_DROP;
 
     /**
      * 清空缓存
      */
-    public static final ForgeConfigSpec.ConfigValue<String> COMMAND_CACHE_CLEAR;
+    public static final ModConfigSpec.ConfigValue<String> COMMAND_CACHE_CLEAR;
 
     /**
      * 将缓存内物品掉落至世界
      */
-    public static final ForgeConfigSpec.ConfigValue<String> COMMAND_CACHE_DROP;
+    public static final ModConfigSpec.ConfigValue<String> COMMAND_CACHE_DROP;
 
     /**
      * 触发扫地
      */
-    public static final ForgeConfigSpec.ConfigValue<String> COMMAND_SWEEP;
+    public static final ModConfigSpec.ConfigValue<String> COMMAND_SWEEP;
 
     /**
      * 清除掉落物
      */
-    public static final ForgeConfigSpec.ConfigValue<String> COMMAND_CLEAR_DROP;
+    public static final ModConfigSpec.ConfigValue<String> COMMAND_CLEAR_DROP;
 
     // endregion 自定义指令
 
@@ -111,53 +111,53 @@ public class CommonConfig {
     /**
      * 设置语言
      */
-    public static final ForgeConfigSpec.BooleanValue CONCISE_LANGUAGE;
+    public static final ModConfigSpec.BooleanValue CONCISE_LANGUAGE;
 
     /**
      * 设置虚拟权限
      */
-    public static final ForgeConfigSpec.BooleanValue CONCISE_VIRTUAL_OP;
+    public static final ModConfigSpec.BooleanValue CONCISE_VIRTUAL_OP;
 
     /**
      * 打开垃圾箱
      */
-    public static final ForgeConfigSpec.BooleanValue CONCISE_DUSTBIN_OPEN;
+    public static final ModConfigSpec.BooleanValue CONCISE_DUSTBIN_OPEN;
 
     /**
      * 清空垃圾箱
      */
-    public static final ForgeConfigSpec.BooleanValue CONCISE_DUSTBIN_CLEAR;
+    public static final ModConfigSpec.BooleanValue CONCISE_DUSTBIN_CLEAR;
 
     /**
      * 将垃圾箱物品掉落到世界
      */
-    public static final ForgeConfigSpec.BooleanValue CONCISE_DUSTBIN_DROP;
+    public static final ModConfigSpec.BooleanValue CONCISE_DUSTBIN_DROP;
 
     /**
      * 清空缓存
      */
-    public static final ForgeConfigSpec.BooleanValue CONCISE_CACHE_CLEAR;
+    public static final ModConfigSpec.BooleanValue CONCISE_CACHE_CLEAR;
 
     /**
      * 将缓存内物品掉落至世界
      */
-    public static final ForgeConfigSpec.BooleanValue CONCISE_CACHE_DROP;
+    public static final ModConfigSpec.BooleanValue CONCISE_CACHE_DROP;
 
     /**
      * 触发扫地
      */
-    public static final ForgeConfigSpec.BooleanValue CONCISE_SWEEP;
+    public static final ModConfigSpec.BooleanValue CONCISE_SWEEP;
 
     /**
      * 清除掉落物
      */
-    public static final ForgeConfigSpec.BooleanValue CONCISE_CLEAR_DROP;
+    public static final ModConfigSpec.BooleanValue CONCISE_CLEAR_DROP;
 
     // endregion 简化指令
 
 
     static {
-        ForgeConfigSpec.Builder SERVER_BUILDER = new ForgeConfigSpec.Builder();
+        ModConfigSpec.Builder SERVER_BUILDER = new ModConfigSpec.Builder();
 
         // 定义基础设置
         {
@@ -179,7 +179,7 @@ public class CommonConfig {
             SWEEP_WARNING_SECOND = SERVER_BUILDER
                     .comment("A warning will be issued the specified number of seconds before the cleanup."
                             , "将会在打扫前的以下指定秒数进行提示。")
-                    .define("sweepWarningSecond", new ArrayList<>() {{
+                    .defineListAllowEmpty("sweepWarningSecond", new ArrayList<>() {{
                         add(-1);
                         add(0);
                         add(1);
@@ -190,14 +190,14 @@ public class CommonConfig {
                         add(10);
                         add(30);
                         add(60);
-                    }});
+                    }}, o -> o instanceof Integer);
 
             // 打扫前提示内容
             SWEEP_WARNING_CONTENT = SERVER_BUILDER
                     .comment("The content of the warning before the cleanup."
                             , "打扫前提示内容，配合`sweepWarningSecond`使用，留空将使用内置提示。",
                             "[entityCount], [itemCount], [recycledItemCount], [recycledEntityCount]")
-                    .define("sweepWarningContent", new ArrayList<>() {{
+                    .defineListAllowEmpty("sweepWarningContent", new ArrayList<>() {{
                         add("§r§e香草酱什么也没吃到，失落地离开了。");
                         add("§r§e香草酱吃掉了[itemCount]个物品与[entityCount]个实体，并满意地离开了。");
                         add("§r§e饥肠辘辘的香草酱将会在§r§e%s§r§e秒后到来！");
@@ -208,7 +208,7 @@ public class CommonConfig {
                         add("§r§e饥肠辘辘的香草酱将会在§r§e%s§r§e秒后到来。");
                         add("§r§e饥肠辘辘的香草酱将会在§r§e%s§r§e秒后到来。");
                         add("§r§e饥肠辘辘的香草酱将会在§r§e%s§r§e秒后到来。");
-                    }});
+                    }}, o -> o instanceof String);
 
             // 实体处于该方块中时不会被清理
             SAFE_BLOCKS = SERVER_BUILDER
@@ -216,7 +216,7 @@ public class CommonConfig {
                             , "Allow blocks with states, such as: minecraft:lava[level=0]."
                             , "实体处于该方块中时不会被清理。"
                             , "支持带状态的方块id，如：minecraft:lava[level=0]")
-                    .define("safeBlocks", new ArrayList<>() {{
+                    .defineListAllowEmpty("safeBlocks", new ArrayList<>() {{
                         add("immersiveengineering:conveyor_basic");
                         add("immersiveengineering:conveyor_covered");
                         add("immersiveengineering:conveyor_dropper");
@@ -228,7 +228,7 @@ public class CommonConfig {
                         add("immersiveengineering:conveyor_splittercovered");
                         add("immersiveengineering:conveyor_vertical");
                         add("immersiveengineering:conveyor_verticalcovered");
-                    }});
+                    }}, o -> o instanceof String);
 
             // 实体处于该方块上时不会被清理
             SAFE_BLOCKS_BELOW = SERVER_BUILDER
@@ -236,8 +236,8 @@ public class CommonConfig {
                             , "Allow blocks with states, such as: minecraft:lava[level=0]."
                             , "实体处于该方块上时不会被清理。"
                             , "支持带状态的方块id，如：minecraft:lava[level=0]")
-                    .define("safeBlocksBelow", new ArrayList<>() {{
-                    }});
+                    .defineListAllowEmpty("safeBlocksBelow", new ArrayList<>() {{
+                    }}, o -> o instanceof String);
 
 
             // 实体处于该方块下时不会被清理
@@ -246,8 +246,8 @@ public class CommonConfig {
                             , "Allow blocks with states, such as: minecraft:lava[level=0]."
                             , "实体处于该方块下时不会被清理。"
                             , "支持带状态的方块id，如：minecraft:lava[level=0]")
-                    .define("safeBlocksAbove", new ArrayList<>() {{
-                    }});
+                    .defineListAllowEmpty("safeBlocksAbove", new ArrayList<>() {{
+                    }}, o -> o instanceof String);
 
             SERVER_BUILDER.pop();
         }

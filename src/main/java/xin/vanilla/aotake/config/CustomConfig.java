@@ -3,7 +3,7 @@ package xin.vanilla.aotake.config;
 import com.google.gson.JsonObject;
 import lombok.Getter;
 import lombok.Setter;
-import net.minecraftforge.fml.loading.FMLPaths;
+import net.neoforged.fml.loading.FMLPaths;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import xin.vanilla.aotake.util.JsonUtils;

@@ -1,11 +1,10 @@
 package xin.vanilla.aotake.event;
 
 import net.minecraft.client.KeyMapping;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.client.event.RegisterKeyMappingsEvent;
-import net.minecraftforge.common.capabilities.RegisterCapabilitiesEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.EventBusSubscriber;
+import net.neoforged.neoforge.client.event.RegisterKeyMappingsEvent;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.lwjgl.glfw.GLFW;
@@ -14,7 +13,7 @@ import xin.vanilla.aotake.AotakeSweep;
 /**
  * 客户端 Mod事件处理器
  */
-@Mod.EventBusSubscriber(modid = AotakeSweep.MODID, value = Dist.CLIENT, bus = Mod.EventBusSubscriber.Bus.MOD)
+@EventBusSubscriber(modid = AotakeSweep.MODID, value = Dist.CLIENT, bus = EventBusSubscriber.Bus.MOD)
 public class ClientModEventHandler {
     private static final Logger LOGGER = LogManager.getLogger();
 
@@ -39,17 +38,13 @@ public class ClientModEventHandler {
     /**
      * 注册键绑定
      */
+    @SubscribeEvent
     public static void registerKeyBindings(RegisterKeyMappingsEvent event) {
         // 注册键绑定
         LOGGER.debug("Registering key bindings");
         event.register(DUSTBIN_KEY);
         event.register(DUSTBIN_PRE_KEY);
         event.register(DUSTBIN_NEXT_KEY);
-    }
-
-    @SubscribeEvent
-    public static void registerCaps(RegisterCapabilitiesEvent event) {
-        EventHandlerProxy.registerCaps(event);
     }
 
 }

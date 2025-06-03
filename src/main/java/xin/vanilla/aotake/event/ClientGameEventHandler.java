@@ -3,17 +3,14 @@ package xin.vanilla.aotake.event;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.inventory.ContainerScreen;
-import net.minecraft.world.entity.Entity;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.client.event.ClientPlayerNetworkEvent;
-import net.minecraftforge.client.event.ScreenEvent;
-import net.minecraftforge.event.AttachCapabilitiesEvent;
-import net.minecraftforge.event.TickEvent;
-import net.minecraftforge.event.entity.player.PlayerContainerEvent;
-import net.minecraftforge.event.entity.player.PlayerEvent;
-import net.minecraftforge.event.entity.player.PlayerInteractEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.EventBusSubscriber;
+import net.neoforged.neoforge.client.event.ClientPlayerNetworkEvent;
+import net.neoforged.neoforge.client.event.ClientTickEvent;
+import net.neoforged.neoforge.client.event.ScreenEvent;
+import net.neoforged.neoforge.event.entity.player.*;
+import net.neoforged.neoforge.event.tick.ServerTickEvent;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import xin.vanilla.aotake.AotakeSweep;
@@ -25,7 +22,7 @@ import xin.vanilla.aotake.util.Component;
 /**
  * 客户端 Game事件处理器
  */
-@Mod.EventBusSubscriber(modid = AotakeSweep.MODID, value = Dist.CLIENT, bus = Mod.EventBusSubscriber.Bus.FORGE)
+@EventBusSubscriber(modid = AotakeSweep.MODID, value = Dist.CLIENT, bus = EventBusSubscriber.Bus.GAME)
 public class ClientGameEventHandler {
     private static final Logger LOGGER = LogManager.getLogger();
 
@@ -40,7 +37,7 @@ public class ClientGameEventHandler {
      * 客户端Tick事件
      */
     @SubscribeEvent
-    public static void onClientTick(TickEvent.ClientTickEvent.Post event) {
+    public static void onClientTick(ClientTickEvent.Post event) {
         if (Minecraft.getInstance().screen == null) {
             if (ClientModEventHandler.DUSTBIN_KEY.consumeClick()) {
                 if (!keyDown) {
@@ -59,16 +56,8 @@ public class ClientGameEventHandler {
      * 服务端Tick事件
      */
     @SubscribeEvent
-    public static void onServerTick(TickEvent.ServerTickEvent.Post event) {
+    public static void onServerTick(ServerTickEvent.Post event) {
         EventHandlerProxy.onServerTick(event);
-    }
-
-    /**
-     * 能力附加事件
-     */
-    @SubscribeEvent
-    public static void onAttachCapabilityEvent(AttachCapabilitiesEvent<Entity> event) {
-        EventHandlerProxy.onAttachCapabilityEvent(event);
     }
 
     /**
@@ -83,8 +72,15 @@ public class ClientGameEventHandler {
      * 玩家事件
      */
     @SubscribeEvent
-    public static void onPlayerEvent(PlayerEvent event) {
-        if (event instanceof PlayerEvent.Clone) return;
+    public static void onPlayerEvent(ArrowNockEvent event) {
+        EventHandlerProxy.onPlayerUseItem(event);
+    }
+
+    /**
+     * 玩家事件
+     */
+    @SubscribeEvent
+    public static void onPlayerEvent(UseItemOnBlockEvent event) {
         EventHandlerProxy.onPlayerUseItem(event);
     }
 
@@ -125,22 +121,21 @@ public class ClientGameEventHandler {
     private static final Component MOD_NAME = Component.translatable(EnumI18nType.KEY, "categories");
 
     @SubscribeEvent
-    public static void onRenderScreen(ScreenEvent event) {
+    public static void onRenderScreen(ScreenEvent.Init.Post event) {
         if (event.getScreen() instanceof ContainerScreen
                 && Minecraft.getInstance().player != null
                 && event.getScreen().getTitle().getString()
                 .startsWith(MOD_NAME.toTextComponent(AotakeUtils.getPlayerLanguage(Minecraft.getInstance().player)).getString())
         ) {
-            // if (event.isCancelable()) event.setCanceled(false);
             if (event instanceof ScreenEvent.Init.Post) {
-                ((ScreenEvent.Init.Post) event).addListener(
+                event.addListener(
                         new Button.Builder(Component.literal("▲").toTextComponent()
                                 , button -> AotakeUtils.sendPacketToServer(new OpenDustbinNotice(-1)))
                                 .size(20, 20)
                                 .pos(event.getScreen().width / 2 - 88 - 21, event.getScreen().height / 2 - 111)
                                 .build()
                 );
-                ((ScreenEvent.Init.Post) event).addListener(
+                event.addListener(
                         new Button.Builder(Component.literal("▼").toTextComponent()
                                 , button -> AotakeUtils.sendPacketToServer(new OpenDustbinNotice(1)))
                                 .size(20, 20)
@@ -148,7 +143,18 @@ public class ClientGameEventHandler {
                                 .build()
 
                 );
-            } else if (event instanceof ScreenEvent.KeyPressed.Pre keyEvent) {
+            }
+        }
+    }
+
+    @SubscribeEvent
+    public static void onRenderScreen(ScreenEvent.KeyPressed.Pre event) {
+        if (event.getScreen() instanceof ContainerScreen
+                && Minecraft.getInstance().player != null
+                && event.getScreen().getTitle().getString()
+                .startsWith(MOD_NAME.toTextComponent(AotakeUtils.getPlayerLanguage(Minecraft.getInstance().player)).getString())
+        ) {
+            if (event instanceof ScreenEvent.KeyPressed.Pre keyEvent) {
                 if (keyEvent.getModifiers() != 0) return;
                 if (keyEvent.getKeyCode() == ClientModEventHandler.DUSTBIN_KEY.getKey().getValue()) {
                     if (!keyDown) {

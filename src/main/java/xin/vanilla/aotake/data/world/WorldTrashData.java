@@ -22,7 +22,7 @@ import net.minecraft.world.inventory.ChestMenu;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.saveddata.SavedData;
-import net.minecraftforge.entity.PartEntity;
+import net.neoforged.neoforge.entity.PartEntity;
 import xin.vanilla.aotake.AotakeSweep;
 import xin.vanilla.aotake.config.CommonConfig;
 import xin.vanilla.aotake.config.ServerConfig;
@@ -177,7 +177,7 @@ public class WorldTrashData extends SavedData {
                     item = new ItemStack(it);
                     CompoundTag aotake = new CompoundTag();
                     aotake.putBoolean("byPlayer", false);
-                    aotake.put("entity", entity.serializeNBT());
+                    aotake.put("entity", entity.serializeNBT(AotakeSweep.getServerInstance().registryAccess()));
                     item.set(AotakeSweep.CUSTOM_DATA_COMPONENT.get(), aotake);
 
                     result.setRecycledEntityCount(1);
@@ -201,7 +201,7 @@ public class WorldTrashData extends SavedData {
             this.dropCount.add(new KeyValue<>(coordinate, new KeyValue<>(System.currentTimeMillis(), typeKey)));
 
             // 自清洁
-            if (ServerConfig.SELF_CLEAN_MODE.get().contains(EnumSelfCleanMode.SWEEP_DELETE)) {
+            if (ServerConfig.SELF_CLEAN_MODE.get().contains(EnumSelfCleanMode.SWEEP_DELETE.name())) {
                 SimpleContainer inventory = this.inventoryList.get(AotakeSweep.RANDOM.nextInt(this.inventoryList.size()));
                 IntStream.range(0, inventory.getContainerSize())
                         .filter(i -> !inventory.getItem(i).isEmpty())

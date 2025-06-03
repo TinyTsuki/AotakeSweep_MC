@@ -1,13 +1,29 @@
 package xin.vanilla.aotake.network.packet;
 
+import io.netty.buffer.ByteBuf;
 import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraftforge.event.network.CustomPayloadEvent;
+import net.neoforged.neoforge.network.handling.IPayloadContext;
+import org.jetbrains.annotations.NotNull;
 import xin.vanilla.aotake.AotakeSweep;
 import xin.vanilla.aotake.data.world.WorldTrashData;
 import xin.vanilla.aotake.util.AotakeUtils;
 
-public class OpenDustbinNotice {
+public class OpenDustbinNotice implements CustomPacketPayload {
+    public final static CustomPacketPayload.Type<OpenDustbinNotice> TYPE = new CustomPacketPayload.Type<>(new ResourceLocation(AotakeSweep.MODID, "open_dustbin"));
+    public final static StreamCodec<ByteBuf, OpenDustbinNotice> STREAM_CODEC = new StreamCodec<>() {
+        public @NotNull OpenDustbinNotice decode(@NotNull ByteBuf byteBuf) {
+            return new OpenDustbinNotice((new FriendlyByteBuf(byteBuf)));
+        }
+
+        public void encode(@NotNull ByteBuf byteBuf, @NotNull OpenDustbinNotice packet) {
+            packet.toBytes(new FriendlyByteBuf(byteBuf));
+        }
+    };
+
     private final int offset;
 
     public OpenDustbinNotice(int offset) {
@@ -22,10 +38,14 @@ public class OpenDustbinNotice {
         buf.writeInt(this.offset);
     }
 
-    public static void handle(OpenDustbinNotice packet, CustomPayloadEvent.Context ctx) {
+    @Override
+    public @NotNull Type<? extends CustomPacketPayload> type() {
+        return TYPE;
+    }
+
+    public static void handle(OpenDustbinNotice packet, IPayloadContext ctx) {
         ctx.enqueueWork(() -> {
-            ServerPlayer player = ctx.getSender();
-            if (player != null) {
+            if (ctx.player() instanceof ServerPlayer player) {
                 String playerUUID = AotakeUtils.getPlayerUUIDString(player);
                 Integer page = AotakeSweep.getPlayerDustbinPage().getOrDefault(playerUUID, 1);
                 if (packet.offset == 0) page = 1;
@@ -33,6 +53,5 @@ public class OpenDustbinNotice {
                 if (result > 0) AotakeSweep.getPlayerDustbinPage().put(playerUUID, page + packet.offset);
             }
         });
-        ctx.setPacketHandled(true);
     }
 }

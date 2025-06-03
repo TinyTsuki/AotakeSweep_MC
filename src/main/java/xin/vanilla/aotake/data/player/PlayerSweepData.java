@@ -1,10 +1,14 @@
 package xin.vanilla.aotake.data.player;
 
+import lombok.Getter;
 import lombok.NonNull;
+import lombok.Setter;
+import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.FriendlyByteBuf;
-import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Player;
+import net.neoforged.neoforge.common.util.INBTSerializable;
+import org.jetbrains.annotations.NotNull;
 import xin.vanilla.aotake.util.AotakeUtils;
 
 import javax.annotation.Nullable;
@@ -12,7 +16,9 @@ import javax.annotation.Nullable;
 /**
  * 玩家传送数据
  */
-public class PlayerSweepData implements IPlayerSweepData {
+@Setter
+@Getter
+public class PlayerSweepData implements INBTSerializable<CompoundTag> {
     private String language = "client";
     /**
      * 是否已发送使用说明
@@ -23,40 +29,9 @@ public class PlayerSweepData implements IPlayerSweepData {
      */
     private boolean showSweepResult = true;
 
-    @Override
-    public String getLanguage() {
-        return this.language;
-    }
-
-    @Override
-    public void setLanguage(String language) {
-        this.language = language;
-    }
-
     @NonNull
-    @Override
     public String getValidLanguage(@Nullable Player player) {
         return AotakeUtils.getValidLanguage(player, this.getLanguage());
-    }
-
-    @Override
-    public boolean isNotified() {
-        return this.notified;
-    }
-
-    @Override
-    public void setNotified(boolean notified) {
-        this.notified = notified;
-    }
-
-    @Override
-    public boolean isShowSweepResult() {
-        return this.showSweepResult;
-    }
-
-    @Override
-    public void setShowSweepResult(boolean showSweepResult) {
-        this.showSweepResult = showSweepResult;
     }
 
     public void writeToBuffer(FriendlyByteBuf buffer) {
@@ -71,14 +46,14 @@ public class PlayerSweepData implements IPlayerSweepData {
         this.showSweepResult = buffer.readBoolean();
     }
 
-    public void copyFrom(IPlayerSweepData capability) {
+    public void copyFrom(PlayerSweepData capability) {
         this.language = capability.getLanguage();
         this.notified = capability.isNotified();
         this.showSweepResult = capability.isShowSweepResult();
     }
 
     @Override
-    public CompoundTag serializeNBT() {
+    public CompoundTag serializeNBT(HolderLookup.@NotNull Provider provider) {
         CompoundTag tag = new CompoundTag();
         tag.putString("language", this.getLanguage());
         tag.putBoolean("notified", this.notified);
@@ -87,14 +62,10 @@ public class PlayerSweepData implements IPlayerSweepData {
     }
 
     @Override
-    public void deserializeNBT(CompoundTag nbt) {
+    public void deserializeNBT(HolderLookup.@NotNull Provider provider, CompoundTag nbt) {
         this.setLanguage(nbt.getString("language"));
         this.notified = nbt.getBoolean("notified");
         this.showSweepResult = nbt.getBoolean("showSweepResult");
     }
 
-    @Override
-    public void save(ServerPlayer player) {
-        player.getCapability(PlayerSweepDataCapability.PLAYER_DATA).ifPresent(this::copyFrom);
-    }
 }

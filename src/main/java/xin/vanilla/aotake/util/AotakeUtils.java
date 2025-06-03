@@ -9,6 +9,7 @@ import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.arguments.blocks.BlockStateParser;
 import net.minecraft.core.component.DataComponentMap;
 import net.minecraft.core.component.DataComponents;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.NbtOps;
@@ -16,6 +17,7 @@ import net.minecraft.nbt.TagParser;
 import net.minecraft.network.chat.ClickEvent;
 import net.minecraft.network.chat.HoverEvent;
 import net.minecraft.network.protocol.Packet;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
@@ -33,22 +35,20 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraftforge.entity.PartEntity;
-import net.minecraftforge.network.PacketDistributor;
-import net.minecraftforge.registries.ForgeRegistries;
+import net.neoforged.neoforge.entity.PartEntity;
+import net.neoforged.neoforge.network.PacketDistributor;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import xin.vanilla.aotake.AotakeSweep;
 import xin.vanilla.aotake.config.CommonConfig;
 import xin.vanilla.aotake.config.ServerConfig;
 import xin.vanilla.aotake.data.SweepResult;
-import xin.vanilla.aotake.data.player.PlayerSweepDataCapability;
+import xin.vanilla.aotake.data.player.PlayerDataAttachment;
 import xin.vanilla.aotake.data.world.WorldTrashData;
 import xin.vanilla.aotake.enums.EnumCommandType;
 import xin.vanilla.aotake.enums.EnumI18nType;
 import xin.vanilla.aotake.enums.EnumMCColor;
 import xin.vanilla.aotake.enums.EnumSelfCleanMode;
-import xin.vanilla.aotake.network.ModNetworkHandler;
 
 import javax.annotation.Nullable;
 import java.util.ArrayList;
@@ -254,15 +254,15 @@ public class AotakeUtils {
     /**
      * 发送数据包至服务器
      */
-    public static <MSG> void sendPacketToServer(MSG msg) {
-        ModNetworkHandler.INSTANCE.send(msg, PacketDistributor.SERVER.noArg());
+    public static void sendPacketToServer(CustomPacketPayload msg) {
+        PacketDistributor.sendToServer(msg);
     }
 
     /**
      * 发送数据包至玩家
      */
-    public static <MSG> void sendPacketToPlayer(MSG msg, ServerPlayer player) {
-        ModNetworkHandler.INSTANCE.send(msg, PacketDistributor.PLAYER.with(player));
+    public static void sendPacketToPlayer(CustomPacketPayload msg, ServerPlayer player) {
+        PacketDistributor.sendToPlayer(player, msg);
     }
 
     // endregion 消息相关
@@ -272,7 +272,7 @@ public class AotakeUtils {
 
     public static String getPlayerLanguage(@NonNull Player player) {
         try {
-            return PlayerSweepDataCapability.getData(player).getValidLanguage(player);
+            return PlayerDataAttachment.getData(player).getValidLanguage(player);
         } catch (IllegalArgumentException i) {
             return ServerConfig.DEFAULT_LANGUAGE.get();
         }
@@ -335,6 +335,7 @@ public class AotakeUtils {
         if (SAFE_BLOCKS == null) {
             SAFE_BLOCKS = CommonConfig.SAFE_BLOCKS.get().stream()
                     .filter(Objects::nonNull)
+                    .map(s -> (String) s)
                     .distinct()
                     .toList();
         }
@@ -348,6 +349,7 @@ public class AotakeUtils {
         if (SAFE_BLOCKS_BELOW == null) {
             SAFE_BLOCKS_BELOW = CommonConfig.SAFE_BLOCKS_BELOW.get().stream()
                     .filter(Objects::nonNull)
+                    .map(s -> (String) s)
                     .distinct()
                     .toList();
         }
@@ -361,6 +363,7 @@ public class AotakeUtils {
         if (SAFE_BLOCKS_ABOVE == null) {
             SAFE_BLOCKS_ABOVE = CommonConfig.SAFE_BLOCKS_ABOVE.get().stream()
                     .filter(Objects::nonNull)
+                    .map(s -> (String) s)
                     .distinct()
                     .toList();
         }
@@ -437,7 +440,7 @@ public class AotakeUtils {
         SweepResult result = null;
         if (CollectionUtils.isNotNullOrEmpty(list)) {
             // 清空旧的物品
-            if (ServerConfig.SELF_CLEAN_MODE.get().contains(EnumSelfCleanMode.SWEEP_CLEAR)) {
+            if (ServerConfig.SELF_CLEAN_MODE.get().contains(EnumSelfCleanMode.SWEEP_CLEAR.name())) {
                 WorldTrashData.get().getDropList().clear();
                 WorldTrashData.get().getInventoryList().forEach(SimpleContainer::clearContent);
             }
@@ -448,7 +451,7 @@ public class AotakeUtils {
             Component msg = getWarningMessage(result == null || result.isEmpty() ? -1 : 0
                     , getPlayerLanguage(p)
                     , result);
-            if (PlayerSweepDataCapability.getData(p).isShowSweepResult()) {
+            if (PlayerDataAttachment.getData(p).isShowSweepResult()) {
                 String openCom = "/" + AotakeUtils.getCommand(EnumCommandType.DUSTBIN_OPEN);
                 msg.setClickEvent(new ClickEvent(ClickEvent.Action.SUGGEST_COMMAND, openCom))
                         .setHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT
@@ -521,7 +524,7 @@ public class AotakeUtils {
 
     public static Component getWarningMessage(int index, String lang, @Nullable SweepResult result) {
         Component msg = null;
-        List<String> warns = CommonConfig.SWEEP_WARNING_CONTENT.get();
+        List<? extends String> warns = CommonConfig.SWEEP_WARNING_CONTENT.get();
         try {
             String text = warns.get(CommonConfig.SWEEP_WARNING_SECOND.get().indexOf(index));
             if (result != null) {
@@ -574,7 +577,7 @@ public class AotakeUtils {
      * @param pitch  音调
      */
     public static void playSound(ServerPlayer player, ResourceLocation sound, float volume, float pitch) {
-        SoundEvent soundEvent = ForgeRegistries.SOUND_EVENTS.getValue(sound);
+        SoundEvent soundEvent = SoundEvent.createVariableRangeEvent(sound);
         if (soundEvent != null) {
             player.playNotifySound(soundEvent, SoundSource.PLAYERS, volume, pitch);
         }
@@ -664,7 +667,7 @@ public class AotakeUtils {
      */
     @NonNull
     public static String getItemRegistryName(@NonNull Item item) {
-        ResourceLocation location = ForgeRegistries.ITEMS.getKey(item);
+        ResourceLocation location = BuiltInRegistries.ITEM.getKey(item);
         return location == null ? "" : location.toString();
     }
 
@@ -681,7 +684,7 @@ public class AotakeUtils {
      */
     @NonNull
     public static String getEntityTypeRegistryName(@NonNull EntityType<?> entityType) {
-        ResourceLocation location = ForgeRegistries.ENTITY_TYPES.getKey(entityType);
+        ResourceLocation location = BuiltInRegistries.ENTITY_TYPE.getKey(entityType);
         return location == null ? AotakeSweep.emptyResource().toString() : location.toString();
     }
 

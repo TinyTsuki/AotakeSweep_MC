@@ -1,9 +1,9 @@
 package xin.vanilla.aotake.config;
 
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.item.Items;
-import net.minecraftforge.common.ForgeConfigSpec;
-import net.minecraftforge.registries.ForgeRegistries;
+import net.neoforged.neoforge.common.ModConfigSpec;
 import xin.vanilla.aotake.enums.EnumOverflowMode;
 import xin.vanilla.aotake.enums.EnumSelfCleanMode;
 
@@ -12,89 +12,89 @@ import java.util.List;
 
 public class ServerConfig {
 
-    public static final ForgeConfigSpec SERVER_CONFIG;
+    public static final ModConfigSpec SERVER_CONFIG;
 
     // region 基础设置
 
     /**
      * 帮助指令信息头部内容
      */
-    public static final ForgeConfigSpec.ConfigValue<String> HELP_HEADER;
+    public static final ModConfigSpec.ConfigValue<String> HELP_HEADER;
 
     /**
      * 帮助信息每页显示的数量
      */
-    public static final ForgeConfigSpec.IntValue HELP_INFO_NUM_PER_PAGE;
+    public static final ModConfigSpec.IntValue HELP_INFO_NUM_PER_PAGE;
 
     /**
      * 服务器默认语言
      */
-    public static final ForgeConfigSpec.ConfigValue<String> DEFAULT_LANGUAGE;
+    public static final ModConfigSpec.ConfigValue<String> DEFAULT_LANGUAGE;
 
     /**
      * 扫地间隔(毫秒)
      */
-    public static final ForgeConfigSpec.LongValue SWEEP_INTERVAL;
+    public static final ModConfigSpec.LongValue SWEEP_INTERVAL;
 
     /**
      * 自清洁间隔
      */
-    public static final ForgeConfigSpec.LongValue SELF_CLEAN_INTERVAL;
+    public static final ModConfigSpec.LongValue SELF_CLEAN_INTERVAL;
 
     /**
      * 区块实体过多检测间隔(毫秒)
      */
-    public static final ForgeConfigSpec.LongValue CHUNK_CHECK_INTERVAL;
+    public static final ModConfigSpec.LongValue CHUNK_CHECK_INTERVAL;
 
     /**
      * 区块实体过多检测阈值
      */
-    public static final ForgeConfigSpec.IntValue CHUNK_CHECK_LIMIT;
+    public static final ModConfigSpec.IntValue CHUNK_CHECK_LIMIT;
 
     /**
      * 使用以下物品捕获被清理的实体
      */
-    public static final ForgeConfigSpec.ConfigValue<List<String>> CATCH_ITEM;
+    public static final ModConfigSpec.ConfigValue<List<? extends String>> CATCH_ITEM;
 
     /**
      * 允许被清理的实体
      */
-    public static final ForgeConfigSpec.ConfigValue<List<String>> JUNK_ENTITY;
+    public static final ModConfigSpec.ConfigValue<List<? extends String>> JUNK_ENTITY;
 
     /**
      * 清理时允许被捕获的实体
      */
-    public static final ForgeConfigSpec.ConfigValue<List<String>> CATCH_ENTITY;
+    public static final ModConfigSpec.ConfigValue<List<? extends String>> CATCH_ENTITY;
 
     /**
      * 物品清理白名单
      */
-    public static final ForgeConfigSpec.ConfigValue<List<String>> ITEM_WHITELIST;
+    public static final ModConfigSpec.ConfigValue<List<? extends String>> ITEM_WHITELIST;
 
     /**
      * 物品清理黑名单
      */
-    public static final ForgeConfigSpec.ConfigValue<List<String>> ITEM_BLACKLIST;
+    public static final ModConfigSpec.ConfigValue<List<? extends String>> ITEM_BLACKLIST;
 
     /**
      * 是否允许玩家使用物品捕获实体
      */
-    public static final ForgeConfigSpec.ConfigValue<Boolean> ALLOW_CATCH_ITEM;
+    public static final ModConfigSpec.ConfigValue<Boolean> ALLOW_CATCH_ITEM;
 
     /**
      * 仅清理掉落超过指定tick的物品
      */
-    public static final ForgeConfigSpec.IntValue SWEEP_ITEM_AGE;
+    public static final ModConfigSpec.IntValue SWEEP_ITEM_AGE;
 
     /**
      * 垃圾箱自清洁方式
      */
-    public static final ForgeConfigSpec.ConfigValue<List<EnumSelfCleanMode>> SELF_CLEAN_MODE;
+    public static final ModConfigSpec.ConfigValue<List<? extends String>> SELF_CLEAN_MODE;
 
     /**
      * 垃圾箱溢出时的处理方式
      */
-    public static final ForgeConfigSpec.ConfigValue<EnumOverflowMode> DUSTBIN_OVERFLOW_MODE;
+    public static final ModConfigSpec.ConfigValue<EnumOverflowMode> DUSTBIN_OVERFLOW_MODE;
 
     // endregion 基础设置
 
@@ -104,48 +104,48 @@ public class ServerConfig {
     /**
      * 设置虚拟权限指令所需的权限等级
      */
-    public static final ForgeConfigSpec.IntValue PERMISSION_VIRTUAL_OP;
+    public static final ModConfigSpec.IntValue PERMISSION_VIRTUAL_OP;
 
     /**
      * 打开垃圾箱指令所需的权限等级
      */
-    public static final ForgeConfigSpec.IntValue PERMISSION_DUSTBIN_OPEN;
+    public static final ModConfigSpec.IntValue PERMISSION_DUSTBIN_OPEN;
 
     /**
      * 清空垃圾箱指令所需的权限等级
      */
-    public static final ForgeConfigSpec.IntValue PERMISSION_DUSTBIN_CLEAR;
+    public static final ModConfigSpec.IntValue PERMISSION_DUSTBIN_CLEAR;
 
     /**
      * 将垃圾箱物品掉落到世界指令所需的权限等级
      */
-    public static final ForgeConfigSpec.IntValue PERMISSION_DUSTBIN_DROP;
+    public static final ModConfigSpec.IntValue PERMISSION_DUSTBIN_DROP;
 
     /**
      * 清空缓存指令所需的权限等级
      */
-    public static final ForgeConfigSpec.IntValue PERMISSION_CACHE_CLEAR;
+    public static final ModConfigSpec.IntValue PERMISSION_CACHE_CLEAR;
 
     /**
      * 将缓存内物品掉落至世界指令所需的权限等级
      */
-    public static final ForgeConfigSpec.IntValue PERMISSION_CACHE_DROP;
+    public static final ModConfigSpec.IntValue PERMISSION_CACHE_DROP;
 
     /**
      * 触发扫地指令所需的权限等级
      */
-    public static final ForgeConfigSpec.IntValue PERMISSION_SWEEP;
+    public static final ModConfigSpec.IntValue PERMISSION_SWEEP;
 
     /**
      * 清除掉落物指令所需的权限等级
      */
-    public static final ForgeConfigSpec.IntValue PERMISSION_CLEAR_DROP;
+    public static final ModConfigSpec.IntValue PERMISSION_CLEAR_DROP;
 
     // endregion 指令权限
 
 
     static {
-        ForgeConfigSpec.Builder SERVER_BUILDER = new ForgeConfigSpec.Builder();
+        ModConfigSpec.Builder SERVER_BUILDER = new ModConfigSpec.Builder();
         // 定义服务器基础设置
         {
             SERVER_BUILDER.comment("Base Settings", "基础设置").push("common");
@@ -196,54 +196,54 @@ public class ServerConfig {
             CATCH_ITEM = SERVER_BUILDER
                     .comment("The item used to capture the entity being cleaned up."
                             , "使用以下物品捕获被清理的实体。")
-                    .define("catchItem", new ArrayList<>() {{
-                        add(ForgeRegistries.ITEMS.getKey(Items.SNOWBALL).toString());
-                        add(ForgeRegistries.ITEMS.getKey(Items.GLASS_BOTTLE).toString());
-                        add(ForgeRegistries.ITEMS.getKey(Items.MUSIC_DISC_13).toString());
-                        add(ForgeRegistries.ITEMS.getKey(Items.MUSIC_DISC_CAT).toString());
-                        add(ForgeRegistries.ITEMS.getKey(Items.MUSIC_DISC_BLOCKS).toString());
-                        add(ForgeRegistries.ITEMS.getKey(Items.MUSIC_DISC_CHIRP).toString());
-                        add(ForgeRegistries.ITEMS.getKey(Items.MUSIC_DISC_FAR).toString());
-                        add(ForgeRegistries.ITEMS.getKey(Items.MUSIC_DISC_MALL).toString());
-                        add(ForgeRegistries.ITEMS.getKey(Items.MUSIC_DISC_MELLOHI).toString());
-                        add(ForgeRegistries.ITEMS.getKey(Items.MUSIC_DISC_STAL).toString());
-                        add(ForgeRegistries.ITEMS.getKey(Items.MUSIC_DISC_STRAD).toString());
-                        add(ForgeRegistries.ITEMS.getKey(Items.MUSIC_DISC_WARD).toString());
-                        add(ForgeRegistries.ITEMS.getKey(Items.MUSIC_DISC_WAIT).toString());
-                        add(ForgeRegistries.ITEMS.getKey(Items.MUSIC_DISC_PIGSTEP).toString());
-                    }});
+                    .defineListAllowEmpty("catchItem", new ArrayList<>() {{
+                        add(BuiltInRegistries.ITEM.getKey(Items.SNOWBALL).toString());
+                        add(BuiltInRegistries.ITEM.getKey(Items.GLASS_BOTTLE).toString());
+                        add(BuiltInRegistries.ITEM.getKey(Items.MUSIC_DISC_13).toString());
+                        add(BuiltInRegistries.ITEM.getKey(Items.MUSIC_DISC_CAT).toString());
+                        add(BuiltInRegistries.ITEM.getKey(Items.MUSIC_DISC_BLOCKS).toString());
+                        add(BuiltInRegistries.ITEM.getKey(Items.MUSIC_DISC_CHIRP).toString());
+                        add(BuiltInRegistries.ITEM.getKey(Items.MUSIC_DISC_FAR).toString());
+                        add(BuiltInRegistries.ITEM.getKey(Items.MUSIC_DISC_MALL).toString());
+                        add(BuiltInRegistries.ITEM.getKey(Items.MUSIC_DISC_MELLOHI).toString());
+                        add(BuiltInRegistries.ITEM.getKey(Items.MUSIC_DISC_STAL).toString());
+                        add(BuiltInRegistries.ITEM.getKey(Items.MUSIC_DISC_STRAD).toString());
+                        add(BuiltInRegistries.ITEM.getKey(Items.MUSIC_DISC_WARD).toString());
+                        add(BuiltInRegistries.ITEM.getKey(Items.MUSIC_DISC_WAIT).toString());
+                        add(BuiltInRegistries.ITEM.getKey(Items.MUSIC_DISC_PIGSTEP).toString());
+                    }}, o -> o instanceof String);
 
             // 允许被清理的实体
             JUNK_ENTITY = SERVER_BUILDER
                     .comment("The entity that can be cleaned up."
                             , "允许被清理的实体。")
-                    .define("junkEntity", new ArrayList<>() {{
-                                add(ForgeRegistries.ENTITY_TYPES.getKey(EntityType.ARROW).toString());
-                                add(ForgeRegistries.ENTITY_TYPES.getKey(EntityType.SPECTRAL_ARROW).toString());
-                            }}
+                    .defineListAllowEmpty("junkEntity", new ArrayList<>() {{
+                                add(BuiltInRegistries.ENTITY_TYPE.getKey(EntityType.ARROW).toString());
+                                add(BuiltInRegistries.ENTITY_TYPE.getKey(EntityType.SPECTRAL_ARROW).toString());
+                            }}, o -> o instanceof String
                     );
 
             // 清理时允许被捕获的实体
             CATCH_ENTITY = SERVER_BUILDER
                     .comment("The entity that can be captured when cleaned up."
                             , "清理时允许被捕获的实体。")
-                    .define("catchEntity", new ArrayList<>() {{
-                        add(ForgeRegistries.ENTITY_TYPES.getKey(EntityType.EXPERIENCE_ORB).toString());
-                    }});
+                    .defineListAllowEmpty("catchEntity", new ArrayList<>() {{
+                        add(BuiltInRegistries.ENTITY_TYPE.getKey(EntityType.EXPERIENCE_ORB).toString());
+                    }}, o -> o instanceof String);
 
             // 物品清理白名单
             ITEM_WHITELIST = SERVER_BUILDER
                     .comment("The item whitelist for cleaning up items, the following items will not be cleaned."
                             , "物品清理白名单，以下物品不会被清理。")
-                    .define("itemWhitelist", new ArrayList<>() {{
-                    }});
+                    .defineListAllowEmpty("itemWhitelist", new ArrayList<>() {{
+                    }}, o -> o instanceof String);
 
             // 物品清理黑名单
             ITEM_BLACKLIST = SERVER_BUILDER
                     .comment("The item blacklist for cleaning up items, only the following items will be cleaned."
                             , "物品清理黑名单，将只会清理以下物品。")
-                    .define("itemBlacklist", new ArrayList<>() {{
-                    }});
+                    .defineListAllowEmpty("itemBlacklist", new ArrayList<>() {{
+                    }}, o -> o instanceof String);
 
             // 是否允许玩家使用物品捕获实体
             ALLOW_CATCH_ITEM = SERVER_BUILDER
@@ -271,9 +271,9 @@ public class ServerConfig {
                             , "SWEEP_DELETE：在扫地时随机删除垃圾箱内物品；"
                             , "SCHEDULED_CLEAR：定时清空垃圾箱；"
                             , "SCHEDULED_DELETE：定时随机删除垃圾箱内物品。")
-                    .define("selfCleanMode", new ArrayList<>() {{
-                        add(EnumSelfCleanMode.NONE);
-                    }});
+                    .defineListAllowEmpty("selfCleanMode", new ArrayList<>() {{
+                        add(EnumSelfCleanMode.NONE.name());
+                    }}, o -> o instanceof String);
 
             // 垃圾箱溢出时的处理方式
             DUSTBIN_OVERFLOW_MODE = SERVER_BUILDER
@@ -355,34 +355,34 @@ public class ServerConfig {
         CHUNK_CHECK_INTERVAL.set(5 * 1000L);
         CHUNK_CHECK_LIMIT.set(250);
         CATCH_ITEM.set(new ArrayList<>() {{
-            add(ForgeRegistries.ITEMS.getKey(Items.SNOWBALL).toString());
-            add(ForgeRegistries.ITEMS.getKey(Items.GLASS_BOTTLE).toString());
-            add(ForgeRegistries.ITEMS.getKey(Items.MUSIC_DISC_13).toString());
-            add(ForgeRegistries.ITEMS.getKey(Items.MUSIC_DISC_CAT).toString());
-            add(ForgeRegistries.ITEMS.getKey(Items.MUSIC_DISC_BLOCKS).toString());
-            add(ForgeRegistries.ITEMS.getKey(Items.MUSIC_DISC_CHIRP).toString());
-            add(ForgeRegistries.ITEMS.getKey(Items.MUSIC_DISC_FAR).toString());
-            add(ForgeRegistries.ITEMS.getKey(Items.MUSIC_DISC_MALL).toString());
-            add(ForgeRegistries.ITEMS.getKey(Items.MUSIC_DISC_MELLOHI).toString());
-            add(ForgeRegistries.ITEMS.getKey(Items.MUSIC_DISC_STAL).toString());
-            add(ForgeRegistries.ITEMS.getKey(Items.MUSIC_DISC_STRAD).toString());
-            add(ForgeRegistries.ITEMS.getKey(Items.MUSIC_DISC_WARD).toString());
-            add(ForgeRegistries.ITEMS.getKey(Items.MUSIC_DISC_WAIT).toString());
-            add(ForgeRegistries.ITEMS.getKey(Items.MUSIC_DISC_PIGSTEP).toString());
+            add(BuiltInRegistries.ITEM.getKey(Items.SNOWBALL).toString());
+            add(BuiltInRegistries.ITEM.getKey(Items.GLASS_BOTTLE).toString());
+            add(BuiltInRegistries.ITEM.getKey(Items.MUSIC_DISC_13).toString());
+            add(BuiltInRegistries.ITEM.getKey(Items.MUSIC_DISC_CAT).toString());
+            add(BuiltInRegistries.ITEM.getKey(Items.MUSIC_DISC_BLOCKS).toString());
+            add(BuiltInRegistries.ITEM.getKey(Items.MUSIC_DISC_CHIRP).toString());
+            add(BuiltInRegistries.ITEM.getKey(Items.MUSIC_DISC_FAR).toString());
+            add(BuiltInRegistries.ITEM.getKey(Items.MUSIC_DISC_MALL).toString());
+            add(BuiltInRegistries.ITEM.getKey(Items.MUSIC_DISC_MELLOHI).toString());
+            add(BuiltInRegistries.ITEM.getKey(Items.MUSIC_DISC_STAL).toString());
+            add(BuiltInRegistries.ITEM.getKey(Items.MUSIC_DISC_STRAD).toString());
+            add(BuiltInRegistries.ITEM.getKey(Items.MUSIC_DISC_WARD).toString());
+            add(BuiltInRegistries.ITEM.getKey(Items.MUSIC_DISC_WAIT).toString());
+            add(BuiltInRegistries.ITEM.getKey(Items.MUSIC_DISC_PIGSTEP).toString());
         }});
         JUNK_ENTITY.set(new ArrayList<>() {{
-            add(ForgeRegistries.ENTITY_TYPES.getKey(EntityType.ARROW).toString());
-            add(ForgeRegistries.ENTITY_TYPES.getKey(EntityType.SPECTRAL_ARROW).toString());
+            add(BuiltInRegistries.ENTITY_TYPE.getKey(EntityType.ARROW).toString());
+            add(BuiltInRegistries.ENTITY_TYPE.getKey(EntityType.SPECTRAL_ARROW).toString());
         }});
         CATCH_ENTITY.set(new ArrayList<>() {{
-            add(ForgeRegistries.ENTITY_TYPES.getKey(EntityType.EXPERIENCE_ORB).toString());
+            add(BuiltInRegistries.ENTITY_TYPE.getKey(EntityType.EXPERIENCE_ORB).toString());
         }});
         ITEM_WHITELIST.set(new ArrayList<>());
         ITEM_BLACKLIST.set(new ArrayList<>());
         ALLOW_CATCH_ITEM.set(false);
         SWEEP_ITEM_AGE.set(200);
         SELF_CLEAN_MODE.set(new ArrayList<>() {{
-            add(EnumSelfCleanMode.NONE);
+            add(EnumSelfCleanMode.NONE.name());
         }});
         DUSTBIN_OVERFLOW_MODE.set(EnumOverflowMode.KEEP);
 

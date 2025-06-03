@@ -8,27 +8,29 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.common.MinecraftForge;
-import net.minecraftforge.event.RegisterCommandsEvent;
-import net.minecraftforge.event.server.ServerStartedEvent;
-import net.minecraftforge.event.server.ServerStartingEvent;
-import net.minecraftforge.event.server.ServerStoppingEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
-import net.minecraftforge.fml.config.ModConfig;
-import net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent;
-import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent;
-import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
-import net.minecraftforge.fml.loading.FMLEnvironment;
-import net.minecraftforge.registries.DeferredRegister;
-import net.minecraftforge.registries.RegistryObject;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.bus.api.IEventBus;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.ModContainer;
+import net.neoforged.fml.common.Mod;
+import net.neoforged.fml.config.ModConfig;
+import net.neoforged.fml.event.lifecycle.FMLClientSetupEvent;
+import net.neoforged.fml.event.lifecycle.FMLCommonSetupEvent;
+import net.neoforged.fml.loading.FMLEnvironment;
+import net.neoforged.neoforge.common.NeoForge;
+import net.neoforged.neoforge.event.RegisterCommandsEvent;
+import net.neoforged.neoforge.event.server.ServerStartedEvent;
+import net.neoforged.neoforge.event.server.ServerStartingEvent;
+import net.neoforged.neoforge.event.server.ServerStoppingEvent;
+import net.neoforged.neoforge.registries.DeferredHolder;
+import net.neoforged.neoforge.registries.DeferredRegister;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import xin.vanilla.aotake.command.AotakeCommand;
 import xin.vanilla.aotake.config.CommonConfig;
 import xin.vanilla.aotake.config.CustomConfig;
 import xin.vanilla.aotake.config.ServerConfig;
+import xin.vanilla.aotake.data.player.PlayerDataAttachment;
 import xin.vanilla.aotake.event.ClientModEventHandler;
 import xin.vanilla.aotake.network.ModNetworkHandler;
 import xin.vanilla.aotake.network.SplitPacket;
@@ -73,7 +75,7 @@ public class AotakeSweep {
 
     private static final DeferredRegister<DataComponentType<?>> COMPONENTS = DeferredRegister.create(Registries.DATA_COMPONENT_TYPE, AotakeSweep.MODID);
 
-    public static RegistryObject<DataComponentType<CompoundTag>> CUSTOM_DATA_COMPONENT = COMPONENTS.register(AotakeSweep.MODID, () -> DataComponentType.<CompoundTag>builder()
+    public static DeferredHolder<DataComponentType<?>, DataComponentType<CompoundTag>> CUSTOM_DATA_COMPONENT = COMPONENTS.register(AotakeSweep.MODID, () -> DataComponentType.<CompoundTag>builder()
             .persistent(CompoundTag.CODEC)
             .networkSynchronized(ByteBufCodecs.TRUSTED_COMPOUND_TAG)
             .cacheEncoding()
@@ -81,57 +83,60 @@ public class AotakeSweep {
 
     // public static final Item JUNK_BALL = new JunkBall();
 
-    public AotakeSweep(FMLJavaModLoadingContext context) {
+    public AotakeSweep(IEventBus modEventBus, ModContainer modContainer) {
 
         // 注册网络通道
-        ModNetworkHandler.registerPackets();
+        modEventBus.addListener(ModNetworkHandler::registerPackets);
         // 注册数据组件类型
-        COMPONENTS.register(context.getModEventBus());
+        COMPONENTS.register(modEventBus);
 
         // 注册服务器启动和关闭事件
-        MinecraftForge.EVENT_BUS.addListener(this::onServerStarting);
-        MinecraftForge.EVENT_BUS.addListener(this::onServerStarted);
-        MinecraftForge.EVENT_BUS.addListener(this::onServerStopping);
+        NeoForge.EVENT_BUS.addListener(this::onServerStarting);
+        NeoForge.EVENT_BUS.addListener(this::onServerStarted);
+        NeoForge.EVENT_BUS.addListener(this::onServerStopping);
 
         // 注册当前实例到事件总线
-        MinecraftForge.EVENT_BUS.register(this);
+        NeoForge.EVENT_BUS.register(this);
 
         // 注册配置
-        context.registerConfig(ModConfig.Type.COMMON, CommonConfig.COMMON_CONFIG);
-        context.registerConfig(ModConfig.Type.SERVER, ServerConfig.SERVER_CONFIG);
+        modContainer.registerConfig(ModConfig.Type.COMMON, CommonConfig.COMMON_CONFIG);
+        modContainer.registerConfig(ModConfig.Type.SERVER, ServerConfig.SERVER_CONFIG);
+        // 注册数据附件
+        PlayerDataAttachment.ATTACHMENT_TYPES.register(modEventBus);
 
         // 注册客户端设置事件
-        context.getModEventBus().addListener(this::onClientSetup);
+        modEventBus.addListener(this::onClientSetup);
         // 注册公共设置事件
-        context.getModEventBus().addListener(this::onCommonSetup);
+        modEventBus.addListener(this::onCommonSetup);
 
         if (FMLEnvironment.dist == Dist.CLIENT) {
-            context.getModEventBus().addListener(ClientModEventHandler::registerKeyBindings);
+            modEventBus.addListener(ClientModEventHandler::registerKeyBindings);
         }
     }
 
     /**
      * 客户端设置阶段事件
      */
-    @SubscribeEvent
     public void onClientSetup(final FMLClientSetupEvent event) {
     }
 
     /**
      * 公共设置阶段事件
      */
-    @SubscribeEvent
     public void onCommonSetup(final FMLCommonSetupEvent event) {
         CustomConfig.loadCustomConfig(false);
     }
 
+    @SubscribeEvent
     private void onServerStarting(ServerStartingEvent event) {
         AotakeSweep.serverInstance = event.getServer();
     }
 
+    @SubscribeEvent
     private void onServerStarted(ServerStartedEvent event) {
     }
 
+    @SubscribeEvent
     private void onServerStopping(ServerStoppingEvent event) {
     }
 

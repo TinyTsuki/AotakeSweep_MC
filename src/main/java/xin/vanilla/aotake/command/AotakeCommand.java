@@ -30,8 +30,8 @@ import xin.vanilla.aotake.config.ServerConfig;
 import xin.vanilla.aotake.data.Coordinate;
 import xin.vanilla.aotake.data.KeyValue;
 import xin.vanilla.aotake.data.SweepResult;
-import xin.vanilla.aotake.data.player.IPlayerSweepData;
-import xin.vanilla.aotake.data.player.PlayerSweepDataCapability;
+import xin.vanilla.aotake.data.player.PlayerDataAttachment;
+import xin.vanilla.aotake.data.player.PlayerSweepData;
 import xin.vanilla.aotake.data.world.WorldTrashData;
 import xin.vanilla.aotake.enums.EnumCommandType;
 import xin.vanilla.aotake.enums.EnumI18nType;
@@ -174,7 +174,7 @@ public class AotakeCommand {
             if (checkModStatus(context)) return 0;
             notifyHelp(context);
             ServerPlayer player = context.getSource().getPlayerOrException();
-            IPlayerSweepData signInData = PlayerSweepDataCapability.getData(player);
+            PlayerSweepData signInData = PlayerDataAttachment.getData(player);
             String language = StringArgumentType.getString(context, "language");
             if (I18nUtils.getI18nFiles().contains(language)) {
                 signInData.setLanguage(language);
@@ -720,7 +720,7 @@ public class AotakeCommand {
                                                 notifyHelp(context);
                                                 boolean show = BoolArgumentType.getBool(context, "show");
                                                 ServerPlayer player = context.getSource().getPlayerOrException();
-                                                PlayerSweepDataCapability.getData(player).setShowSweepResult(show);
+                                                PlayerDataAttachment.getData(player).setShowSweepResult(show);
                                                 AotakeUtils.sendMessage(player
                                                         , Component.translatable(EnumI18nType.MESSAGE
                                                                 , "player_show_sweep_result"
@@ -787,7 +787,7 @@ public class AotakeCommand {
         CommandSourceStack source = context.getSource();
         Entity entity = source.getEntity();
         if (entity instanceof ServerPlayer player) {
-            IPlayerSweepData data = PlayerSweepDataCapability.getData(player);
+            PlayerSweepData data = PlayerDataAttachment.getData(player);
             if (!data.isNotified()) {
                 Component button = Component.literal("/" + AotakeUtils.getCommandPrefix())
                         .setColor(EnumMCColor.AQUA.getColor())

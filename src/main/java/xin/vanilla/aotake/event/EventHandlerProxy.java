@@ -9,15 +9,11 @@ import net.minecraft.world.InteractionResult;
 import net.minecraft.world.SimpleContainer;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
-import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.common.capabilities.RegisterCapabilitiesEvent;
-import net.minecraftforge.common.util.LazyOptional;
-import net.minecraftforge.entity.PartEntity;
-import net.minecraftforge.event.AttachCapabilitiesEvent;
-import net.minecraftforge.event.TickEvent;
-import net.minecraftforge.event.entity.player.*;
-import net.minecraftforge.eventbus.api.Event;
+import net.neoforged.bus.api.ICancellableEvent;
+import net.neoforged.neoforge.entity.PartEntity;
+import net.neoforged.neoforge.event.entity.player.*;
+import net.neoforged.neoforge.event.tick.ServerTickEvent;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import xin.vanilla.aotake.AotakeSweep;
@@ -26,9 +22,8 @@ import xin.vanilla.aotake.config.CustomConfig;
 import xin.vanilla.aotake.config.ServerConfig;
 import xin.vanilla.aotake.data.Coordinate;
 import xin.vanilla.aotake.data.KeyValue;
-import xin.vanilla.aotake.data.player.IPlayerSweepData;
-import xin.vanilla.aotake.data.player.PlayerSweepDataCapability;
-import xin.vanilla.aotake.data.player.PlayerSweepDataProvider;
+import xin.vanilla.aotake.data.player.PlayerDataAttachment;
+import xin.vanilla.aotake.data.player.PlayerSweepData;
 import xin.vanilla.aotake.data.world.WorldTrashData;
 import xin.vanilla.aotake.enums.EnumI18nType;
 import xin.vanilla.aotake.enums.EnumSelfCleanMode;
@@ -50,7 +45,7 @@ public class EventHandlerProxy {
     private static long lastChunkCheckTime = System.currentTimeMillis();
     private static Queue<Integer> warnQueue;
 
-    public static void onServerTick(TickEvent.ServerTickEvent.Post event) {
+    public static void onServerTick(ServerTickEvent.Post event) {
         if (AotakeSweep.isDisable()) return;
         if (AotakeSweep.getServerInstance() != null
                 && AotakeSweep.getServerInstance().isRunning()
@@ -92,12 +87,12 @@ public class EventHandlerProxy {
                 lastSelfCleanTime = System.currentTimeMillis();
                 WorldTrashData worldTrashData = WorldTrashData.get();
                 // 清空
-                if (ServerConfig.SELF_CLEAN_MODE.get().contains(EnumSelfCleanMode.SCHEDULED_CLEAR)) {
+                if (ServerConfig.SELF_CLEAN_MODE.get().contains(EnumSelfCleanMode.SCHEDULED_CLEAR.name())) {
                     worldTrashData.getDropList().clear();
                     worldTrashData.getInventoryList().forEach(SimpleContainer::clearContent);
                 }
                 // 随机删除
-                else if (ServerConfig.SELF_CLEAN_MODE.get().contains(EnumSelfCleanMode.SCHEDULED_DELETE)) {
+                else if (ServerConfig.SELF_CLEAN_MODE.get().contains(EnumSelfCleanMode.SCHEDULED_DELETE.name())) {
                     if (AotakeSweep.RANDOM.nextBoolean()) {
                         List<KeyValue<Coordinate, ItemStack>> dropList = worldTrashData.getDropList();
                         dropList.remove(AotakeSweep.RANDOM.nextInt(dropList.size()));
@@ -158,26 +153,15 @@ public class EventHandlerProxy {
         }
     }
 
-    public static void registerCaps(RegisterCapabilitiesEvent event) {
-        // 注册 PlayerDataCapability
-        event.register(IPlayerSweepData.class);
-    }
-
-    public static void onAttachCapabilityEvent(AttachCapabilitiesEvent<Entity> event) {
-        if (event.getObject() instanceof Player) {
-            event.addCapability(AotakeSweep.createResource("player_sweep_data"), new PlayerSweepDataProvider());
-        }
-    }
-
     public static void onPlayerCloned(PlayerEvent.Clone event) {
         if (event.getEntity() instanceof ServerPlayer) {
             ServerPlayer original = (ServerPlayer) event.getOriginal();
             ServerPlayer newPlayer = (ServerPlayer) event.getEntity();
             original.revive();
             AotakeUtils.clonePlayerLanguage(original, newPlayer);
-            LazyOptional<IPlayerSweepData> oldDataCap = original.getCapability(PlayerSweepDataCapability.PLAYER_DATA);
-            LazyOptional<IPlayerSweepData> newDataCap = newPlayer.getCapability(PlayerSweepDataCapability.PLAYER_DATA);
-            oldDataCap.ifPresent(oldData -> newDataCap.ifPresent(newData -> newData.copyFrom(oldData)));
+            PlayerSweepData oldDataCap = PlayerDataAttachment.getData(original);
+            PlayerSweepData newDataCap = PlayerDataAttachment.getData(newPlayer);
+            newDataCap.copyFrom(oldDataCap);
         }
     }
 
@@ -187,8 +171,8 @@ public class EventHandlerProxy {
             DataComponentMap tag = event.getItemStack().getComponents();
             if (!tag.isEmpty() && tag.has(AotakeSweep.CUSTOM_DATA_COMPONENT.get())) {
                 CompoundTag aotake = tag.get(AotakeSweep.CUSTOM_DATA_COMPONENT.get());
-                if (aotake == null || aotake.isEmpty()) event.getItemStack().remove(AotakeSweep.CUSTOM_DATA_COMPONENT.get());
-                event.setResult(Event.Result.DENY);
+                if (aotake == null || aotake.isEmpty())
+                    event.getItemStack().remove(AotakeSweep.CUSTOM_DATA_COMPONENT.get());
                 event.setCancellationResult(InteractionResult.FAIL);
                 event.setCanceled(true);
             }
@@ -238,9 +222,13 @@ public class EventHandlerProxy {
 
                     player.displayClientMessage(net.minecraft.network.chat.Component.literal("实体已释放！"), true);
 
-                    event.setCanceled(true);
-                    event.setResult(Event.Result.DENY);
-                    event.setCancellationResult(InteractionResult.FAIL);
+                    if (event instanceof PlayerInteractEvent.EntityInteractSpecific eve) {
+                        eve.setCanceled(true);
+                        eve.setCancellationResult(InteractionResult.FAIL);
+                    } else if (event instanceof PlayerInteractEvent.RightClickBlock eve) {
+                        eve.setCanceled(true);
+                        eve.setCancellationResult(InteractionResult.FAIL);
+                    }
 
                     return entity;
                 }
@@ -259,7 +247,7 @@ public class EventHandlerProxy {
             DataComponentMap tag = copy.getComponents();
             // 检查是否已包含实体
             Entity entity = event.getTarget();
-            if (entity instanceof PartEntity) {
+            if (entity instanceof PartEntity<?>) {
                 entity = ((PartEntity<?>) entity).getParent();
             }
             if (!tag.isEmpty() && tag.has(AotakeSweep.CUSTOM_DATA_COMPONENT.get())) {
@@ -287,7 +275,7 @@ public class EventHandlerProxy {
                 CompoundTag aotake = new CompoundTag();
 
                 aotake.putBoolean("byPlayer", true);
-                aotake.put("entity", entity.serializeNBT());
+                aotake.put("entity", entity.serializeNBT(AotakeSweep.getServerInstance().registryAccess()));
                 aotake.putString("name", AotakeUtils.getItemCustomNameJson(copy));
                 copy.set(AotakeSweep.CUSTOM_DATA_COMPONENT.get(), aotake);
                 copy.set(DataComponents.CUSTOM_NAME, Component.literal(String.format("%s%s", entity.getDisplayName().getString(), copy.getHoverName().getString())).toChatComponent());
@@ -298,7 +286,6 @@ public class EventHandlerProxy {
                 player.displayClientMessage(net.minecraft.network.chat.Component.literal("实体已捕获！"), true);
 
                 event.setCanceled(true);
-                event.setResult(Event.Result.DENY);
                 event.setCancellationResult(InteractionResult.FAIL);
             }
         }
@@ -306,20 +293,18 @@ public class EventHandlerProxy {
 
     public static void onPlayerUseItem(PlayerEvent event) {
         if (AotakeSweep.isDisable()) return;
-        if (event.getEntity() == null) return;
         if (event.getEntity().isCrouching() && ServerConfig.ALLOW_CATCH_ITEM.get()) {
             ItemStack item;
-            // 桶装牛奶事件
-            if (event instanceof FillBucketEvent) {
-                item = ((FillBucketEvent) event).getEmptyBucket();
-            }
+            ICancellableEvent eve = null;
             // 使用弓箭事件
-            else if (event instanceof ArrowNockEvent) {
+            if (event instanceof ArrowNockEvent) {
+                eve = (ArrowNockEvent) event;
                 item = ((ArrowNockEvent) event).getBow();
             }
             // 使用骨粉事件
-            else if (event instanceof BonemealEvent) {
-                item = ((BonemealEvent) event).getStack();
+            else if (event instanceof UseItemOnBlockEvent) {
+                eve = (UseItemOnBlockEvent) event;
+                item = ((UseItemOnBlockEvent) event).getItemStack();
             }
             // 其他
             else {
@@ -329,8 +314,7 @@ public class EventHandlerProxy {
             if (item != null && ServerConfig.CATCH_ITEM.get().stream()
                     .anyMatch(s -> s.equals(AotakeUtils.getItemRegistryName(item)))
             ) {
-                event.setCanceled(true);
-                event.setResult(Event.Result.DENY);
+                eve.setCanceled(true);
             }
         }
 

@@ -1,14 +1,10 @@
 package xin.vanilla.aotake.event;
 
-import net.minecraft.world.entity.Entity;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.event.AttachCapabilitiesEvent;
-import net.minecraftforge.event.TickEvent;
-import net.minecraftforge.event.entity.player.PlayerContainerEvent;
-import net.minecraftforge.event.entity.player.PlayerEvent;
-import net.minecraftforge.event.entity.player.PlayerInteractEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.EventBusSubscriber;
+import net.neoforged.neoforge.event.entity.player.*;
+import net.neoforged.neoforge.event.tick.ServerTickEvent;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import xin.vanilla.aotake.AotakeSweep;
@@ -16,7 +12,7 @@ import xin.vanilla.aotake.AotakeSweep;
 /**
  * 服务端 Game事件处理器
  */
-@Mod.EventBusSubscriber(modid = AotakeSweep.MODID, value = Dist.DEDICATED_SERVER, bus = Mod.EventBusSubscriber.Bus.FORGE)
+@EventBusSubscriber(modid = AotakeSweep.MODID, value = Dist.DEDICATED_SERVER, bus = EventBusSubscriber.Bus.GAME)
 public class ServerGameEventHandler {
     private static final Logger LOGGER = LogManager.getLogger();
 
@@ -24,16 +20,8 @@ public class ServerGameEventHandler {
      * 服务端Tick事件
      */
     @SubscribeEvent
-    public static void onServerTick(TickEvent.ServerTickEvent.Post event) {
+    public static void onServerTick(ServerTickEvent.Post event) {
         EventHandlerProxy.onServerTick(event);
-    }
-
-    /**
-     * 能力附加事件
-     */
-    @SubscribeEvent
-    public static void onAttachCapabilityEvent(AttachCapabilitiesEvent<Entity> event) {
-        EventHandlerProxy.onAttachCapabilityEvent(event);
     }
 
     /**
@@ -48,8 +36,15 @@ public class ServerGameEventHandler {
      * 玩家事件
      */
     @SubscribeEvent
-    public static void onPlayerEvent(PlayerEvent event) {
-        if (event instanceof PlayerEvent.Clone) return;
+    public static void onPlayerEvent(ArrowNockEvent event) {
+        EventHandlerProxy.onPlayerUseItem(event);
+    }
+
+    /**
+     * 玩家事件
+     */
+    @SubscribeEvent
+    public static void onPlayerEvent(UseItemOnBlockEvent event) {
         EventHandlerProxy.onPlayerUseItem(event);
     }
 
