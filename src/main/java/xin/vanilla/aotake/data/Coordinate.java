@@ -1,17 +1,17 @@
 package xin.vanilla.aotake.data;
 
 import com.google.gson.JsonObject;
-import com.mojang.math.Vector3d;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.NonNull;
 import lombok.experimental.Accessors;
 import net.minecraft.core.BlockPos;
-import net.minecraft.core.Registry;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.phys.Vec3;
 import xin.vanilla.aotake.AotakeSweep;
 import xin.vanilla.aotake.util.JsonUtils;
 import xin.vanilla.aotake.util.StringUtils;
@@ -115,11 +115,11 @@ public class Coordinate implements Serializable, Cloneable {
     }
 
     public BlockPos toBlockPos() {
-        return new BlockPos(x, y, z);
+        return new BlockPos((int) x, (int) y, (int) z);
     }
 
-    public Vector3d toVector3d() {
-        return new Vector3d(x, y, z);
+    public Vec3 toVector3d() {
+        return new Vec3(x, y, z);
     }
 
     public Coordinate fromBlockPos(BlockPos pos) {
@@ -129,7 +129,7 @@ public class Coordinate implements Serializable, Cloneable {
         return this;
     }
 
-    public Coordinate fromVector3d(Vector3d pos) {
+    public Coordinate fromVector3d(Vec3 pos) {
         this.x = pos.x;
         this.y = pos.y;
         this.z = pos.z;
@@ -175,7 +175,7 @@ public class Coordinate implements Serializable, Cloneable {
         coordinate.z = tag.getDouble("z");
         coordinate.yaw = tag.getDouble("yaw");
         coordinate.pitch = tag.getDouble("pitch");
-        coordinate.dimension = ResourceKey.create(Registry.DIMENSION_REGISTRY, AotakeSweep.parseResource(tag.getString("dimension")));
+        coordinate.dimension = ResourceKey.create(Registries.DIMENSION, AotakeSweep.parseResource(tag.getString("dimension")));
         return coordinate;
     }
 
@@ -205,7 +205,7 @@ public class Coordinate implements Serializable, Cloneable {
         coordinate.yaw = JsonUtils.getDouble(json, "yaw", 0);
         coordinate.pitch = JsonUtils.getDouble(json, "pitch", 0);
         String dimensionStr = JsonUtils.getString(json, "dimension", Level.OVERWORLD.location().toString());
-        coordinate.dimension = ResourceKey.create(Registry.DIMENSION_REGISTRY, AotakeSweep.parseResource(dimensionStr));
+        coordinate.dimension = ResourceKey.create(Registries.DIMENSION, AotakeSweep.parseResource(dimensionStr));
         return coordinate;
     }
 

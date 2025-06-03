@@ -6,7 +6,7 @@ import lombok.NonNull;
 import net.minecraft.client.Minecraft;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.arguments.blocks.BlockStateParser;
-import net.minecraft.core.Registry;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.TagParser;
 import net.minecraft.network.chat.ClickEvent;
@@ -305,7 +305,7 @@ public class AotakeUtils {
     }
 
     public static String getClientLanguage() {
-        return Minecraft.getInstance().getLanguageManager().getSelected().getCode();
+        return Minecraft.getInstance().getLanguageManager().getSelected();
     }
 
     // endregion 玩家语言相关
@@ -595,7 +595,8 @@ public class AotakeUtils {
      */
     public static BlockState deserializeBlockState(String block) {
         try {
-            return BlockStateParser.parseForBlock(Registry.BLOCK, new StringReader(block), false).blockState();
+            return BlockStateParser.parseForBlock(AotakeSweep.getServerInstance().getAllLevels().iterator().next().holderLookup(Registries.BLOCK)
+                    , new StringReader(block), false).blockState();
         } catch (Exception e) {
             LOGGER.error("Invalid unsafe block: {}", block, e);
             return null;

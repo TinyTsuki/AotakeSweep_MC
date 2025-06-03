@@ -136,18 +136,19 @@ public class ClientGameEventHandler {
             // if (event.isCancelable()) event.setCanceled(false);
             if (event instanceof ScreenEvent.Init.Post) {
                 ((ScreenEvent.Init.Post) event).addListener(
-                        new Button(event.getScreen().width / 2 - 88 - 21
-                                , event.getScreen().height / 2 - 111
-                                , 20, 20
-                                , Component.literal("▲").toTextComponent()
+                        new Button.Builder(Component.literal("▲").toTextComponent()
                                 , button -> AotakeUtils.sendPacketToServer(new OpenDustbinNotice(-1)))
+                                .size(20, 20)
+                                .pos(event.getScreen().width / 2 - 88 - 21, event.getScreen().height / 2 - 111)
+                                .build()
                 );
                 ((ScreenEvent.Init.Post) event).addListener(
-                        new Button(event.getScreen().width / 2 - 88 - 21
-                                , event.getScreen().height / 2 - 90
-                                , 20, 20
-                                , Component.literal("▼").toTextComponent()
+                        new Button.Builder(Component.literal("▼").toTextComponent()
                                 , button -> AotakeUtils.sendPacketToServer(new OpenDustbinNotice(1)))
+                                .size(20, 20)
+                                .pos(event.getScreen().width / 2 - 88 - 21, event.getScreen().height / 2 - 90)
+                                .build()
+
                 );
             } else if (event instanceof ScreenEvent.KeyPressed.Pre keyEvent) {
                 if (keyEvent.getModifiers() != 0) return;
