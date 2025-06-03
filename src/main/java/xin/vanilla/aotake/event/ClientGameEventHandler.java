@@ -40,20 +40,18 @@ public class ClientGameEventHandler {
      * 客户端Tick事件
      */
     @SubscribeEvent
-    public static void onClientTick(TickEvent.ClientTickEvent event) {
-        if (event.phase == TickEvent.Phase.END) {
-            if (Minecraft.getInstance().screen == null) {
-                if (ClientModEventHandler.DUSTBIN_KEY.consumeClick()) {
-                    if (!keyDown) {
-                        AotakeUtils.sendPacketToServer(new OpenDustbinNotice(0));
-                        keyDown = true;
-                    }
-                } else {
-                    keyDown = false;
+    public static void onClientTick(TickEvent.ClientTickEvent.Post event) {
+        if (Minecraft.getInstance().screen == null) {
+            if (ClientModEventHandler.DUSTBIN_KEY.consumeClick()) {
+                if (!keyDown) {
+                    AotakeUtils.sendPacketToServer(new OpenDustbinNotice(0));
+                    keyDown = true;
                 }
             } else {
                 keyDown = false;
             }
+        } else {
+            keyDown = false;
         }
     }
 
@@ -61,7 +59,7 @@ public class ClientGameEventHandler {
      * 服务端Tick事件
      */
     @SubscribeEvent
-    public static void onServerTick(TickEvent.ServerTickEvent event) {
+    public static void onServerTick(TickEvent.ServerTickEvent.Post event) {
         EventHandlerProxy.onServerTick(event);
     }
 

@@ -1,12 +1,16 @@
 package xin.vanilla.aotake.data.world;
 
+import com.mojang.datafixers.util.Pair;
 import lombok.Getter;
 import lombok.NonNull;
+import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
+import net.minecraft.nbt.NbtOps;
 import net.minecraft.nbt.Tag;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.util.datafix.DataFixTypes;
 import net.minecraft.world.MenuProvider;
 import net.minecraft.world.SimpleContainer;
 import net.minecraft.world.entity.Entity;
@@ -15,6 +19,7 @@ import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.inventory.ChestMenu;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.saveddata.SavedData;
 import net.minecraftforge.entity.PartEntity;
@@ -57,14 +62,14 @@ public class WorldTrashData extends SavedData {
     public WorldTrashData() {
     }
 
-    public static WorldTrashData load(CompoundTag nbt) {
+    public static WorldTrashData load(CompoundTag nbt, HolderLookup.Provider provider) {
         WorldTrashData data = new WorldTrashData();
         data.dropList = new ArrayList<>();
         ListTag dropListTag = nbt.getList("dropList", 10);
         List<KeyValue<Coordinate, ItemStack>> drops = new ArrayList<>();
         for (int i = 0; i < dropListTag.size(); i++) {
             CompoundTag drop = dropListTag.getCompound(i);
-            ItemStack item = ItemStack.of(drop.getCompound("item"));
+            ItemStack item = ItemStack.CODEC.decode(NbtOps.INSTANCE, drop.getCompound("item")).result().orElse(new Pair<>(null, null)).getFirst();
             drops.add(new KeyValue<>(
                     Coordinate.readFromNBT(drop.getCompound("coordinate"))
                     , item
@@ -88,7 +93,7 @@ public class WorldTrashData extends SavedData {
         ListTag inventoryListTag = nbt.getList("inventoryList", 9);
         for (Tag inbt : inventoryListTag) {
             SimpleContainer inventory = new SimpleContainer(6 * 9);
-            inventory.fromTag((ListTag) inbt);
+            inventory.fromTag((ListTag) inbt, provider);
             data.inventoryList.add(inventory);
         }
         return data;
@@ -97,11 +102,11 @@ public class WorldTrashData extends SavedData {
     @NonNull
     @Override
     @ParametersAreNonnullByDefault
-    public CompoundTag save(CompoundTag nbt) {
+    public CompoundTag save(CompoundTag nbt, HolderLookup.Provider provider) {
         ListTag dropsNBT = new ListTag();
         for (KeyValue<Coordinate, ItemStack> drop : this.getDropList()) {
             CompoundTag dropTag = new CompoundTag();
-            dropTag.put("item", drop.getValue().serializeNBT());
+            dropTag.put("item", ItemStack.CODEC.encodeStart(NbtOps.INSTANCE, drop.getValue()).result().orElse(new CompoundTag()));
             dropTag.put("coordinate", drop.getKey().writeToNBT());
             dropsNBT.add(dropTag);
         }
@@ -119,7 +124,7 @@ public class WorldTrashData extends SavedData {
 
         ListTag inventoryNBT = new ListTag();
         for (SimpleContainer inventory : this.getInventoryList()) {
-            inventoryNBT.add(inventory.createTag());
+            inventoryNBT.add(inventory.createTag(provider));
         }
         nbt.put("inventoryList", inventoryNBT);
 
@@ -167,14 +172,18 @@ public class WorldTrashData extends SavedData {
             // 回收实体
             if (ServerConfig.CATCH_ENTITY.get().contains(typeKey)) {
                 String randomItem = CollectionUtils.getRandomElement(ServerConfig.CATCH_ITEM.get());
-                item = new ItemStack(AotakeUtils.deserializeItem(randomItem));
-                CompoundTag tag = item.getOrCreateTag();
-                CompoundTag aotake = new CompoundTag();
-                aotake.putBoolean("byPlayer", false);
-                aotake.put("entity", entity.serializeNBT());
-                tag.put(AotakeSweep.MODID, aotake);
+                Item it = AotakeUtils.deserializeItem(randomItem);
+                if (it != null) {
+                    item = new ItemStack(it);
+                    CompoundTag aotake = new CompoundTag();
+                    aotake.putBoolean("byPlayer", false);
+                    aotake.put("entity", entity.serializeNBT());
+                    item.set(AotakeSweep.CUSTOM_DATA_COMPONENT.get(), aotake);
 
-                result.setRecycledEntityCount(1);
+                    result.setRecycledEntityCount(1);
+                } else {
+                    item = null;
+                }
             }
             // 清理实体
             else {
@@ -251,7 +260,7 @@ public class WorldTrashData extends SavedData {
     }
 
     public static WorldTrashData get(ServerLevel world) {
-        return world.getDataStorage().computeIfAbsent(WorldTrashData::load, WorldTrashData::new, DATA_NAME);
+        return world.getDataStorage().computeIfAbsent(new Factory<>(WorldTrashData::new, WorldTrashData::load, DataFixTypes.SAVED_DATA_MAP_DATA), DATA_NAME);
     }
 
     public static MenuProvider getTrashContainer(ServerPlayer player, int page) {

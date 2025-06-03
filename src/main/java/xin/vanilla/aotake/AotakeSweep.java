@@ -2,6 +2,10 @@ package xin.vanilla.aotake;
 
 import lombok.Getter;
 import lombok.Setter;
+import net.minecraft.core.component.DataComponentType;
+import net.minecraft.core.registries.Registries;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
 import net.minecraftforge.api.distmarker.Dist;
@@ -17,6 +21,8 @@ import net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent;
 import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent;
 import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
 import net.minecraftforge.fml.loading.FMLEnvironment;
+import net.minecraftforge.registries.DeferredRegister;
+import net.minecraftforge.registries.RegistryObject;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import xin.vanilla.aotake.command.AotakeCommand;
@@ -65,12 +71,22 @@ public class AotakeSweep {
     @Setter
     private static boolean disable = false;
 
+    private static final DeferredRegister<DataComponentType<?>> COMPONENTS = DeferredRegister.create(Registries.DATA_COMPONENT_TYPE, AotakeSweep.MODID);
+
+    public static RegistryObject<DataComponentType<CompoundTag>> CUSTOM_DATA_COMPONENT = COMPONENTS.register(AotakeSweep.MODID, () -> DataComponentType.<CompoundTag>builder()
+            .persistent(CompoundTag.CODEC)
+            .networkSynchronized(ByteBufCodecs.TRUSTED_COMPOUND_TAG)
+            .cacheEncoding()
+            .build());
+
     // public static final Item JUNK_BALL = new JunkBall();
 
     public AotakeSweep(FMLJavaModLoadingContext context) {
 
         // 注册网络通道
         ModNetworkHandler.registerPackets();
+        // 注册数据组件类型
+        COMPONENTS.register(context.getModEventBus());
 
         // 注册服务器启动和关闭事件
         MinecraftForge.EVENT_BUS.addListener(this::onServerStarting);
@@ -145,5 +161,6 @@ public class AotakeSweep {
     }
 
     // endregion 资源ID
+
 
 }

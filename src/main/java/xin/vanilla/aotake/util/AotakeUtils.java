@@ -2,12 +2,16 @@ package xin.vanilla.aotake.util;
 
 import com.mojang.brigadier.StringReader;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
+import com.mojang.datafixers.util.Pair;
 import lombok.NonNull;
 import net.minecraft.client.Minecraft;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.arguments.blocks.BlockStateParser;
+import net.minecraft.core.component.DataComponentMap;
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.NbtOps;
 import net.minecraft.nbt.TagParser;
 import net.minecraft.network.chat.ClickEvent;
 import net.minecraft.network.chat.HoverEvent;
@@ -251,14 +255,14 @@ public class AotakeUtils {
      * 发送数据包至服务器
      */
     public static <MSG> void sendPacketToServer(MSG msg) {
-        ModNetworkHandler.INSTANCE.sendToServer(msg);
+        ModNetworkHandler.INSTANCE.send(msg, PacketDistributor.SERVER.noArg());
     }
 
     /**
      * 发送数据包至玩家
      */
     public static <MSG> void sendPacketToPlayer(MSG msg, ServerPlayer player) {
-        ModNetworkHandler.INSTANCE.send(PacketDistributor.PLAYER.with(() -> player), msg);
+        ModNetworkHandler.INSTANCE.send(msg, PacketDistributor.PLAYER.with(player));
     }
 
     // endregion 消息相关
@@ -497,9 +501,9 @@ public class AotakeUtils {
     public static Entity getEntityFromItem(ServerLevel level, ItemStack itemStack) {
         Entity result = null;
 
-        CompoundTag tag = itemStack.getTag();
-        if (tag != null && tag.contains(AotakeSweep.MODID)) {
-            CompoundTag aotake = tag.getCompound(AotakeSweep.MODID);
+        DataComponentMap tag = itemStack.getComponents();
+        if (!tag.isEmpty() && tag.has(AotakeSweep.CUSTOM_DATA_COMPONENT.get())) {
+            CompoundTag aotake = tag.getOrDefault(AotakeSweep.CUSTOM_DATA_COMPONENT.get(), new CompoundTag());
             if (aotake.contains("entity")) {
                 try {
                     result = EntityType.loadEntityRecursive(aotake.getCompound("entity"), level, e -> e);
@@ -626,7 +630,8 @@ public class AotakeUtils {
     public static ItemStack deserializeItemStack(@NonNull String item) {
         ItemStack itemStack;
         try {
-            itemStack = ItemStack.of(TagParser.parseTag(item));
+            itemStack = ItemStack.CODEC.decode(NbtOps.INSTANCE, TagParser.parseTag(item)).result()
+                    .orElse(new Pair<>(null, null)).getFirst();
         } catch (Exception e) {
             itemStack = null;
             LOGGER.error("Invalid unsafe item: {}", item, e);
@@ -682,31 +687,24 @@ public class AotakeUtils {
 
     public static String getItemCustomNameJson(@NonNull ItemStack itemStack) {
         String result = "";
-        CompoundTag CompoundTag = itemStack.getTagElement("display");
-        if (CompoundTag != null && CompoundTag.contains("Name", 8)) {
-            result = CompoundTag.getString("Name");
+        net.minecraft.network.chat.Component name = getItemCustomName(itemStack);
+        if (name != null) {
+            result = net.minecraft.network.chat.Component.Serializer.toJson(name
+                    , AotakeSweep.getServerInstance().getAllLevels().iterator().next().registryAccess());
         }
         return result;
     }
 
     public static net.minecraft.network.chat.Component getItemCustomName(@NonNull ItemStack itemStack) {
-        net.minecraft.network.chat.Component result = null;
-        String nameJson = getItemCustomNameJson(itemStack);
-        if (StringUtils.isNotNullOrEmpty(nameJson)) {
-            try {
-                result = net.minecraft.network.chat.Component.Serializer.fromJson(nameJson);
-            } catch (Exception e) {
-                LOGGER.error("Invalid unsafe item name: {}", nameJson, e);
-            }
-        }
-        return result;
+        return itemStack.getComponents().get(DataComponents.CUSTOM_NAME);
     }
 
     public static net.minecraft.network.chat.Component textComponentFromJson(String json) {
         net.minecraft.network.chat.Component result = null;
         if (StringUtils.isNotNullOrEmpty(json)) {
             try {
-                result = net.minecraft.network.chat.Component.Serializer.fromJson(json);
+                result = net.minecraft.network.chat.Component.Serializer.fromJson(json
+                        , AotakeSweep.getServerInstance().getAllLevels().iterator().next().registryAccess());
             } catch (Exception e) {
                 LOGGER.error("Invalid unsafe item name: {}", json, e);
             }

@@ -3,6 +3,8 @@ package xin.vanilla.aotake.util;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
+import com.mojang.serialization.DataResult;
+import com.mojang.serialization.JsonOps;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.NonNull;
@@ -655,8 +657,11 @@ public class Component implements Cloneable, Serializable {
         if (component instanceof MutableComponent) {
             TextColor color = component.getStyle().getColor();
             if (color != null && color.serialize().startsWith("#")) {
-                Style style = component.getStyle().withColor(TextColor.parseColor(StringUtils.argbToMinecraftColor(StringUtils.argbToHex(color.serialize())).name().toLowerCase()));
-                ((MutableComponent) component).setStyle(style);
+                DataResult<TextColor> result = TextColor.parseColor(StringUtils.argbToMinecraftColor(StringUtils.argbToHex(color.serialize())).name().toLowerCase());
+                result.result().ifPresent(textColor -> {
+                    Style style = component.getStyle().withColor(textColor);
+                    ((MutableComponent) component).setStyle(style);
+                });
             }
         }
         for (net.minecraft.network.chat.Component sibling : component.getSiblings()) {
@@ -767,14 +772,11 @@ public class Component implements Cloneable, Serializable {
         result.setUnderlined(JsonUtils.getBoolean(jsonObject, "underlined"));
         result.setStrikethrough(JsonUtils.getBoolean(jsonObject, "strikethrough"));
         result.setObfuscated(JsonUtils.getBoolean(jsonObject, "obfuscated"));
-        String clickAction = JsonUtils.getString(jsonObject, "clickEvent.action", "");
-        String clickValue = JsonUtils.getString(jsonObject, "clickEvent.value", "");
-        if (StringUtils.isNotNullOrEmpty(clickAction) && StringUtils.isNotNullOrEmpty(clickValue)) {
-            result.setClickEvent(new ClickEvent(ClickEvent.Action.valueOf(clickAction), clickValue));
+        if (jsonObject.has("clickEvent")) {
+            ClickEvent.CODEC.decode(JsonOps.INSTANCE, jsonObject.get("clickEvent").getAsJsonObject()).result().ifPresent(value -> result.setClickEvent(value.getFirst()));
         }
-        JsonObject hover = JsonUtils.getJsonObject(jsonObject, "hoverEvent", null);
-        if (hover != null) {
-            result.setHoverEvent(HoverEvent.deserialize(hover));
+        if (jsonObject.has("hoverEvent")) {
+            HoverEvent.CODEC.decode(JsonOps.INSTANCE, jsonObject.get("hoverEvent").getAsJsonObject()).result().ifPresent(value -> result.setHoverEvent(value.getFirst()));
         }
         for (JsonElement childJson : JsonUtils.getJsonArray(jsonObject, "children", new JsonArray())) {
             result.getChildren().add(deserialize((JsonObject) childJson));
@@ -799,11 +801,10 @@ public class Component implements Cloneable, Serializable {
         JsonUtils.set(result, "strikethrough", reward.isStrikethrough());
         JsonUtils.set(result, "obfuscated", reward.isObfuscated());
         if (reward.getClickEvent() != null) {
-            JsonUtils.set(result, "clickEvent.action", reward.getClickEvent().getAction().getName());
-            JsonUtils.set(result, "clickEvent.value", reward.getClickEvent().getValue());
+            ClickEvent.CODEC.encodeStart(JsonOps.INSTANCE, reward.getClickEvent()).result().ifPresent(value -> result.add("clickEvent", value));
         }
         if (reward.getHoverEvent() != null) {
-            JsonUtils.set(result, "hoverEvent", reward.getHoverEvent().serialize());
+            HoverEvent.CODEC.encodeStart(JsonOps.INSTANCE, reward.getHoverEvent()).result().ifPresent(value -> result.add("hoverEvent", value));
         }
         JsonArray children = new JsonArray();
         for (Component child : reward.getChildren()) {

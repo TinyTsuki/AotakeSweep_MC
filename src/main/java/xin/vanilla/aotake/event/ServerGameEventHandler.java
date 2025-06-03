@@ -24,7 +24,7 @@ public class ServerGameEventHandler {
      * 服务端Tick事件
      */
     @SubscribeEvent
-    public static void onServerTick(TickEvent.ServerTickEvent event) {
+    public static void onServerTick(TickEvent.ServerTickEvent.Post event) {
         EventHandlerProxy.onServerTick(event);
     }
 

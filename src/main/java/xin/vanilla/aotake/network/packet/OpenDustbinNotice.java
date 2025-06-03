@@ -2,12 +2,10 @@ package xin.vanilla.aotake.network.packet;
 
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraftforge.network.NetworkEvent;
+import net.minecraftforge.event.network.CustomPayloadEvent;
 import xin.vanilla.aotake.AotakeSweep;
 import xin.vanilla.aotake.data.world.WorldTrashData;
 import xin.vanilla.aotake.util.AotakeUtils;
-
-import java.util.function.Supplier;
 
 public class OpenDustbinNotice {
     private final int offset;
@@ -24,9 +22,9 @@ public class OpenDustbinNotice {
         buf.writeInt(this.offset);
     }
 
-    public static void handle(OpenDustbinNotice packet, Supplier<NetworkEvent.Context> ctx) {
-        ctx.get().enqueueWork(() -> {
-            ServerPlayer player = ctx.get().getSender();
+    public static void handle(OpenDustbinNotice packet, CustomPayloadEvent.Context ctx) {
+        ctx.enqueueWork(() -> {
+            ServerPlayer player = ctx.getSender();
             if (player != null) {
                 String playerUUID = AotakeUtils.getPlayerUUIDString(player);
                 Integer page = AotakeSweep.getPlayerDustbinPage().getOrDefault(playerUUID, 1);
@@ -35,6 +33,6 @@ public class OpenDustbinNotice {
                 if (result > 0) AotakeSweep.getPlayerDustbinPage().put(playerUUID, page + packet.offset);
             }
         });
-        ctx.get().setPacketHandled(true);
+        ctx.setPacketHandled(true);
     }
 }
