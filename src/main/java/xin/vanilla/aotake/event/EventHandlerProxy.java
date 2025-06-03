@@ -165,7 +165,7 @@ public class EventHandlerProxy {
 
     public static void onAttachCapabilityEvent(AttachCapabilitiesEvent<Entity> event) {
         if (event.getObject() instanceof Player) {
-            event.addCapability(AotakeUtils.createResource("player_sweep_data"), new PlayerSweepDataProvider());
+            event.addCapability(AotakeSweep.createResource("player_sweep_data"), new PlayerSweepDataProvider());
         }
     }
 

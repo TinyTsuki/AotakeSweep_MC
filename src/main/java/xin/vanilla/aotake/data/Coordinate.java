@@ -12,7 +12,7 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.level.Level;
-import xin.vanilla.aotake.util.AotakeUtils;
+import xin.vanilla.aotake.AotakeSweep;
 import xin.vanilla.aotake.util.JsonUtils;
 import xin.vanilla.aotake.util.StringUtils;
 
@@ -175,7 +175,7 @@ public class Coordinate implements Serializable, Cloneable {
         coordinate.z = tag.getDouble("z");
         coordinate.yaw = tag.getDouble("yaw");
         coordinate.pitch = tag.getDouble("pitch");
-        coordinate.dimension = ResourceKey.create(Registry.DIMENSION_REGISTRY, AotakeUtils.parseResource(tag.getString("dimension")));
+        coordinate.dimension = ResourceKey.create(Registry.DIMENSION_REGISTRY, AotakeSweep.parseResource(tag.getString("dimension")));
         return coordinate;
     }
 
@@ -205,7 +205,7 @@ public class Coordinate implements Serializable, Cloneable {
         coordinate.yaw = JsonUtils.getDouble(json, "yaw", 0);
         coordinate.pitch = JsonUtils.getDouble(json, "pitch", 0);
         String dimensionStr = JsonUtils.getString(json, "dimension", Level.OVERWORLD.location().toString());
-        coordinate.dimension = ResourceKey.create(Registry.DIMENSION_REGISTRY, AotakeUtils.parseResource(dimensionStr));
+        coordinate.dimension = ResourceKey.create(Registry.DIMENSION_REGISTRY, AotakeSweep.parseResource(dimensionStr));
         return coordinate;
     }
 
