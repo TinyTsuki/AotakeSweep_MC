@@ -5,6 +5,7 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Player;
+import net.minecraftforge.common.capabilities.AutoRegisterCapability;
 import net.minecraftforge.common.util.INBTSerializable;
 
 import javax.annotation.Nullable;
@@ -12,6 +13,7 @@ import javax.annotation.Nullable;
 /**
  * 玩家传送数据
  */
+@AutoRegisterCapability
 public interface IPlayerSweepData extends INBTSerializable<CompoundTag> {
 
     /**

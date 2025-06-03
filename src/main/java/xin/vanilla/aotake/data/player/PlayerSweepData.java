@@ -1,6 +1,7 @@
 package xin.vanilla.aotake.data.player;
 
 import lombok.NonNull;
+import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.server.level.ServerPlayer;
@@ -78,7 +79,7 @@ public class PlayerSweepData implements IPlayerSweepData {
     }
 
     @Override
-    public CompoundTag serializeNBT() {
+    public CompoundTag serializeNBT(HolderLookup.Provider registryAccess) {
         CompoundTag tag = new CompoundTag();
         tag.putString("language", this.getLanguage());
         tag.putBoolean("notified", this.notified);
@@ -87,7 +88,7 @@ public class PlayerSweepData implements IPlayerSweepData {
     }
 
     @Override
-    public void deserializeNBT(CompoundTag nbt) {
+    public void deserializeNBT(HolderLookup.Provider registryAccess, CompoundTag nbt) {
         this.setLanguage(nbt.getString("language"));
         this.notified = nbt.getBoolean("notified");
         this.showSweepResult = nbt.getBoolean("showSweepResult");

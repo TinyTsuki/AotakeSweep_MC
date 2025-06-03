@@ -1,6 +1,7 @@
 package xin.vanilla.aotake.data.player;
 
 import net.minecraft.core.Direction;
+import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraftforge.common.capabilities.Capability;
 import net.minecraftforge.common.capabilities.ICapabilityProvider;
@@ -47,15 +48,15 @@ public class PlayerSweepDataProvider implements ICapabilityProvider, INBTSeriali
      * 序列化玩家数据为NBT格式
      */
     @Override
-    public CompoundTag serializeNBT() {
-        return this.getOrCreateCapability().serializeNBT();
+    public CompoundTag serializeNBT(HolderLookup.Provider registryAccess) {
+        return this.getOrCreateCapability().serializeNBT(registryAccess);
     }
 
     /**
      * 从NBT格式的数据中反序列化玩家数据
      */
     @Override
-    public void deserializeNBT(CompoundTag nbt) {
-        this.getOrCreateCapability().deserializeNBT(nbt);
+    public void deserializeNBT(HolderLookup.Provider registryAccess, CompoundTag nbt) {
+        this.getOrCreateCapability().deserializeNBT(registryAccess, nbt);
     }
 }

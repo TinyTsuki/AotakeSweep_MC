@@ -335,6 +335,7 @@ public class AotakeUtils {
         if (SAFE_BLOCKS == null) {
             SAFE_BLOCKS = CommonConfig.SAFE_BLOCKS.get().stream()
                     .filter(Objects::nonNull)
+                    .map(s -> (String) s)
                     .distinct()
                     .toList();
         }
@@ -348,6 +349,7 @@ public class AotakeUtils {
         if (SAFE_BLOCKS_BELOW == null) {
             SAFE_BLOCKS_BELOW = CommonConfig.SAFE_BLOCKS_BELOW.get().stream()
                     .filter(Objects::nonNull)
+                    .map(s -> (String) s)
                     .distinct()
                     .toList();
         }
@@ -361,6 +363,7 @@ public class AotakeUtils {
         if (SAFE_BLOCKS_ABOVE == null) {
             SAFE_BLOCKS_ABOVE = CommonConfig.SAFE_BLOCKS_ABOVE.get().stream()
                     .filter(Objects::nonNull)
+                    .map(s -> (String) s)
                     .distinct()
                     .toList();
         }
@@ -437,7 +440,7 @@ public class AotakeUtils {
         SweepResult result = null;
         if (CollectionUtils.isNotNullOrEmpty(list)) {
             // 清空旧的物品
-            if (ServerConfig.SELF_CLEAN_MODE.get().contains(EnumSelfCleanMode.SWEEP_CLEAR)) {
+            if (ServerConfig.SELF_CLEAN_MODE.get().contains(EnumSelfCleanMode.SWEEP_CLEAR.name())) {
                 WorldTrashData.get().getDropList().clear();
                 WorldTrashData.get().getInventoryList().forEach(SimpleContainer::clearContent);
             }
@@ -521,7 +524,7 @@ public class AotakeUtils {
 
     public static Component getWarningMessage(int index, String lang, @Nullable SweepResult result) {
         Component msg = null;
-        List<String> warns = CommonConfig.SWEEP_WARNING_CONTENT.get();
+        List<? extends String> warns = CommonConfig.SWEEP_WARNING_CONTENT.get();
         try {
             String text = warns.get(CommonConfig.SWEEP_WARNING_SECOND.get().indexOf(index));
             if (result != null) {

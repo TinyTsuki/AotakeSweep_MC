@@ -11,7 +11,6 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.common.capabilities.RegisterCapabilitiesEvent;
 import net.minecraftforge.common.util.LazyOptional;
 import net.minecraftforge.entity.PartEntity;
 import net.minecraftforge.event.AttachCapabilitiesEvent;
@@ -92,12 +91,12 @@ public class EventHandlerProxy {
                 lastSelfCleanTime = System.currentTimeMillis();
                 WorldTrashData worldTrashData = WorldTrashData.get();
                 // 清空
-                if (ServerConfig.SELF_CLEAN_MODE.get().contains(EnumSelfCleanMode.SCHEDULED_CLEAR)) {
+                if (ServerConfig.SELF_CLEAN_MODE.get().contains(EnumSelfCleanMode.SCHEDULED_CLEAR.name())) {
                     worldTrashData.getDropList().clear();
                     worldTrashData.getInventoryList().forEach(SimpleContainer::clearContent);
                 }
                 // 随机删除
-                else if (ServerConfig.SELF_CLEAN_MODE.get().contains(EnumSelfCleanMode.SCHEDULED_DELETE)) {
+                else if (ServerConfig.SELF_CLEAN_MODE.get().contains(EnumSelfCleanMode.SCHEDULED_DELETE.name())) {
                     if (AotakeSweep.RANDOM.nextBoolean()) {
                         List<KeyValue<Coordinate, ItemStack>> dropList = worldTrashData.getDropList();
                         dropList.remove(AotakeSweep.RANDOM.nextInt(dropList.size()));
@@ -158,11 +157,6 @@ public class EventHandlerProxy {
         }
     }
 
-    public static void registerCaps(RegisterCapabilitiesEvent event) {
-        // 注册 PlayerDataCapability
-        event.register(IPlayerSweepData.class);
-    }
-
     public static void onAttachCapabilityEvent(AttachCapabilitiesEvent<Entity> event) {
         if (event.getObject() instanceof Player) {
             event.addCapability(AotakeSweep.createResource("player_sweep_data"), new PlayerSweepDataProvider());
@@ -187,7 +181,8 @@ public class EventHandlerProxy {
             DataComponentMap tag = event.getItemStack().getComponents();
             if (!tag.isEmpty() && tag.has(AotakeSweep.CUSTOM_DATA_COMPONENT.get())) {
                 CompoundTag aotake = tag.get(AotakeSweep.CUSTOM_DATA_COMPONENT.get());
-                if (aotake == null || aotake.isEmpty()) event.getItemStack().remove(AotakeSweep.CUSTOM_DATA_COMPONENT.get());
+                if (aotake == null || aotake.isEmpty())
+                    event.getItemStack().remove(AotakeSweep.CUSTOM_DATA_COMPONENT.get());
                 event.setResult(Event.Result.DENY);
                 event.setCancellationResult(InteractionResult.FAIL);
                 event.setCanceled(true);
@@ -287,7 +282,7 @@ public class EventHandlerProxy {
                 CompoundTag aotake = new CompoundTag();
 
                 aotake.putBoolean("byPlayer", true);
-                aotake.put("entity", entity.serializeNBT());
+                aotake.put("entity", entity.serializeNBT(entity.registryAccess()));
                 aotake.putString("name", AotakeUtils.getItemCustomNameJson(copy));
                 copy.set(AotakeSweep.CUSTOM_DATA_COMPONENT.get(), aotake);
                 copy.set(DataComponents.CUSTOM_NAME, Component.literal(String.format("%s%s", entity.getDisplayName().getString(), copy.getHoverName().getString())).toChatComponent());

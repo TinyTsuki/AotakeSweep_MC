@@ -54,27 +54,27 @@ public class ServerConfig {
     /**
      * 使用以下物品捕获被清理的实体
      */
-    public static final ForgeConfigSpec.ConfigValue<List<String>> CATCH_ITEM;
+    public static final ForgeConfigSpec.ConfigValue<List<? extends String>> CATCH_ITEM;
 
     /**
      * 允许被清理的实体
      */
-    public static final ForgeConfigSpec.ConfigValue<List<String>> JUNK_ENTITY;
+    public static final ForgeConfigSpec.ConfigValue<List<? extends String>> JUNK_ENTITY;
 
     /**
      * 清理时允许被捕获的实体
      */
-    public static final ForgeConfigSpec.ConfigValue<List<String>> CATCH_ENTITY;
+    public static final ForgeConfigSpec.ConfigValue<List<? extends String>> CATCH_ENTITY;
 
     /**
      * 物品清理白名单
      */
-    public static final ForgeConfigSpec.ConfigValue<List<String>> ITEM_WHITELIST;
+    public static final ForgeConfigSpec.ConfigValue<List<? extends String>> ITEM_WHITELIST;
 
     /**
      * 物品清理黑名单
      */
-    public static final ForgeConfigSpec.ConfigValue<List<String>> ITEM_BLACKLIST;
+    public static final ForgeConfigSpec.ConfigValue<List<? extends String>> ITEM_BLACKLIST;
 
     /**
      * 是否允许玩家使用物品捕获实体
@@ -89,7 +89,7 @@ public class ServerConfig {
     /**
      * 垃圾箱自清洁方式
      */
-    public static final ForgeConfigSpec.ConfigValue<List<EnumSelfCleanMode>> SELF_CLEAN_MODE;
+    public static final ForgeConfigSpec.ConfigValue<List<? extends String>> SELF_CLEAN_MODE;
 
     /**
      * 垃圾箱溢出时的处理方式
@@ -196,7 +196,7 @@ public class ServerConfig {
             CATCH_ITEM = SERVER_BUILDER
                     .comment("The item used to capture the entity being cleaned up."
                             , "使用以下物品捕获被清理的实体。")
-                    .define("catchItem", new ArrayList<>() {{
+                    .defineListAllowEmpty("catchItem", new ArrayList<>() {{
                         add(ForgeRegistries.ITEMS.getKey(Items.SNOWBALL).toString());
                         add(ForgeRegistries.ITEMS.getKey(Items.GLASS_BOTTLE).toString());
                         add(ForgeRegistries.ITEMS.getKey(Items.MUSIC_DISC_13).toString());
@@ -211,39 +211,39 @@ public class ServerConfig {
                         add(ForgeRegistries.ITEMS.getKey(Items.MUSIC_DISC_WARD).toString());
                         add(ForgeRegistries.ITEMS.getKey(Items.MUSIC_DISC_WAIT).toString());
                         add(ForgeRegistries.ITEMS.getKey(Items.MUSIC_DISC_PIGSTEP).toString());
-                    }});
+                    }}, o -> o instanceof String);
 
             // 允许被清理的实体
             JUNK_ENTITY = SERVER_BUILDER
                     .comment("The entity that can be cleaned up."
                             , "允许被清理的实体。")
-                    .define("junkEntity", new ArrayList<>() {{
+                    .defineListAllowEmpty("junkEntity", new ArrayList<>() {{
                                 add(ForgeRegistries.ENTITY_TYPES.getKey(EntityType.ARROW).toString());
                                 add(ForgeRegistries.ENTITY_TYPES.getKey(EntityType.SPECTRAL_ARROW).toString());
-                            }}
+                            }}, o -> o instanceof String
                     );
 
             // 清理时允许被捕获的实体
             CATCH_ENTITY = SERVER_BUILDER
                     .comment("The entity that can be captured when cleaned up."
                             , "清理时允许被捕获的实体。")
-                    .define("catchEntity", new ArrayList<>() {{
+                    .defineListAllowEmpty("catchEntity", new ArrayList<>() {{
                         add(ForgeRegistries.ENTITY_TYPES.getKey(EntityType.EXPERIENCE_ORB).toString());
-                    }});
+                    }}, o -> o instanceof String);
 
             // 物品清理白名单
             ITEM_WHITELIST = SERVER_BUILDER
                     .comment("The item whitelist for cleaning up items, the following items will not be cleaned."
                             , "物品清理白名单，以下物品不会被清理。")
-                    .define("itemWhitelist", new ArrayList<>() {{
-                    }});
+                    .defineListAllowEmpty("itemWhitelist", new ArrayList<>() {{
+                    }}, o -> true);
 
             // 物品清理黑名单
             ITEM_BLACKLIST = SERVER_BUILDER
                     .comment("The item blacklist for cleaning up items, only the following items will be cleaned."
                             , "物品清理黑名单，将只会清理以下物品。")
-                    .define("itemBlacklist", new ArrayList<>() {{
-                    }});
+                    .defineListAllowEmpty("itemBlacklist", new ArrayList<>() {{
+                    }}, o -> o instanceof String);
 
             // 是否允许玩家使用物品捕获实体
             ALLOW_CATCH_ITEM = SERVER_BUILDER
@@ -271,9 +271,9 @@ public class ServerConfig {
                             , "SWEEP_DELETE：在扫地时随机删除垃圾箱内物品；"
                             , "SCHEDULED_CLEAR：定时清空垃圾箱；"
                             , "SCHEDULED_DELETE：定时随机删除垃圾箱内物品。")
-                    .define("selfCleanMode", new ArrayList<>() {{
-                        add(EnumSelfCleanMode.NONE);
-                    }});
+                    .defineListAllowEmpty("selfCleanMode", new ArrayList<>() {{
+                        add(EnumSelfCleanMode.NONE.name());
+                    }}, o -> o instanceof String);
 
             // 垃圾箱溢出时的处理方式
             DUSTBIN_OVERFLOW_MODE = SERVER_BUILDER
@@ -285,7 +285,7 @@ public class ServerConfig {
                             , "KEEP：储存至缓存，并在打开垃圾箱时填充至垃圾箱的空位；"
                             , "REMOVE：移除溢出物品；"
                             , "REPLACE：将垃圾箱中的物品随机替换为溢出的物品。")
-                    .define("dustbinOverflowMode", EnumOverflowMode.KEEP);
+                    .defineEnum("dustbinOverflowMode", EnumOverflowMode.KEEP);
 
             SERVER_BUILDER.pop();
         }
@@ -382,7 +382,7 @@ public class ServerConfig {
         ALLOW_CATCH_ITEM.set(false);
         SWEEP_ITEM_AGE.set(200);
         SELF_CLEAN_MODE.set(new ArrayList<>() {{
-            add(EnumSelfCleanMode.NONE);
+            add(EnumSelfCleanMode.NONE.name());
         }});
         DUSTBIN_OVERFLOW_MODE.set(EnumOverflowMode.KEEP);
 
