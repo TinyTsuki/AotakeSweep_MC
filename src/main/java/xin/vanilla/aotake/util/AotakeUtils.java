@@ -55,34 +55,6 @@ import java.util.stream.Collectors;
 public class AotakeUtils {
     private static final Logger LOGGER = LogManager.getLogger();
 
-    private static final List<BlockState> SAFE_BLOCKS_STATE = CommonConfig.SAFE_BLOCKS.get().stream()
-            .map(AotakeUtils::deserializeBlockState)
-            .filter(Objects::nonNull)
-            .distinct()
-            .collect(Collectors.toList());
-    private static final List<String> SAFE_BLOCKS = CommonConfig.SAFE_BLOCKS.get().stream()
-            .filter(Objects::nonNull)
-            .distinct()
-            .collect(Collectors.toList());
-    private static final List<BlockState> SAFE_BLOCKS_BELOW_STATE = CommonConfig.SAFE_BLOCKS_BELOW.get().stream()
-            .map(AotakeUtils::deserializeBlockState)
-            .filter(Objects::nonNull)
-            .distinct()
-            .collect(Collectors.toList());
-    private static final List<String> SAFE_BLOCKS_BELOW = CommonConfig.SAFE_BLOCKS_BELOW.get().stream()
-            .filter(Objects::nonNull)
-            .distinct()
-            .collect(Collectors.toList());
-    private static final List<BlockState> SAFE_BLOCKS_ABOVE_STATE = CommonConfig.SAFE_BLOCKS_ABOVE.get().stream()
-            .map(AotakeUtils::deserializeBlockState)
-            .filter(Objects::nonNull)
-            .distinct()
-            .collect(Collectors.toList());
-    private static final List<String> SAFE_BLOCKS_ABOVE = CommonConfig.SAFE_BLOCKS_ABOVE.get().stream()
-            .filter(Objects::nonNull)
-            .distinct()
-            .collect(Collectors.toList());
-
     // region 指令相关
 
     /**
@@ -406,6 +378,55 @@ public class AotakeUtils {
 
     // region 扫地
 
+    private static List<BlockState> SAFE_BLOCKS_STATE;
+    private static List<String> SAFE_BLOCKS;
+    private static List<BlockState> SAFE_BLOCKS_BELOW_STATE;
+    private static List<String> SAFE_BLOCKS_BELOW;
+    private static List<BlockState> SAFE_BLOCKS_ABOVE_STATE;
+    private static List<String> SAFE_BLOCKS_ABOVE;
+
+    private static void initSafeBlocks() {
+        if (SAFE_BLOCKS_STATE == null) {
+            SAFE_BLOCKS_STATE = CommonConfig.SAFE_BLOCKS.get().stream()
+                    .map(AotakeUtils::deserializeBlockState)
+                    .filter(Objects::nonNull)
+                    .distinct()
+                    .collect(Collectors.toList());
+        }
+        if (SAFE_BLOCKS == null) {
+            SAFE_BLOCKS = CommonConfig.SAFE_BLOCKS.get().stream()
+                    .filter(Objects::nonNull)
+                    .distinct()
+                    .collect(Collectors.toList());
+        }
+        if (SAFE_BLOCKS_BELOW_STATE == null) {
+            SAFE_BLOCKS_BELOW_STATE = CommonConfig.SAFE_BLOCKS_BELOW.get().stream()
+                    .map(AotakeUtils::deserializeBlockState)
+                    .filter(Objects::nonNull)
+                    .distinct()
+                    .collect(Collectors.toList());
+        }
+        if (SAFE_BLOCKS_BELOW == null) {
+            SAFE_BLOCKS_BELOW = CommonConfig.SAFE_BLOCKS_BELOW.get().stream()
+                    .filter(Objects::nonNull)
+                    .distinct()
+                    .collect(Collectors.toList());
+        }
+        if (SAFE_BLOCKS_ABOVE_STATE == null) {
+            SAFE_BLOCKS_ABOVE_STATE = CommonConfig.SAFE_BLOCKS_ABOVE.get().stream()
+                    .map(AotakeUtils::deserializeBlockState)
+                    .filter(Objects::nonNull)
+                    .distinct()
+                    .collect(Collectors.toList());
+        }
+        if (SAFE_BLOCKS_ABOVE == null) {
+            SAFE_BLOCKS_ABOVE = CommonConfig.SAFE_BLOCKS_ABOVE.get().stream()
+                    .filter(Objects::nonNull)
+                    .distinct()
+                    .collect(Collectors.toList());
+        }
+    }
+
     public static List<Entity> getAllEntities() {
         List<Entity> entities = new ArrayList<>();
         AotakeSweep.getServerInstance().getAllLevels()
@@ -419,6 +440,7 @@ public class AotakeUtils {
         if (CollectionUtils.isNullOrEmpty(entities)) {
             entities = getAllEntities();
         }
+        initSafeBlocks();
         return entities.stream()
                 // 物品实体 与 垃圾实体
                 .filter(entity -> entity instanceof ItemEntity
