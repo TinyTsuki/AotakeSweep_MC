@@ -69,19 +69,19 @@ public class ClientGameEventHandler {
     }
 
     /**
-     * 玩家事件
+     * 玩家使用弓箭事件
      */
     @SubscribeEvent
-    public static void onPlayerEvent(ArrowNockEvent event) {
-        EventHandlerProxy.onPlayerUseItem(event);
+    public static void onArrowNockEvent(ArrowNockEvent event) {
+        EventHandlerProxy.onArrowNockEvent(event);
     }
 
     /**
-     * 玩家事件
+     * 在方块上使用物品事件
      */
     @SubscribeEvent
-    public static void onPlayerEvent(UseItemOnBlockEvent event) {
-        EventHandlerProxy.onPlayerUseItem(event);
+    public static void onUseItemOnBlockEvent(UseItemOnBlockEvent event) {
+        EventHandlerProxy.onUseItemOnBlockEvent(event);
     }
 
     /**
@@ -89,7 +89,7 @@ public class ClientGameEventHandler {
      */
     @SubscribeEvent
     public static void onPlayerUseItem(PlayerInteractEvent.RightClickItem event) {
-        EventHandlerProxy.onPlayerUseItem(event);
+        EventHandlerProxy.onArrowNockEvent(event);
     }
 
     /**

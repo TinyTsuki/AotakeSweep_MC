@@ -10,7 +10,6 @@ import net.minecraft.world.SimpleContainer;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.item.ItemStack;
-import net.neoforged.bus.api.ICancellableEvent;
 import net.neoforged.neoforge.entity.PartEntity;
 import net.neoforged.neoforge.event.entity.player.*;
 import net.neoforged.neoforge.event.tick.ServerTickEvent;
@@ -165,7 +164,7 @@ public class EventHandlerProxy {
         }
     }
 
-    public static void onPlayerUseItem(PlayerInteractEvent.RightClickItem event) {
+    public static void onArrowNockEvent(PlayerInteractEvent.RightClickItem event) {
         if (AotakeSweep.isDisable()) return;
         if (event.getEntity() instanceof ServerPlayer) {
             DataComponentMap tag = event.getItemStack().getComponents();
@@ -275,7 +274,7 @@ public class EventHandlerProxy {
                 CompoundTag aotake = new CompoundTag();
 
                 aotake.putBoolean("byPlayer", true);
-                aotake.put("entity", entity.serializeNBT(AotakeSweep.getServerInstance().registryAccess()));
+                aotake.put("entity", entity.serializeNBT(entity.registryAccess()));
                 aotake.putString("name", AotakeUtils.getItemCustomNameJson(copy));
                 copy.set(AotakeSweep.CUSTOM_DATA_COMPONENT.get(), aotake);
                 copy.set(DataComponents.CUSTOM_NAME, Component.literal(String.format("%s%s", entity.getDisplayName().getString(), copy.getHoverName().getString())).toChatComponent());
@@ -291,33 +290,32 @@ public class EventHandlerProxy {
         }
     }
 
-    public static void onPlayerUseItem(PlayerEvent event) {
+    public static void onArrowNockEvent(ArrowNockEvent event) {
         if (AotakeSweep.isDisable()) return;
         if (event.getEntity().isCrouching() && ServerConfig.ALLOW_CATCH_ITEM.get()) {
-            ItemStack item;
-            ICancellableEvent eve = null;
-            // 使用弓箭事件
-            if (event instanceof ArrowNockEvent) {
-                eve = (ArrowNockEvent) event;
-                item = ((ArrowNockEvent) event).getBow();
-            }
-            // 使用骨粉事件
-            else if (event instanceof UseItemOnBlockEvent) {
-                eve = (UseItemOnBlockEvent) event;
-                item = ((UseItemOnBlockEvent) event).getItemStack();
-            }
-            // 其他
-            else {
-                item = null;
-            }
-
-            if (item != null && ServerConfig.CATCH_ITEM.get().stream()
+            ItemStack item = event.getBow();
+            if (ServerConfig.CATCH_ITEM.get().stream()
                     .anyMatch(s -> s.equals(AotakeUtils.getItemRegistryName(item)))
             ) {
-                eve.setCanceled(true);
+                event.setCanceled(true);
             }
         }
 
+    }
+
+    public static void onUseItemOnBlockEvent(UseItemOnBlockEvent event) {
+        if (AotakeSweep.isDisable()) return;
+        if (event.getPlayer() instanceof ServerPlayer player) {
+            if (player.isCrouching() && ServerConfig.ALLOW_CATCH_ITEM.get()) {
+                ItemStack item = event.getItemStack();
+
+                if (ServerConfig.CATCH_ITEM.get().stream()
+                        .anyMatch(s -> s.equals(AotakeUtils.getItemRegistryName(item)))
+                ) {
+                    event.setCanceled(true);
+                }
+            }
+        }
     }
 
     public static void onContainerOpen(PlayerContainerEvent.Open event) {

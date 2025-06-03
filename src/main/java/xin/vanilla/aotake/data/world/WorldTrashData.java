@@ -177,7 +177,7 @@ public class WorldTrashData extends SavedData {
                     item = new ItemStack(it);
                     CompoundTag aotake = new CompoundTag();
                     aotake.putBoolean("byPlayer", false);
-                    aotake.put("entity", entity.serializeNBT(AotakeSweep.getServerInstance().registryAccess()));
+                    aotake.put("entity", entity.serializeNBT(entity.registryAccess()));
                     item.set(AotakeSweep.CUSTOM_DATA_COMPONENT.get(), aotake);
 
                     result.setRecycledEntityCount(1);
