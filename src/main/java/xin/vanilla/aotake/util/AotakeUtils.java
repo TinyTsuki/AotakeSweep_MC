@@ -225,7 +225,7 @@ public class AotakeUtils {
             } catch (CommandSyntaxException ignored) {
             }
         } else if (success) {
-            source.sendSuccess(Component.translatable(key, args).setLanguageCode(ServerConfig.DEFAULT_LANGUAGE.get()).toChatComponent(), false);
+            source.sendSuccess(() -> Component.translatable(key, args).setLanguageCode(ServerConfig.DEFAULT_LANGUAGE.get()).toChatComponent(), false);
         } else {
             source.sendFailure(Component.translatable(key, args).setLanguageCode(ServerConfig.DEFAULT_LANGUAGE.get()).toChatComponent());
         }
@@ -396,21 +396,21 @@ public class AotakeUtils {
                 )
                 // 实体不在方块中
                 .filter(entity -> {
-                            BlockState blockState = entity.level.getBlockState(entity.blockPosition());
+                            BlockState blockState = entity.level().getBlockState(entity.blockPosition());
                             return !SAFE_BLOCKS.contains(AotakeUtils.getBlockRegistryName(blockState))
                                     && !SAFE_BLOCKS_STATE.contains(blockState);
                         }
                 )
                 // 实体不在方块上
                 .filter(entity -> {
-                            BlockState blockState = entity.level.getBlockState(entity.blockPosition().below());
+                            BlockState blockState = entity.level().getBlockState(entity.blockPosition().below());
                             return !SAFE_BLOCKS_BELOW.contains(AotakeUtils.getBlockRegistryName(blockState))
                                     && !SAFE_BLOCKS_BELOW_STATE.contains(blockState);
                         }
                 )
                 // 实体不在方块下
                 .filter(entity -> {
-                            BlockState blockState = entity.level.getBlockState(entity.blockPosition().above());
+                            BlockState blockState = entity.level().getBlockState(entity.blockPosition().above());
                             return !SAFE_BLOCKS_ABOVE.contains(AotakeUtils.getBlockRegistryName(blockState))
                                     && !SAFE_BLOCKS_ABOVE_STATE.contains(blockState);
                         }

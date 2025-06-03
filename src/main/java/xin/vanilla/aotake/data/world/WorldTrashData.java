@@ -156,7 +156,7 @@ public class WorldTrashData extends SavedData {
             item = ((ItemEntity) entity).getItem();
             typeKey = AotakeUtils.getItemRegistryName(item);
             result.setItemCount(item.getCount());
-            AotakeUtils.removeEntity((ServerLevel) entity.level, entity, false);
+            AotakeUtils.removeEntity((ServerLevel) entity.level(), entity, false);
         } else if (!ServerConfig.CATCH_ITEM.get().isEmpty()) {
             if (entity instanceof PartEntity) {
                 entity = ((PartEntity<?>) entity).getParent();
@@ -181,10 +181,10 @@ public class WorldTrashData extends SavedData {
                 item = null;
             }
             result.setEntityCount(1);
-            AotakeUtils.removeEntity((ServerLevel) entity.level, entity, item != null);
+            AotakeUtils.removeEntity((ServerLevel) entity.level(), entity, item != null);
         } else {
             item = null;
-            AotakeUtils.removeEntity((ServerLevel) entity.level, entity, false);
+            AotakeUtils.removeEntity((ServerLevel) entity.level(), entity, false);
             result.setEntityCount(1);
         }
         if (item != null) {
@@ -247,7 +247,7 @@ public class WorldTrashData extends SavedData {
     }
 
     public static WorldTrashData get(ServerPlayer player) {
-        return get(player.getLevel());
+        return get(player.serverLevel());
     }
 
     public static WorldTrashData get(ServerLevel world) {

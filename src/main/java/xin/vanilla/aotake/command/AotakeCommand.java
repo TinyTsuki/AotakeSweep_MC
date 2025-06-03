@@ -209,9 +209,11 @@ public class AotakeCommand {
                     targetList.addAll(EntityArgument.getPlayers(context, "player"));
                 } catch (IllegalArgumentException ignored) {
                 }
-                String language = ServerConfig.DEFAULT_LANGUAGE.get();
+                String language;
                 if (source.getEntity() != null && source.getEntity() instanceof ServerPlayer) {
                     language = AotakeUtils.getPlayerLanguage(source.getPlayerOrException());
+                } else {
+                    language = ServerConfig.DEFAULT_LANGUAGE.get();
                 }
                 for (ServerPlayer target : targetList) {
                     switch (type) {
@@ -237,7 +239,7 @@ public class AotakeCommand {
                             AotakeUtils.sendTranslatableMessage(player, I18nUtils.getKey(EnumI18nType.MESSAGE, "player_virtual_op"), target.getDisplayName().getString(), permissions);
                         }
                     } else {
-                        source.sendSuccess(Component.translatable(language, EnumI18nType.MESSAGE, "player_virtual_op", target.getDisplayName().getString(), permissions).toChatComponent(), true);
+                        source.sendSuccess(() -> Component.translatable(language, EnumI18nType.MESSAGE, "player_virtual_op", target.getDisplayName().getString(), permissions).toChatComponent(), true);
                     }
                     // 更新权限信息
                     source.getServer().getPlayerList().sendPlayerPermissionLevel(target);
@@ -264,7 +266,7 @@ public class AotakeCommand {
                 entities = new ArrayList<>();
                 if (range > 0) {
                     ServerPlayer player = context.getSource().getPlayerOrException();
-                    entities.addAll(player.level.getEntitiesOfClass(Entity.class, player.getBoundingBox().inflate(range)));
+                    entities.addAll(player.level().getEntitiesOfClass(Entity.class, player.getBoundingBox().inflate(range)));
                 }
             }
             Entity entity = context.getSource().getEntity();
@@ -283,7 +285,7 @@ public class AotakeCommand {
                 entities = AotakeUtils.getAllEntities();
             } else if (range > 0) {
                 ServerPlayer player = context.getSource().getPlayerOrException();
-                entities.addAll(player.level.getEntitiesOfClass(Entity.class, player.getBoundingBox().inflate(range)));
+                entities.addAll(player.level().getEntitiesOfClass(Entity.class, player.getBoundingBox().inflate(range)));
             }
             SweepResult result = new SweepResult();
             entities.stream()
@@ -296,7 +298,7 @@ public class AotakeCommand {
                         } else {
                             result.plusEntityCount();
                         }
-                        AotakeUtils.removeEntity((ServerLevel) entity.level, entity, false);
+                        AotakeUtils.removeEntity((ServerLevel) entity.level(), entity, false);
                     });
             AotakeSweep.getServerInstance()
                     .getPlayerList()
@@ -345,9 +347,9 @@ public class AotakeCommand {
             inventories.forEach(inventory -> inventory.removeAllItems()
                     .forEach(item -> {
                         if (!item.isEmpty()) {
-                            Entity entity = AotakeUtils.getEntityFromItem(player.getLevel(), item);
+                            Entity entity = AotakeUtils.getEntityFromItem(player.serverLevel(), item);
                             entity.moveTo(player.getX(), player.getY(), player.getZ(), player.getYRot(), player.getXRot());
-                            player.getLevel().addFreshEntity(entity);
+                            player.serverLevel().addFreshEntity(entity);
                         }
                     })
             );
@@ -643,9 +645,11 @@ public class AotakeCommand {
                                                     .executes(context -> {
                                                         int mode = IntegerArgumentType.getInteger(context, "mode");
                                                         CommandSourceStack source = context.getSource();
-                                                        String lang = ServerConfig.DEFAULT_LANGUAGE.get();
+                                                        String lang;
                                                         if (source.getEntity() != null && source.getEntity() instanceof ServerPlayer) {
                                                             lang = AotakeUtils.getPlayerLanguage(source.getPlayerOrException());
+                                                        } else {
+                                                            lang = ServerConfig.DEFAULT_LANGUAGE.get();
                                                         }
                                                         switch (mode) {
                                                             case 0:
@@ -665,7 +669,7 @@ public class AotakeCommand {
                                                             }
                                                         }
                                                         Component component = Component.translatable(lang, EnumI18nType.MESSAGE, "server_config_mode", mode);
-                                                        source.sendSuccess(component.toChatComponent(lang), false);
+                                                        source.sendSuccess(() -> component.toChatComponent(lang), false);
 
                                                         // 更新权限信息
                                                         source.getServer().getPlayerList().getPlayers()

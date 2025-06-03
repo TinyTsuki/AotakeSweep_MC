@@ -137,7 +137,7 @@ public class AotakeSweep {
     }
 
     public static ResourceLocation createResource(String namespace, String path) {
-        return ResourceLocation.fromNamespaceAndPath(namespace, path);
+        return ResourceLocation.tryBuild(namespace, path);
     }
 
     public static ResourceLocation parseResource(String location) {

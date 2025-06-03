@@ -38,7 +38,7 @@ public class Coordinate implements Serializable, Cloneable {
         this.z = entity.getZ();
         this.yaw = entity.getYRot();
         this.pitch = entity.getXRot();
-        this.dimension = entity.level.dimension();
+        this.dimension = entity.level().dimension();
     }
 
     public Coordinate(double x, double y, double z) {

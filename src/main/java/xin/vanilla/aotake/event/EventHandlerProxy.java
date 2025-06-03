@@ -119,8 +119,8 @@ public class EventHandlerProxy {
                 List<Map.Entry<String, Long>> entryList = AotakeUtils.getAllEntitiesByFilter(null).stream()
                         .collect(Collectors.groupingBy(entity -> {
                             // 获取区块维度和坐标
-                            String dimension = entity.level != null
-                                    ? entity.level.dimension().location().toString()
+                            String dimension = entity.level() != null
+                                    ? entity.level().dimension().location().toString()
                                     : "unknown";
                             int chunkX = entity.blockPosition().getX() / 16;
                             int chunkY = entity.blockPosition().getY() / 16;
@@ -219,11 +219,11 @@ public class EventHandlerProxy {
             else {
                 original.shrink(1);
                 CompoundTag entityData = aotake.getCompound("entity");
-                Entity entity = EntityType.loadEntityRecursive(entityData, player.getLevel(), e -> e);
+                Entity entity = EntityType.loadEntityRecursive(entityData, player.serverLevel(), e -> e);
                 if (entity != null) {
                     // 释放实体
                     entity.moveTo(coordinate.getX(), coordinate.getY(), coordinate.getZ(), (float) coordinate.getYaw(), (float) coordinate.getPitch());
-                    player.getLevel().addFreshEntity(entity);
+                    player.serverLevel().addFreshEntity(entity);
                     // 恢复物品原来的名称
                     net.minecraft.network.chat.Component name = AotakeUtils.textComponentFromJson(aotake.getString("name"));
                     if (name != null) copy.setHoverName(name);
