@@ -531,27 +531,6 @@ public class AotakeUtils {
     // endregion 扫地
 
 
-    // region 资源ID
-
-    public static ResourceLocation emptyResource() {
-        return createResource("", "");
-    }
-
-    public static ResourceLocation createResource(String path) {
-        return createResource(AotakeSweep.MODID, path);
-    }
-
-    public static ResourceLocation createResource(String namespace, String path) {
-        return new ResourceLocation(namespace, path);
-    }
-
-    public static ResourceLocation parseResource(String location) {
-        return ResourceLocation.tryParse(location);
-    }
-
-    // endregion 资源ID
-
-
     // region 杂项
 
     /**
@@ -672,7 +651,7 @@ public class AotakeUtils {
         EntityType<?> entityType = entity.getType();
         ResourceLocation location = ForgeRegistries.ENTITIES.getKey(entityType);
         if (location == null) location = entityType.getRegistryName();
-        return location == null ? emptyResource().toString() : location.toString();
+        return location == null ? AotakeSweep.emptyResource().toString() : location.toString();
     }
 
     public static String getItemCustomNameJson(@NonNull ItemStack itemStack) {
