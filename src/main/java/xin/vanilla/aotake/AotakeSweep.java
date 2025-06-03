@@ -2,6 +2,7 @@ package xin.vanilla.aotake;
 
 import lombok.Getter;
 import lombok.Setter;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.RegisterCommandsEvent;
@@ -121,5 +122,26 @@ public class AotakeSweep {
         LOGGER.debug("Registering commands");
         AotakeCommand.register(event.getDispatcher());
     }
+
+
+    // region 资源ID
+
+    public static ResourceLocation emptyResource() {
+        return createResource("", "");
+    }
+
+    public static ResourceLocation createResource(String path) {
+        return createResource(AotakeSweep.MODID, path);
+    }
+
+    public static ResourceLocation createResource(String namespace, String path) {
+        return new ResourceLocation(namespace, path);
+    }
+
+    public static ResourceLocation parseResource(String location) {
+        return ResourceLocation.tryParse(location);
+    }
+
+    // endregion 资源ID
 
 }
