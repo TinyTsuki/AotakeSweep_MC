@@ -1,1 +1,0 @@
-package xin.vanilla.aotake.data.world;
