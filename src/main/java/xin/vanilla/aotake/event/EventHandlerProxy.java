@@ -48,6 +48,13 @@ public class EventHandlerProxy {
     private static long lastChunkCheckTime = System.currentTimeMillis();
     private static Queue<Integer> warnQueue;
 
+    public static void resetWarnQueue() {
+        List<Integer> list = new ArrayList<>(CommonConfig.SWEEP_WARNING_SECOND.get());
+        // 从大到小排序
+        list.sort((a, b) -> Integer.compare(b, a));
+        warnQueue = new ArrayDeque<>(list);
+    }
+
     public static void onServerTick(TickEvent.ServerTickEvent event) {
         if (AotakeSweep.isDisable()) return;
         if (event.phase == TickEvent.Phase.END
@@ -58,12 +65,7 @@ public class EventHandlerProxy {
             long countdown = ServerConfig.SWEEP_INTERVAL.get() - swept;
 
             // 扫地前提示
-            if (warnQueue == null) {
-                List<Integer> list = new ArrayList<>(CommonConfig.SWEEP_WARNING_SECOND.get());
-                // 从大到小排序
-                list.sort((a, b) -> Integer.compare(b, a));
-                warnQueue = new ArrayDeque<>(list);
-            }
+            if (warnQueue == null) resetWarnQueue();
             if (warnQueue.peek() != null && warnQueue.peek() < 0) warnQueue.add(warnQueue.poll());
             if (warnQueue.peek() != null && countdown / 1000 == warnQueue.peek()) {
                 // 将头部元素放至尾部
