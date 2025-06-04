@@ -149,15 +149,22 @@ public class WorldTrashData extends WorldCapabilityData {
         SweepResult result = new SweepResult();
 
         ItemStack item;
-        String typeKey = null;
+        String typeKey;
         Coordinate coordinate = new Coordinate(entity);
 
-        if (entity instanceof ItemEntity) {
+        // 若为物品且不在红名单
+        if (entity instanceof ItemEntity
+                && !ServerConfig.ITEM_REDLIST.get().contains(AotakeUtils.getItemRegistryName(((ItemEntity) entity).getItem()))
+        ) {
             item = ((ItemEntity) entity).getItem();
             typeKey = AotakeUtils.getItemRegistryName(item);
             result.setItemCount(item.getCount());
             AotakeUtils.removeEntity((ServerWorld) entity.level, entity, false);
-        } else if (!ServerConfig.CATCH_ITEM.get().isEmpty()) {
+        }
+        // 若不为物品
+        else if (!(entity instanceof ItemEntity)
+                && !ServerConfig.CATCH_ITEM.get().isEmpty()
+        ) {
             if (entity instanceof PartEntity) {
                 entity = ((PartEntity<?>) entity).getParent();
             }
@@ -183,16 +190,18 @@ public class WorldTrashData extends WorldCapabilityData {
             result.setEntityCount(1);
             AotakeUtils.removeEntity((ServerWorld) entity.level, entity, item != null);
         } else {
+            typeKey = AotakeUtils.getEntityTypeRegistryName(entity);
             item = null;
             AotakeUtils.removeEntity((ServerWorld) entity.level, entity, false);
             result.setEntityCount(1);
         }
-        if (item != null) {
-            // 统计项
-            this.dropCount.add(new KeyValue<>(coordinate, new KeyValue<>(System.currentTimeMillis(), typeKey)));
+        // 统计项
+        this.dropCount.add(new KeyValue<>(coordinate, new KeyValue<>(System.currentTimeMillis(), typeKey)));
 
+        // 回收物品
+        if (item != null) {
             // 自清洁
-            if (ServerConfig.SELF_CLEAN_MODE.get().contains(EnumSelfCleanMode.SWEEP_DELETE)) {
+            if (ServerConfig.SELF_CLEAN_MODE.get().contains(EnumSelfCleanMode.SWEEP_DELETE.name())) {
                 Inventory inventory = this.inventoryList.get(AotakeSweep.RANDOM.nextInt(this.inventoryList.size()));
                 IntStream.range(0, inventory.getContainerSize())
                         .filter(i -> !inventory.getItem(i).isEmpty())
