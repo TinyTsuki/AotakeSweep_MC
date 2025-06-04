@@ -177,8 +177,14 @@ public class CommonConfig {
 
             // 打扫前的提示
             SWEEP_WARNING_SECOND = SERVER_BUILDER
-                    .comment("A warning will be issued the specified number of seconds before the cleanup."
-                            , "将会在打扫前的以下指定秒数进行提示。")
+                    .comment("A warning sequence before sweeping."
+                            , "n > 0: warning n seconds before sweeping; "
+                            , "n = 0: warning when sweeping is successful; "
+                            , "n = -1: warning when sweeping fails."
+                            , "提示序列。"
+                            , "n>0：打扫前n秒的提示；"
+                            , "n=0：打扫成功时的提示；"
+                            , "n=-1：打扫失败时的提示。")
                     .defineListAllowEmpty("sweepWarningSecond", new ArrayList<>() {{
                         add(-1);
                         add(0);
@@ -194,9 +200,10 @@ public class CommonConfig {
 
             // 打扫前提示内容
             SWEEP_WARNING_CONTENT = SERVER_BUILDER
-                    .comment("The content of the warning before the cleanup."
-                            , "打扫前提示内容，配合`sweepWarningSecond`使用，留空将使用内置提示。",
-                            "[entityCount], [itemCount], [recycledItemCount], [recycledEntityCount]")
+                    .comment("A warning sequence before sweeping, used together with `sweepWarningSecond`. If left empty, the built-in default message will be used."
+                            , "Optional variables when n=0: [entityCount], [itemCount], [recycledItemCount], [recycledEntityCount]"
+                            , "提示内容，配合`sweepWarningSecond`使用，留空将使用内置提示。"
+                            , "n=0时可选变量：[entityCount], [itemCount], [recycledItemCount], [recycledEntityCount]")
                     .defineListAllowEmpty("sweepWarningContent", new ArrayList<>() {{
                         add("§r§e香草酱什么也没吃到，失落地离开了。");
                         add("§r§e香草酱吃掉了[itemCount]个物品与[entityCount]个实体，并满意地离开了。");
@@ -246,7 +253,8 @@ public class CommonConfig {
                             , "Allow blocks with states, such as: minecraft:lava[level=0]."
                             , "实体处于该方块下时不会被清理。"
                             , "支持带状态的方块id，如：minecraft:lava[level=0]")
-                    .defineListAllowEmpty("safeBlocksAbove", new ArrayList<>(), o -> o instanceof String);
+                    .defineListAllowEmpty("safeBlocksAbove", new ArrayList<>() {{
+                    }}, o -> o instanceof String);
 
             SERVER_BUILDER.pop();
         }
