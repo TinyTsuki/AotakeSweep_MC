@@ -55,6 +55,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 
 public class AotakeUtils {
@@ -184,6 +185,15 @@ public class AotakeUtils {
     }
 
     /**
+     * 发送消息至所有玩家
+     */
+    public static void sendMessageToAll(Component message) {
+        for (ServerPlayer player : AotakeSweep.getServerInstance().getPlayerList().getPlayers()) {
+            sendMessage(player, message);
+        }
+    }
+
+    /**
      * 发送消息
      *
      * @param player  玩家
@@ -232,6 +242,15 @@ public class AotakeUtils {
             source.sendSuccess(() -> Component.translatable(key, args).setLanguageCode(ServerConfig.DEFAULT_LANGUAGE.get()).toChatComponent(), false);
         } else {
             source.sendFailure(Component.translatable(key, args).setLanguageCode(ServerConfig.DEFAULT_LANGUAGE.get()).toChatComponent());
+        }
+    }
+
+    /**
+     * 发送操作栏消息至所有玩家
+     */
+    public static void sendActionBarMessageToAll(Component message) {
+        for (ServerPlayer player : AotakeSweep.getServerInstance().getPlayerList().getPlayers()) {
+            sendActionBarMessage(player, message);
         }
     }
 
@@ -560,6 +579,19 @@ public class AotakeUtils {
 
 
     // region 杂项
+
+    /**
+     * 执行指令
+     */
+    public static boolean executeCommand(@NonNull ServerPlayer player, @NonNull String command) {
+        AtomicBoolean result = new AtomicBoolean(false);
+        try {
+            player.getServer().getCommands().performPrefixedCommand(player.createCommandSourceStack().withCallback((r, count) -> result.set(r)), command);
+        } catch (Exception e) {
+            LOGGER.error("Failed to execute command: {}", command, e);
+        }
+        return result.get();
+    }
 
     /**
      * 获取指定维度的世界实例

@@ -219,7 +219,7 @@ public class EventHandlerProxy {
                     }
                     player.addItem(copy);
 
-                    player.displayClientMessage(net.minecraft.network.chat.Component.literal("实体已释放！"), true);
+                    AotakeUtils.sendActionBarMessage(player, Component.translatable(EnumI18nType.MESSAGE, "entity_released", entity.getDisplayName()));
 
                     if (event instanceof PlayerInteractEvent.EntityInteractSpecific eve) {
                         eve.setCanceled(true);
@@ -264,7 +264,7 @@ public class EventHandlerProxy {
                 }
             }
 
-            if (ServerConfig.ALLOW_CATCH_ITEM.get()
+            if (ServerConfig.ALLOW_CATCH_ENTITY.get()
                     && ServerConfig.CATCH_ITEM.get().stream().anyMatch(s -> s.equals(AotakeUtils.getItemRegistryName(original)))
                     && player.isCrouching()
                     && (tag.isEmpty() || !tag.has(AotakeSweep.CUSTOM_DATA_COMPONENT.get()) || tag.get(AotakeSweep.CUSTOM_DATA_COMPONENT.get()) == null || !tag.get(AotakeSweep.CUSTOM_DATA_COMPONENT.get()).contains("entity"))
@@ -281,8 +281,8 @@ public class EventHandlerProxy {
                 player.addItem(copy);
 
                 AotakeUtils.removeEntity(entity, true);
-                // entity.remove(true);
-                player.displayClientMessage(net.minecraft.network.chat.Component.literal("实体已捕获！"), true);
+
+                AotakeUtils.sendActionBarMessage(player, Component.translatable(EnumI18nType.MESSAGE, "entity_caught"));
 
                 event.setCanceled(true);
                 event.setCancellationResult(InteractionResult.FAIL);
@@ -292,7 +292,7 @@ public class EventHandlerProxy {
 
     public static void onArrowNockEvent(ArrowNockEvent event) {
         if (AotakeSweep.isDisable()) return;
-        if (event.getEntity().isCrouching() && ServerConfig.ALLOW_CATCH_ITEM.get()) {
+        if (event.getEntity().isCrouching() && ServerConfig.ALLOW_CATCH_ENTITY.get()) {
             ItemStack item = event.getBow();
             if (ServerConfig.CATCH_ITEM.get().stream()
                     .anyMatch(s -> s.equals(AotakeUtils.getItemRegistryName(item)))
@@ -306,7 +306,7 @@ public class EventHandlerProxy {
     public static void onUseItemOnBlockEvent(UseItemOnBlockEvent event) {
         if (AotakeSweep.isDisable()) return;
         if (event.getPlayer() instanceof ServerPlayer player) {
-            if (player.isCrouching() && ServerConfig.ALLOW_CATCH_ITEM.get()) {
+            if (player.isCrouching() && ServerConfig.ALLOW_CATCH_ENTITY.get()) {
                 ItemStack item = event.getItemStack();
 
                 if (ServerConfig.CATCH_ITEM.get().stream()
