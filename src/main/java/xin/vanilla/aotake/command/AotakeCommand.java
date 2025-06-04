@@ -38,6 +38,7 @@ import xin.vanilla.aotake.enums.EnumCommandType;
 import xin.vanilla.aotake.enums.EnumI18nType;
 import xin.vanilla.aotake.enums.EnumMCColor;
 import xin.vanilla.aotake.enums.EnumOperationType;
+import xin.vanilla.aotake.event.EventHandlerProxy;
 import xin.vanilla.aotake.util.*;
 
 import java.util.*;
@@ -743,6 +744,7 @@ public class AotakeCommand {
                                                                 , interval
                                                         )
                                                 );
+                                                EventHandlerProxy.resetWarnQueue();
                                                 return 1;
                                             })
                                     )

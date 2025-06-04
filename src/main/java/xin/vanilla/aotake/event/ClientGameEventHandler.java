@@ -2,6 +2,7 @@ package xin.vanilla.aotake.event;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.components.Button;
+import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.inventory.ContainerScreen;
 import net.minecraft.world.entity.Entity;
 import net.minecraftforge.api.distmarker.Dist;
@@ -130,80 +131,81 @@ public class ClientGameEventHandler {
 
     @SubscribeEvent
     public static void onRenderScreen(GuiScreenEvent event) {
-        if (event.getGui() instanceof ContainerScreen
+        Screen screen = event.getGui();
+        if (screen instanceof ContainerScreen
                 && Minecraft.getInstance().player != null
-                && event.getGui().getTitle().getContents()
+                && screen.getTitle().getContents()
                 .startsWith(MOD_NAME.toTextComponent(AotakeUtils.getPlayerLanguage(Minecraft.getInstance().player)).getContents())
         ) {
             if (event instanceof GuiScreenEvent.InitGuiEvent.Post eve) {
                 // 清空缓存区
                 eve.addWidget(
-                        new Button(event.getGui().width / 2 - 88 - 21
-                                , event.getGui().height / 2 - 111
+                        new Button(screen.width / 2 - 88 - 21
+                                , screen.height / 2 - 111
                                 , 20, 20
                                 , Component.literal("✕").setColor(EnumMCColor.RED.getColor()).toTextComponent()
                                 , button -> AotakeUtils.sendPacketToServer(new ClearDustbinNotice(true, true))
-                                , (button, matrixStack, x, y) -> eve.getGui().renderTooltip(matrixStack
+                                , (button, matrixStack, x, y) -> screen.renderTooltip(matrixStack
                                 , Component.translatable(EnumI18nType.MESSAGE, "clear_cache").toTextComponent(AotakeUtils.getClientLanguage())
                                 , x, y)
                         )
                 );
                 // 清空所有页
                 eve.addWidget(
-                        new Button(event.getGui().width / 2 - 88 - 21
-                                , event.getGui().height / 2 - 90
+                        new Button(screen.width / 2 - 88 - 21
+                                , screen.height / 2 - 90
                                 , 20, 20
                                 , Component.literal("✕").setColor(EnumMCColor.RED.getColor()).toTextComponent()
                                 , button -> AotakeUtils.sendPacketToServer(new ClearDustbinNotice(true, false))
-                                , (button, matrixStack, x, y) -> eve.getGui().renderTooltip(matrixStack
+                                , (button, matrixStack, x, y) -> screen.renderTooltip(matrixStack
                                 , Component.translatable(EnumI18nType.MESSAGE, "clear_all_dustbin").toTextComponent(AotakeUtils.getClientLanguage())
                                 , x, y)
                         )
                 );
                 // 清空当前页
                 eve.addWidget(
-                        new Button(event.getGui().width / 2 - 88 - 21
-                                , event.getGui().height / 2 - 69
+                        new Button(screen.width / 2 - 88 - 21
+                                , screen.height / 2 - 69
                                 , 20, 20
                                 , Component.literal("✕").setColor(EnumMCColor.YELLOW.getColor()).toTextComponent()
                                 , button -> AotakeUtils.sendPacketToServer(new ClearDustbinNotice(false, false))
-                                , (button, matrixStack, x, y) -> eve.getGui().renderTooltip(matrixStack
+                                , (button, matrixStack, x, y) -> screen.renderTooltip(matrixStack
                                 , Component.translatable(EnumI18nType.MESSAGE, "clear_cur_dustbin").toTextComponent(AotakeUtils.getClientLanguage())
                                 , x, y)
                         )
                 );
                 // 刷新当前页
                 eve.addWidget(
-                        new Button(event.getGui().width / 2 - 88 - 21
-                                , event.getGui().height / 2 - 48
+                        new Button(screen.width / 2 - 88 - 21
+                                , screen.height / 2 - 48
                                 , 20, 20
                                 , Component.literal("↻").toTextComponent()
                                 , button -> AotakeUtils.sendPacketToServer(new OpenDustbinNotice(0))
-                                , (button, matrixStack, x, y) -> eve.getGui().renderTooltip(matrixStack
+                                , (button, matrixStack, x, y) -> screen.renderTooltip(matrixStack
                                 , Component.translatable(EnumI18nType.MESSAGE, "refresh_page").toTextComponent(AotakeUtils.getClientLanguage())
                                 , x, y)
                         )
                 );
                 // 上一页
                 eve.addWidget(
-                        new Button(event.getGui().width / 2 - 88 - 21
-                                , event.getGui().height / 2 - 27
+                        new Button(screen.width / 2 - 88 - 21
+                                , screen.height / 2 - 27
                                 , 20, 20
                                 , Component.literal("▲").toTextComponent()
                                 , button -> AotakeUtils.sendPacketToServer(new OpenDustbinNotice(-1))
-                                , (button, matrixStack, x, y) -> eve.getGui().renderTooltip(matrixStack
+                                , (button, matrixStack, x, y) -> screen.renderTooltip(matrixStack
                                 , Component.translatable(EnumI18nType.MESSAGE, "previous_page").toTextComponent(AotakeUtils.getClientLanguage())
                                 , x, y)
                         )
                 );
                 // 下一页
                 eve.addWidget(
-                        new Button(event.getGui().width / 2 - 88 - 21
-                                , event.getGui().height / 2 - 6
+                        new Button(screen.width / 2 - 88 - 21
+                                , screen.height / 2 - 6
                                 , 20, 20
                                 , Component.literal("▼").toTextComponent()
                                 , button -> AotakeUtils.sendPacketToServer(new OpenDustbinNotice(1))
-                                , (button, matrixStack, x, y) -> eve.getGui().renderTooltip(matrixStack
+                                , (button, matrixStack, x, y) -> screen.renderTooltip(matrixStack
                                 , Component.translatable(EnumI18nType.MESSAGE, "next_page").toTextComponent(AotakeUtils.getClientLanguage())
                                 , x, y)
                         )
