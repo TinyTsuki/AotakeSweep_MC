@@ -3,6 +3,7 @@ package xin.vanilla.aotake.event;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.Tooltip;
+import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.inventory.ContainerScreen;
 import net.minecraft.world.entity.Entity;
 import net.minecraftforge.api.distmarker.Dist;
@@ -131,9 +132,10 @@ public class ClientGameEventHandler {
 
     @SubscribeEvent
     public static void onRenderScreen(ScreenEvent event) {
-        if (event.getScreen() instanceof ContainerScreen
+        Screen screen = event.getScreen();
+        if (screen instanceof ContainerScreen
                 && Minecraft.getInstance().player != null
-                && event.getScreen().getTitle().getString()
+                && screen.getTitle().getString()
                 .startsWith(MOD_NAME.toTextComponent(AotakeUtils.getPlayerLanguage(Minecraft.getInstance().player)).getString())
         ) {
             if (event instanceof ScreenEvent.Init.Post eve) {
@@ -142,7 +144,7 @@ public class ClientGameEventHandler {
                         new Button.Builder(Component.literal("✕").setColor(EnumMCColor.RED.getColor()).toTextComponent()
                                 , button -> AotakeUtils.sendPacketToServer(new ClearDustbinNotice(true, true)))
                                 .size(20, 20)
-                                .pos(event.getScreen().width / 2 - 88 - 21, event.getScreen().height / 2 - 111)
+                                .pos(screen.width / 2 - 88 - 21, screen.height / 2 - 111)
                                 .tooltip(Tooltip.create(Component.translatable(EnumI18nType.MESSAGE, "clear_cache").toTextComponent(AotakeUtils.getClientLanguage())))
                                 .build()
                 );
@@ -151,7 +153,7 @@ public class ClientGameEventHandler {
                         new Button.Builder(Component.literal("✕").setColor(EnumMCColor.RED.getColor()).toTextComponent()
                                 , button -> AotakeUtils.sendPacketToServer(new ClearDustbinNotice(true, false)))
                                 .size(20, 20)
-                                .pos(event.getScreen().width / 2 - 88 - 21, event.getScreen().height / 2 - 90)
+                                .pos(screen.width / 2 - 88 - 21, screen.height / 2 - 90)
                                 .tooltip(Tooltip.create(Component.translatable(EnumI18nType.MESSAGE, "clear_all_dustbin").toTextComponent(AotakeUtils.getClientLanguage())))
                                 .build()
                 );
@@ -160,7 +162,7 @@ public class ClientGameEventHandler {
                         new Button.Builder(Component.literal("✕").setColor(EnumMCColor.YELLOW.getColor()).toTextComponent()
                                 , button -> AotakeUtils.sendPacketToServer(new ClearDustbinNotice(false, false)))
                                 .size(20, 20)
-                                .pos(event.getScreen().width / 2 - 88 - 21, event.getScreen().height / 2 - 69)
+                                .pos(screen.width / 2 - 88 - 21, screen.height / 2 - 69)
                                 .tooltip(Tooltip.create(Component.translatable(EnumI18nType.MESSAGE, "clear_cur_dustbin").toTextComponent(AotakeUtils.getClientLanguage())))
                                 .build()
                 );
@@ -169,7 +171,7 @@ public class ClientGameEventHandler {
                         new Button.Builder(Component.literal("↻").toTextComponent()
                                 , button -> AotakeUtils.sendPacketToServer(new OpenDustbinNotice(0)))
                                 .size(20, 20)
-                                .pos(event.getScreen().width / 2 - 88 - 21, event.getScreen().height / 2 - 48)
+                                .pos(screen.width / 2 - 88 - 21, screen.height / 2 - 48)
                                 .tooltip(Tooltip.create(Component.translatable(EnumI18nType.MESSAGE, "refresh_page").toTextComponent(AotakeUtils.getClientLanguage())))
                                 .build()
                 );
@@ -178,7 +180,7 @@ public class ClientGameEventHandler {
                         new Button.Builder(Component.literal("▲").toTextComponent()
                                 , button -> AotakeUtils.sendPacketToServer(new OpenDustbinNotice(-1)))
                                 .size(20, 20)
-                                .pos(event.getScreen().width / 2 - 88 - 21, event.getScreen().height / 2 - 27)
+                                .pos(screen.width / 2 - 88 - 21, screen.height / 2 - 27)
                                 .tooltip(Tooltip.create(Component.translatable(EnumI18nType.MESSAGE, "previous_page").toTextComponent(AotakeUtils.getClientLanguage())))
                                 .build()
                 );
@@ -187,7 +189,7 @@ public class ClientGameEventHandler {
                         new Button.Builder(Component.literal("▼").toTextComponent()
                                 , button -> AotakeUtils.sendPacketToServer(new OpenDustbinNotice(1)))
                                 .size(20, 20)
-                                .pos(event.getScreen().width / 2 - 88 - 21, event.getScreen().height / 2 - 6)
+                                .pos(screen.width / 2 - 88 - 21, screen.height / 2 - 6)
                                 .tooltip(Tooltip.create(Component.translatable(EnumI18nType.MESSAGE, "next_page").toTextComponent(AotakeUtils.getClientLanguage())))
                                 .build()
                 );
