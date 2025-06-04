@@ -2,6 +2,7 @@ package xin.vanilla.aotake.event;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.components.Button;
+import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.gui.screens.inventory.ContainerScreen;
 import net.minecraft.world.entity.Entity;
 import net.minecraftforge.api.distmarker.Dist;
@@ -18,6 +19,8 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import xin.vanilla.aotake.AotakeSweep;
 import xin.vanilla.aotake.enums.EnumI18nType;
+import xin.vanilla.aotake.enums.EnumMCColor;
+import xin.vanilla.aotake.network.packet.ClearDustbinNotice;
 import xin.vanilla.aotake.network.packet.OpenDustbinNotice;
 import xin.vanilla.aotake.util.AotakeUtils;
 import xin.vanilla.aotake.util.Component;
@@ -131,22 +134,60 @@ public class ClientGameEventHandler {
                 && event.getScreen().getTitle().getString()
                 .startsWith(MOD_NAME.toTextComponent(AotakeUtils.getPlayerLanguage(Minecraft.getInstance().player)).getString())
         ) {
-            // if (event.isCancelable()) event.setCanceled(false);
-            if (event instanceof ScreenEvent.Init.Post) {
-                ((ScreenEvent.Init.Post) event).addListener(
+            if (event instanceof ScreenEvent.Init.Post eve) {
+                // 清空缓存区
+                eve.addListener(
+                        new Button.Builder(Component.literal("✕").setColor(EnumMCColor.RED.getColor()).toTextComponent()
+                                , button -> AotakeUtils.sendPacketToServer(new ClearDustbinNotice(true, true)))
+                                .size(20, 20)
+                                .pos(event.getScreen().width / 2 - 88 - 21, event.getScreen().height / 2 - 111)
+                                .tooltip(Tooltip.create(Component.translatable(EnumI18nType.MESSAGE, "clear_cache").toTextComponent(AotakeUtils.getClientLanguage())))
+                                .build()
+                );
+                // 清空所有页
+                eve.addListener(
+                        new Button.Builder(Component.literal("✕").setColor(EnumMCColor.RED.getColor()).toTextComponent()
+                                , button -> AotakeUtils.sendPacketToServer(new ClearDustbinNotice(true, false)))
+                                .size(20, 20)
+                                .pos(event.getScreen().width / 2 - 88 - 21, event.getScreen().height / 2 - 90)
+                                .tooltip(Tooltip.create(Component.translatable(EnumI18nType.MESSAGE, "clear_all_dustbin").toTextComponent(AotakeUtils.getClientLanguage())))
+                                .build()
+                );
+                // 清空当前页
+                eve.addListener(
+                        new Button.Builder(Component.literal("✕").setColor(EnumMCColor.YELLOW.getColor()).toTextComponent()
+                                , button -> AotakeUtils.sendPacketToServer(new ClearDustbinNotice(false, false)))
+                                .size(20, 20)
+                                .pos(event.getScreen().width / 2 - 88 - 21, event.getScreen().height / 2 - 69)
+                                .tooltip(Tooltip.create(Component.translatable(EnumI18nType.MESSAGE, "clear_cur_dustbin").toTextComponent(AotakeUtils.getClientLanguage())))
+                                .build()
+                );
+                // 刷新当前页
+                eve.addListener(
+                        new Button.Builder(Component.literal("↻").toTextComponent()
+                                , button -> AotakeUtils.sendPacketToServer(new OpenDustbinNotice(0)))
+                                .size(20, 20)
+                                .pos(event.getScreen().width / 2 - 88 - 21, event.getScreen().height / 2 - 48)
+                                .tooltip(Tooltip.create(Component.translatable(EnumI18nType.MESSAGE, "refresh_page").toTextComponent(AotakeUtils.getClientLanguage())))
+                                .build()
+                );
+                // 上一页
+                eve.addListener(
                         new Button.Builder(Component.literal("▲").toTextComponent()
                                 , button -> AotakeUtils.sendPacketToServer(new OpenDustbinNotice(-1)))
                                 .size(20, 20)
-                                .pos(event.getScreen().width / 2 - 88 - 21, event.getScreen().height / 2 - 111)
+                                .pos(event.getScreen().width / 2 - 88 - 21, event.getScreen().height / 2 - 27)
+                                .tooltip(Tooltip.create(Component.translatable(EnumI18nType.MESSAGE, "previous_page").toTextComponent(AotakeUtils.getClientLanguage())))
                                 .build()
                 );
-                ((ScreenEvent.Init.Post) event).addListener(
+                // 下一页
+                eve.addListener(
                         new Button.Builder(Component.literal("▼").toTextComponent()
                                 , button -> AotakeUtils.sendPacketToServer(new OpenDustbinNotice(1)))
                                 .size(20, 20)
-                                .pos(event.getScreen().width / 2 - 88 - 21, event.getScreen().height / 2 - 90)
+                                .pos(event.getScreen().width / 2 - 88 - 21, event.getScreen().height / 2 - 6)
+                                .tooltip(Tooltip.create(Component.translatable(EnumI18nType.MESSAGE, "next_page").toTextComponent(AotakeUtils.getClientLanguage())))
                                 .build()
-
                 );
             } else if (event instanceof ScreenEvent.KeyPressed.Pre keyEvent) {
                 if (keyEvent.getModifiers() != 0) return;

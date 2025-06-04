@@ -92,12 +92,12 @@ public class EventHandlerProxy {
                 lastSelfCleanTime = System.currentTimeMillis();
                 WorldTrashData worldTrashData = WorldTrashData.get();
                 // 清空
-                if (ServerConfig.SELF_CLEAN_MODE.get().contains(EnumSelfCleanMode.SCHEDULED_CLEAR)) {
+                if (ServerConfig.SELF_CLEAN_MODE.get().contains(EnumSelfCleanMode.SCHEDULED_CLEAR.name())) {
                     worldTrashData.getDropList().clear();
                     worldTrashData.getInventoryList().forEach(SimpleContainer::clearContent);
                 }
                 // 随机删除
-                else if (ServerConfig.SELF_CLEAN_MODE.get().contains(EnumSelfCleanMode.SCHEDULED_DELETE)) {
+                else if (ServerConfig.SELF_CLEAN_MODE.get().contains(EnumSelfCleanMode.SCHEDULED_DELETE.name())) {
                     if (AotakeSweep.RANDOM.nextBoolean()) {
                         List<KeyValue<Coordinate, ItemStack>> dropList = worldTrashData.getDropList();
                         dropList.remove(AotakeSweep.RANDOM.nextInt(dropList.size()));
@@ -236,7 +236,7 @@ public class EventHandlerProxy {
                     }
                     player.addItem(copy);
 
-                    player.displayClientMessage(net.minecraft.network.chat.Component.literal("实体已释放！"), true);
+                    AotakeUtils.sendActionBarMessage(player, Component.translatable(EnumI18nType.MESSAGE, "entity_released", entity.getDisplayName()));
 
                     event.setCanceled(true);
                     event.setResult(Event.Result.DENY);
@@ -277,7 +277,7 @@ public class EventHandlerProxy {
                 }
             }
 
-            if (ServerConfig.ALLOW_CATCH_ITEM.get()
+            if (ServerConfig.ALLOW_CATCH_ENTITY.get()
                     && ServerConfig.CATCH_ITEM.get().stream().anyMatch(s -> s.equals(AotakeUtils.getItemRegistryName(original)))
                     && player.isCrouching()
                     && (tag.isEmpty() || !tag.has(AotakeSweep.CUSTOM_DATA_COMPONENT.get()) || tag.get(AotakeSweep.CUSTOM_DATA_COMPONENT.get()) == null || !tag.get(AotakeSweep.CUSTOM_DATA_COMPONENT.get()).contains("entity"))
@@ -294,8 +294,8 @@ public class EventHandlerProxy {
                 player.addItem(copy);
 
                 AotakeUtils.removeEntity(entity, true);
-                // entity.remove(true);
-                player.displayClientMessage(net.minecraft.network.chat.Component.literal("实体已捕获！"), true);
+
+                AotakeUtils.sendActionBarMessage(player, Component.translatable(EnumI18nType.MESSAGE, "entity_caught"));
 
                 event.setCanceled(true);
                 event.setResult(Event.Result.DENY);
@@ -307,7 +307,7 @@ public class EventHandlerProxy {
     public static void onPlayerUseItem(PlayerEvent event) {
         if (AotakeSweep.isDisable()) return;
         if (event.getEntity() == null) return;
-        if (event.getEntity().isCrouching() && ServerConfig.ALLOW_CATCH_ITEM.get()) {
+        if (event.getEntity().isCrouching() && ServerConfig.ALLOW_CATCH_ENTITY.get()) {
             ItemStack item;
             // 桶装牛奶事件
             if (event instanceof FillBucketEvent) {
