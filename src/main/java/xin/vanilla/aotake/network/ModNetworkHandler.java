@@ -2,6 +2,7 @@ package xin.vanilla.aotake.network;
 
 import net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent;
 import net.neoforged.neoforge.network.registration.PayloadRegistrar;
+import xin.vanilla.aotake.network.packet.ClearDustbinNotice;
 import xin.vanilla.aotake.network.packet.OpenDustbinNotice;
 
 public class ModNetworkHandler {
@@ -12,5 +13,6 @@ public class ModNetworkHandler {
         final PayloadRegistrar registrar = event.registrar(PROTOCOL_VERSION).optional();
 
         registrar.playToClient(OpenDustbinNotice.TYPE, OpenDustbinNotice.STREAM_CODEC, OpenDustbinNotice::handle);
+        registrar.playToClient(ClearDustbinNotice.TYPE, ClearDustbinNotice.STREAM_CODEC, ClearDustbinNotice::handle);
     }
 }

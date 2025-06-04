@@ -4,6 +4,7 @@ import com.mojang.brigadier.Command;
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.BoolArgumentType;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
+import com.mojang.brigadier.arguments.LongArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.context.CommandContext;
@@ -143,7 +144,12 @@ public class AotakeCommand {
             } else {
                 EnumCommandType type = EnumCommandType.valueOf(command);
                 helpInfo = Component.empty();
-                helpInfo.append("/").append(AotakeUtils.getCommand(type))
+                String com = "/" + AotakeUtils.getCommand(type);
+                helpInfo.append(Component.literal(com)
+                                .setClickEvent(new ClickEvent(ClickEvent.Action.SUGGEST_COMMAND, com))
+                                .setHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT
+                                        , Component.translatable(AotakeUtils.getPlayerLanguage(player), EnumI18nType.MESSAGE, "click_to_suggest").toTextComponent()))
+                        )
                         .append("\n")
                         .append(Component.translatable(AotakeUtils.getPlayerLanguage(player), EnumI18nType.COMMAND, command.toLowerCase() + "_detail").setColor(EnumMCColor.GRAY.getColor()));
             }
@@ -252,6 +258,10 @@ public class AotakeCommand {
             notifyHelp(context);
             ServerPlayer player = context.getSource().getPlayerOrException();
             int page = getIntDefault(context, "page", 1);
+            if (page > CommonConfig.DUSTBIN_PAGE_LIMIT.get())
+                throw CommandSyntaxException.BUILT_IN_EXCEPTIONS.integerTooHigh().create(page, CommonConfig.DUSTBIN_PAGE_LIMIT.get());
+            else if (page < 1)
+                throw CommandSyntaxException.BUILT_IN_EXCEPTIONS.integerTooLow().create(page, 1);
             return dustbin(player, page);
         };
         Command<CommandSourceStack> sweepCommand = context -> {
@@ -385,7 +395,7 @@ public class AotakeCommand {
         Command<CommandSourceStack> dropCacheCommand = context -> {
             if (checkModStatus(context)) return 0;
             notifyHelp(context);
-            boolean originalPos = getBooleanDefault(context, "originalPos", true);
+            boolean originalPos = getBooleanDefault(context, "originalPos", false);
             ServerPlayer player = context.getSource().getPlayerOrException();
             List<KeyValue<Coordinate, ItemStack>> items = new ArrayList<>(WorldTrashData.get().getDropList());
             WorldTrashData.get().getDropList().clear();
@@ -474,7 +484,7 @@ public class AotakeCommand {
         LiteralArgumentBuilder<CommandSourceStack> openDustbin = // region openDustbin
                 Commands.literal(CommonConfig.COMMAND_DUSTBIN_OPEN.get())
                         .executes(openDustbinCommand)
-                        .then(Commands.argument("page", IntegerArgumentType.integer(1, CommonConfig.DUSTBIN_PAGE_LIMIT.get()))
+                        .then(Commands.argument("page", IntegerArgumentType.integer(1))
                                 .suggests((context, builder) -> {
                                     IntStream.range(1, CommonConfig.DUSTBIN_PAGE_LIMIT.get() + 1)
                                             .filter(i -> i == 1
@@ -631,87 +641,248 @@ public class AotakeCommand {
                     .then(dropCache)
                     // 获取服务器配置 /aotake config
                     .then(Commands.literal("config")
-                            // 修改服务器配置
-                            .then(Commands.literal("set")
-                                    .requires(source -> AotakeUtils.hasCommandPermission(source, EnumCommandType.VIRTUAL_OP))
-                                    .then(Commands.literal("mode")
-                                            .then(Commands.argument("mode", IntegerArgumentType.integer(0, 2))
-                                                    .suggests((context, builder) -> {
-                                                        builder.suggest(0);
-                                                        builder.suggest(1);
-                                                        builder.suggest(2);
-                                                        return builder.buildFuture();
-                                                    })
-                                                    .executes(context -> {
-                                                        int mode = IntegerArgumentType.getInteger(context, "mode");
-                                                        CommandSourceStack source = context.getSource();
-                                                        String lang;
-                                                        if (source.getEntity() != null && source.getEntity() instanceof ServerPlayer) {
-                                                            lang = AotakeUtils.getPlayerLanguage(source.getPlayerOrException());
-                                                        } else {
-                                                            lang = ServerConfig.DEFAULT_LANGUAGE.get();
-                                                        }
-                                                        switch (mode) {
-                                                            case 0:
-                                                                ServerConfig.resetConfig();
-                                                                CommonConfig.resetConfig();
-                                                                break;
-                                                            case 1:
-                                                                ServerConfig.resetConfigWithMode1();
-                                                                CommonConfig.resetConfigWithMode1();
-                                                                break;
-                                                            case 2:
-                                                                ServerConfig.resetConfigWithMode2();
-                                                                CommonConfig.resetConfigWithMode2();
-                                                                break;
-                                                            default: {
-                                                                throw new IllegalArgumentException("Mode " + mode + " does not exist");
-                                                            }
-                                                        }
-                                                        Component component = Component.translatable(lang, EnumI18nType.MESSAGE, "server_config_mode", mode);
-                                                        source.sendSuccess(() -> component.toChatComponent(lang), false);
+                            // region 服务器设置
+                            // 设置配置模式
+                            .then(Commands.literal("mode")
+                                    .then(Commands.argument("mode", IntegerArgumentType.integer(0, 2))
+                                            .requires(source -> AotakeUtils.hasCommandPermission(source, EnumCommandType.VIRTUAL_OP))
+                                            .suggests((context, builder) -> {
+                                                builder.suggest(0);
+                                                builder.suggest(1);
+                                                builder.suggest(2);
+                                                return builder.buildFuture();
+                                            })
+                                            .executes(context -> {
+                                                int mode = IntegerArgumentType.getInteger(context, "mode");
+                                                CommandSourceStack source = context.getSource();
+                                                String lang;
+                                                if (source.getEntity() != null && source.getEntity() instanceof ServerPlayer) {
+                                                    lang = AotakeUtils.getPlayerLanguage(source.getPlayerOrException());
+                                                } else {
+                                                    lang = ServerConfig.DEFAULT_LANGUAGE.get();
+                                                }
+                                                switch (mode) {
+                                                    case 0:
+                                                        ServerConfig.resetConfig();
+                                                        CommonConfig.resetConfig();
+                                                        break;
+                                                    case 1:
+                                                        ServerConfig.resetConfigWithMode1();
+                                                        CommonConfig.resetConfigWithMode1();
+                                                        break;
+                                                    case 2:
+                                                        ServerConfig.resetConfigWithMode2();
+                                                        CommonConfig.resetConfigWithMode2();
+                                                        break;
+                                                    default: {
+                                                        throw new IllegalArgumentException("Mode " + mode + " does not exist");
+                                                    }
+                                                }
+                                                Component component = Component.translatable(lang, EnumI18nType.MESSAGE, "server_config_mode", mode);
+                                                source.sendSuccess(() -> component.toChatComponent(lang), false);
 
-                                                        // 更新权限信息
-                                                        source.getServer().getPlayerList().getPlayers()
-                                                                .forEach(player -> source.getServer()
-                                                                        .getPlayerList()
-                                                                        .sendPlayerPermissionLevel(player)
-                                                                );
-                                                        return 1;
-                                                    })
-                                            )
-                                    )
-                                    .then(Commands.literal("language")
-                                            .then(Commands.argument("language", StringArgumentType.word())
-                                                    .suggests((context, builder) -> {
-                                                        I18nUtils.getI18nFiles().forEach(builder::suggest);
-                                                        return builder.buildFuture();
-                                                    })
-                                                    .executes(context -> {
-                                                        String code = StringArgumentType.getString(context, "language");
-                                                        ServerConfig.DEFAULT_LANGUAGE.set(code);
-                                                        ServerPlayer player = context.getSource().getPlayerOrException();
-                                                        AotakeUtils.broadcastMessage(player, Component.translatable(player, EnumI18nType.MESSAGE, "server_default_language", ServerConfig.DEFAULT_LANGUAGE.get()));
-                                                        return 1;
-                                                    })
-                                            )
-                                    )
-                                    .then(Commands.literal("disable")
-                                            .then(Commands.argument("disable", BoolArgumentType.bool())
-                                                    .executes(context -> {
-                                                        AotakeSweep.setDisable(BoolArgumentType.getBool(context, "disable"));
-                                                        AotakeUtils.broadcastMessage(context.getSource().getServer()
-                                                                , Component.translatable(EnumI18nType.MESSAGE
-                                                                        , "mod_status"
-                                                                        , Component.translatable(EnumI18nType.KEY, "categories")
-                                                                        , I18nUtils.enabled(ServerConfig.DEFAULT_LANGUAGE.get(), !AotakeSweep.isDisable())
-                                                                )
+                                                // 更新权限信息
+                                                source.getServer().getPlayerList().getPlayers()
+                                                        .forEach(player -> source.getServer()
+                                                                .getPlayerList()
+                                                                .sendPlayerPermissionLevel(player)
                                                         );
-                                                        return 1;
-                                                    })
-                                            )
+                                                return 1;
+                                            })
                                     )
                             )
+                            // 设置服务器默认语言
+                            .then(Commands.literal("language")
+                                    .requires(source -> AotakeUtils.hasCommandPermission(source, EnumCommandType.VIRTUAL_OP))
+                                    .then(Commands.argument("language", StringArgumentType.word())
+                                            .suggests((context, builder) -> {
+                                                I18nUtils.getI18nFiles().forEach(builder::suggest);
+                                                return builder.buildFuture();
+                                            })
+                                            .executes(context -> {
+                                                String code = StringArgumentType.getString(context, "language");
+                                                ServerConfig.DEFAULT_LANGUAGE.set(code);
+                                                ServerPlayer player = context.getSource().getPlayerOrException();
+                                                AotakeUtils.broadcastMessage(player, Component.translatable(player, EnumI18nType.MESSAGE, "server_default_language", ServerConfig.DEFAULT_LANGUAGE.get()));
+                                                return 1;
+                                            })
+                                    )
+                            )
+                            // 设置MOD启用状态
+                            .then(Commands.literal("disable")
+                                    .requires(source -> AotakeUtils.hasCommandPermission(source, EnumCommandType.VIRTUAL_OP))
+                                    .then(Commands.argument("disable", BoolArgumentType.bool())
+                                            .executes(context -> {
+                                                AotakeSweep.setDisable(BoolArgumentType.getBool(context, "disable"));
+                                                AotakeUtils.broadcastMessage(context.getSource().getServer()
+                                                        , Component.translatable(EnumI18nType.MESSAGE
+                                                                , "mod_status"
+                                                                , Component.translatable(EnumI18nType.KEY, "categories")
+                                                                , I18nUtils.enabled(ServerConfig.DEFAULT_LANGUAGE.get(), !AotakeSweep.isDisable())
+                                                        )
+                                                );
+                                                return 1;
+                                            })
+                                    )
+                            )
+                            // 设置清理间隔
+                            .then(Commands.literal("sweepInterval")
+                                    .executes(context -> {
+                                        AotakeUtils.sendMessage(context.getSource().getPlayerOrException()
+                                                , Component.translatable(EnumI18nType.MESSAGE
+                                                        , "sweep_interval"
+                                                        , ServerConfig.SWEEP_INTERVAL.get()
+                                                )
+                                        );
+                                        return 1;
+                                    })
+                                    .then(Commands.argument("ms", LongArgumentType.longArg(0, 7 * 24 * 60 * 60 * 1000))
+                                            .requires(source -> AotakeUtils.hasCommandPermission(source, EnumCommandType.VIRTUAL_OP))
+                                            .executes(context -> {
+                                                long interval = LongArgumentType.getLong(context, "ms");
+                                                ServerConfig.SWEEP_INTERVAL.set(interval);
+                                                AotakeUtils.sendMessageToAll(
+                                                        Component.translatable(EnumI18nType.MESSAGE
+                                                                , "sweep_interval"
+                                                                , interval
+                                                        )
+                                                );
+                                                return 1;
+                                            })
+                                    )
+                            )
+                            // 设置区块检查间隔
+                            .then(Commands.literal("chunkCheckInterval")
+                                    .executes(context -> {
+                                        AotakeUtils.sendMessage(context.getSource().getPlayerOrException()
+                                                , Component.translatable(EnumI18nType.MESSAGE
+                                                        , "chunk_check_interval"
+                                                        , ServerConfig.CHUNK_CHECK_INTERVAL.get()
+                                                )
+                                        );
+                                        return 1;
+                                    })
+                                    .then(Commands.argument("ms", LongArgumentType.longArg(0, 7 * 24 * 60 * 60 * 1000))
+                                            .requires(source -> AotakeUtils.hasCommandPermission(source, EnumCommandType.VIRTUAL_OP))
+                                            .executes(context -> {
+                                                long interval = LongArgumentType.getLong(context, "ms");
+                                                ServerConfig.CHUNK_CHECK_INTERVAL.set(interval);
+                                                AotakeUtils.sendMessageToAll(
+                                                        Component.translatable(EnumI18nType.MESSAGE
+                                                                , "chunk_check_interval"
+                                                                , interval
+                                                        )
+                                                );
+                                                return 1;
+                                            })
+                                    )
+                            )
+                            // 设置区块检查限制
+                            .then(Commands.literal("chunkCheckLimit")
+                                    .executes(context -> {
+                                        AotakeUtils.sendMessage(context.getSource().getPlayerOrException()
+                                                , Component.translatable(EnumI18nType.MESSAGE
+                                                        , "chunk_check_limit"
+                                                        , ServerConfig.CHUNK_CHECK_LIMIT.get()
+                                                )
+                                        );
+                                        return 1;
+                                    })
+                                    .then(Commands.argument("num", IntegerArgumentType.integer(1))
+                                            .requires(source -> AotakeUtils.hasCommandPermission(source, EnumCommandType.VIRTUAL_OP))
+                                            .executes(context -> {
+                                                int num = IntegerArgumentType.getInteger(context, "num");
+                                                ServerConfig.CHUNK_CHECK_LIMIT.set(num);
+                                                AotakeUtils.sendMessageToAll(
+                                                        Component.translatable(EnumI18nType.MESSAGE
+                                                                , "chunk_check_limit"
+                                                                , num
+                                                        )
+                                                );
+                                                return 1;
+                                            })
+                                    )
+                            )
+                            // 设置是否允许玩家捕捉实体
+                            .then(Commands.literal("allowCatchEntity")
+                                    .executes(context -> {
+                                        AotakeUtils.sendMessage(context.getSource().getPlayerOrException()
+                                                , Component.translatable(EnumI18nType.MESSAGE
+                                                        , "allow_catch_entity"
+                                                        , ServerConfig.ALLOW_CATCH_ENTITY.get()
+                                                )
+                                        );
+                                        return 1;
+                                    })
+                                    .then(Commands.argument("boolean", BoolArgumentType.bool())
+                                            .requires(source -> AotakeUtils.hasCommandPermission(source, EnumCommandType.VIRTUAL_OP))
+                                            .executes(context -> {
+                                                boolean bool = BoolArgumentType.getBool(context, "boolean");
+                                                ServerConfig.ALLOW_CATCH_ENTITY.set(bool);
+                                                AotakeUtils.sendMessageToAll(
+                                                        Component.translatable(EnumI18nType.MESSAGE
+                                                                , "allow_catch_entity"
+                                                                , bool
+                                                        )
+                                                );
+                                                return 1;
+                                            })
+                                    )
+                            )
+                            // 设置服务器无人时是否依旧打扫
+                            .then(Commands.literal("sweepWhenNoPlayer")
+                                    .executes(context -> {
+                                        AotakeUtils.sendMessage(context.getSource().getPlayerOrException()
+                                                , Component.translatable(EnumI18nType.MESSAGE
+                                                        , "sweep_when_no_player"
+                                                        , CommonConfig.SWEEP_WHEN_NO_PLAYER.get()
+                                                )
+                                        );
+                                        return 1;
+                                    })
+                                    .then(Commands.argument("boolean", BoolArgumentType.bool())
+                                            .requires(source -> AotakeUtils.hasCommandPermission(source, EnumCommandType.VIRTUAL_OP))
+                                            .executes(context -> {
+                                                boolean bool = BoolArgumentType.getBool(context, "boolean");
+                                                CommonConfig.SWEEP_WHEN_NO_PLAYER.set(bool);
+                                                AotakeUtils.sendMessageToAll(
+                                                        Component.translatable(EnumI18nType.MESSAGE
+                                                                , "sweep_when_no_player"
+                                                                , bool
+                                                        )
+                                                );
+                                                return 1;
+                                            })
+                                    )
+                            )
+                            // 设置垃圾箱页数限制
+                            .then(Commands.literal("dustbinPageLimit")
+                                    .executes(context -> {
+                                        AotakeUtils.sendMessage(context.getSource().getPlayerOrException()
+                                                , Component.translatable(EnumI18nType.MESSAGE
+                                                        , "dustbin_page_limit"
+                                                        , CommonConfig.DUSTBIN_PAGE_LIMIT.get()
+                                                )
+                                        );
+                                        return 1;
+                                    })
+                                    .then(Commands.argument("num", IntegerArgumentType.integer(1, 16 * 16 * 16 * 16))
+                                            .requires(source -> AotakeUtils.hasCommandPermission(source, EnumCommandType.VIRTUAL_OP))
+                                            .executes(context -> {
+                                                int num = IntegerArgumentType.getInteger(context, "num");
+                                                CommonConfig.DUSTBIN_PAGE_LIMIT.set(num);
+                                                AotakeUtils.sendMessageToAll(
+                                                        Component.translatable(EnumI18nType.MESSAGE
+                                                                , "dustbin_page_limit"
+                                                                , num
+                                                        )
+                                                );
+                                                return 1;
+                                            })
+                                    )
+                            )// endregion 服务器设置
+
+                            // region 玩家设置
                             // 显示打扫结果信息
                             .then(Commands.literal("showSweepResult")
                                     .then(Commands.argument("show", BoolArgumentType.bool())
@@ -730,7 +901,7 @@ public class AotakeCommand {
                                                 return 1;
                                             })
                                     )
-                            )
+                            )// endregion 玩家设置
                     )
             );
         }

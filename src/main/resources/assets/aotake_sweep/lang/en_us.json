@@ -28,7 +28,11 @@
   "word.aotake_sweep.enabled": "enabled",
   "word.aotake_sweep.disabled": "disabled",
   "message.aotake_sweep.previous_page": "Previous Page",
+  "message.aotake_sweep.refresh_page": "Refresh Page",
   "message.aotake_sweep.next_page": "Next Page",
+  "message.aotake_sweep.clear_cur_dustbin": "Clear Current Page Dustbin",
+  "message.aotake_sweep.clear_all_dustbin": "Clear All Dustbins",
+  "message.aotake_sweep.clear_cache": "Clear Cache",
   "message.aotake_sweep.not_show_button": "[Close Chat Reminder]",
   "message.aotake_sweep.click_to_suggest": "Click to suggest",
   "message.aotake_sweep.command_disabled": "§eThe command is disabled!",
@@ -47,5 +51,13 @@
   "message.aotake_sweep.player_show_sweep_result": "Show sweep result message is set to: %s.",
   "message.aotake_sweep.mod_status": "%s's enable status is set to: %s.",
   "message.aotake_sweep.mod_disabled": "§cMOD has been temporarily disabled.",
-  "message.aotake_sweep.chunk_check_msg": "%s§e and other chunk entities exceed the threshold, cleaning will be performed soon."
+  "message.aotake_sweep.chunk_check_msg": "%s§e and other chunk entities exceed the threshold, cleaning will be performed soon.",
+  "message.aotake_sweep.entity_caught": "Entity caught!",
+  "message.aotake_sweep.entity_released": "Entity released!",
+  "message.aotake_sweep.sweep_interval": "Server sweep interval is set to: %s milliseconds.",
+  "message.aotake_sweep.chunk_check_interval": "Entity excess check interval is set to: %s milliseconds.",
+  "message.aotake_sweep.chunk_check_limit": "Entity excess check threshold is set to: %s.",
+  "message.aotake_sweep.allow_catch_entity": "Allow players to catch entities with items is set to: %s.",
+  "message.aotake_sweep.sweep_when_no_player": "Sweep when no player is online is set to: %s.",
+  "message.aotake_sweep.dustbin_page_limit": "Dustbin page limit is set to: %s."
 }

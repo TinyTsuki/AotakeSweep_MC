@@ -77,9 +77,14 @@ public class ServerConfig {
     public static final ModConfigSpec.ConfigValue<List<? extends String>> ITEM_BLACKLIST;
 
     /**
+     * 仅清理不回收的物品
+     */
+    public static final ModConfigSpec.ConfigValue<List<? extends String>> ITEM_REDLIST;
+
+    /**
      * 是否允许玩家使用物品捕获实体
      */
-    public static final ModConfigSpec.ConfigValue<Boolean> ALLOW_CATCH_ITEM;
+    public static final ModConfigSpec.ConfigValue<Boolean> ALLOW_CATCH_ENTITY;
 
     /**
      * 仅清理掉落超过指定tick的物品
@@ -172,7 +177,7 @@ public class ServerConfig {
             SWEEP_INTERVAL = SERVER_BUILDER
                     .comment("The interval of sweeping (in milliseconds)."
                             , "扫地间隔(毫秒)。")
-                    .defineInRange("sweepInterval", 5 * 60 * 1000, 0L, 7 * 24 * 60 * 60 * 1000);
+                    .defineInRange("sweepInterval", 10 * 60 * 1000, 0L, 7 * 24 * 60 * 60 * 1000);
 
             // 自清洁间隔(毫秒)
             SELF_CLEAN_INTERVAL = SERVER_BUILDER
@@ -233,23 +238,30 @@ public class ServerConfig {
 
             // 物品清理白名单
             ITEM_WHITELIST = SERVER_BUILDER
-                    .comment("The item whitelist for cleaning up items, the following items will not be cleaned."
-                            , "物品清理白名单，以下物品不会被清理。")
+                    .comment("The item whitelist for cleaning up items, the following items will not be cleaned or recycled."
+                            , "物品清理白名单，以下物品不会被清理与回收。")
                     .defineListAllowEmpty("itemWhitelist", new ArrayList<>() {{
                     }}, o -> o instanceof String);
 
             // 物品清理黑名单
             ITEM_BLACKLIST = SERVER_BUILDER
-                    .comment("The item blacklist for cleaning up items, only the following items will be cleaned."
-                            , "物品清理黑名单，将只会清理以下物品。")
+                    .comment("The item blacklist for cleaning up items, if this list is not empty, only the following items will be cleaned and recycled, items outside the list will not be cleaned or recycled."
+                            , "物品清理黑名单，若该名单不为空，则将只会清理并回收以下物品，名单外的物品将不会被清理与回收。")
                     .defineListAllowEmpty("itemBlacklist", new ArrayList<>() {{
                     }}, o -> o instanceof String);
 
+            // 仅清理不回收的物品
+            ITEM_REDLIST = SERVER_BUILDER
+                    .comment("The item redlist for cleaning up items, the following items will only be cleaned and not recycled."
+                            , "物品清理红名单，以下物品将只会被清理而不会被回收。")
+                    .defineListAllowEmpty("itemRedlist", new ArrayList<>() {{
+                    }}, o -> o instanceof String);
+
             // 是否允许玩家使用物品捕获实体
-            ALLOW_CATCH_ITEM = SERVER_BUILDER
+            ALLOW_CATCH_ENTITY = SERVER_BUILDER
                     .comment("Whether to allow players to use items to capture entities."
                             , "是否允许玩家使用物品捕获实体。")
-                    .define("allowCatchItem", false);
+                    .define("allowCatchEntity", false);
 
             // 仅清理掉落超过指定tick的物品
             SWEEP_ITEM_AGE = SERVER_BUILDER
@@ -350,7 +362,7 @@ public class ServerConfig {
         HELP_HEADER.set("-----==== Aotake Sweep Help (%d/%d) ====-----");
         HELP_INFO_NUM_PER_PAGE.set(5);
         DEFAULT_LANGUAGE.set("en_us");
-        SWEEP_INTERVAL.set(5 * 60 * 1000L);
+        SWEEP_INTERVAL.set(10 * 60 * 1000L);
         SELF_CLEAN_INTERVAL.set(60 * 60 * 1000L);
         CHUNK_CHECK_INTERVAL.set(5 * 1000L);
         CHUNK_CHECK_LIMIT.set(250);
@@ -379,7 +391,8 @@ public class ServerConfig {
         }});
         ITEM_WHITELIST.set(new ArrayList<>());
         ITEM_BLACKLIST.set(new ArrayList<>());
-        ALLOW_CATCH_ITEM.set(false);
+        ITEM_REDLIST.set(new ArrayList<>());
+        ALLOW_CATCH_ENTITY.set(false);
         SWEEP_ITEM_AGE.set(200);
         SELF_CLEAN_MODE.set(new ArrayList<>() {{
             add(EnumSelfCleanMode.NONE.name());
