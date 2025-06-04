@@ -30,7 +30,7 @@ public class OpenDustbinNotice {
             if (player != null) {
                 String playerUUID = AotakeUtils.getPlayerUUIDString(player);
                 Integer page = AotakeSweep.getPlayerDustbinPage().getOrDefault(playerUUID, 1);
-                if (packet.offset == 0) page = 1;
+                player.closeContainer();
                 int result = player.openMenu(WorldTrashData.getTrashContainer(player, page + packet.offset)).orElse(0);
                 if (result > 0) AotakeSweep.getPlayerDustbinPage().put(playerUUID, page + packet.offset);
             }
