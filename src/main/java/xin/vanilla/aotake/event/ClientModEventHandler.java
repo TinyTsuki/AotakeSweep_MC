@@ -30,12 +30,12 @@ public class ClientModEventHandler {
      * 垃圾箱上页快捷键
      */
     public static KeyBinding DUSTBIN_PRE_KEY = new KeyBinding("key.aotake_sweep.open_dustbin_pre",
-            GLFW.GLFW_KEY_UP, CATEGORIES);
+            GLFW.GLFW_KEY_LEFT, CATEGORIES);
     /**
      * 垃圾箱下页快捷键
      */
     public static KeyBinding DUSTBIN_NEXT_KEY = new KeyBinding("key.aotake_sweep.open_dustbin_next",
-            GLFW.GLFW_KEY_DOWN, CATEGORIES);
+            GLFW.GLFW_KEY_RIGHT, CATEGORIES);
 
     /**
      * 注册键绑定
