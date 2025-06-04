@@ -15,7 +15,7 @@
 	#The interval of sweeping (in milliseconds).
 	#扫地间隔(毫秒)。
 	#Range: 0 ~ 604800000
-	sweepInterval = 300000
+	sweepInterval = 600000
 	#The interval of self-cleaning (in milliseconds).
 	#自清洁间隔(毫秒)。
 	#Range: 0 ~ 604800000
@@ -37,15 +37,18 @@
 	#The entity that can be captured when cleaned up.
 	#清理时允许被捕获的实体。
 	catchEntity = ["minecraft:experience_orb"]
-	#The item whitelist for cleaning up items, the following items will not be cleaned.
-	#物品清理白名单，以下物品不会被清理。
+	#The item whitelist for cleaning up items, the following items will not be cleaned or recycled.
+	#物品清理白名单，以下物品不会被清理与回收。
 	itemWhitelist = []
-	#The item blacklist for cleaning up items, only the following items will be cleaned.
-	#物品清理黑名单，将只会清理以下物品。
+	#The item blacklist for cleaning up items, if this list is not empty, only the following items will be cleaned and recycled, items outside the list will not be cleaned or recycled.
+	#物品清理黑名单，若该名单不为空，则将只会清理并回收以下物品，名单外的物品将不会被清理与回收。
 	itemBlacklist = []
+	#The item redlist for cleaning up items, the following items will only be cleaned and not recycled.
+	#物品清理红名单，以下物品将只会被清理而不会被回收。
+	itemRedlist = []
 	#Whether to allow players to use items to capture entities.
 	#是否允许玩家使用物品捕获实体。
-	allowCatchItem = false
+	allowCatchEntity = false
 	#Only clean up items that have been dropped for more than the specified ticks.
 	#仅清理掉落超过指定tick的物品。
 	#Range: 0 ~ 1728000
