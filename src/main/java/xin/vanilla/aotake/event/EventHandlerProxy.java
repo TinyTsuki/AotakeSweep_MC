@@ -50,21 +50,23 @@ public class EventHandlerProxy {
     private static long lastChunkCheckTime = System.currentTimeMillis();
     private static Queue<Integer> warnQueue;
 
+    public static void resetWarnQueue() {
+        List<Integer> list = new ArrayList<>(CommonConfig.SWEEP_WARNING_SECOND.get());
+        // 从大到小排序
+        list.sort((a, b) -> Integer.compare(b, a));
+        warnQueue = new ArrayDeque<>(list);
+    }
+
     public static void onServerTick(TickEvent.ServerTickEvent.Post event) {
         if (AotakeSweep.isDisable()) return;
-        if (AotakeSweep.getServerInstance() != null
-                && AotakeSweep.getServerInstance().isRunning()
+        if (event.getServer() != null
+                && event.getServer().isRunning()
         ) {
             long swept = System.currentTimeMillis() - lastSweepTime;
             long countdown = ServerConfig.SWEEP_INTERVAL.get() - swept;
 
             // 扫地前提示
-            if (warnQueue == null) {
-                List<Integer> list = new ArrayList<>(CommonConfig.SWEEP_WARNING_SECOND.get());
-                // 从大到小排序
-                list.sort((a, b) -> Integer.compare(b, a));
-                warnQueue = new ArrayDeque<>(list);
-            }
+            if (warnQueue == null) resetWarnQueue();
             if (warnQueue.peek() != null && warnQueue.peek() < 0) warnQueue.add(warnQueue.poll());
             if (warnQueue.peek() != null && countdown / 1000 == warnQueue.peek()) {
                 // 将头部元素放至尾部
@@ -72,7 +74,7 @@ public class EventHandlerProxy {
                 warnQueue.add(sec);
 
                 if (sec > 0) {
-                    AotakeSweep.getServerInstance()
+                    event.getServer()
                             .getPlayerList()
                             .getPlayers()
                             .forEach(player -> AotakeUtils.sendActionBarMessage(player
@@ -132,7 +134,7 @@ public class EventHandlerProxy {
                         .toList();
                 if (CollectionUtils.isNotNullOrEmpty(entryList)) {
                     LOGGER.info("Chunk check info: {}", entryList.stream().map(entry -> entry.getKey() + " has " + entry.getValue()).collect(Collectors.joining("\n")));
-                    for (ServerPlayer player : AotakeSweep.getServerInstance().getPlayerList().getPlayers()) {
+                    for (ServerPlayer player : event.getServer().getPlayerList().getPlayers()) {
                         AotakeUtils.sendActionBarMessage(player, Component.translatable(EnumI18nType.MESSAGE, "chunk_check_msg", entryList.get(0).getKey()));
                     }
                     new Thread(() -> {
@@ -187,7 +189,8 @@ public class EventHandlerProxy {
             DataComponentMap tag = event.getItemStack().getComponents();
             if (!tag.isEmpty() && tag.has(AotakeSweep.CUSTOM_DATA_COMPONENT.get())) {
                 CompoundTag aotake = tag.get(AotakeSweep.CUSTOM_DATA_COMPONENT.get());
-                if (aotake == null || aotake.isEmpty()) event.getItemStack().remove(AotakeSweep.CUSTOM_DATA_COMPONENT.get());
+                if (aotake == null || aotake.isEmpty())
+                    event.getItemStack().remove(AotakeSweep.CUSTOM_DATA_COMPONENT.get());
                 event.setResult(Event.Result.DENY);
                 event.setCancellationResult(InteractionResult.FAIL);
                 event.setCanceled(true);
