@@ -180,6 +180,15 @@ public class AotakeUtils {
     }
 
     /**
+     * 发送消息至所有玩家
+     */
+    public static void sendMessageToAll(Component message) {
+        for (ServerPlayer player : AotakeSweep.getServerInstance().getPlayerList().getPlayers()) {
+            sendMessage(player, message);
+        }
+    }
+
+    /**
      * 发送消息
      *
      * @param player  玩家
@@ -228,6 +237,15 @@ public class AotakeUtils {
             source.sendSuccess(() -> Component.translatable(key, args).setLanguageCode(ServerConfig.DEFAULT_LANGUAGE.get()).toChatComponent(), false);
         } else {
             source.sendFailure(Component.translatable(key, args).setLanguageCode(ServerConfig.DEFAULT_LANGUAGE.get()).toChatComponent());
+        }
+    }
+
+    /**
+     * 发送操作栏消息至所有玩家
+     */
+    public static void sendActionBarMessageToAll(Component message) {
+        for (ServerPlayer player : AotakeSweep.getServerInstance().getPlayerList().getPlayers()) {
+            sendActionBarMessage(player, message);
         }
     }
 
@@ -331,6 +349,7 @@ public class AotakeUtils {
         if (SAFE_BLOCKS == null) {
             SAFE_BLOCKS = CommonConfig.SAFE_BLOCKS.get().stream()
                     .filter(Objects::nonNull)
+                    .map(s -> (String) s)
                     .distinct()
                     .toList();
         }
@@ -344,6 +363,7 @@ public class AotakeUtils {
         if (SAFE_BLOCKS_BELOW == null) {
             SAFE_BLOCKS_BELOW = CommonConfig.SAFE_BLOCKS_BELOW.get().stream()
                     .filter(Objects::nonNull)
+                    .map(s -> (String) s)
                     .distinct()
                     .toList();
         }
@@ -357,6 +377,7 @@ public class AotakeUtils {
         if (SAFE_BLOCKS_ABOVE == null) {
             SAFE_BLOCKS_ABOVE = CommonConfig.SAFE_BLOCKS_ABOVE.get().stream()
                     .filter(Objects::nonNull)
+                    .map(s -> (String) s)
                     .distinct()
                     .toList();
         }
@@ -433,7 +454,7 @@ public class AotakeUtils {
         SweepResult result = null;
         if (CollectionUtils.isNotNullOrEmpty(list)) {
             // 清空旧的物品
-            if (ServerConfig.SELF_CLEAN_MODE.get().contains(EnumSelfCleanMode.SWEEP_CLEAR)) {
+            if (ServerConfig.SELF_CLEAN_MODE.get().contains(EnumSelfCleanMode.SWEEP_CLEAR.name())) {
                 WorldTrashData.get().getDropList().clear();
                 WorldTrashData.get().getInventoryList().forEach(SimpleContainer::clearContent);
             }
@@ -517,7 +538,7 @@ public class AotakeUtils {
 
     public static Component getWarningMessage(int index, String lang, @Nullable SweepResult result) {
         Component msg = null;
-        List<String> warns = CommonConfig.SWEEP_WARNING_CONTENT.get();
+        List<? extends String> warns = CommonConfig.SWEEP_WARNING_CONTENT.get();
         try {
             String text = warns.get(CommonConfig.SWEEP_WARNING_SECOND.get().indexOf(index));
             if (result != null) {
@@ -553,6 +574,19 @@ public class AotakeUtils {
 
 
     // region 杂项
+
+    /**
+     * 执行指令
+     */
+    public static boolean executeCommand(@NonNull ServerPlayer player, @NonNull String command) {
+        boolean result = false;
+        try {
+            result = player.getServer().getCommands().performPrefixedCommand(player.createCommandSourceStack(), command) > 0;
+        } catch (Exception e) {
+            LOGGER.error("Failed to execute command: {}", command, e);
+        }
+        return result;
+    }
 
     /**
      * 获取指定维度的世界实例
