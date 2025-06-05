@@ -264,9 +264,9 @@ public class ServerConfig {
 
             // 仅清理掉落超过指定tick的物品
             SWEEP_ITEM_AGE = SERVER_BUILDER
-                    .comment("Only clean up items that have been dropped for more than the specified ticks."
-                            , "仅清理掉落超过指定tick的物品。")
-                    .defineInRange("sweepItemDelay", 200, 0, 24 * 60 * 60 * 20);
+                    .comment("Only clean up items that have been dropped for more than the specified ticks. Note: If a chunk is not loaded, dropped items will not tick, which may cause items to accumulate continuously."
+                            , "仅清理掉落超过指定tick的物品。注意：若区块未被加载，掉落物的tick不会增加，从而导致物品越堆越多。")
+                    .defineInRange("sweepItemDelay", 0, 0, 24 * 60 * 60 * 20);
 
             // 垃圾箱自清洁模式
             SELF_CLEAN_MODE = SERVER_BUILDER
@@ -392,7 +392,7 @@ public class ServerConfig {
         ITEM_BLACKLIST.set(new ArrayList<>());
         ITEM_REDLIST.set(new ArrayList<>());
         ALLOW_CATCH_ENTITY.set(false);
-        SWEEP_ITEM_AGE.set(200);
+        SWEEP_ITEM_AGE.set(0);
         SELF_CLEAN_MODE.set(new ArrayList<>() {{
             add(EnumSelfCleanMode.NONE.name());
         }});

@@ -404,6 +404,7 @@ public class AotakeUtils {
                 )
                 // 掉落时间超过配置时间
                 .filter(entity -> !(entity instanceof ItemEntity)
+                        || ServerConfig.SWEEP_ITEM_AGE.get() == 0
                         || entity.tickCount >= ServerConfig.SWEEP_ITEM_AGE.get()
                 )
                 // 物品不在白名单
