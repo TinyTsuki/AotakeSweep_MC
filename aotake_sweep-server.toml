@@ -49,10 +49,10 @@
 	#Whether to allow players to use items to capture entities.
 	#是否允许玩家使用物品捕获实体。
 	allowCatchEntity = false
-	#Only clean up items that have been dropped for more than the specified ticks.
-	#仅清理掉落超过指定tick的物品。
+	#Only clean up items that have been dropped for more than the specified ticks. Note: If a chunk is not loaded, dropped items will not tick, which may cause items to accumulate continuously.
+	#仅清理掉落超过指定tick的物品。注意：若区块未被加载，掉落物的tick不会增加，从而导致物品越堆越多。
 	#Range: 0 ~ 1728000
-	sweepItemDelay = 200
+	sweepItemDelay = 0
 	#The self-cleaning mode of the dustbin.
 	#NONE: No self-cleaning mode enabled;
 	#SWEEP_CLEAR: Clear the dustbin before sweeping;
