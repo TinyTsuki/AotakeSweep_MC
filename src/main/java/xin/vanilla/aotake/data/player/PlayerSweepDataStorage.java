@@ -12,7 +12,7 @@ import net.minecraftforge.common.capabilities.Capability.IStorage;
 public class PlayerSweepDataStorage implements IStorage<IPlayerSweepData> {
 
     /**
-     * 将玩家传送数据写入NBT标签
+     * 将玩家数据写入NBT标签
      *
      * @param capability 能力对象
      * @param instance   玩家数据实例
@@ -24,14 +24,13 @@ public class PlayerSweepDataStorage implements IStorage<IPlayerSweepData> {
             return new CompoundNBT();
         }
         CompoundNBT tag = new CompoundNBT();
-        tag.putString("language", instance.getLanguage());
         tag.putBoolean("notified", instance.isNotified());
         tag.putBoolean("showSweepResult", instance.isShowSweepResult());
         return tag;
     }
 
     /**
-     * 从NBT标签读取玩家传送数据
+     * 从NBT标签读取玩家数据
      *
      * @param capability 能力对象
      * @param instance   玩家数据实例
@@ -42,7 +41,6 @@ public class PlayerSweepDataStorage implements IStorage<IPlayerSweepData> {
     public void readNBT(Capability<IPlayerSweepData> capability, IPlayerSweepData instance, Direction side, INBT nbt) {
         if (nbt instanceof CompoundNBT) {
             CompoundNBT nbtTag = (CompoundNBT) nbt;
-            instance.setLanguage(nbtTag.getString("language"));
             instance.setNotified(nbtTag.getBoolean("notified"));
             instance.setShowSweepResult(nbtTag.getBoolean("showSweepResult"));
         }
