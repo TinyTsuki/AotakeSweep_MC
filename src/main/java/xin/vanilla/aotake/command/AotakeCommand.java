@@ -27,6 +27,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import xin.vanilla.aotake.AotakeSweep;
 import xin.vanilla.aotake.config.CommonConfig;
+import xin.vanilla.aotake.config.CustomConfig;
 import xin.vanilla.aotake.config.ServerConfig;
 import xin.vanilla.aotake.data.Coordinate;
 import xin.vanilla.aotake.data.KeyValue;
@@ -181,13 +182,12 @@ public class AotakeCommand {
             if (checkModStatus(context)) return 0;
             notifyHelp(context);
             ServerPlayer player = context.getSource().getPlayerOrException();
-            PlayerSweepData signInData = PlayerDataAttachment.getData(player);
             String language = StringArgumentType.getString(context, "language");
             if (I18nUtils.getI18nFiles().contains(language)) {
-                signInData.setLanguage(language);
+                CustomConfig.setPlayerLanguage(AotakeUtils.getPlayerUUIDString(player), language);
                 AotakeUtils.sendMessage(player, Component.translatable(player, EnumI18nType.MESSAGE, "player_default_language", language));
             } else if ("server".equalsIgnoreCase(language) || "client".equalsIgnoreCase(language)) {
-                signInData.setLanguage(language);
+                CustomConfig.setPlayerLanguage(AotakeUtils.getPlayerUUIDString(player), language);
                 AotakeUtils.sendMessage(player, Component.translatable(player, EnumI18nType.MESSAGE, "player_default_language", language));
             } else {
                 AotakeUtils.sendMessage(player, Component.translatable(player, EnumI18nType.MESSAGE, "language_not_exist").setColor(0xFFFF0000));
