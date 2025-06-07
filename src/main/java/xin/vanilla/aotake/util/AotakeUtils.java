@@ -41,6 +41,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import xin.vanilla.aotake.AotakeSweep;
 import xin.vanilla.aotake.config.CommonConfig;
+import xin.vanilla.aotake.config.CustomConfig;
 import xin.vanilla.aotake.config.ServerConfig;
 import xin.vanilla.aotake.data.SweepResult;
 import xin.vanilla.aotake.data.player.PlayerDataAttachment;
@@ -291,7 +292,7 @@ public class AotakeUtils {
 
     public static String getPlayerLanguage(@NonNull Player player) {
         try {
-            return PlayerDataAttachment.getData(player).getValidLanguage(player);
+            return AotakeUtils.getValidLanguage(player, CustomConfig.getPlayerLanguage(getPlayerUUIDString(player)));
         } catch (IllegalArgumentException i) {
             return ServerConfig.DEFAULT_LANGUAGE.get();
         }

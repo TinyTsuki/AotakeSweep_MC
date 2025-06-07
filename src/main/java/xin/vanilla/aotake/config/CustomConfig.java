@@ -3,19 +3,29 @@ package xin.vanilla.aotake.config;
 import com.google.gson.JsonObject;
 import lombok.Getter;
 import lombok.Setter;
+import net.neoforged.fml.ModList;
 import net.neoforged.fml.loading.FMLPaths;
+import net.neoforged.neoforgespi.language.ModFileScanData;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import xin.vanilla.aotake.AotakeSweep;
+import xin.vanilla.aotake.api.IApi;
 import xin.vanilla.aotake.util.JsonUtils;
 
 import java.io.File;
+import java.io.IOException;
 import java.io.RandomAccessFile;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.nio.channels.FileChannel;
 import java.nio.channels.FileLock;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 public class CustomConfig {
     private static final Logger LOGGER = LogManager.getLogger();
@@ -24,12 +34,17 @@ public class CustomConfig {
 
     private static JsonObject customConfig = new JsonObject();
 
+    private static Map<Object, Method> vanillaModMap;
+
     @Getter
     @Setter
     private static boolean dirty = false;
 
     public static Path getConfigDirectory() {
-        return FMLPaths.CONFIGDIR.get().resolve("vanilla.xin");
+        return FMLPaths.CONFIGDIR.get()
+                .resolve(Arrays.stream(AotakeSweep.ARTIFACT_ID.split("\\."))
+                        .sorted().collect(Collectors.joining("."))
+                );
     }
 
     /**
@@ -79,29 +94,91 @@ public class CustomConfig {
                  FileChannel channel = accessFile.getChannel()) {
                 FileLock lock = null;
                 long startTime = System.currentTimeMillis();
-                // 尝试获取文件锁，直到超时
                 while (lock == null) {
                     try {
                         lock = channel.tryLock();
                     } catch (Exception e) {
                         if (System.currentTimeMillis() - startTime > TimeUnit.SECONDS.toMillis(timeout)) {
-                            throw new RuntimeException("Failed to acquire file lock within timeout.");
+                            throw new RuntimeException("Failed to acquire file lock within timeout.", e);
                         }
                         Thread.sleep(100);
                     }
-                    if (!isDirty()) return;
+                    if (!isDirty()) {
+                        return;
+                    }
                 }
                 try {
-                    accessFile.write(JsonUtils.PRETTY_GSON.toJson(customConfig).getBytes());
+                    // 清空旧内容
+                    accessFile.setLength(0);
+                    accessFile.write(JsonUtils.PRETTY_GSON.toJson(customConfig).getBytes(StandardCharsets.UTF_8));
                     setDirty(false);
                     LOGGER.info("Saved custom common config.");
+                    FileLock finalLock = lock;
+                    new Thread(() -> {
+                        try {
+                            long start = System.currentTimeMillis();
+                            while (finalLock.isValid()) {
+                                if (System.currentTimeMillis() - start > TimeUnit.SECONDS.toMillis(timeout)) {
+                                    LOGGER.error("Failed to reload config within timeout.");
+                                    return;
+                                }
+                                Thread.sleep(100);
+                            }
+                            noticeReloadConfig();
+                        } catch (Exception e) {
+                            LOGGER.error("Error in reload watcher thread: ", e);
+                        }
+                    }).start();
+
                 } catch (Exception e) {
                     LOGGER.error("Error saving custom common config: ", e);
+                } finally {
+                    if (lock.isValid()) {
+                        try {
+                            lock.release();
+                        } catch (IOException e) {
+                            LOGGER.warn("Failed to release file lock: ", e);
+                        }
+                    }
                 }
             } catch (Exception e) {
-                LOGGER.error("Error saving custom common config: ", e);
+                LOGGER.error("Error saving custom common config (outer): ", e);
             }
         }).start();
+    }
+
+    public static void noticeReloadConfig() {
+        if (vanillaModMap == null) {
+            vanillaModMap = new HashMap<>();
+            ModList.get().getAllScanData().stream()
+                    .map(ModFileScanData::getClasses)
+                    .flatMap(Set::stream)
+                    .filter(classData -> classData.clazz().getClassName().startsWith(AotakeSweep.ARTIFACT_ID))
+                    .filter(classData -> classData.clazz().getClassName().endsWith("api.IApi"))
+                    .filter(classData -> !classData.clazz().getClassName().equalsIgnoreCase(IApi.class.getName()))
+                    .forEach(classData -> {
+                        String className = classData.clazz().getClassName();
+                        try {
+                            Class<?> iFace = Class.forName(className
+                                    , true
+                                    , Thread.currentThread().getContextClassLoader()
+                            );
+                            ServiceLoader<?> loader = ServiceLoader.load(iFace);
+                            for (Object mod : loader) {
+                                vanillaModMap.put(mod, iFace.getMethod("reloadCustomConfig"));
+                            }
+                        } catch (ClassNotFoundException | NoSuchMethodException e) {
+                            LOGGER.error("Failed to get method 'reloadCustomConfig'", e);
+                        }
+                    });
+        }
+        vanillaModMap.forEach((mod, method) -> {
+            try {
+                method.invoke(mod);
+            } catch (InvocationTargetException | IllegalAccessException e) {
+                LOGGER.error("Failed to invoke {}.reloadCustomConfig", mod.getClass().getCanonicalName(), e);
+            }
+        });
     }
 
     public static String getPlayerLanguage(String uuid) {
