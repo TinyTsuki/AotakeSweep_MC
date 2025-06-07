@@ -678,7 +678,7 @@ public class DateUtils {
     }
 
     /**
-     * 计算连续传送天数
+     * 计算连续天数
      *
      * @param dateList 日期列表
      * @param current  当前日期
