@@ -38,6 +38,7 @@ public class AotakeSweep {
     public final static String DEFAULT_COMMAND_PREFIX = "aotake";
 
     public static final String MODID = "aotake_sweep";
+    public static final String ARTIFACT_ID = "xin.vanilla";
 
     private static final Logger LOGGER = LogManager.getLogger();
 
@@ -145,5 +146,12 @@ public class AotakeSweep {
     }
 
     // endregion 资源ID
+
+
+    // region 外部方法
+    public void reloadCustomConfig() {
+        CustomConfig.loadCustomConfig(false);
+    }
+    // endregion 外部方法
 
 }
