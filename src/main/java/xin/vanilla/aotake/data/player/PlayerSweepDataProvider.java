@@ -11,8 +11,8 @@ import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 
 /**
- * 玩家传送数据提供者类
- * 用于管理和序列化玩家的传送数据
+ * 玩家数据提供者类
+ * 用于管理和序列化玩家的数据
  */
 public class PlayerSweepDataProvider implements ICapabilityProvider, INBTSerializable<CompoundNBT> {
 
