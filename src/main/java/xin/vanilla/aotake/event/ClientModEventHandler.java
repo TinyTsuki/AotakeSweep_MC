@@ -1,20 +1,15 @@
 package xin.vanilla.aotake.event;
 
 import net.minecraft.client.KeyMapping;
-import net.neoforged.api.distmarker.Dist;
-import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.client.event.RegisterKeyMappingsEvent;
-import net.neoforged.neoforge.client.event.RegisterShadersEvent;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.lwjgl.glfw.GLFW;
-import xin.vanilla.aotake.AotakeSweep;
 
 /**
  * 客户端 Mod事件处理器
  */
-@EventBusSubscriber(modid = AotakeSweep.MODID, value = Dist.CLIENT, bus = EventBusSubscriber.Bus.MOD)
+// @EventBusSubscriber(modid = AotakeSweep.MODID, value = Dist.CLIENT, bus = EventBusSubscriber.Bus.MOD)
 public class ClientModEventHandler {
     private static final Logger LOGGER = LogManager.getLogger();
 
@@ -47,7 +42,4 @@ public class ClientModEventHandler {
         event.register(DUSTBIN_NEXT_KEY);
     }
 
-    @SubscribeEvent
-    public static void registerShaders(RegisterShadersEvent event) {
-    }
 }
