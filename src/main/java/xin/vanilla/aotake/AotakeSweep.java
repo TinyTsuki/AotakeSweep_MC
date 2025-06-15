@@ -5,7 +5,6 @@ import lombok.Setter;
 import net.minecraft.core.component.DataComponentType;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
 import net.minecraftforge.api.distmarker.Dist;
@@ -76,7 +75,7 @@ public class AotakeSweep {
 
     public static RegistryObject<DataComponentType<CompoundTag>> CUSTOM_DATA_COMPONENT = COMPONENTS.register(AotakeSweep.MODID, () -> DataComponentType.<CompoundTag>builder()
             .persistent(CompoundTag.CODEC)
-            .networkSynchronized(ByteBufCodecs.TRUSTED_COMPOUND_TAG)
+            // .networkSynchronized(ByteBufCodecs.TRUSTED_COMPOUND_TAG)
             .cacheEncoding()
             .build());
 
