@@ -12,7 +12,7 @@ public class ModNetworkHandler {
     public static void registerPackets(final RegisterPayloadHandlersEvent event) {
         final PayloadRegistrar registrar = event.registrar(PROTOCOL_VERSION).optional();
 
-        registrar.playToClient(OpenDustbinNotice.TYPE, OpenDustbinNotice.STREAM_CODEC, OpenDustbinNotice::handle);
-        registrar.playToClient(ClearDustbinNotice.TYPE, ClearDustbinNotice.STREAM_CODEC, ClearDustbinNotice::handle);
+        registrar.playToServer(OpenDustbinNotice.TYPE, OpenDustbinNotice.STREAM_CODEC, OpenDustbinNotice::handle);
+        registrar.playToServer(ClearDustbinNotice.TYPE, ClearDustbinNotice.STREAM_CODEC, ClearDustbinNotice::handle);
     }
 }
