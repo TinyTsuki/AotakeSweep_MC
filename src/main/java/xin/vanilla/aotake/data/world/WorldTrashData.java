@@ -31,6 +31,7 @@ import xin.vanilla.aotake.data.KeyValue;
 import xin.vanilla.aotake.data.SweepResult;
 import xin.vanilla.aotake.enums.EnumI18nType;
 import xin.vanilla.aotake.enums.EnumMCColor;
+import xin.vanilla.aotake.enums.EnumOverflowMode;
 import xin.vanilla.aotake.enums.EnumSelfCleanMode;
 import xin.vanilla.aotake.util.AotakeUtils;
 import xin.vanilla.aotake.util.CollectionUtils;
@@ -230,7 +231,7 @@ public class WorldTrashData extends SavedData {
                     result.setRecycledItemCount(result.getEntityCount() - itemStack.getCount());
                 }
             } else {
-                switch (ServerConfig.DUSTBIN_OVERFLOW_MODE.get()) {
+                switch (EnumOverflowMode.valueOf(ServerConfig.DUSTBIN_OVERFLOW_MODE.get())) {
                     case KEEP: {
                         this.dropList.add(new KeyValue<>(coordinate, item));
                         if (result.getItemCount() > 0) {
