@@ -71,14 +71,14 @@ public class ServerConfig {
     public static final ForgeConfigSpec.ConfigValue<List<? extends String>> ITEM_WHITELIST;
 
     /**
-     * 白名单物品超过指定数量也进行清理
-     */
-    public static final ForgeConfigSpec.IntValue ITEM_WHITELIST_ENTITY_LIMIT;
-
-    /**
      * 物品清理黑名单
      */
     public static final ForgeConfigSpec.ConfigValue<List<? extends String>> ITEM_BLACKLIST;
+
+    /**
+     * 黑白名单物品超过指定数量也进行清理
+     */
+    public static final ForgeConfigSpec.IntValue ITEM_WHITE_BLACK_LIST_ENTITY_LIMIT;
 
     /**
      * 仅清理不回收的物品
@@ -247,10 +247,10 @@ public class ServerConfig {
                             , o -> o instanceof String);
 
             // 白名单物品超过指定数量也进行清理
-            ITEM_WHITELIST_ENTITY_LIMIT = SERVER_BUILDER
-                    .comment("Even items on the whitelist will be cleared if their quantity exceeds the specified limit on the server."
-                            , "即使是白名单内的物品，服务器中超过指定数量时也会被清理。")
-                    .defineInRange("itemWhitelistEntityLimit", 250, 1, Integer.MAX_VALUE);
+            ITEM_WHITE_BLACK_LIST_ENTITY_LIMIT = SERVER_BUILDER
+                    .comment("Even items on the whitelist or not included in the blacklist will be cleared if their quantity on the server exceeds the specified limit."
+                            , "即使是白名单内的物品，或不是黑名单中的物品，只要在服务器中数量超过指定上限，也会被清理。")
+                    .defineInRange("itemWhiteBlackListEntityLimit", 250, 1, Integer.MAX_VALUE);
 
             // 物品清理黑名单
             ITEM_BLACKLIST = SERVER_BUILDER
@@ -399,7 +399,7 @@ public class ServerConfig {
             add(EntityType.EXPERIENCE_ORB.getRegistryName().toString());
         }});
         ITEM_WHITELIST.set(new ArrayList<>());
-        ITEM_WHITELIST_ENTITY_LIMIT.set(250);
+        ITEM_WHITE_BLACK_LIST_ENTITY_LIMIT.set(250);
         ITEM_BLACKLIST.set(new ArrayList<>());
         ITEM_REDLIST.set(new ArrayList<>());
         ALLOW_CATCH_ENTITY.set(false);

@@ -483,14 +483,17 @@ public class AotakeUtils {
                 ).collect(Collectors.toList());
 
         // 超过阈值的白名单物品
-        List<Entity> exceededWhiteList = filtered.stream()
+        List<Entity> exceededWhiteBlackList = filtered.stream()
                 .filter(entity -> entity instanceof ItemEntity)
                 .map(entity -> (ItemEntity) entity)
-                .filter(item -> !ServerConfig.ITEM_WHITELIST.get().isEmpty()
+                .filter(item -> (!ServerConfig.ITEM_WHITELIST.get().isEmpty()
                         && ServerConfig.ITEM_WHITELIST.get().contains(getItemRegistryName(item.getItem())))
+                        || (!ServerConfig.ITEM_BLACKLIST.get().isEmpty()
+                        && !ServerConfig.ITEM_BLACKLIST.get().contains(getItemRegistryName(item.getItem())))
+                )
                 .collect(Collectors.groupingBy(item -> getItemRegistryName(item.getItem()), Collectors.toList()))
                 .entrySet().stream()
-                .filter(entry -> entry.getValue().size() > ServerConfig.ITEM_WHITELIST_ENTITY_LIMIT.get())
+                .filter(entry -> entry.getValue().size() > ServerConfig.ITEM_WHITE_BLACK_LIST_ENTITY_LIMIT.get())
                 .flatMap(entry -> entry.getValue().stream())
                 .collect(Collectors.toList());
 
@@ -530,21 +533,28 @@ public class AotakeUtils {
 
             // 掉落时间过滤
             if (isItem && ServerConfig.SWEEP_ITEM_AGE.get() > 0) {
-                if (entity.tickCount < ServerConfig.SWEEP_ITEM_AGE.get() && entity.tickCount > 0)
+                if (entity.level.isAreaLoaded(entity.blockPosition(), 0)
+                        && entity.tickCount < ServerConfig.SWEEP_ITEM_AGE.get()
+                        && entity.tickCount > 0
+                ) {
                     return false;
+                }
             }
 
             // 白名单过滤
             if (isItem && !ServerConfig.ITEM_WHITELIST.get().isEmpty()) {
-                if (!ServerConfig.ITEM_WHITELIST.get().contains(itemName) &&
-                        !exceededWhiteList.contains(entity)) {
+                if (ServerConfig.ITEM_WHITELIST.get().contains(itemName) &&
+                        !exceededWhiteBlackList.contains(entity)
+                ) {
                     return false;
                 }
             }
 
             // 黑名单过滤
             if (isItem && !ServerConfig.ITEM_BLACKLIST.get().isEmpty()) {
-                if (!ServerConfig.ITEM_BLACKLIST.get().contains(itemName)) {
+                if (!ServerConfig.ITEM_BLACKLIST.get().contains(itemName) &&
+                        !exceededWhiteBlackList.contains(entity)
+                ) {
                     return false;
                 }
             }
