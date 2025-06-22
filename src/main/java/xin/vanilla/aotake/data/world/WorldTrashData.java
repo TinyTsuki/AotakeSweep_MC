@@ -4,6 +4,7 @@ import com.mojang.datafixers.util.Pair;
 import lombok.Getter;
 import lombok.NonNull;
 import net.minecraft.core.HolderLookup;
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.NbtOps;
@@ -21,6 +22,7 @@ import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.inventory.ChestMenu;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.component.CustomData;
 import net.minecraft.world.level.saveddata.SavedData;
 import net.neoforged.neoforge.entity.PartEntity;
 import xin.vanilla.aotake.AotakeSweep;
@@ -183,10 +185,12 @@ public class WorldTrashData extends SavedData {
                 Item it = AotakeUtils.deserializeItem(randomItem);
                 if (it != null) {
                     item = new ItemStack(it);
+                    CompoundTag customData = new CompoundTag();
                     CompoundTag aotake = new CompoundTag();
                     aotake.putBoolean("byPlayer", false);
                     aotake.put("entity", entity.serializeNBT(AotakeSweep.getServerInstance().registryAccess()));
-                    item.set(AotakeSweep.CUSTOM_DATA_COMPONENT.get(), aotake);
+                    customData.put(AotakeSweep.MODID, aotake);
+                    item.set(DataComponents.CUSTOM_DATA, CustomData.of(customData));
 
                     result.setRecycledEntityCount(1);
                 } else {
