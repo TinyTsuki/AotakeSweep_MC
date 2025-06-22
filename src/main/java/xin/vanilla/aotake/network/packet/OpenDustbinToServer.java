@@ -2,6 +2,7 @@ package xin.vanilla.aotake.network.packet;
 
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.MenuProvider;
 import net.minecraftforge.fmllegacy.network.NetworkEvent;
 import xin.vanilla.aotake.AotakeSweep;
 import xin.vanilla.aotake.config.CommonConfig;
@@ -10,14 +11,14 @@ import xin.vanilla.aotake.util.AotakeUtils;
 
 import java.util.function.Supplier;
 
-public class OpenDustbinNotice {
+public class OpenDustbinToServer {
     private final int offset;
 
-    public OpenDustbinNotice(int offset) {
+    public OpenDustbinToServer(int offset) {
         this.offset = offset;
     }
 
-    public OpenDustbinNotice(FriendlyByteBuf buf) {
+    public OpenDustbinToServer(FriendlyByteBuf buf) {
         this.offset = buf.readInt();
     }
 
@@ -25,7 +26,7 @@ public class OpenDustbinNotice {
         buf.writeInt(this.offset);
     }
 
-    public static void handle(OpenDustbinNotice packet, Supplier<NetworkEvent.Context> ctx) {
+    public static void handle(OpenDustbinToServer packet, Supplier<NetworkEvent.Context> ctx) {
         ctx.get().enqueueWork(() -> {
             ServerPlayer player = ctx.get().getSender();
             if (player != null) {
@@ -35,8 +36,11 @@ public class OpenDustbinNotice {
                 if (i > 0 && i <= CommonConfig.DUSTBIN_PAGE_LIMIT.get()) {
                     player.closeContainer();
                 }
-                int result = player.openMenu(WorldTrashData.getTrashContainer(player, i)).orElse(0);
-                if (result > 0) AotakeSweep.getPlayerDustbinPage().put(playerUUID, i);
+                MenuProvider trashContainer = WorldTrashData.getTrashContainer(player, i);
+                if (trashContainer != null) {
+                    int result = player.openMenu(trashContainer).orElse(0);
+                    if (result > 0) AotakeSweep.getPlayerDustbinPage().put(playerUUID, i);
+                }
             }
         });
         ctx.get().setPacketHandled(true);

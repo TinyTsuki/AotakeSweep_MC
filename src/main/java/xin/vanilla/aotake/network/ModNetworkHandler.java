@@ -3,8 +3,10 @@ package xin.vanilla.aotake.network;
 import net.minecraftforge.fmllegacy.network.NetworkRegistry;
 import net.minecraftforge.fmllegacy.network.simple.SimpleChannel;
 import xin.vanilla.aotake.AotakeSweep;
-import xin.vanilla.aotake.network.packet.ClearDustbinNotice;
-import xin.vanilla.aotake.network.packet.OpenDustbinNotice;
+import xin.vanilla.aotake.network.packet.ClearDustbinToServer;
+import xin.vanilla.aotake.network.packet.ClientLoadedToServer;
+import xin.vanilla.aotake.network.packet.CustomConfigSyncToClient;
+import xin.vanilla.aotake.network.packet.OpenDustbinToServer;
 
 public class ModNetworkHandler {
     private static final String PROTOCOL_VERSION = "1";
@@ -21,7 +23,9 @@ public class ModNetworkHandler {
     }
 
     public static void registerPackets() {
-        INSTANCE.registerMessage(nextID(), OpenDustbinNotice.class, OpenDustbinNotice::toBytes, OpenDustbinNotice::new, OpenDustbinNotice::handle);
-        INSTANCE.registerMessage(nextID(), ClearDustbinNotice.class, ClearDustbinNotice::toBytes, ClearDustbinNotice::new, ClearDustbinNotice::handle);
+        INSTANCE.registerMessage(nextID(), OpenDustbinToServer.class, OpenDustbinToServer::toBytes, OpenDustbinToServer::new, OpenDustbinToServer::handle);
+        INSTANCE.registerMessage(nextID(), ClearDustbinToServer.class, ClearDustbinToServer::toBytes, ClearDustbinToServer::new, ClearDustbinToServer::handle);
+        INSTANCE.registerMessage(nextID(), ClientLoadedToServer.class, ClientLoadedToServer::toBytes, ClientLoadedToServer::new, ClientLoadedToServer::handle);
+        INSTANCE.registerMessage(nextID(), CustomConfigSyncToClient.class, CustomConfigSyncToClient::toBytes, CustomConfigSyncToClient::new, CustomConfigSyncToClient::handle);
     }
 }
