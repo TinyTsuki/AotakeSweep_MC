@@ -1,7 +1,5 @@
 package xin.vanilla.aotake.util;
 
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import net.minecraft.entity.player.PlayerEntity;
@@ -16,6 +14,8 @@ import java.util.stream.Collectors;
 public class VirtualPermissionManager {
 
     private static final Map<String, Set<EnumCommandType>> OP_MAP = deserialize();
+
+    private static final Map<String, Set<EnumCommandType>> OP_MAP_CLIENT = deserializeClient();
 
     /**
      * 添加权限（合并原有权限）
@@ -49,7 +49,11 @@ public class VirtualPermissionManager {
      * 获取当前权限列表
      */
     public static Set<EnumCommandType> getVirtualPermission(PlayerEntity player) {
-        return getExistingPermissions(player.getStringUUID());
+        if (player.isLocalPlayer()) {
+            return getExistingPermissionsClient(player.getStringUUID());
+        } else {
+            return getExistingPermissions(player.getStringUUID());
+        }
     }
 
     public static String buildPermissionsString(EnumCommandType... types) {
@@ -78,6 +82,13 @@ public class VirtualPermissionManager {
      */
     private static Set<EnumCommandType> getExistingPermissions(String uuid) {
         return OP_MAP.getOrDefault(uuid, new HashSet<>());
+    }
+
+    /**
+     * 查找现有规则
+     */
+    private static Set<EnumCommandType> getExistingPermissionsClient(String uuid) {
+        return OP_MAP_CLIENT.getOrDefault(uuid, new HashSet<>());
     }
 
     /**
@@ -137,6 +148,21 @@ public class VirtualPermissionManager {
         Map<String, Set<EnumCommandType>> result;
         try {
             result = deserialize(CustomConfig.getVirtualPermission());
+        } catch (Exception e) {
+            result = new HashMap<>();
+        }
+        return result;
+    }
+
+    public static void reloadClient() {
+        OP_MAP_CLIENT.clear();
+        OP_MAP_CLIENT.putAll(deserializeClient());
+    }
+
+    private static Map<String, Set<EnumCommandType>> deserializeClient() {
+        Map<String, Set<EnumCommandType>> result;
+        try {
+            result = deserialize(CustomConfig.getVirtualPermissionClient());
         } catch (Exception e) {
             result = new HashMap<>();
         }

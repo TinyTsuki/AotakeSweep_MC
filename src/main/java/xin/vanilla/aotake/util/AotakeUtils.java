@@ -209,6 +209,13 @@ public class AotakeUtils {
     /**
      * 判断是否拥有指令权限
      */
+    public static boolean hasCommandPermission(PlayerEntity player, EnumCommandType type) {
+        return player.hasPermissions(getCommandPermissionLevel(type)) || hasVirtualPermission(player, type);
+    }
+
+    /**
+     * 判断是否拥有指令权限
+     */
     public static boolean hasVirtualPermission(Entity source, EnumCommandType type) {
         // 若为玩家
         if (source instanceof PlayerEntity) {
@@ -352,7 +359,13 @@ public class AotakeUtils {
 
     public static String getPlayerLanguage(@NonNull PlayerEntity player) {
         try {
-            return AotakeUtils.getValidLanguage(player, CustomConfig.getPlayerLanguage(getPlayerUUIDString(player)));
+            String language;
+            if (player.isLocalPlayer()) {
+                language = CustomConfig.getPlayerLanguageClient(getPlayerUUIDString(player));
+            } else {
+                language = CustomConfig.getPlayerLanguage(getPlayerUUIDString(player));
+            }
+            return AotakeUtils.getValidLanguage(player, language);
         } catch (IllegalArgumentException i) {
             return ServerConfig.DEFAULT_LANGUAGE.get();
         }
@@ -463,48 +476,95 @@ public class AotakeUtils {
             entities = getAllEntities();
         }
         initSafeBlocks();
-        return entities.stream()
+        List<Entity> filtered = entities.stream()
                 // 物品实体 与 垃圾实体
                 .filter(entity -> entity instanceof ItemEntity
                         || ServerConfig.JUNK_ENTITY.get().contains(getEntityTypeRegistryName(entity))
-                )
-                // 掉落时间超过配置时间
-                .filter(entity -> !(entity instanceof ItemEntity)
-                        || ServerConfig.SWEEP_ITEM_AGE.get() == 0
-                        || entity.tickCount >= ServerConfig.SWEEP_ITEM_AGE.get()
-                )
-                // 物品不在白名单
-                .filter(entity -> !(entity instanceof ItemEntity)
-                        || ServerConfig.ITEM_WHITELIST.get().isEmpty()
-                        || !ServerConfig.ITEM_WHITELIST.get().contains(getItemRegistryName(((ItemEntity) entity).getItem()))
-                )
-                // 物品仅在黑名单
-                .filter(entity -> !(entity instanceof ItemEntity)
-                        || ServerConfig.ITEM_BLACKLIST.get().isEmpty()
-                        || ServerConfig.ITEM_BLACKLIST.get().contains(getItemRegistryName(((ItemEntity) entity).getItem()))
-                )
-                // 实体不在方块中
-                .filter(entity -> {
-                            BlockState blockState = entity.level.getBlockState(entity.blockPosition());
-                            return !SAFE_BLOCKS.contains(AotakeUtils.getBlockRegistryName(blockState))
-                                    && !SAFE_BLOCKS_STATE.contains(blockState);
-                        }
-                )
-                // 实体不在方块上
-                .filter(entity -> {
-                            BlockState blockState = entity.level.getBlockState(entity.blockPosition().below());
-                            return !SAFE_BLOCKS_BELOW.contains(AotakeUtils.getBlockRegistryName(blockState))
-                                    && !SAFE_BLOCKS_BELOW_STATE.contains(blockState);
-                        }
-                )
-                // 实体不在方块下
-                .filter(entity -> {
-                            BlockState blockState = entity.level.getBlockState(entity.blockPosition().above());
-                            return !SAFE_BLOCKS_ABOVE.contains(AotakeUtils.getBlockRegistryName(blockState))
-                                    && !SAFE_BLOCKS_ABOVE_STATE.contains(blockState);
-                        }
-                )
+                ).collect(Collectors.toList());
+
+        // 超过阈值的白名单物品
+        List<Entity> exceededWhiteList = filtered.stream()
+                .filter(entity -> entity instanceof ItemEntity)
+                .map(entity -> (ItemEntity) entity)
+                .filter(item -> !ServerConfig.ITEM_WHITELIST.get().isEmpty()
+                        && ServerConfig.ITEM_WHITELIST.get().contains(getItemRegistryName(item.getItem())))
+                .collect(Collectors.groupingBy(item -> getItemRegistryName(item.getItem()), Collectors.toList()))
+                .entrySet().stream()
+                .filter(entry -> entry.getValue().size() > ServerConfig.ITEM_WHITELIST_ENTITY_LIMIT.get())
+                .flatMap(entry -> entry.getValue().stream())
                 .collect(Collectors.toList());
+
+        // 超过阈值的安全方块实体
+        List<Entity> exceededSafeList = filtered.stream()
+                .filter(entity -> {
+                    World level = entity.level;
+                    BlockState state = level.getBlockState(entity.blockPosition());
+                    BlockState below = level.getBlockState(entity.blockPosition().below());
+                    BlockState above = level.getBlockState(entity.blockPosition().above());
+
+                    boolean isUnsafe =
+                            !SAFE_BLOCKS.contains(AotakeUtils.getBlockRegistryName(state)) &&
+                                    !SAFE_BLOCKS_STATE.contains(state) &&
+                                    !SAFE_BLOCKS_BELOW.contains(AotakeUtils.getBlockRegistryName(below)) &&
+                                    !SAFE_BLOCKS_BELOW_STATE.contains(below) &&
+                                    !SAFE_BLOCKS_ABOVE.contains(AotakeUtils.getBlockRegistryName(above)) &&
+                                    !SAFE_BLOCKS_ABOVE_STATE.contains(above);
+
+                    return !isUnsafe;
+                })
+                .collect(Collectors.groupingBy(entity -> {
+                    String dimension = entity.level.dimension().location().toString();
+                    int chunkX = entity.blockPosition().getX() / 16;
+                    int chunkY = entity.blockPosition().getY() / 16;
+                    return dimension + "," + chunkX + "," + chunkY;
+                }, Collectors.toList()))
+                .entrySet().stream()
+                .filter(entry -> entry.getValue().size() > CommonConfig.SAFE_BLOCKS_ENTITY_LIMIT.get())
+                .flatMap(entry -> entry.getValue().stream())
+                .collect(Collectors.toList());
+
+        // 过滤
+        return filtered.stream().filter(entity -> {
+            boolean isItem = entity instanceof ItemEntity;
+            String itemName = isItem ? getItemRegistryName(((ItemEntity) entity).getItem()) : null;
+
+            // 掉落时间过滤
+            if (isItem && ServerConfig.SWEEP_ITEM_AGE.get() > 0) {
+                if (entity.tickCount < ServerConfig.SWEEP_ITEM_AGE.get() && entity.tickCount > 0)
+                    return false;
+            }
+
+            // 白名单过滤
+            if (isItem && !ServerConfig.ITEM_WHITELIST.get().isEmpty()) {
+                if (!ServerConfig.ITEM_WHITELIST.get().contains(itemName) &&
+                        !exceededWhiteList.contains(entity)) {
+                    return false;
+                }
+            }
+
+            // 黑名单过滤
+            if (isItem && !ServerConfig.ITEM_BLACKLIST.get().isEmpty()) {
+                if (!ServerConfig.ITEM_BLACKLIST.get().contains(itemName)) {
+                    return false;
+                }
+            }
+
+            // 安全方块过滤
+            World level = entity.level;
+            BlockState state = level.getBlockState(entity.blockPosition());
+            BlockState below = level.getBlockState(entity.blockPosition().below());
+            BlockState above = level.getBlockState(entity.blockPosition().above());
+
+            boolean unsafe =
+                    !SAFE_BLOCKS.contains(AotakeUtils.getBlockRegistryName(state)) &&
+                            !SAFE_BLOCKS_STATE.contains(state) &&
+                            !SAFE_BLOCKS_BELOW.contains(AotakeUtils.getBlockRegistryName(below)) &&
+                            !SAFE_BLOCKS_BELOW_STATE.contains(below) &&
+                            !SAFE_BLOCKS_ABOVE.contains(AotakeUtils.getBlockRegistryName(above)) &&
+                            !SAFE_BLOCKS_ABOVE_STATE.contains(above);
+
+            return unsafe || exceededSafeList.contains(entity);
+        }).collect(Collectors.toList());
     }
 
     public static void sweep() {
