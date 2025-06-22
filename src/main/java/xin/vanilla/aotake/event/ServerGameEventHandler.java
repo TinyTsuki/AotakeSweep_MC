@@ -77,6 +77,14 @@ public class ServerGameEventHandler {
         EventHandlerProxy.onRightEntity(event);
     }
 
+    /**
+     * 玩家登出事件
+     */
+    @SubscribeEvent
+    public static void onPlayerLoggedOut(PlayerEvent.PlayerLoggedOutEvent event) {
+        EventHandlerProxy.onPlayerLoggedOut(event);
+    }
+
     @SubscribeEvent
     public static void onContainerOpen(PlayerContainerEvent.Open event) {
         EventHandlerProxy.onContainerOpen(event);
