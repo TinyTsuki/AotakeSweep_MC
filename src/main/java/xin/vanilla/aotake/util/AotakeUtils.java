@@ -30,6 +30,7 @@ import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.component.CustomData;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
@@ -596,13 +597,16 @@ public class AotakeUtils {
         Entity result = null;
 
         DataComponentMap tag = itemStack.getComponents();
-        if (!tag.isEmpty() && tag.has(AotakeSweep.CUSTOM_DATA_COMPONENT.get())) {
-            CompoundTag aotake = tag.getOrDefault(AotakeSweep.CUSTOM_DATA_COMPONENT.get(), new CompoundTag());
-            if (aotake.contains("entity")) {
-                try {
-                    result = EntityType.loadEntityRecursive(aotake.getCompound("entity"), level, e -> e);
-                } catch (Exception e) {
-                    LOGGER.error("Failed to load entity from item stack: {}", itemStack, e);
+        if (!tag.isEmpty() && tag.has(DataComponents.CUSTOM_DATA)) {
+            CompoundTag customData = tag.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag();
+            if (customData.contains(AotakeSweep.MODID)) {
+                CompoundTag aotake = customData.getCompound(AotakeSweep.MODID);
+                if (aotake.contains("entity")) {
+                    try {
+                        result = EntityType.loadEntityRecursive(aotake.getCompound("entity"), level, e -> e);
+                    } catch (Exception e) {
+                        LOGGER.error("Failed to load entity from item stack: {}", itemStack, e);
+                    }
                 }
             }
         }
