@@ -11,6 +11,7 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.component.CustomData;
 import net.minecraftforge.common.capabilities.RegisterCapabilitiesEvent;
 import net.minecraftforge.common.util.LazyOptional;
 import net.minecraftforge.entity.PartEntity;
@@ -187,13 +188,17 @@ public class EventHandlerProxy {
         if (AotakeSweep.isDisable()) return;
         if (event.getEntity() instanceof ServerPlayer) {
             DataComponentMap tag = event.getItemStack().getComponents();
-            if (!tag.isEmpty() && tag.has(AotakeSweep.CUSTOM_DATA_COMPONENT.get())) {
-                CompoundTag aotake = tag.get(AotakeSweep.CUSTOM_DATA_COMPONENT.get());
-                if (aotake == null || aotake.isEmpty())
-                    event.getItemStack().remove(AotakeSweep.CUSTOM_DATA_COMPONENT.get());
-                event.setResult(Event.Result.DENY);
-                event.setCancellationResult(InteractionResult.FAIL);
-                event.setCanceled(true);
+            if (!tag.isEmpty() && tag.has(DataComponents.CUSTOM_DATA)) {
+                CompoundTag customData = tag.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag();
+                if (customData.contains(AotakeSweep.MODID)) {
+                    if (customData.getCompound(AotakeSweep.MODID).isEmpty()) {
+                        customData.remove(AotakeSweep.MODID);
+                        event.getItemStack().set(DataComponents.CUSTOM_DATA, CustomData.of(customData));
+                    }
+                    event.setResult(Event.Result.DENY);
+                    event.setCancellationResult(InteractionResult.FAIL);
+                    event.setCanceled(true);
+                }
             }
         }
     }
@@ -214,38 +219,43 @@ public class EventHandlerProxy {
         copy.setCount(1);
 
         DataComponentMap tag = copy.getComponents();
-        if (!tag.isEmpty() && tag.has(AotakeSweep.CUSTOM_DATA_COMPONENT.get())) {
-            CompoundTag aotake = tag.get(AotakeSweep.CUSTOM_DATA_COMPONENT.get());
-            if (aotake == null || aotake.isEmpty()) {
-                copy.remove(AotakeSweep.CUSTOM_DATA_COMPONENT.get());
-            }
-            //
-            else {
-                original.shrink(1);
-                CompoundTag entityData = aotake.getCompound("entity");
-                Entity entity = EntityType.loadEntityRecursive(entityData, player.serverLevel(), e -> e);
-                if (entity != null) {
-                    // 释放实体
-                    entity.moveTo(coordinate.getX(), coordinate.getY(), coordinate.getZ(), (float) coordinate.getYaw(), (float) coordinate.getPitch());
-                    player.serverLevel().addFreshEntity(entity);
-                    // 恢复物品原来的名称
-                    net.minecraft.network.chat.Component name = AotakeUtils.textComponentFromJson(aotake.getString("name"));
-                    if (name != null) copy.set(DataComponents.CUSTOM_NAME, name);
-                    else copy.remove(DataComponents.CUSTOM_NAME);
-                    // 清空节点下nbt
-                    copy.set(AotakeSweep.CUSTOM_DATA_COMPONENT.get(), new CompoundTag());
-                    if (!aotake.getBoolean("byPlayer")) {
-                        copy.shrink(1);
+        if (!tag.isEmpty() && tag.has(DataComponents.CUSTOM_DATA)) {
+            CompoundTag customData = tag.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag();
+            if (customData.contains(AotakeSweep.MODID)) {
+                CompoundTag aotake = customData.getCompound(AotakeSweep.MODID);
+                if (aotake.isEmpty()) {
+                    customData.remove(AotakeSweep.MODID);
+                    copy.set(DataComponents.CUSTOM_DATA, CustomData.of(customData));
+                }
+                //
+                else {
+                    original.shrink(1);
+                    CompoundTag entityData = aotake.getCompound("entity");
+                    Entity entity = EntityType.loadEntityRecursive(entityData, player.serverLevel(), e -> e);
+                    if (entity != null) {
+                        // 释放实体
+                        entity.moveTo(coordinate.getX(), coordinate.getY(), coordinate.getZ(), (float) coordinate.getYaw(), (float) coordinate.getPitch());
+                        player.serverLevel().addFreshEntity(entity);
+                        // 恢复物品原来的名称
+                        net.minecraft.network.chat.Component name = AotakeUtils.textComponentFromJson(aotake.getString("name"));
+                        if (name != null) copy.set(DataComponents.CUSTOM_NAME, name);
+                        else copy.remove(DataComponents.CUSTOM_NAME);
+                        // 清空节点下nbt
+                        customData.put(AotakeSweep.MODID, new CompoundTag());
+                        copy.set(DataComponents.CUSTOM_DATA, CustomData.of(customData));
+                        if (!aotake.getBoolean("byPlayer")) {
+                            copy.shrink(1);
+                        }
+                        player.addItem(copy);
+
+                        AotakeUtils.sendActionBarMessage(player, Component.translatable(EnumI18nType.MESSAGE, "entity_released", entity.getDisplayName()));
+
+                        event.setCanceled(true);
+                        event.setResult(Event.Result.DENY);
+                        event.setCancellationResult(InteractionResult.FAIL);
+
+                        return entity;
                     }
-                    player.addItem(copy);
-
-                    AotakeUtils.sendActionBarMessage(player, Component.translatable(EnumI18nType.MESSAGE, "entity_released", entity.getDisplayName()));
-
-                    event.setCanceled(true);
-                    event.setResult(Event.Result.DENY);
-                    event.setCancellationResult(InteractionResult.FAIL);
-
-                    return entity;
                 }
             }
         }
@@ -265,17 +275,20 @@ public class EventHandlerProxy {
             if (entity instanceof PartEntity) {
                 entity = ((PartEntity<?>) entity).getParent();
             }
-            if (!tag.isEmpty() && tag.has(AotakeSweep.CUSTOM_DATA_COMPONENT.get())) {
-                CompoundTag aotake = tag.get(AotakeSweep.CUSTOM_DATA_COMPONENT.get());
-                if (aotake != null && !aotake.isEmpty()) {
-                    Coordinate coordinate = new Coordinate(entity.getX(), entity.getY(), entity.getZ());
-                    Entity back = releaseEntity(event, player, original, coordinate);
-                    if (back != null) {
-                        // 让实体骑乘
-                        back.startRiding(entity, true);
-                        // 同步客户端状态
-                        AotakeUtils.broadcastPacket(new ClientboundSetPassengersPacket(entity));
-                        return;
+            if (!tag.isEmpty() && tag.has(DataComponents.CUSTOM_DATA)) {
+                CompoundTag customData = tag.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag();
+                if (customData.contains(AotakeSweep.MODID)) {
+                    CompoundTag aotake = customData.getCompound(AotakeSweep.MODID);
+                    if (!aotake.isEmpty()) {
+                        Coordinate coordinate = new Coordinate(entity.getX(), entity.getY(), entity.getZ());
+                        Entity back = releaseEntity(event, player, original, coordinate);
+                        if (back != null) {
+                            // 让实体骑乘
+                            back.startRiding(entity, true);
+                            // 同步客户端状态
+                            AotakeUtils.broadcastPacket(new ClientboundSetPassengersPacket(entity));
+                            return;
+                        }
                     }
                 }
             }
@@ -283,16 +296,20 @@ public class EventHandlerProxy {
             if (ServerConfig.ALLOW_CATCH_ENTITY.get()
                     && ServerConfig.CATCH_ITEM.get().stream().anyMatch(s -> s.equals(AotakeUtils.getItemRegistryName(original)))
                     && player.isCrouching()
-                    && (tag.isEmpty() || !tag.has(AotakeSweep.CUSTOM_DATA_COMPONENT.get()) || tag.get(AotakeSweep.CUSTOM_DATA_COMPONENT.get()) == null || !tag.get(AotakeSweep.CUSTOM_DATA_COMPONENT.get()).contains("entity"))
+                    && (tag.isEmpty()
+                    || !tag.has(DataComponents.CUSTOM_DATA)
+                    || !tag.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag().contains(AotakeSweep.MODID)
+                    || !tag.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag().getCompound(AotakeSweep.MODID).contains("entity"))
             ) {
                 original.shrink(1);
-
+                CompoundTag customData = new CompoundTag();
                 CompoundTag aotake = new CompoundTag();
 
                 aotake.putBoolean("byPlayer", true);
                 aotake.put("entity", entity.serializeNBT());
                 aotake.putString("name", AotakeUtils.getItemCustomNameJson(copy));
-                copy.set(AotakeSweep.CUSTOM_DATA_COMPONENT.get(), aotake);
+                customData.put(AotakeSweep.MODID, aotake);
+                copy.set(DataComponents.CUSTOM_DATA, CustomData.of(customData));
                 copy.set(DataComponents.CUSTOM_NAME, Component.literal(String.format("%s%s", entity.getDisplayName().getString(), copy.getHoverName().getString())).toChatComponent());
                 player.addItem(copy);
 
