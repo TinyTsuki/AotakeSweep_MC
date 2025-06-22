@@ -22,6 +22,7 @@ import net.minecraft.network.IPacket;
 import net.minecraft.network.play.server.SChatPacket;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.util.*;
+import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.text.ChatType;
 import net.minecraft.util.text.ITextComponent;
 import net.minecraft.util.text.TranslationTextComponent;
@@ -38,6 +39,7 @@ import xin.vanilla.aotake.AotakeSweep;
 import xin.vanilla.aotake.config.CommonConfig;
 import xin.vanilla.aotake.config.CustomConfig;
 import xin.vanilla.aotake.config.ServerConfig;
+import xin.vanilla.aotake.data.KeyValue;
 import xin.vanilla.aotake.data.SweepResult;
 import xin.vanilla.aotake.data.player.PlayerSweepDataCapability;
 import xin.vanilla.aotake.data.world.WorldTrashData;
@@ -50,8 +52,11 @@ import xin.vanilla.aotake.network.ModNetworkHandler;
 import javax.annotation.Nullable;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
+import java.util.function.Function;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 public class AotakeUtils {
     private static final Logger LOGGER = LogManager.getLogger();
@@ -482,6 +487,17 @@ public class AotakeUtils {
                         || ServerConfig.JUNK_ENTITY.get().contains(getEntityTypeRegistryName(entity))
                 ).collect(Collectors.toList());
 
+        Map<KeyValue<World, BlockPos>, BlockState> blockStateCache = filtered.stream()
+                .flatMap(entity -> Stream.of(
+                        new KeyValue<>(entity.level, entity.blockPosition().above()),
+                        new KeyValue<>(entity.level, entity.blockPosition()),
+                        new KeyValue<>(entity.level, entity.blockPosition().below())
+                ))
+                .distinct()
+                .collect(Collectors.toMap(Function.identity()
+                        , pair -> pair.getKey().getBlockState(pair.getValue())
+                ));
+
         // 超过阈值的黑白名单物品
         List<Entity> exceededWhiteBlackList = filtered.stream()
                 .filter(entity -> entity instanceof ItemEntity)
@@ -501,9 +517,9 @@ public class AotakeUtils {
         List<Entity> exceededSafeList = filtered.stream()
                 .filter(entity -> {
                     World level = entity.level;
-                    BlockState state = level.getBlockState(entity.blockPosition());
-                    BlockState below = level.getBlockState(entity.blockPosition().below());
-                    BlockState above = level.getBlockState(entity.blockPosition().above());
+                    BlockState state = blockStateCache.get(new KeyValue<>(level, entity.blockPosition()));
+                    BlockState below = blockStateCache.get(new KeyValue<>(level, entity.blockPosition().below()));
+                    BlockState above = blockStateCache.get(new KeyValue<>(level, entity.blockPosition().above()));
 
                     boolean isUnsafe =
                             !SAFE_BLOCKS.contains(AotakeUtils.getBlockRegistryName(state)) &&
@@ -561,9 +577,9 @@ public class AotakeUtils {
 
             // 安全方块过滤
             World level = entity.level;
-            BlockState state = level.getBlockState(entity.blockPosition());
-            BlockState below = level.getBlockState(entity.blockPosition().below());
-            BlockState above = level.getBlockState(entity.blockPosition().above());
+            BlockState state = blockStateCache.get(new KeyValue<>(level, entity.blockPosition()));
+            BlockState below = blockStateCache.get(new KeyValue<>(level, entity.blockPosition().below()));
+            BlockState above = blockStateCache.get(new KeyValue<>(level, entity.blockPosition().above()));
 
             boolean unsafe =
                     !SAFE_BLOCKS.contains(AotakeUtils.getBlockRegistryName(state)) &&
