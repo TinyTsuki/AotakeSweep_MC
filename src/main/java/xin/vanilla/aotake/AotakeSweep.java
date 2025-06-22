@@ -2,9 +2,6 @@ package xin.vanilla.aotake;
 
 import lombok.Getter;
 import lombok.Setter;
-import net.minecraft.core.component.DataComponentType;
-import net.minecraft.core.registries.Registries;
-import net.minecraft.nbt.CompoundTag;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
 import net.neoforged.api.distmarker.Dist;
@@ -21,8 +18,6 @@ import net.neoforged.neoforge.event.RegisterCommandsEvent;
 import net.neoforged.neoforge.event.server.ServerStartedEvent;
 import net.neoforged.neoforge.event.server.ServerStartingEvent;
 import net.neoforged.neoforge.event.server.ServerStoppingEvent;
-import net.neoforged.neoforge.registries.DeferredHolder;
-import net.neoforged.neoforge.registries.DeferredRegister;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import xin.vanilla.aotake.command.AotakeCommand;
@@ -80,22 +75,12 @@ public class AotakeSweep {
     @Setter
     private static boolean disable = false;
 
-    private static final DeferredRegister<DataComponentType<?>> COMPONENTS = DeferredRegister.create(Registries.DATA_COMPONENT_TYPE, AotakeSweep.MODID);
-
-    public static DeferredHolder<DataComponentType<?>, DataComponentType<CompoundTag>> CUSTOM_DATA_COMPONENT = COMPONENTS.register(AotakeSweep.MODID, () -> DataComponentType.<CompoundTag>builder()
-            .persistent(CompoundTag.CODEC)
-            // .networkSynchronized(ByteBufCodecs.TRUSTED_COMPOUND_TAG)
-            .cacheEncoding()
-            .build());
-
     // public static final Item JUNK_BALL = new JunkBall();
 
     public AotakeSweep(IEventBus modEventBus, ModContainer modContainer) {
 
         // 注册网络通道
         modEventBus.addListener(ModNetworkHandler::registerPackets);
-        // 注册数据组件类型
-        COMPONENTS.register(modEventBus);
 
         // 注册服务器启动和关闭事件
         NeoForge.EVENT_BUS.addListener(this::onServerStarting);
