@@ -11,14 +11,14 @@ import xin.vanilla.aotake.AotakeSweep;
 import xin.vanilla.aotake.enums.EnumCommandType;
 import xin.vanilla.aotake.util.AotakeUtils;
 
-public class ClearDustbinNotice implements CustomPacketPayload {
-    public final static CustomPacketPayload.Type<ClearDustbinNotice> TYPE = new CustomPacketPayload.Type<>(AotakeSweep.createResource("clear_dustbin"));
-    public final static StreamCodec<ByteBuf, ClearDustbinNotice> STREAM_CODEC = new StreamCodec<>() {
-        public @NotNull ClearDustbinNotice decode(@NotNull ByteBuf byteBuf) {
-            return new ClearDustbinNotice((new FriendlyByteBuf(byteBuf)));
+public class ClearDustbinToServer implements CustomPacketPayload {
+    public final static CustomPacketPayload.Type<ClearDustbinToServer> TYPE = new CustomPacketPayload.Type<>(AotakeSweep.createResource("clear_dustbin"));
+    public final static StreamCodec<ByteBuf, ClearDustbinToServer> STREAM_CODEC = new StreamCodec<>() {
+        public @NotNull ClearDustbinToServer decode(@NotNull ByteBuf byteBuf) {
+            return new ClearDustbinToServer((new FriendlyByteBuf(byteBuf)));
         }
 
-        public void encode(@NotNull ByteBuf byteBuf, @NotNull ClearDustbinNotice packet) {
+        public void encode(@NotNull ByteBuf byteBuf, @NotNull ClearDustbinToServer packet) {
             packet.toBytes(new FriendlyByteBuf(byteBuf));
         }
     };
@@ -26,12 +26,12 @@ public class ClearDustbinNotice implements CustomPacketPayload {
     private final boolean all;
     private final boolean cache;
 
-    public ClearDustbinNotice(boolean all, boolean cache) {
+    public ClearDustbinToServer(boolean all, boolean cache) {
         this.all = all;
         this.cache = cache;
     }
 
-    public ClearDustbinNotice(FriendlyByteBuf buf) {
+    public ClearDustbinToServer(FriendlyByteBuf buf) {
         this.all = buf.readBoolean();
         this.cache = buf.readBoolean();
     }
@@ -46,7 +46,7 @@ public class ClearDustbinNotice implements CustomPacketPayload {
         return TYPE;
     }
 
-    public static void handle(ClearDustbinNotice packet, IPayloadContext ctx) {
+    public static void handle(ClearDustbinToServer packet, IPayloadContext ctx) {
         ctx.enqueueWork(() -> {
             if (ctx.player() instanceof ServerPlayer player) {
                 String playerUUID = AotakeUtils.getPlayerUUIDString(player);

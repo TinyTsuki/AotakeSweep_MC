@@ -31,6 +31,7 @@ import xin.vanilla.aotake.data.KeyValue;
 import xin.vanilla.aotake.data.SweepResult;
 import xin.vanilla.aotake.enums.EnumI18nType;
 import xin.vanilla.aotake.enums.EnumMCColor;
+import xin.vanilla.aotake.enums.EnumOverflowMode;
 import xin.vanilla.aotake.enums.EnumSelfCleanMode;
 import xin.vanilla.aotake.util.AotakeUtils;
 import xin.vanilla.aotake.util.CollectionUtils;
@@ -230,7 +231,7 @@ public class WorldTrashData extends SavedData {
                     result.setRecycledItemCount(result.getEntityCount() - itemStack.getCount());
                 }
             } else {
-                switch (ServerConfig.DUSTBIN_OVERFLOW_MODE.get()) {
+                switch (EnumOverflowMode.valueOf(ServerConfig.DUSTBIN_OVERFLOW_MODE.get())) {
                     case KEEP: {
                         this.dropList.add(new KeyValue<>(coordinate, item));
                         if (result.getItemCount() > 0) {
@@ -287,7 +288,7 @@ public class WorldTrashData extends SavedData {
         }
 
         if (page < 1 || page > limit) {
-            throw new IllegalArgumentException(String.format("Page number out of range, %d is not between 1 and %d.", page, limit));
+            return null;
         }
 
         // 将当前页垃圾箱填充满
