@@ -19,6 +19,7 @@ import net.minecraft.network.chat.ClickEvent;
 import net.minecraft.network.chat.HoverEvent;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.MenuProvider;
 import net.minecraft.world.SimpleContainer;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.item.ItemEntity;
@@ -40,6 +41,7 @@ import xin.vanilla.aotake.enums.EnumI18nType;
 import xin.vanilla.aotake.enums.EnumMCColor;
 import xin.vanilla.aotake.enums.EnumOperationType;
 import xin.vanilla.aotake.event.EventHandlerProxy;
+import xin.vanilla.aotake.network.packet.CustomConfigSyncToClient;
 import xin.vanilla.aotake.util.*;
 
 import java.util.*;
@@ -250,6 +252,11 @@ public class AotakeCommand {
                     }
                     // 更新权限信息
                     source.getServer().getPlayerList().sendPlayerPermissionLevel(target);
+                    for (ServerPlayer player : source.getServer().getPlayerList().getPlayers()) {
+                        if (AotakeSweep.getCustomConfigStatus().contains(AotakeUtils.getPlayerUUIDString(player))) {
+                            AotakeUtils.sendPacketToPlayer(new CustomConfigSyncToClient(), player);
+                        }
+                    }
                 }
             }
             return 1;
@@ -986,7 +993,9 @@ public class AotakeCommand {
     }
 
     private static int dustbin(@NonNull ServerPlayer player, int page) {
-        int result = player.openMenu(WorldTrashData.getTrashContainer(player, page)).orElse(0);
+        MenuProvider trashContainer = WorldTrashData.getTrashContainer(player, page);
+        if (trashContainer == null) return 0;
+        int result = player.openMenu(trashContainer).orElse(0);
         if (result > 0) AotakeSweep.getPlayerDustbinPage().put(AotakeUtils.getPlayerUUIDString(player), page);
         return result;
     }

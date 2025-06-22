@@ -5,6 +5,7 @@ import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.inventory.ContainerScreen;
+import net.minecraft.client.player.LocalPlayer;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
@@ -16,10 +17,12 @@ import net.neoforged.neoforge.event.tick.ServerTickEvent;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import xin.vanilla.aotake.AotakeSweep;
+import xin.vanilla.aotake.enums.EnumCommandType;
 import xin.vanilla.aotake.enums.EnumI18nType;
 import xin.vanilla.aotake.enums.EnumMCColor;
-import xin.vanilla.aotake.network.packet.ClearDustbinNotice;
-import xin.vanilla.aotake.network.packet.OpenDustbinNotice;
+import xin.vanilla.aotake.network.packet.ClearDustbinToServer;
+import xin.vanilla.aotake.network.packet.ClientLoadedToServer;
+import xin.vanilla.aotake.network.packet.OpenDustbinToServer;
 import xin.vanilla.aotake.util.AotakeUtils;
 import xin.vanilla.aotake.util.Component;
 
@@ -45,7 +48,7 @@ public class ClientGameEventHandler {
         if (Minecraft.getInstance().screen == null) {
             if (ClientModEventHandler.DUSTBIN_KEY.consumeClick()) {
                 if (!keyDown) {
-                    AotakeUtils.sendPacketToServer(new OpenDustbinNotice(0));
+                    AotakeUtils.sendPacketToServer(new OpenDustbinToServer(0));
                     keyDown = true;
                 }
             } else {
@@ -122,6 +125,14 @@ public class ClientGameEventHandler {
         EventHandlerProxy.onContainerClose(event);
     }
 
+    /**
+     * 玩家登出事件
+     */
+    @SubscribeEvent
+    public static void onPlayerLoggedOut(PlayerEvent.PlayerLoggedOutEvent event) {
+        EventHandlerProxy.onPlayerLoggedOut(event);
+    }
+
     private static final Component MOD_NAME = Component.translatable(EnumI18nType.KEY, "categories");
 
     @SubscribeEvent
@@ -132,57 +143,63 @@ public class ClientGameEventHandler {
                 && screen.getTitle().getString()
                 .startsWith(MOD_NAME.toTextComponent(AotakeUtils.getPlayerLanguage(Minecraft.getInstance().player)).getString())
         ) {
+            LocalPlayer player = Minecraft.getInstance().player;
+            int yOffset = 0;
             // 清空缓存区
-            event.addListener(
-                    new Button.Builder(Component.literal("✕").setColor(EnumMCColor.RED.getColor()).toTextComponent()
-                            , button -> AotakeUtils.sendPacketToServer(new ClearDustbinNotice(true, true)))
-                            .size(20, 20)
-                            .pos(screen.width / 2 - 88 - 21, screen.height / 2 - 111)
-                            .tooltip(Tooltip.create(Component.translatable(EnumI18nType.MESSAGE, "clear_cache").toTextComponent(AotakeUtils.getClientLanguage())))
-                            .build()
-            );
+            if (AotakeUtils.hasCommandPermission(player, EnumCommandType.CACHE_CLEAR)) {
+                event.addListener(
+                        new Button.Builder(Component.literal("✕").setColor(EnumMCColor.RED.getColor()).toTextComponent()
+                                , button -> AotakeUtils.sendPacketToServer(new ClearDustbinToServer(true, true)))
+                                .size(20, 20)
+                                .pos(screen.width / 2 - 88 - 21, screen.height / 2 - 111 + 21 * (yOffset++))
+                                .tooltip(Tooltip.create(Component.translatable(EnumI18nType.MESSAGE, "clear_cache").toTextComponent(AotakeUtils.getClientLanguage())))
+                                .build()
+                );
+            }
             // 清空所有页
-            event.addListener(
-                    new Button.Builder(Component.literal("✕").setColor(EnumMCColor.RED.getColor()).toTextComponent()
-                            , button -> AotakeUtils.sendPacketToServer(new ClearDustbinNotice(true, false)))
-                            .size(20, 20)
-                            .pos(screen.width / 2 - 88 - 21, screen.height / 2 - 90)
-                            .tooltip(Tooltip.create(Component.translatable(EnumI18nType.MESSAGE, "clear_all_dustbin").toTextComponent(AotakeUtils.getClientLanguage())))
-                            .build()
-            );
-            // 清空当前页
-            event.addListener(
-                    new Button.Builder(Component.literal("✕").setColor(EnumMCColor.YELLOW.getColor()).toTextComponent()
-                            , button -> AotakeUtils.sendPacketToServer(new ClearDustbinNotice(false, false)))
-                            .size(20, 20)
-                            .pos(screen.width / 2 - 88 - 21, screen.height / 2 - 69)
-                            .tooltip(Tooltip.create(Component.translatable(EnumI18nType.MESSAGE, "clear_cur_dustbin").toTextComponent(AotakeUtils.getClientLanguage())))
-                            .build()
-            );
+            if (AotakeUtils.hasCommandPermission(player, EnumCommandType.CACHE_CLEAR)) {
+                event.addListener(
+                        new Button.Builder(Component.literal("✕").setColor(EnumMCColor.RED.getColor()).toTextComponent()
+                                , button -> AotakeUtils.sendPacketToServer(new ClearDustbinToServer(true, false)))
+                                .size(20, 20)
+                                .pos(screen.width / 2 - 88 - 21, screen.height / 2 - 111 + 21 * (yOffset++))
+                                .tooltip(Tooltip.create(Component.translatable(EnumI18nType.MESSAGE, "clear_all_dustbin").toTextComponent(AotakeUtils.getClientLanguage())))
+                                .build()
+                );
+                // 清空当前页
+                event.addListener(
+                        new Button.Builder(Component.literal("✕").setColor(EnumMCColor.YELLOW.getColor()).toTextComponent()
+                                , button -> AotakeUtils.sendPacketToServer(new ClearDustbinToServer(false, false)))
+                                .size(20, 20)
+                                .pos(screen.width / 2 - 88 - 21, screen.height / 2 - 111 + 21 * (yOffset++))
+                                .tooltip(Tooltip.create(Component.translatable(EnumI18nType.MESSAGE, "clear_cur_dustbin").toTextComponent(AotakeUtils.getClientLanguage())))
+                                .build()
+                );
+            }
             // 刷新当前页
             event.addListener(
                     new Button.Builder(Component.literal("↻").toTextComponent()
-                            , button -> AotakeUtils.sendPacketToServer(new OpenDustbinNotice(0)))
+                            , button -> AotakeUtils.sendPacketToServer(new OpenDustbinToServer(0)))
                             .size(20, 20)
-                            .pos(screen.width / 2 - 88 - 21, screen.height / 2 - 48)
+                            .pos(screen.width / 2 - 88 - 21, screen.height / 2 - 111 + 21 * (yOffset++))
                             .tooltip(Tooltip.create(Component.translatable(EnumI18nType.MESSAGE, "refresh_page").toTextComponent(AotakeUtils.getClientLanguage())))
                             .build()
             );
             // 上一页
             event.addListener(
                     new Button.Builder(Component.literal("▲").toTextComponent()
-                            , button -> AotakeUtils.sendPacketToServer(new OpenDustbinNotice(-1)))
+                            , button -> AotakeUtils.sendPacketToServer(new OpenDustbinToServer(-1)))
                             .size(20, 20)
-                            .pos(screen.width / 2 - 88 - 21, screen.height / 2 - 27)
+                            .pos(screen.width / 2 - 88 - 21, screen.height / 2 - 111 + 21 * (yOffset++))
                             .tooltip(Tooltip.create(Component.translatable(EnumI18nType.MESSAGE, "previous_page").toTextComponent(AotakeUtils.getClientLanguage())))
                             .build()
             );
             // 下一页
             event.addListener(
                     new Button.Builder(Component.literal("▼").toTextComponent()
-                            , button -> AotakeUtils.sendPacketToServer(new OpenDustbinNotice(1)))
+                            , button -> AotakeUtils.sendPacketToServer(new OpenDustbinToServer(1)))
                             .size(20, 20)
-                            .pos(screen.width / 2 - 88 - 21, screen.height / 2 - 6)
+                            .pos(screen.width / 2 - 88 - 21, screen.height / 2 - 111 + 21 * (yOffset++))
                             .tooltip(Tooltip.create(Component.translatable(EnumI18nType.MESSAGE, "next_page").toTextComponent(AotakeUtils.getClientLanguage())))
                             .build()
             );
@@ -205,12 +222,12 @@ public class ClientGameEventHandler {
                     }
                 } else if (keyEvent.getKeyCode() == ClientModEventHandler.DUSTBIN_PRE_KEY.getKey().getValue()) {
                     if (!keyDown) {
-                        AotakeUtils.sendPacketToServer(new OpenDustbinNotice(-1));
+                        AotakeUtils.sendPacketToServer(new OpenDustbinToServer(-1));
                         keyDown = true;
                     }
                 } else if (keyEvent.getKeyCode() == ClientModEventHandler.DUSTBIN_NEXT_KEY.getKey().getValue()) {
                     if (!keyDown) {
-                        AotakeUtils.sendPacketToServer(new OpenDustbinNotice(1));
+                        AotakeUtils.sendPacketToServer(new OpenDustbinToServer(1));
                         keyDown = true;
                     }
                 } else {
@@ -218,5 +235,12 @@ public class ClientGameEventHandler {
                 }
             }
         }
+    }
+
+    @SubscribeEvent
+    public static void onPlayerLoggedIn(ClientPlayerNetworkEvent.LoggingIn event) {
+        LOGGER.debug("Client: Player logged in.");
+        // 通知服务器客户端已加载mod
+        AotakeUtils.sendPacketToServer(new ClientLoadedToServer());
     }
 }
