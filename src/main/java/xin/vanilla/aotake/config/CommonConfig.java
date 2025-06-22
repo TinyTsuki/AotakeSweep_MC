@@ -48,6 +48,11 @@ public class CommonConfig {
      */
     public static final ForgeConfigSpec.ConfigValue<List<? extends String>> SAFE_BLOCKS_ABOVE;
 
+    /**
+     * 处于安全方块的实体超过指定数量也进行清理
+     */
+    public static final ForgeConfigSpec.IntValue SAFE_BLOCKS_ENTITY_LIMIT;
+
     // endregion 基础设置
 
 
@@ -243,9 +248,8 @@ public class CommonConfig {
                             , "Allow blocks with states, such as: minecraft:lava[level=0]."
                             , "实体处于该方块上时不会被清理。"
                             , "支持带状态的方块id，如：minecraft:lava[level=0]")
-                    .defineList("safeBlocksBelow", new ArrayList<>() {{
-                    }}, o -> o instanceof String);
-
+                    .defineList("safeBlocksBelow", new ArrayList<>()
+                            , o -> o instanceof String);
 
             // 实体处于该方块下时不会被清理
             SAFE_BLOCKS_ABOVE = SERVER_BUILDER
@@ -253,8 +257,14 @@ public class CommonConfig {
                             , "Allow blocks with states, such as: minecraft:lava[level=0]."
                             , "实体处于该方块下时不会被清理。"
                             , "支持带状态的方块id，如：minecraft:lava[level=0]")
-                    .defineList("safeBlocksAbove", new ArrayList<>() {{
-                    }}, o -> o instanceof String);
+                    .defineList("safeBlocksAbove", new ArrayList<>()
+                            , o -> o instanceof String);
+
+            // 处于安全方块的实体超过指定数量也进行清理
+            SAFE_BLOCKS_ENTITY_LIMIT = SERVER_BUILDER
+                    .comment("Entities located within safe blocks will still be cleared if their count in a single chunk exceeds the specified limit."
+                            , "即使实体处于安全方块，若其数量在单个区块中超过指定值，也将被清理。")
+                    .defineInRange("safeBlocksEntityLimit", 250, 1, Integer.MAX_VALUE);
 
             SERVER_BUILDER.pop();
         }
@@ -429,10 +439,9 @@ public class CommonConfig {
             add("immersiveengineering:conveyor_vertical");
             add("immersiveengineering:conveyor_verticalcovered");
         }});
-        SAFE_BLOCKS_BELOW.set(new ArrayList<>() {{
-        }});
-        SAFE_BLOCKS_ABOVE.set(new ArrayList<>() {{
-        }});
+        SAFE_BLOCKS_BELOW.set(new ArrayList<>());
+        SAFE_BLOCKS_ABOVE.set(new ArrayList<>());
+        SAFE_BLOCKS_ENTITY_LIMIT.set(250);
 
         COMMAND_PREFIX.set(AotakeSweep.DEFAULT_COMMAND_PREFIX);
         COMMAND_LANGUAGE.set("language");
