@@ -76,6 +76,11 @@ public class ServerConfig {
     public static final ForgeConfigSpec.ConfigValue<List<? extends String>> ITEM_BLACKLIST;
 
     /**
+     * 黑白名单物品超过指定数量也进行清理
+     */
+    public static final ForgeConfigSpec.IntValue ITEM_WHITE_BLACK_LIST_ENTITY_LIMIT;
+
+    /**
      * 仅清理不回收的物品
      */
     public static final ForgeConfigSpec.ConfigValue<List<? extends String>> ITEM_REDLIST;
@@ -231,30 +236,35 @@ public class ServerConfig {
             CATCH_ENTITY = SERVER_BUILDER
                     .comment("The entity that can be captured when cleaned up."
                             , "清理时允许被捕获的实体。")
-                    .defineList("catchEntity", new ArrayList<String>() {{
-                        add(EntityType.EXPERIENCE_ORB.getRegistryName().toString());
-                    }}, o -> o instanceof String);
+                    .defineList("catchEntity", new ArrayList<>()
+                            , o -> o instanceof String);
 
             // 物品清理白名单
             ITEM_WHITELIST = SERVER_BUILDER
                     .comment("The item whitelist for cleaning up items, the following items will not be cleaned or recycled."
                             , "物品清理白名单，以下物品不会被清理与回收。")
-                    .defineList("itemWhitelist", new ArrayList<String>() {{
-                    }}, o -> o instanceof String);
+                    .defineList("itemWhitelist", new ArrayList<>()
+                            , o -> o instanceof String);
+
+            // 白名单物品超过指定数量也进行清理
+            ITEM_WHITE_BLACK_LIST_ENTITY_LIMIT = SERVER_BUILDER
+                    .comment("Even items on the whitelist or not included in the blacklist will be cleared if their quantity on the server exceeds the specified limit."
+                            , "即使是白名单内的物品，或不是黑名单中的物品，只要在服务器中数量超过指定上限，也会被清理。")
+                    .defineInRange("itemWhiteBlackListEntityLimit", 250, 1, Integer.MAX_VALUE);
 
             // 物品清理黑名单
             ITEM_BLACKLIST = SERVER_BUILDER
                     .comment("The item blacklist for cleaning up items, if this list is not empty, only the following items will be cleaned and recycled, items outside the list will not be cleaned or recycled."
                             , "物品清理黑名单，若该名单不为空，则将只会清理并回收以下物品，名单外的物品将不会被清理与回收。")
-                    .defineList("itemBlacklist", new ArrayList<String>() {{
-                    }}, o -> o instanceof String);
+                    .defineList("itemBlacklist", new ArrayList<>()
+                            , o -> o instanceof String);
 
             // 仅清理不回收的物品
             ITEM_REDLIST = SERVER_BUILDER
                     .comment("The item redlist for cleaning up items, the following items will only be cleaned and not recycled."
                             , "物品清理红名单，以下物品将只会被清理而不会被回收。")
-                    .defineList("itemRedlist", new ArrayList<String>() {{
-                    }}, o -> o instanceof String);
+                    .defineList("itemRedlist", new ArrayList<>()
+                            , o -> o instanceof String);
 
             // 是否允许玩家使用物品捕获实体
             ALLOW_CATCH_ENTITY = SERVER_BUILDER
@@ -266,7 +276,7 @@ public class ServerConfig {
             SWEEP_ITEM_AGE = SERVER_BUILDER
                     .comment("Only clean up items that have been dropped for more than the specified ticks. Note: If a chunk is not loaded, dropped items will not tick, which may cause items to accumulate continuously."
                             , "仅清理掉落超过指定tick的物品。注意：若区块未被加载，掉落物的tick不会增加，从而导致物品越堆越多。")
-                    .defineInRange("sweepItemDelay", 0, 0, 24 * 60 * 60 * 20);
+                    .defineInRange("sweepItemDelay", 5, 0, 24 * 60 * 60 * 20);
 
             // 垃圾箱自清洁模式
             SELF_CLEAN_MODE = SERVER_BUILDER
@@ -389,10 +399,11 @@ public class ServerConfig {
             add(EntityType.EXPERIENCE_ORB.getRegistryName().toString());
         }});
         ITEM_WHITELIST.set(new ArrayList<>());
+        ITEM_WHITE_BLACK_LIST_ENTITY_LIMIT.set(250);
         ITEM_BLACKLIST.set(new ArrayList<>());
         ITEM_REDLIST.set(new ArrayList<>());
         ALLOW_CATCH_ENTITY.set(false);
-        SWEEP_ITEM_AGE.set(0);
+        SWEEP_ITEM_AGE.set(5);
         SELF_CLEAN_MODE.set(new ArrayList<String>() {{
             add(EnumSelfCleanMode.NONE.name());
         }});
