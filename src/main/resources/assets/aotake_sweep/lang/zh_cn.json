@@ -48,7 +48,7 @@
   "message.aotake_sweep.dustbin_dropped": "§e垃圾箱%s§e被『%s§e』倒掉了。",
   "message.aotake_sweep.cache_cleared": "§e垃圾缓存区被『%s§e』清空了。",
   "message.aotake_sweep.cache_dropped": "§e垃圾缓存区被『%s§e』倒掉了。",
-  "message.aotake_sweep.player_show_sweep_result": "显示扫地结果消息被设置为：%s。",
+  "message.aotake_sweep.player_show_sweep_result": "显示扫地结果消息被设置为：%s，\n使用指令 '%s' 修改状态。",
   "message.aotake_sweep.mod_status": "%s的启用状态被设置为：%s。",
   "message.aotake_sweep.mod_disabled": "§cMOD已被临时禁用。",
   "message.aotake_sweep.chunk_check_msg": "%s§e等区块实体超过阈值，即将进行清扫。",
