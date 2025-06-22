@@ -7,16 +7,16 @@ import xin.vanilla.aotake.AotakeSweep;
 import xin.vanilla.aotake.enums.EnumCommandType;
 import xin.vanilla.aotake.util.AotakeUtils;
 
-public class ClearDustbinNotice {
+public class ClearDustbinToServer {
     private final boolean all;
     private final boolean cache;
 
-    public ClearDustbinNotice(boolean all, boolean cache) {
+    public ClearDustbinToServer(boolean all, boolean cache) {
         this.all = all;
         this.cache = cache;
     }
 
-    public ClearDustbinNotice(FriendlyByteBuf buf) {
+    public ClearDustbinToServer(FriendlyByteBuf buf) {
         this.all = buf.readBoolean();
         this.cache = buf.readBoolean();
     }
@@ -26,7 +26,7 @@ public class ClearDustbinNotice {
         buf.writeBoolean(this.cache);
     }
 
-    public static void handle(ClearDustbinNotice packet, CustomPayloadEvent.Context ctx) {
+    public static void handle(ClearDustbinToServer packet, CustomPayloadEvent.Context ctx) {
         ctx.enqueueWork(() -> {
             ServerPlayer player = ctx.getSender();
             if (player != null) {
