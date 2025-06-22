@@ -103,7 +103,7 @@ public class ServerConfig {
     /**
      * 垃圾箱溢出时的处理方式
      */
-    public static final ForgeConfigSpec.ConfigValue<EnumOverflowMode> DUSTBIN_OVERFLOW_MODE;
+    public static final ForgeConfigSpec.ConfigValue<String> DUSTBIN_OVERFLOW_MODE;
 
     // endregion 基础设置
 
@@ -306,7 +306,7 @@ public class ServerConfig {
                             , "KEEP：储存至缓存，并在打开垃圾箱时填充至垃圾箱的空位；"
                             , "REMOVE：移除溢出物品；"
                             , "REPLACE：将垃圾箱中的物品随机替换为溢出的物品。")
-                    .define("dustbinOverflowMode", EnumOverflowMode.KEEP);
+                    .define("dustbinOverflowMode", EnumOverflowMode.KEEP.name());
 
             SERVER_BUILDER.pop();
         }
@@ -407,7 +407,7 @@ public class ServerConfig {
         SELF_CLEAN_MODE.set(new ArrayList<String>() {{
             add(EnumSelfCleanMode.NONE.name());
         }});
-        DUSTBIN_OVERFLOW_MODE.set(EnumOverflowMode.KEEP);
+        DUSTBIN_OVERFLOW_MODE.set(EnumOverflowMode.KEEP.name());
 
         PERMISSION_VIRTUAL_OP.set(4);
         PERMISSION_DUSTBIN_OPEN.set(0);
