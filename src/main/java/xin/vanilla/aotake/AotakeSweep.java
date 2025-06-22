@@ -26,9 +26,7 @@ import xin.vanilla.aotake.event.ClientModEventHandler;
 import xin.vanilla.aotake.network.ModNetworkHandler;
 import xin.vanilla.aotake.network.SplitPacket;
 
-import java.util.List;
-import java.util.Map;
-import java.util.Random;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 @Mod(AotakeSweep.MODID)
@@ -46,6 +44,15 @@ public class AotakeSweep {
      */
     @Getter
     private static MinecraftServer serverInstance;
+
+    /**
+     * 已安装mod的玩家列表</br>
+     * 玩家UUID:是否已同步数据</br>
+     * 在该map的玩家都为已安装mod</br>
+     * 布尔值为false时为未同步数据，将会在玩家tick事件中检测并同步数据
+     */
+    @Getter
+    private static final Set<String> customConfigStatus = new HashSet<>();
 
     /**
      * 分片网络包缓存
