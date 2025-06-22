@@ -13,4 +13,12 @@ public class KeyValue<K, V> {
         this.key = key;
         this.value = value;
     }
+
+    public K getLeft() {
+        return this.key;
+    }
+
+    public V getRight() {
+        return this.value;
+    }
 }
