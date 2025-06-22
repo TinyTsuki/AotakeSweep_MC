@@ -905,6 +905,7 @@ public class AotakeCommand {
                                                         , Component.translatable(EnumI18nType.MESSAGE
                                                                 , "player_show_sweep_result"
                                                                 , I18nUtils.enabled(AotakeUtils.getPlayerLanguage(player), show)
+                                                                , String.format("/%s config showSweepResult <true/false>", AotakeUtils.getCommandPrefix())
                                                         )
                                                 );
                                                 return 1;
