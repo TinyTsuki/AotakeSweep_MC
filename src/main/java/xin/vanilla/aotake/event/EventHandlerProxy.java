@@ -347,4 +347,13 @@ public class EventHandlerProxy {
         if (AotakeSweep.isDisable()) return;
     }
 
+    /**
+     * 玩家登出事件
+     */
+    public static void onPlayerLoggedOut(PlayerEvent.PlayerLoggedOutEvent event) {
+        // 玩家退出服务器时移除mod安装状态
+        if (event.getEntity() instanceof ServerPlayer) {
+            AotakeSweep.getCustomConfigStatus().remove(event.getEntity().getStringUUID());
+        }
+    }
 }

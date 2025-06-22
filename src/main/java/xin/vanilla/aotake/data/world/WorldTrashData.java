@@ -287,7 +287,7 @@ public class WorldTrashData extends SavedData {
         }
 
         if (page < 1 || page > limit) {
-            throw new IllegalArgumentException(String.format("Page number out of range, %d is not between 1 and %d.", page, limit));
+            return null;
         }
 
         // 将当前页垃圾箱填充满
