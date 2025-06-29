@@ -71,6 +71,14 @@ public class ClientGameEventHandler {
     }
 
     /**
+     * 世界Tick事件
+     */
+    @SubscribeEvent
+    public static void onWorldTick(TickEvent.LevelTickEvent.Post event) {
+        EventHandlerProxy.onWorldTick(event);
+    }
+
+    /**
      * 能力附加事件
      */
     @SubscribeEvent
