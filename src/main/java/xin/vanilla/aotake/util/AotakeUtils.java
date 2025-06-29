@@ -25,6 +25,7 @@ import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.SimpleContainer;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.TamableAnimal;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
@@ -32,7 +33,6 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraftforge.entity.PartEntity;
 import net.minecraftforge.fmllegacy.network.PacketDistributor;
 import net.minecraftforge.registries.ForgeRegistries;
 import org.apache.logging.log4j.LogManager;
@@ -420,7 +420,10 @@ public class AotakeUtils {
                 // 物品实体 与 垃圾实体
                 .filter(entity -> entity instanceof ItemEntity
                         || ServerConfig.JUNK_ENTITY.get().contains(getEntityTypeRegistryName(entity))
-                ).toList();
+                )
+                .filter(entity -> !entity.hasCustomName())
+                .filter(entity -> !(entity instanceof TamableAnimal) || ((TamableAnimal) entity).getOwnerUUID() != null)
+                .toList();
 
         Map<KeyValue<Level, BlockPos>, BlockState> blockStateCache = filtered.stream()
                 .flatMap(entity -> Stream.of(
@@ -456,13 +459,15 @@ public class AotakeUtils {
                     BlockState below = blockStateCache.get(new KeyValue<>(level, entity.blockPosition().below()));
                     BlockState above = blockStateCache.get(new KeyValue<>(level, entity.blockPosition().above()));
 
-                    boolean isUnsafe =
-                            !SAFE_BLOCKS.contains(AotakeUtils.getBlockRegistryName(state)) &&
-                                    !SAFE_BLOCKS_STATE.contains(state) &&
-                                    !SAFE_BLOCKS_BELOW.contains(AotakeUtils.getBlockRegistryName(below)) &&
-                                    !SAFE_BLOCKS_BELOW_STATE.contains(below) &&
-                                    !SAFE_BLOCKS_ABOVE.contains(AotakeUtils.getBlockRegistryName(above)) &&
-                                    !SAFE_BLOCKS_ABOVE_STATE.contains(above);
+                    boolean isUnsafe = state != null
+                            && !SAFE_BLOCKS.contains(AotakeUtils.getBlockRegistryName(state))
+                            && !SAFE_BLOCKS_STATE.contains(state)
+                            && below != null
+                            && !SAFE_BLOCKS_BELOW.contains(AotakeUtils.getBlockRegistryName(below))
+                            && !SAFE_BLOCKS_BELOW_STATE.contains(below)
+                            && above != null
+                            && !SAFE_BLOCKS_ABOVE.contains(AotakeUtils.getBlockRegistryName(above))
+                            && !SAFE_BLOCKS_ABOVE_STATE.contains(above);
 
                     return !isUnsafe;
                 })
@@ -547,7 +552,7 @@ public class AotakeUtils {
                 WorldTrashData.get().getDropList().clear();
                 WorldTrashData.get().getInventoryList().forEach(SimpleContainer::clearContent);
             }
-            result = WorldTrashData.get().addDrops(list);
+            result = AotakeSweep.getEntitySweeper().addDrops(list);
         }
 
         for (ServerPlayer p : players) {
@@ -580,36 +585,7 @@ public class AotakeUtils {
      * 移除实体
      */
     public static void removeEntity(Entity entity, boolean keepData) {
-        if (entity instanceof PartEntity) {
-            entity = ((PartEntity<?>) entity).getParent();
-        }
-        if (entity.isMultipartEntity()) {
-            PartEntity<?>[] parts = entity.getParts();
-            if (CollectionUtils.isNotNullOrEmpty(parts)) {
-                for (PartEntity<?> part : parts) {
-                    part.remove(Entity.RemovalReason.KILLED);
-                }
-            }
-        }
-        entity.remove(Entity.RemovalReason.KILLED);
-    }
-
-    /**
-     * 移除实体
-     */
-    public static void removeEntity(ServerLevel level, Entity entity, boolean keepData) {
-        if (entity instanceof PartEntity) {
-            entity = ((PartEntity<?>) entity).getParent();
-        }
-        if (entity.isMultipartEntity()) {
-            PartEntity<?>[] parts = entity.getParts();
-            if (CollectionUtils.isNotNullOrEmpty(parts)) {
-                for (PartEntity<?> part : parts) {
-                    level.removeEntity(part, keepData);
-                }
-            }
-        }
-        level.removeEntity(entity, keepData);
+        EntitySweeper.scheduleRemoveEntity(entity, keepData);
     }
 
     /**
