@@ -13,6 +13,7 @@ import net.neoforged.neoforge.client.event.ClientPlayerNetworkEvent;
 import net.neoforged.neoforge.client.event.ClientTickEvent;
 import net.neoforged.neoforge.client.event.ScreenEvent;
 import net.neoforged.neoforge.event.entity.player.*;
+import net.neoforged.neoforge.event.tick.LevelTickEvent;
 import net.neoforged.neoforge.event.tick.ServerTickEvent;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -65,6 +66,14 @@ public class ClientGameEventHandler {
     @SubscribeEvent
     public static void onServerTick(ServerTickEvent.Post event) {
         EventHandlerProxy.onServerTick(event);
+    }
+
+    /**
+     * 世界Tick事件
+     */
+    @SubscribeEvent
+    public static void onWorldTick(LevelTickEvent.Post event) {
+        EventHandlerProxy.onWorldTick(event);
     }
 
     /**
