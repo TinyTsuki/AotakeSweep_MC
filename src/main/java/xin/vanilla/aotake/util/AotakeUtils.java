@@ -422,7 +422,7 @@ public class AotakeUtils {
                         || ServerConfig.JUNK_ENTITY.get().contains(getEntityTypeRegistryName(entity))
                 )
                 .filter(entity -> !entity.hasCustomName())
-                .filter(entity -> !(entity instanceof TamableAnimal) || ((TamableAnimal) entity).getOwnerUUID() != null)
+                .filter(entity -> !(entity instanceof TamableAnimal) || ((TamableAnimal) entity).getOwnerUUID() == null)
                 .toList();
 
         Map<KeyValue<Level, BlockPos>, BlockState> blockStateCache = filtered.stream()
