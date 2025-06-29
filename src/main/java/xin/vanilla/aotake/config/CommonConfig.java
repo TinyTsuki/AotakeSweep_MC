@@ -17,6 +17,10 @@ public class CommonConfig {
      * 垃圾箱页数限制
      */
     public static final ForgeConfigSpec.IntValue DUSTBIN_PAGE_LIMIT;
+    /**
+     * 缓存区物品限制
+     */
+    public static final ForgeConfigSpec.IntValue CACHE_LIMIT;
 
     /**
      * 服务器没人时是否打扫
@@ -174,6 +178,12 @@ public class CommonConfig {
                             , "垃圾箱页数限制。")
                     .defineInRange("dustbinPageLimit", 1, 1, 16 * 16 * 16 * 16);
 
+            // 缓存区物品限制
+            CACHE_LIMIT = SERVER_BUILDER
+                    .comment("The maximum number of items in the cache."
+                            , "缓存区物品限制。")
+                    .defineInRange("cacheLimit", 5000, 1, Integer.MAX_VALUE);
+
             // 服务器没人时是否打扫
             SWEEP_WHEN_NO_PLAYER = SERVER_BUILDER
                     .comment("Whether to enable automatic sweeping when there are no players on the server."
@@ -225,22 +235,10 @@ public class CommonConfig {
             // 实体处于该方块中时不会被清理
             SAFE_BLOCKS = SERVER_BUILDER
                     .comment("Entities will not be cleaned up if they are in these blocks."
-                            , "Allow blocks with states, such as: minecraft:lava[level=0]."
+                            , "Allow blocks with states, such as: minecraft:lava[level=0], immersiveengineering:conveyor_basic."
                             , "实体处于该方块中时不会被清理。"
-                            , "支持带状态的方块id，如：minecraft:lava[level=0]")
-                    .defineList("safeBlocks", new ArrayList<String>() {{
-                        add("immersiveengineering:conveyor_basic");
-                        add("immersiveengineering:conveyor_covered");
-                        add("immersiveengineering:conveyor_dropper");
-                        add("immersiveengineering:conveyor_droppercovered");
-                        add("immersiveengineering:conveyor_extract");
-                        add("immersiveengineering:conveyor_extractcovered");
-                        add("immersiveengineering:conveyor_redstone");
-                        add("immersiveengineering:conveyor_splitter");
-                        add("immersiveengineering:conveyor_splittercovered");
-                        add("immersiveengineering:conveyor_vertical");
-                        add("immersiveengineering:conveyor_verticalcovered");
-                    }}, o -> o instanceof String);
+                            , "支持带状态的方块id，如：minecraft:lava[level=0]、immersiveengineering:conveyor_basic")
+                    .defineList("safeBlocks", new ArrayList<>(), o -> o instanceof String);
 
             // 实体处于该方块上时不会被清理
             SAFE_BLOCKS_BELOW = SERVER_BUILDER
@@ -401,6 +399,7 @@ public class CommonConfig {
      */
     public static void resetConfig() {
         DUSTBIN_PAGE_LIMIT.set(1);
+        CACHE_LIMIT.set(5000);
         SWEEP_WHEN_NO_PLAYER.set(false);
         SWEEP_WARNING_SECOND.set(new ArrayList<Integer>() {{
             add(-1);
@@ -426,19 +425,7 @@ public class CommonConfig {
             add("§r§e饥肠辘辘的香草酱将会在%s秒后到来。");
             add("§r§e饥肠辘辘的香草酱将会在%s秒后到来。");
         }});
-        SAFE_BLOCKS.set(new ArrayList<String>() {{
-            add("immersiveengineering:conveyor_basic");
-            add("immersiveengineering:conveyor_covered");
-            add("immersiveengineering:conveyor_dropper");
-            add("immersiveengineering:conveyor_droppercovered");
-            add("immersiveengineering:conveyor_extract");
-            add("immersiveengineering:conveyor_extractcovered");
-            add("immersiveengineering:conveyor_redstone");
-            add("immersiveengineering:conveyor_splitter");
-            add("immersiveengineering:conveyor_splittercovered");
-            add("immersiveengineering:conveyor_vertical");
-            add("immersiveengineering:conveyor_verticalcovered");
-        }});
+        SAFE_BLOCKS.set(new ArrayList<>());
         SAFE_BLOCKS_BELOW.set(new ArrayList<>());
         SAFE_BLOCKS_ABOVE.set(new ArrayList<>());
         SAFE_BLOCKS_ENTITY_LIMIT.set(250);
