@@ -4,6 +4,7 @@ import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.event.entity.player.*;
+import net.neoforged.neoforge.event.tick.LevelTickEvent;
 import net.neoforged.neoforge.event.tick.ServerTickEvent;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -22,6 +23,14 @@ public class ServerGameEventHandler {
     @SubscribeEvent
     public static void onServerTick(ServerTickEvent.Post event) {
         EventHandlerProxy.onServerTick(event);
+    }
+
+    /**
+     * 世界Tick事件
+     */
+    @SubscribeEvent
+    public static void onWorldTick(LevelTickEvent.Post event) {
+        EventHandlerProxy.onWorldTick(event);
     }
 
     /**

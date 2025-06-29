@@ -4,6 +4,8 @@ import net.minecraft.core.component.DataComponentMap;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.protocol.game.ClientboundSetPassengersPacket;
+import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.SimpleContainer;
@@ -14,6 +16,7 @@ import net.minecraft.world.item.component.CustomData;
 import net.neoforged.bus.api.ICancellableEvent;
 import net.neoforged.neoforge.entity.PartEntity;
 import net.neoforged.neoforge.event.entity.player.*;
+import net.neoforged.neoforge.event.tick.LevelTickEvent;
 import net.neoforged.neoforge.event.tick.ServerTickEvent;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -21,6 +24,7 @@ import xin.vanilla.aotake.AotakeSweep;
 import xin.vanilla.aotake.config.CommonConfig;
 import xin.vanilla.aotake.config.CustomConfig;
 import xin.vanilla.aotake.config.ServerConfig;
+import xin.vanilla.aotake.data.ConcurrentShuffleList;
 import xin.vanilla.aotake.data.Coordinate;
 import xin.vanilla.aotake.data.KeyValue;
 import xin.vanilla.aotake.data.player.PlayerDataAttachment;
@@ -28,11 +32,13 @@ import xin.vanilla.aotake.data.player.PlayerSweepData;
 import xin.vanilla.aotake.data.world.WorldTrashData;
 import xin.vanilla.aotake.enums.EnumI18nType;
 import xin.vanilla.aotake.enums.EnumSelfCleanMode;
+import xin.vanilla.aotake.util.AotakeScheduler;
 import xin.vanilla.aotake.util.AotakeUtils;
-import xin.vanilla.aotake.util.CollectionUtils;
 import xin.vanilla.aotake.util.Component;
+import xin.vanilla.aotake.util.EntitySweeper;
 
 import java.util.*;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -45,6 +51,7 @@ public class EventHandlerProxy {
     private static long lastReadConfTime = System.currentTimeMillis();
     private static long lastChunkCheckTime = System.currentTimeMillis();
     private static Queue<Integer> warnQueue;
+    private static final AtomicBoolean chunkSweepLock = new AtomicBoolean(false);
 
     public static void resetWarnQueue() {
         List<Integer> list = new ArrayList<>(CommonConfig.SWEEP_WARNING_SECOND.get());
@@ -55,104 +62,131 @@ public class EventHandlerProxy {
 
     public static void onServerTick(ServerTickEvent.Post event) {
         if (AotakeSweep.isDisable()) return;
-        if (event.getServer() != null
-                && event.getServer().isRunning()
+        MinecraftServer server = event.getServer();
+        if (server == null || !server.isRunning()) return;
+
+        long now = System.currentTimeMillis();
+        long swept = now - lastSweepTime;
+        long countdown = ServerConfig.SWEEP_INTERVAL.get() - swept;
+
+        // 扫地前提示
+        if (warnQueue == null) resetWarnQueue();
+        if (warnQueue.peek() != null && warnQueue.peek() < 0) warnQueue.add(warnQueue.poll());
+        if (warnQueue.peek() != null && countdown / 1000 == warnQueue.peek()) {
+            // 将头部元素放至尾部
+            int sec = warnQueue.poll();
+            warnQueue.add(sec);
+
+            if (sec > 0) {
+                server
+                        .getPlayerList()
+                        .getPlayers()
+                        .forEach(player -> AotakeUtils.sendActionBarMessage(player
+                                , AotakeUtils.getWarningMessage(sec, AotakeUtils.getPlayerLanguage(player), null)
+                        ));
+            }
+        }
+
+        // 扫地
+        if (ServerConfig.SWEEP_INTERVAL.get() <= swept) {
+            lastSweepTime = now;
+            new Thread(AotakeUtils::sweep).start();
+        }
+
+        // 自清洁
+        if (ServerConfig.SELF_CLEAN_INTERVAL.get() <= now - lastSelfCleanTime) {
+            lastSelfCleanTime = now;
+            WorldTrashData worldTrashData = WorldTrashData.get();
+            // 清空
+            if (ServerConfig.SELF_CLEAN_MODE.get().contains(EnumSelfCleanMode.SCHEDULED_CLEAR.name())) {
+                worldTrashData.getDropList().clear();
+                worldTrashData.getInventoryList().forEach(SimpleContainer::clearContent);
+            }
+            // 随机删除
+            else if (ServerConfig.SELF_CLEAN_MODE.get().contains(EnumSelfCleanMode.SCHEDULED_DELETE.name())) {
+                if (AotakeSweep.RANDOM.nextBoolean()) {
+                    ConcurrentShuffleList<KeyValue<Coordinate, ItemStack>> dropList = worldTrashData.getDropList();
+                    dropList.removeRandom();
+                } else {
+                    List<SimpleContainer> inventories = worldTrashData.getInventoryList();
+                    SimpleContainer inventory = inventories.get(AotakeSweep.RANDOM.nextInt(inventories.size()));
+                    IntStream.range(0, inventory.getContainerSize())
+                            .filter(i -> !inventory.getItem(i).isEmpty())
+                            .findAny()
+                            .ifPresent(i -> inventory.setItem(i, ItemStack.EMPTY));
+                }
+            }
+        }
+
+        // 检查区块实体数量
+        if (ServerConfig.CHUNK_CHECK_INTERVAL.get() > 0
+                && !chunkSweepLock.get()
+                && ServerConfig.CHUNK_CHECK_INTERVAL.get() <= now - lastChunkCheckTime
         ) {
-            long swept = System.currentTimeMillis() - lastSweepTime;
-            long countdown = ServerConfig.SWEEP_INTERVAL.get() - swept;
-
-            // 扫地前提示
-            if (warnQueue == null) resetWarnQueue();
-            if (warnQueue.peek() != null && warnQueue.peek() < 0) warnQueue.add(warnQueue.poll());
-            if (warnQueue.peek() != null && countdown / 1000 == warnQueue.peek()) {
-                // 将头部元素放至尾部
-                int sec = warnQueue.poll();
-                warnQueue.add(sec);
-
-                if (sec > 0) {
-                    event.getServer()
-                            .getPlayerList()
-                            .getPlayers()
-                            .forEach(player -> AotakeUtils.sendActionBarMessage(player
-                                    , AotakeUtils.getWarningMessage(sec, AotakeUtils.getPlayerLanguage(player), null)
-                            ));
-                }
-            }
-
-            // 扫地
-            if (ServerConfig.SWEEP_INTERVAL.get() <= swept) {
-                lastSweepTime = System.currentTimeMillis();
-                new Thread(AotakeUtils::sweep).start();
-            }
-
-            // 自清洁
-            if (ServerConfig.SELF_CLEAN_INTERVAL.get() <= System.currentTimeMillis() - lastSelfCleanTime) {
-                lastSelfCleanTime = System.currentTimeMillis();
-                WorldTrashData worldTrashData = WorldTrashData.get();
-                // 清空
-                if (ServerConfig.SELF_CLEAN_MODE.get().contains(EnumSelfCleanMode.SCHEDULED_CLEAR.name())) {
-                    worldTrashData.getDropList().clear();
-                    worldTrashData.getInventoryList().forEach(SimpleContainer::clearContent);
-                }
-                // 随机删除
-                else if (ServerConfig.SELF_CLEAN_MODE.get().contains(EnumSelfCleanMode.SCHEDULED_DELETE.name())) {
-                    if (AotakeSweep.RANDOM.nextBoolean()) {
-                        List<KeyValue<Coordinate, ItemStack>> dropList = worldTrashData.getDropList();
-                        dropList.remove(AotakeSweep.RANDOM.nextInt(dropList.size()));
-                    } else {
-                        List<SimpleContainer> inventories = worldTrashData.getInventoryList();
-                        SimpleContainer inventory = inventories.get(AotakeSweep.RANDOM.nextInt(inventories.size()));
-                        IntStream.range(0, inventory.getContainerSize())
-                                .filter(i -> !inventory.getItem(i).isEmpty())
-                                .findAny()
-                                .ifPresent(i -> inventory.setItem(i, ItemStack.EMPTY));
-                    }
-                }
-            }
-
-            // 检查区块实体数量
-            if (ServerConfig.CHUNK_CHECK_INTERVAL.get() > 0
-                    && ServerConfig.CHUNK_CHECK_INTERVAL.get() <= System.currentTimeMillis() - lastChunkCheckTime
-            ) {
-                lastChunkCheckTime = System.currentTimeMillis();
-                List<Map.Entry<String, Long>> entryList = AotakeUtils.getAllEntitiesByFilter(null).stream()
+            chunkSweepLock.set(true);
+            lastChunkCheckTime = now;
+            try {
+                List<Map.Entry<String, List<Entity>>> overcrowdedChunks = AotakeUtils.getAllEntitiesByFilter(null).stream()
                         .collect(Collectors.groupingBy(entity -> {
                             // 获取区块维度和坐标
                             String dimension = entity.level() != null
                                     ? entity.level().dimension().location().toString()
                                     : "unknown";
-                            int chunkX = entity.blockPosition().getX() / 16;
-                            int chunkY = entity.blockPosition().getY() / 16;
+                            int chunkX = entity.blockPosition().getX() >> 4;
+                            int chunkY = entity.blockPosition().getY() >> 4;
                             return "<" + dimension + ">:" + chunkX + "," + chunkY;
-                        }, Collectors.counting()))
+                        }))
                         .entrySet().stream()
-                        .filter(entry -> entry.getValue() > ServerConfig.CHUNK_CHECK_LIMIT.get())
+                        .filter(entry -> entry.getValue().size() > ServerConfig.CHUNK_CHECK_LIMIT.get())
                         .toList();
-                if (CollectionUtils.isNotNullOrEmpty(entryList)) {
-                    LOGGER.info("Chunk check info: {}", entryList.stream().map(entry -> entry.getKey() + " has " + entry.getValue()).collect(Collectors.joining("\n")));
-                    for (ServerPlayer player : event.getServer().getPlayerList().getPlayers()) {
-                        AotakeUtils.sendActionBarMessage(player, Component.translatable(EnumI18nType.MESSAGE, "chunk_check_msg", entryList.get(0).getKey()));
-                    }
-                    new Thread(() -> {
-                        try {
-                            Thread.sleep(1000);
-                        } catch (InterruptedException ignored) {
-                        }
-                        AotakeUtils.sweep();
-                    }).start();
-                }
-            }
 
-            // 保存通用配置
-            if (System.currentTimeMillis() - lastSaveConfTime >= 10 * 1000) {
-                lastSaveConfTime = System.currentTimeMillis();
-                CustomConfig.saveCustomConfig();
+                if (!overcrowdedChunks.isEmpty()) {
+                    LOGGER.info("Chunk check info:\n{}", overcrowdedChunks.stream()
+                            .map(entry -> entry.getKey() + " has " + entry.getValue().size())
+                            .collect(Collectors.joining("\n")));
+
+                    for (ServerPlayer player : server.getPlayerList().getPlayers()) {
+                        AotakeUtils.sendActionBarMessage(player,
+                                Component.translatable(EnumI18nType.MESSAGE, "chunk_check_msg", overcrowdedChunks.get(0).getKey()));
+                    }
+
+                    AotakeScheduler.schedule(server.overworld(), 25, () -> {
+                        try {
+                            List<Entity> entities = overcrowdedChunks.stream()
+                                    .flatMap(entry -> entry.getValue().stream())
+                                    .collect(Collectors.toList());
+                            AotakeUtils.sweep(null, entities);
+                        } catch (Exception e) {
+                            LOGGER.error("Failed to sweep entities", e);
+                        } finally {
+                            chunkSweepLock.set(false);
+                        }
+                    });
+                } else {
+                    chunkSweepLock.set(false);
+                }
+            } catch (Exception e) {
+                chunkSweepLock.set(false);
+                LOGGER.error("Failed to check chunk entities", e);
             }
-            // 读取通用配置
-            else if (System.currentTimeMillis() - lastReadConfTime >= 2 * 60 * 1000) {
-                lastReadConfTime = System.currentTimeMillis();
-                CustomConfig.loadCustomConfig(true);
-            }
+        }
+
+        // 保存通用配置
+        if (now - lastSaveConfTime >= 10 * 1000) {
+            lastSaveConfTime = now;
+            CustomConfig.saveCustomConfig();
+        }
+        // 读取通用配置
+        else if (now - lastReadConfTime >= 2 * 60 * 1000) {
+            lastReadConfTime = now;
+            CustomConfig.loadCustomConfig(true);
+        }
+
+    }
+
+    public static void onWorldTick(LevelTickEvent.Post event) {
+        if (!event.getLevel().isClientSide()) {
+            EntitySweeper.flushPendingRemovals((ServerLevel) event.getLevel());
         }
     }
 
