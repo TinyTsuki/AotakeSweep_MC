@@ -26,6 +26,8 @@ import xin.vanilla.aotake.config.ServerConfig;
 import xin.vanilla.aotake.event.ClientModEventHandler;
 import xin.vanilla.aotake.network.ModNetworkHandler;
 import xin.vanilla.aotake.network.SplitPacket;
+import xin.vanilla.aotake.util.AotakeScheduler;
+import xin.vanilla.aotake.util.EntitySweeper;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -73,6 +75,9 @@ public class AotakeSweep {
     @Setter
     private static boolean disable = false;
 
+    @Getter
+    private static final EntitySweeper entitySweeper = new EntitySweeper();
+
     // public static final Item JUNK_BALL = new JunkBall();
 
     public AotakeSweep(FMLJavaModLoadingContext context) {
@@ -87,6 +92,8 @@ public class AotakeSweep {
 
         // 注册当前实例到事件总线
         MinecraftForge.EVENT_BUS.register(this);
+        // 注册调度器
+        MinecraftForge.EVENT_BUS.register(AotakeScheduler.class);
 
         // 注册配置
         context.registerConfig(ModConfig.Type.COMMON, CommonConfig.COMMON_CONFIG);

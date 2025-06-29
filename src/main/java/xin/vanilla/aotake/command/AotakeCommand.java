@@ -314,7 +314,7 @@ public class AotakeCommand {
                         } else {
                             result.plusEntityCount();
                         }
-                        AotakeUtils.removeEntity((ServerLevel) entity.level, entity, false);
+                        AotakeUtils.removeEntity(entity, false);
                     });
             AotakeSweep.getServerInstance()
                     .getPlayerList()
@@ -403,7 +403,7 @@ public class AotakeCommand {
             notifyHelp(context);
             boolean originalPos = getBooleanDefault(context, "originalPos", false);
             ServerPlayer player = context.getSource().getPlayerOrException();
-            List<KeyValue<Coordinate, ItemStack>> items = new ArrayList<>(WorldTrashData.get().getDropList());
+            List<KeyValue<Coordinate, ItemStack>> items = WorldTrashData.get().getDropList().snapshot();
             WorldTrashData.get().getDropList().clear();
             items.forEach(kv -> {
                 if (!kv.getValue().isEmpty()) {
