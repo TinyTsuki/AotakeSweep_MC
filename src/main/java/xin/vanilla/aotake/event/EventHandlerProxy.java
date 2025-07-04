@@ -134,8 +134,8 @@ public class EventHandlerProxy {
                                     ? entity.level().dimension().location().toString()
                                     : "unknown";
                             int chunkX = entity.blockPosition().getX() >> 4;
-                            int chunkY = entity.blockPosition().getY() >> 4;
-                            return "<" + dimension + ">:" + chunkX + "," + chunkY;
+                            int chunkZ = entity.blockPosition().getZ() >> 4;
+                            return "<" + dimension + ">:" + chunkX + "," + chunkZ;
                         }))
                         .entrySet().stream()
                         .filter(entry -> entry.getValue().size() > ServerConfig.CHUNK_CHECK_LIMIT.get())
