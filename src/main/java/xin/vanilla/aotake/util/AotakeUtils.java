@@ -475,8 +475,8 @@ public class AotakeUtils {
                 .collect(Collectors.groupingBy(entity -> {
                     String dimension = entity.level().dimension().location().toString();
                     int chunkX = entity.blockPosition().getX() / 16;
-                    int chunkY = entity.blockPosition().getY() / 16;
-                    return dimension + "," + chunkX + "," + chunkY;
+                    int chunkZ = entity.blockPosition().getZ() / 16;
+                    return dimension + "," + chunkX + "," + chunkZ;
                 }, Collectors.toList()))
                 .entrySet().stream()
                 .filter(entry -> entry.getValue().size() > CommonConfig.SAFE_BLOCKS_ENTITY_LIMIT.get())
