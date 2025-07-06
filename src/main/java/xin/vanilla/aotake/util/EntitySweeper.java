@@ -90,14 +90,15 @@ public class EntitySweeper {
                 itemToRecycle = item.copy();
                 result.setItemCount(item.getCount());
             }
-            result.setEntityCount(1);
             // 延迟移除
             entitiesToRemove.add(entity);
         }
         // 处理其他实体
-        else if (!ServerConfig.CATCH_ITEM.get().isEmpty()) {
-            result.setEntityCount(1);
-            if (ServerConfig.CATCH_ENTITY.get().contains(typeKey)) {
+        else {
+            // 回收实体
+            if (!ServerConfig.CATCH_ITEM.get().isEmpty()
+                    && ServerConfig.CATCH_ENTITY.get().contains(typeKey)
+            ) {
                 String randomItem = CollectionUtils.getRandomElement(ServerConfig.CATCH_ITEM.get());
                 Item it = AotakeUtils.deserializeItem(randomItem);
                 if (it != null) {
@@ -111,15 +112,9 @@ public class EntitySweeper {
 
                     result.setRecycledEntityCount(1);
                 }
-                entitiesToRemove.add(entity);
-            } else {
-                entitiesToRemove.add(entity);
             }
-        }
-
-        // 若为非物品实体且不需要回收，也标记统计
-        if (!(entity instanceof ItemEntity) && itemToRecycle == null) {
             result.setEntityCount(1);
+            entitiesToRemove.add(entity);
         }
 
         // 记录清理历史
