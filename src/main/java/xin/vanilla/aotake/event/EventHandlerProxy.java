@@ -1,5 +1,7 @@
 package xin.vanilla.aotake.event;
 
+import lombok.Getter;
+import lombok.Setter;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.protocol.game.ClientboundSetPassengersPacket;
 import net.minecraft.server.MinecraftServer;
@@ -21,7 +23,6 @@ import net.minecraftforge.eventbus.api.Event;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import xin.vanilla.aotake.AotakeSweep;
-import xin.vanilla.aotake.config.CommonConfig;
 import xin.vanilla.aotake.config.CustomConfig;
 import xin.vanilla.aotake.config.ServerConfig;
 import xin.vanilla.aotake.data.ConcurrentShuffleList;
@@ -35,7 +36,8 @@ import xin.vanilla.aotake.enums.EnumI18nType;
 import xin.vanilla.aotake.enums.EnumSelfCleanMode;
 import xin.vanilla.aotake.util.*;
 
-import java.util.*;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -43,20 +45,15 @@ import java.util.stream.IntStream;
 public class EventHandlerProxy {
     private static final Logger LOGGER = LogManager.getLogger();
 
-    private static long lastSweepTime = System.currentTimeMillis();
+    @Getter
+    @Setter
+    private static long nextSweepTime = System.currentTimeMillis() - 1;
     private static long lastSelfCleanTime = System.currentTimeMillis();
     private static long lastSaveConfTime = System.currentTimeMillis();
     private static long lastReadConfTime = System.currentTimeMillis();
     private static long lastChunkCheckTime = System.currentTimeMillis();
-    private static Queue<Integer> warnQueue;
     private static final AtomicBoolean chunkSweepLock = new AtomicBoolean(false);
 
-    public static void resetWarnQueue() {
-        List<Integer> list = new ArrayList<>(CommonConfig.SWEEP_WARNING_SECOND.get());
-        // 从大到小排序
-        list.sort((a, b) -> Integer.compare(b, a));
-        warnQueue = new ArrayDeque<>(list);
-    }
 
     public static void onServerTick(TickEvent.ServerTickEvent event) {
         if (event.phase != TickEvent.Phase.END || AotakeSweep.isDisable()) return;
@@ -64,30 +61,22 @@ public class EventHandlerProxy {
         if (server == null || !server.isRunning()) return;
 
         long now = System.currentTimeMillis();
-        long swept = now - lastSweepTime;
-        long countdown = ServerConfig.SWEEP_INTERVAL.get() - swept;
+        long countdown = nextSweepTime - now;
 
         // 扫地前提示
-        if (warnQueue == null) resetWarnQueue();
-        if (warnQueue.peek() != null && warnQueue.peek() < 0) warnQueue.add(warnQueue.poll());
-        if (warnQueue.peek() != null && countdown / 1000 == warnQueue.peek()) {
-            // 将头部元素放至尾部
-            int sec = warnQueue.poll();
-            warnQueue.add(sec);
-
-            if (sec > 0) {
-                AotakeSweep.getServerInstance()
-                        .getPlayerList()
-                        .getPlayers()
-                        .forEach(player -> AotakeUtils.sendActionBarMessage(player
-                                , AotakeUtils.getWarningMessage(sec, AotakeUtils.getPlayerLanguage(player), null)
-                        ));
-            }
+        String warnKey = String.valueOf(countdown / 1000);
+        if (AotakeUtils.hasWarning(warnKey)) {
+            AotakeSweep.getServerInstance()
+                    .getPlayerList()
+                    .getPlayers()
+                    .forEach(player -> AotakeUtils.sendActionBarMessage(player
+                            , AotakeUtils.getWarningMessage(warnKey, AotakeUtils.getPlayerLanguage(player), null)
+                    ));
         }
 
         // 扫地
-        if (ServerConfig.SWEEP_INTERVAL.get() <= swept) {
-            lastSweepTime = now;
+        if (countdown <= 0) {
+            nextSweepTime = now + ServerConfig.SWEEP_INTERVAL.get();
             new Thread(AotakeUtils::sweep).start();
         }
 
