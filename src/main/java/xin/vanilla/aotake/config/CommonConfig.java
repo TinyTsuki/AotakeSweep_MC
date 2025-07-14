@@ -1,9 +1,12 @@
 package xin.vanilla.aotake.config;
 
+import com.google.gson.reflect.TypeToken;
 import net.neoforged.neoforge.common.ModConfigSpec;
 import xin.vanilla.aotake.AotakeSweep;
+import xin.vanilla.aotake.util.JsonUtils;
 
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 
 public class CommonConfig {
@@ -28,14 +31,9 @@ public class CommonConfig {
     public static final ModConfigSpec.BooleanValue SWEEP_WHEN_NO_PLAYER;
 
     /**
-     * 打扫前提示序列
-     */
-    public static final ModConfigSpec.ConfigValue<List<? extends Integer>> SWEEP_WARNING_SECOND;
-
-    /**
      * 打扫前提示内容
      */
-    public static final ModConfigSpec.ConfigValue<List<? extends String>> SWEEP_WARNING_CONTENT;
+    public static final ModConfigSpec.ConfigValue<String> SWEEP_WARNING_CONTENT;
 
     /**
      * 实体处于该方块中时不会被清理
@@ -112,6 +110,11 @@ public class CommonConfig {
      */
     public static final ModConfigSpec.ConfigValue<String> COMMAND_CLEAR_DROP;
 
+    /**
+     * 延迟本次清理
+     */
+    public static final ModConfigSpec.ConfigValue<String> COMMAND_DELAY_SWEEP;
+
     // endregion 自定义指令
 
 
@@ -162,6 +165,11 @@ public class CommonConfig {
      */
     public static final ModConfigSpec.BooleanValue CONCISE_CLEAR_DROP;
 
+    /**
+     * 延迟本次清理
+     */
+    public static final ModConfigSpec.BooleanValue CONCISE_DELAY_SWEEP;
+
     // endregion 简化指令
 
 
@@ -190,47 +198,25 @@ public class CommonConfig {
                             , "服务器没人时是否启用自动打扫。")
                     .define("sweepWhenNoPlayer", false);
 
-            // 打扫前的提示
-            SWEEP_WARNING_SECOND = SERVER_BUILDER
-                    .comment("A warning sequence before sweeping."
-                            , "n > 0: warning n seconds before sweeping; "
-                            , "n = 0: warning when sweeping is successful; "
-                            , "n = -1: warning when sweeping fails."
-                            , "提示序列。"
-                            , "n>0：打扫前n秒的提示；"
-                            , "n=0：打扫成功时的提示；"
-                            , "n=-1：打扫失败时的提示。")
-                    .defineListAllowEmpty("sweepWarningSecond", new ArrayList<>() {{
-                        add(-1);
-                        add(0);
-                        add(1);
-                        add(2);
-                        add(3);
-                        add(4);
-                        add(5);
-                        add(10);
-                        add(30);
-                        add(60);
-                    }}, o -> o instanceof Integer);
-
             // 打扫前提示内容
             SWEEP_WARNING_CONTENT = SERVER_BUILDER
-                    .comment("A warning sequence before sweeping, used together with `sweepWarningSecond`. If left empty, the built-in default message will be used."
-                            , "Optional variables when n=0: [entityCount], [itemCount], [recycledItemCount], [recycledEntityCount]"
-                            , "提示内容，配合`sweepWarningSecond`使用，留空将使用内置提示。"
-                            , "n=0时可选变量：[entityCount], [itemCount], [recycledItemCount], [recycledEntityCount]")
-                    .defineListAllowEmpty("sweepWarningContent", new ArrayList<>() {{
-                        add("§r§e香草酱什么也没吃到，失落地离开了。");
-                        add("§r§e香草酱吃掉了[itemCount]个物品与[entityCount]个实体，并满意地离开了。");
-                        add("§r§e饥肠辘辘的香草酱将会在§r§e%s§r§e秒后到来！");
-                        add("§r§e饥肠辘辘的香草酱将会在§r§e%s§r§e秒后到来！");
-                        add("§r§e饥肠辘辘的香草酱将会在§r§e%s§r§e秒后到来！");
-                        add("§r§e饥肠辘辘的香草酱将会在§r§e%s§r§e秒后到来！");
-                        add("§r§e饥肠辘辘的香草酱将会在§r§e%s§r§e秒后到来！");
-                        add("§r§e饥肠辘辘的香草酱将会在§r§e%s§r§e秒后到来。");
-                        add("§r§e饥肠辘辘的香草酱将会在§r§e%s§r§e秒后到来。");
-                        add("§r§e饥肠辘辘的香草酱将会在§r§e%s§r§e秒后到来。");
-                    }}, o -> o instanceof String);
+                    .comment("A warning sequence before sweeping. If left empty, the built-in default message will be used."
+                            , "Optional variables when 'success': [entityCount], [itemCount], [recycledItemCount], [recycledEntityCount]"
+                            , "提示内容，留空将使用内置提示。"
+                            , "success时可选变量：[entityCount], [itemCount], [recycledItemCount], [recycledEntityCount]")
+                    .define("sweepWarningContent", JsonUtils.GSON.toJson(new LinkedHashMap<String, String>() {{
+                        put("fail", "§r§e香草酱什么也没吃到，失落地离开了。");
+                        put("success", "§r§e香草酱吃掉了[itemCount]个物品与[entityCount]个实体，并满意地离开了。");
+                        put("1", "§r§e饥肠辘辘的香草酱将会在§r§e%s§r§e秒后到来！");
+                        put("2", "§r§e饥肠辘辘的香草酱将会在§r§e%s§r§e秒后到来！");
+                        put("3", "§r§e饥肠辘辘的香草酱将会在§r§e%s§r§e秒后到来！");
+                        put("4", "§r§e饥肠辘辘的香草酱将会在§r§e%s§r§e秒后到来！");
+                        put("5", "§r§e饥肠辘辘的香草酱将会在§r§e%s§r§e秒后到来！");
+                        put("10", "§r§e饥肠辘辘的香草酱将会在§r§e%s§r§e秒后到来。");
+                        put("30", "§r§e饥肠辘辘的香草酱将会在§r§e%s§r§e秒后到来。");
+                        put("60", "§r§e饥肠辘辘的香草酱将会在§r§e%s§r§e秒后到来。");
+                    }}, new TypeToken<LinkedHashMap<String, String>>() {
+                    }.getType()));
 
             // 实体处于该方块中时不会被清理
             SAFE_BLOCKS = SERVER_BUILDER
@@ -333,6 +319,12 @@ public class CommonConfig {
                             , "清除掉落物的指令。")
                     .define("commandClearDrop", "killitem");
 
+            // 延迟本次清理
+            COMMAND_DELAY_SWEEP = SERVER_BUILDER
+                    .comment("The command to delay the current sweep."
+                            , "延迟本次清理的指令。")
+                    .define("commandDelaySweep", "delay");
+
             SERVER_BUILDER.pop();
         }
 
@@ -386,6 +378,11 @@ public class CommonConfig {
                             "是否启用无前缀版本的 '清除掉落物' 指令。")
                     .define("conciseClearDrop", true);
 
+            CONCISE_DELAY_SWEEP = SERVER_BUILDER
+                    .comment("Enable or disable the concise version of the 'Delay sweep' command.",
+                            "是否启用无前缀版本的 '延迟本次清理' 指令。")
+                    .define("conciseDelaySweep", false);
+
             SERVER_BUILDER.pop();
 
         }
@@ -401,30 +398,19 @@ public class CommonConfig {
         DUSTBIN_PAGE_LIMIT.set(1);
         CACHE_LIMIT.set(5000);
         SWEEP_WHEN_NO_PLAYER.set(false);
-        SWEEP_WARNING_SECOND.set(new ArrayList<>() {{
-            add(-1);
-            add(0);
-            add(1);
-            add(2);
-            add(3);
-            add(4);
-            add(5);
-            add(10);
-            add(30);
-            add(60);
-        }});
-        SWEEP_WARNING_CONTENT.set(new ArrayList<>() {{
-            add("§r§e香草酱什么也没吃到，失落地离开了。");
-            add("§r§e香草酱吃掉了[itemCount]个物品与[entityCount]个实体，并满意地离开了。");
-            add("§r§e饥肠辘辘的香草酱将会在%s秒后到来！");
-            add("§r§e饥肠辘辘的香草酱将会在%s秒后到来！");
-            add("§r§e饥肠辘辘的香草酱将会在%s秒后到来！");
-            add("§r§e饥肠辘辘的香草酱将会在%s秒后到来！");
-            add("§r§e饥肠辘辘的香草酱将会在%s秒后到来！");
-            add("§r§e饥肠辘辘的香草酱将会在%s秒后到来。");
-            add("§r§e饥肠辘辘的香草酱将会在%s秒后到来。");
-            add("§r§e饥肠辘辘的香草酱将会在%s秒后到来。");
-        }});
+        SWEEP_WARNING_CONTENT.set(JsonUtils.GSON.toJson(new LinkedHashMap<String, String>() {{
+            put("fail", "§r§e香草酱什么也没吃到，失落地离开了。");
+            put("success", "§r§e香草酱吃掉了[itemCount]个物品与[entityCount]个实体，并满意地离开了。");
+            put("1", "§r§e饥肠辘辘的香草酱将会在§r§e%s§r§e秒后到来！");
+            put("2", "§r§e饥肠辘辘的香草酱将会在§r§e%s§r§e秒后到来！");
+            put("3", "§r§e饥肠辘辘的香草酱将会在§r§e%s§r§e秒后到来！");
+            put("4", "§r§e饥肠辘辘的香草酱将会在§r§e%s§r§e秒后到来！");
+            put("5", "§r§e饥肠辘辘的香草酱将会在§r§e%s§r§e秒后到来！");
+            put("10", "§r§e饥肠辘辘的香草酱将会在§r§e%s§r§e秒后到来。");
+            put("30", "§r§e饥肠辘辘的香草酱将会在§r§e%s§r§e秒后到来。");
+            put("60", "§r§e饥肠辘辘的香草酱将会在§r§e%s§r§e秒后到来。");
+        }}, new TypeToken<LinkedHashMap<String, String>>() {
+        }.getType()));
         SAFE_BLOCKS.set(new ArrayList<>());
         SAFE_BLOCKS_BELOW.set(new ArrayList<>());
         SAFE_BLOCKS_ABOVE.set(new ArrayList<>());
@@ -440,6 +426,7 @@ public class CommonConfig {
         COMMAND_CACHE_DROP.set("dropcache");
         COMMAND_SWEEP.set("sweep");
         COMMAND_CLEAR_DROP.set("killitem");
+        COMMAND_DELAY_SWEEP.set("delay");
 
         CONCISE_LANGUAGE.set(false);
         CONCISE_VIRTUAL_OP.set(false);
@@ -450,6 +437,7 @@ public class CommonConfig {
         CONCISE_CACHE_DROP.set(false);
         CONCISE_SWEEP.set(false);
         CONCISE_CLEAR_DROP.set(true);
+        CONCISE_DELAY_SWEEP.set(false);
 
         COMMON_CONFIG.save();
     }
@@ -457,30 +445,19 @@ public class CommonConfig {
     public static void resetConfigWithMode1() {
         resetConfig();
 
-        SWEEP_WARNING_SECOND.set(new ArrayList<>() {{
-            add(-1);
-            add(0);
-            add(1);
-            add(2);
-            add(3);
-            add(4);
-            add(5);
-            add(10);
-            add(30);
-            add(60);
-        }});
-        SWEEP_WARNING_CONTENT.set(new ArrayList<>() {{
-            add("§r§e世界很干净。");
-            add("§r§e清理了[itemCount]个物品与[entityCount]个实体。");
-            add("§r§e清理将会在§r§e%s§r§e秒后开始！");
-            add("§r§e清理将会在§r§e%s§r§e秒后开始！");
-            add("§r§e清理将会在§r§e%s§r§e秒后开始！");
-            add("§r§e清理将会在§r§e%s§r§e秒后开始！");
-            add("§r§e清理将会在§r§e%s§r§e秒后开始！");
-            add("§r§e清理将会在§r§e%s§r§e秒后开始。");
-            add("§r§e清理将会在§r§e%s§r§e秒后开始。");
-            add("§r§e清理将会在§r§e%s§r§e秒后开始。");
-        }});
+        SWEEP_WARNING_CONTENT.set(JsonUtils.GSON.toJson(new LinkedHashMap<String, String>() {{
+            put("fail", "§r§e世界很干净。");
+            put("success", "§r§e清理了[itemCount]个物品与[entityCount]个实体。");
+            put("1", "§r§e清理将会在§r§e%s§r§e秒后开始！");
+            put("2", "§r§e清理将会在§r§e%s§r§e秒后开始！");
+            put("3", "§r§e清理将会在§r§e%s§r§e秒后开始！");
+            put("4", "§r§e清理将会在§r§e%s§r§e秒后开始！");
+            put("5", "§r§e清理将会在§r§e%s§r§e秒后开始！");
+            put("10", "§r§e清理将会在§r§e%s§r§e秒后开始。");
+            put("30", "§r§e清理将会在§r§e%s§r§e秒后开始。");
+            put("60", "§r§e清理将会在§r§e%s§r§e秒后开始。");
+        }}, new TypeToken<LinkedHashMap<String, String>>() {
+        }.getType()));
 
         COMMON_CONFIG.save();
     }
@@ -488,30 +465,19 @@ public class CommonConfig {
     public static void resetConfigWithMode2() {
         resetConfig();
 
-        SWEEP_WARNING_SECOND.set(new ArrayList<>() {{
-            add(-1);
-            add(0);
-            add(1);
-            add(2);
-            add(3);
-            add(4);
-            add(5);
-            add(10);
-            add(30);
-            add(60);
-        }});
-        SWEEP_WARNING_CONTENT.set(new ArrayList<>() {{
-            add("§r§eCleaned up nothing.");
-            add("§r§eCleaned up [itemCount] items and [entityCount] entities.");
-            add("§r§eThe cleanup will start in §r§e%s§r§e seconds!");
-            add("§r§eThe cleanup will start in §r§e%s§r§e seconds!");
-            add("§r§eThe cleanup will start in §r§e%s§r§e seconds!");
-            add("§r§eThe cleanup will start in §r§e%s§r§e seconds!");
-            add("§r§eThe cleanup will start in §r§e%s§r§e seconds!");
-            add("§r§eThe cleanup will start in §r§e%s§r§e seconds.");
-            add("§r§eThe cleanup will start in §r§e%s§r§e seconds.");
-            add("§r§eThe cleanup will start in §r§e%s§r§e seconds.");
-        }});
+        SWEEP_WARNING_CONTENT.set(JsonUtils.GSON.toJson(new LinkedHashMap<String, String>() {{
+            put("fail", "§r§eCleaned up nothing.");
+            put("success", "§r§eCleaned up [itemCount] items and [entityCount] entities.");
+            put("1", "§r§eThe cleanup will start in §r§e%s§r§e seconds!");
+            put("2", "§r§eThe cleanup will start in §r§e%s§r§e seconds!");
+            put("3", "§r§eThe cleanup will start in §r§e%s§r§e seconds!");
+            put("4", "§r§eThe cleanup will start in §r§e%s§r§e seconds!");
+            put("5", "§r§eThe cleanup will start in §r§e%s§r§e seconds!");
+            put("10", "§r§eThe cleanup will start in §r§e%s§r§e seconds.");
+            put("30", "§r§eThe cleanup will start in §r§e%s§r§e seconds.");
+            put("60", "§r§eThe cleanup will start in §r§e%s§r§e seconds.");
+        }}, new TypeToken<LinkedHashMap<String, String>>() {
+        }.getType()));
 
         COMMON_CONFIG.save();
     }
