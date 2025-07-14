@@ -264,13 +264,22 @@ public class AotakeCommand {
         Command<CommandSourceStack> openDustbinCommand = context -> {
             if (checkModStatus(context)) return 0;
             notifyHelp(context);
-            ServerPlayer player = context.getSource().getPlayerOrException();
+            List<ServerPlayer> targetList = new ArrayList<>();
+            try {
+                targetList.addAll(EntityArgument.getPlayers(context, "players"));
+            } catch (IllegalArgumentException ignored) {
+                targetList.add(context.getSource().getPlayerOrException());
+            }
             int page = getIntDefault(context, "page", 1);
             if (page > CommonConfig.DUSTBIN_PAGE_LIMIT.get())
                 throw CommandSyntaxException.BUILT_IN_EXCEPTIONS.integerTooHigh().create(page, CommonConfig.DUSTBIN_PAGE_LIMIT.get());
             else if (page < 1)
                 throw CommandSyntaxException.BUILT_IN_EXCEPTIONS.integerTooLow().create(page, 1);
-            return dustbin(player, page);
+
+            for (ServerPlayer player : targetList) {
+                dustbin(player, page);
+            }
+            return 1;
         };
         Command<CommandSourceStack> sweepCommand = context -> {
             if (checkModStatus(context)) return 0;
@@ -322,7 +331,7 @@ public class AotakeCommand {
                     .getPlayerList()
                     .getPlayers()
                     .forEach(player -> AotakeUtils.sendMessage(player
-                            , AotakeUtils.getWarningMessage(result.isEmpty() ? -1 : 0
+                            , AotakeUtils.getWarningMessage(result.isEmpty() ? "fail" : "success"
                                     , AotakeUtils.getPlayerLanguage(player)
                                     , result
                             )
@@ -433,6 +442,35 @@ public class AotakeCommand {
                     .forEach(p -> AotakeUtils.sendMessage(p, message));
             return 1;
         };
+        Command<CommandSourceStack> delaySweepCommand = context -> {
+            if (checkModStatus(context)) return 0;
+            notifyHelp(context);
+            Date current = new Date();
+            long delay = getLongDefault(context, "seconds", ServerConfig.SWEEP_INTERVAL.get() / 1000);
+            if (delay > 0) {
+                EventHandlerProxy.setNextSweepTime(current.getTime() + delay * 1000);
+            } else {
+                long nextSweepTime = EventHandlerProxy.getNextSweepTime() + delay * 1000;
+                if (nextSweepTime < current.getTime())
+                    nextSweepTime = current.getTime() + ServerConfig.SWEEP_INTERVAL.get();
+                EventHandlerProxy.setNextSweepTime(nextSweepTime);
+            }
+            long seconds = (EventHandlerProxy.getNextSweepTime() - current.getTime()) / 1000;
+            Component message = Component.translatable(EnumI18nType.MESSAGE, "next_sweep_time_set"
+                    , context.getSource().getEntity() instanceof ServerPlayer
+                            ? context.getSource().getPlayerOrException().getDisplayName().getString()
+                            : "server"
+                    , Component.literal(String.valueOf(seconds)).setHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT
+                            , Component.literal(DateUtils.toDateTimeString(new Date(EventHandlerProxy.getNextSweepTime())) + " (Server Time)").toTextComponent())
+                    )
+            );
+            AotakeSweep.getServerInstance()
+                    .getPlayerList()
+                    .getPlayers()
+                    .forEach(p -> AotakeUtils.sendMessage(p, message));
+
+            return 1;
+        };
 
 
         LiteralArgumentBuilder<CommandSourceStack> language = // region language
@@ -491,17 +529,23 @@ public class AotakeCommand {
                         ); // endregion virtualOp
         LiteralArgumentBuilder<CommandSourceStack> openDustbin = // region openDustbin
                 Commands.literal(CommonConfig.COMMAND_DUSTBIN_OPEN.get())
+                        .requires(source -> AotakeUtils.hasCommandPermission(source, EnumCommandType.DUSTBIN_OPEN))
                         .executes(openDustbinCommand)
                         .then(Commands.argument("page", IntegerArgumentType.integer(1))
                                 .suggests((context, builder) -> {
                                     IntStream.range(1, CommonConfig.DUSTBIN_PAGE_LIMIT.get() + 1)
                                             .filter(i -> i == 1
+                                                    || i % 5 == 0
                                                     || i == CommonConfig.DUSTBIN_PAGE_LIMIT.get()
-                                                    || !WorldTrashData.get().getInventoryList().get(i - 1).isEmpty())
+                                            )
                                             .forEach(builder::suggest);
                                     return builder.buildFuture();
                                 })
                                 .executes(openDustbinCommand)
+                                .then(Commands.argument("players", EntityArgument.players())
+                                        .requires(source -> AotakeUtils.hasCommandPermission(source, EnumCommandType.DUSTBIN_OPEN_OTHER))
+                                        .executes(openDustbinCommand)
+                                )
                         ); // endregion openDustbin
         LiteralArgumentBuilder<CommandSourceStack> sweep = // region sweep
                 Commands.literal(CommonConfig.COMMAND_SWEEP.get())
@@ -567,6 +611,17 @@ public class AotakeCommand {
                         .then(Commands.argument("originalPos", BoolArgumentType.bool())
                                 .executes(dropCacheCommand)
                         ); // endregion dropCache
+        LiteralArgumentBuilder<CommandSourceStack> delaySweep = // region delaySweep
+                Commands.literal(CommonConfig.COMMAND_DELAY_SWEEP.get())
+                        .requires(source -> AotakeUtils.hasCommandPermission(source, EnumCommandType.DELAY_SWEEP))
+                        .executes(delaySweepCommand)
+                        .then(Commands.argument("seconds", LongArgumentType.longArg())
+                                .suggests((context, builder) -> {
+                                    builder.suggest((int) (ServerConfig.SWEEP_INTERVAL.get() / 1000));
+                                    return builder.buildFuture();
+                                })
+                                .executes(delaySweepCommand)
+                        ); // endregion delaySweep
 
 
         // 注册简短的指令
@@ -616,6 +671,11 @@ public class AotakeCommand {
                 dispatcher.register(dropCache);
             }
 
+            // 延迟扫地 /delay
+            if (CommonConfig.CONCISE_DELAY_SWEEP.get()) {
+                dispatcher.register(delaySweep);
+            }
+
         }
 
         // 注册有前缀的指令
@@ -647,6 +707,8 @@ public class AotakeCommand {
                     .then(clearCache)
                     // 将缓存内物品掉落至世界 /aotake dropcache
                     .then(dropCache)
+                    // 延迟扫地 /aotake delay
+                    .then(delaySweep)
                     // 获取服务器配置 /aotake config
                     .then(Commands.literal("config")
                             // region 服务器设置
@@ -755,7 +817,6 @@ public class AotakeCommand {
                                                                 , interval
                                                         )
                                                 );
-                                                EventHandlerProxy.resetWarnQueue();
                                                 return 1;
                                             })
                                     )
@@ -935,6 +996,16 @@ public class AotakeCommand {
         int result;
         try {
             result = IntegerArgumentType.getInteger(context, name);
+        } catch (IllegalArgumentException ignored) {
+            result = defaultValue;
+        }
+        return result;
+    }
+
+    public static long getLongDefault(CommandContext<?> context, String name, long defaultValue) {
+        long result;
+        try {
+            result = LongArgumentType.getLong(context, name);
         } catch (IllegalArgumentException ignored) {
             result = defaultValue;
         }
