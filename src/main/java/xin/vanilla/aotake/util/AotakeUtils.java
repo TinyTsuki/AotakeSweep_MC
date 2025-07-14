@@ -1,5 +1,6 @@
 package xin.vanilla.aotake.util;
 
+import com.google.gson.reflect.TypeToken;
 import com.mojang.brigadier.StringReader;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import lombok.NonNull;
@@ -82,8 +83,9 @@ public class AotakeUtils {
             case LANGUAGE_CONCISE -> isConciseEnabled(type) ? CommonConfig.COMMAND_LANGUAGE.get() : "";
             case VIRTUAL_OP -> prefix + " " + CommonConfig.COMMAND_VIRTUAL_OP.get();
             case VIRTUAL_OP_CONCISE -> isConciseEnabled(type) ? CommonConfig.COMMAND_VIRTUAL_OP.get() : "";
-            case DUSTBIN_OPEN -> prefix + " " + CommonConfig.COMMAND_DUSTBIN_OPEN.get();
-            case DUSTBIN_OPEN_CONCISE -> isConciseEnabled(type) ? CommonConfig.COMMAND_DUSTBIN_OPEN.get() : "";
+            case DUSTBIN_OPEN, DUSTBIN_OPEN_OTHER -> prefix + " " + CommonConfig.COMMAND_DUSTBIN_OPEN.get();
+            case DUSTBIN_OPEN_CONCISE, DUSTBIN_OPEN_OTHER_CONCISE ->
+                    isConciseEnabled(type) ? CommonConfig.COMMAND_DUSTBIN_OPEN.get() : "";
             case DUSTBIN_CLEAR -> prefix + " " + CommonConfig.COMMAND_DUSTBIN_CLEAR.get();
             case DUSTBIN_CLEAR_CONCISE -> isConciseEnabled(type) ? CommonConfig.COMMAND_DUSTBIN_CLEAR.get() : "";
             case DUSTBIN_DROP -> prefix + " " + CommonConfig.COMMAND_DUSTBIN_DROP.get();
@@ -96,6 +98,8 @@ public class AotakeUtils {
             case SWEEP_CONCISE -> isConciseEnabled(type) ? CommonConfig.COMMAND_SWEEP.get() : "";
             case CLEAR_DROP -> prefix + " " + CommonConfig.COMMAND_CLEAR_DROP.get();
             case CLEAR_DROP_CONCISE -> isConciseEnabled(type) ? CommonConfig.COMMAND_CLEAR_DROP.get() : "";
+            case DELAY_SWEEP -> prefix + " " + CommonConfig.COMMAND_DELAY_SWEEP.get();
+            case DELAY_SWEEP_CONCISE -> isConciseEnabled(type) ? CommonConfig.COMMAND_DELAY_SWEEP.get() : "";
             default -> "";
         };
     }
@@ -107,12 +111,14 @@ public class AotakeUtils {
         return switch (type) {
             case VIRTUAL_OP, VIRTUAL_OP_CONCISE -> ServerConfig.PERMISSION_VIRTUAL_OP.get();
             case DUSTBIN_OPEN, DUSTBIN_OPEN_CONCISE -> ServerConfig.PERMISSION_DUSTBIN_OPEN.get();
+            case DUSTBIN_OPEN_OTHER, DUSTBIN_OPEN_OTHER_CONCISE -> ServerConfig.PERMISSION_DUSTBIN_OPEN_OTHER.get();
             case DUSTBIN_CLEAR, DUSTBIN_CLEAR_CONCISE -> ServerConfig.PERMISSION_DUSTBIN_CLEAR.get();
             case DUSTBIN_DROP, DUSTBIN_DROP_CONCISE -> ServerConfig.PERMISSION_DUSTBIN_DROP.get();
             case CACHE_CLEAR, CACHE_CLEAR_CONCISE -> ServerConfig.PERMISSION_CACHE_CLEAR.get();
             case CACHE_DROP, CACHE_DROP_CONCISE -> ServerConfig.PERMISSION_CACHE_DROP.get();
             case SWEEP, SWEEP_CONCISE -> ServerConfig.PERMISSION_SWEEP.get();
             case CLEAR_DROP, CLEAR_DROP_CONCISE -> ServerConfig.PERMISSION_CLEAR_DROP.get();
+            case DELAY_SWEEP, DELAY_SWEEP_CONCISE -> ServerConfig.PERMISSION_DELAY_SWEEP.get();
             default -> 0;
         };
     }
@@ -124,13 +130,15 @@ public class AotakeUtils {
         return switch (type) {
             case LANGUAGE, LANGUAGE_CONCISE -> CommonConfig.CONCISE_LANGUAGE.get();
             case VIRTUAL_OP, VIRTUAL_OP_CONCISE -> CommonConfig.CONCISE_VIRTUAL_OP.get();
-            case DUSTBIN_OPEN, DUSTBIN_OPEN_CONCISE -> CommonConfig.CONCISE_DUSTBIN_OPEN.get();
+            case DUSTBIN_OPEN, DUSTBIN_OPEN_CONCISE, DUSTBIN_OPEN_OTHER, DUSTBIN_OPEN_OTHER_CONCISE ->
+                    CommonConfig.CONCISE_DUSTBIN_OPEN.get();
             case DUSTBIN_CLEAR, DUSTBIN_CLEAR_CONCISE -> CommonConfig.CONCISE_DUSTBIN_CLEAR.get();
             case DUSTBIN_DROP, DUSTBIN_DROP_CONCISE -> CommonConfig.CONCISE_DUSTBIN_DROP.get();
             case CACHE_CLEAR, CACHE_CLEAR_CONCISE -> CommonConfig.CONCISE_CACHE_CLEAR.get();
             case CACHE_DROP, CACHE_DROP_CONCISE -> CommonConfig.CONCISE_CACHE_DROP.get();
             case SWEEP, SWEEP_CONCISE -> CommonConfig.CONCISE_SWEEP.get();
             case CLEAR_DROP, CLEAR_DROP_CONCISE -> CommonConfig.CONCISE_CLEAR_DROP.get();
+            case DELAY_SWEEP, DELAY_SWEEP_CONCISE -> CommonConfig.CONCISE_DELAY_SWEEP.get();
             default -> false;
         };
     }
@@ -551,7 +559,7 @@ public class AotakeUtils {
         }
 
         for (ServerPlayer p : players) {
-            Component msg = getWarningMessage(result == null || result.isEmpty() ? -1 : 0
+            Component msg = getWarningMessage(result == null || result.isEmpty() ? "fail" : "success"
                     , getPlayerLanguage(p)
                     , result);
             if (PlayerSweepDataCapability.getData(p).isShowSweepResult()) {
@@ -607,11 +615,25 @@ public class AotakeUtils {
         return result;
     }
 
-    public static Component getWarningMessage(int index, String lang, @Nullable SweepResult result) {
+    private static final Map<String, String> warns = new HashMap<>();
+
+    private static void initWarns() {
+        if (warns.isEmpty()) {
+            warns.putAll(JsonUtils.GSON.fromJson(CommonConfig.SWEEP_WARNING_CONTENT.get(), new TypeToken<Map<String, String>>() {
+            }.getType()));
+        }
+    }
+
+    public static boolean hasWarning(String key) {
+        initWarns();
+        return warns.containsKey(key);
+    }
+
+    public static Component getWarningMessage(String key, String lang, @Nullable SweepResult result) {
         Component msg = null;
-        List<? extends String> warns = CommonConfig.SWEEP_WARNING_CONTENT.get();
         try {
-            String text = warns.get(CommonConfig.SWEEP_WARNING_SECOND.get().indexOf(index));
+            initWarns();
+            String text = warns.get(key);
             if (result != null) {
                 text = text.replaceAll("\\[itemCount]", String.valueOf(result.getItemCount()))
                         .replaceAll("\\[entityCount]", String.valueOf(result.getEntityCount()))
@@ -619,13 +641,13 @@ public class AotakeUtils {
                         .replaceAll("\\[recycledEntityCount]", String.valueOf(result.getRecycledEntityCount()));
             }
             msg = Component.literal(text);
-            msg.appendArg((Object) index);
+            msg.appendArg(key);
         } catch (Exception ignored) {
         }
         if (msg == null) {
-            if (index > 0) {
-                msg = Component.translatable(EnumI18nType.MESSAGE, "cleanup_will_start", index);
-            } else if (index == 0) {
+            if (StringUtils.toInt(key) > 0) {
+                msg = Component.translatable(EnumI18nType.MESSAGE, "cleanup_will_start", key);
+            } else if ("success".equalsIgnoreCase(key)) {
                 String text = I18nUtils.getTranslation(EnumI18nType.MESSAGE, "cleanup_started", lang);
                 if (result != null) {
                     text = text.replaceAll("\\[itemCount]", String.valueOf(result.getItemCount()))
