@@ -11,6 +11,8 @@ public enum EnumCommandType {
     VIRTUAL_OP_CONCISE(),
     DUSTBIN_OPEN(),
     DUSTBIN_OPEN_CONCISE(),
+    DUSTBIN_OPEN_OTHER(true),
+    DUSTBIN_OPEN_OTHER_CONCISE(true),
     DUSTBIN_CLEAR(),
     DUSTBIN_CLEAR_CONCISE(),
     DUSTBIN_DROP(),
@@ -23,6 +25,8 @@ public enum EnumCommandType {
     SWEEP_CONCISE(),
     CLEAR_DROP(),
     CLEAR_DROP_CONCISE(),
+    DELAY_SWEEP(),
+    DELAY_SWEEP_CONCISE(),
     ;
 
     /**
