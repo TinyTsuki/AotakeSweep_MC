@@ -15,6 +15,7 @@
   "command.aotake_sweep.cache_drop": "Drop Cache Items",
   "command.aotake_sweep.sweep": "Manual Sweep",
   "command.aotake_sweep.clear_drop": "Clear Drops",
+  "command.aotake_sweep.delay_sweep": "Postpone the next scheduled sweep time",
   "command.aotake_sweep.language_detail": "Set the player's default language. server -> Use the server's default language; client -> Use the client's current language.\nParameters:\n <language>",
   "command.aotake_sweep.virtual_op_detail": "Grant a specified player permission to use certain commands.\nParameters:\n <operation> <player> [<command type list>]",
   "command.aotake_sweep.dustbin_open_detail": "Open Dustbin.\nParameters:\n [<page>]",
@@ -24,6 +25,7 @@
   "command.aotake_sweep.cache_drop_detail": "Drop Cache Items.\nParameters:\n [<return dropped items to their original location>]",
   "command.aotake_sweep.sweep_detail": "Manual Sweep.\nParameters:\n 1. [<dimension>]\n 2. [<range>]",
   "command.aotake_sweep.clear_drop_detail": "Clear Drops.\nParameters:\n 1. [<dimension>]\n 2. [<range>]",
+  "command.aotake_sweep.delay_sweep_detail": "Postpone the next scheduled sweep time.\nParameters:\n [<Delay in seconds>]",
   "command.aotake_sweep.concise": "Like %s",
   "word.aotake_sweep.enabled": "enabled",
   "word.aotake_sweep.disabled": "disabled",
@@ -59,5 +61,6 @@
   "message.aotake_sweep.chunk_check_limit": "Entity excess check threshold is set to: %s.",
   "message.aotake_sweep.allow_catch_entity": "Allow players to catch entities with items is set to: %s.",
   "message.aotake_sweep.sweep_when_no_player": "Sweep when no player is online is set to: %s.",
-  "message.aotake_sweep.dustbin_page_limit": "Dustbin page limit is set to: %s."
+  "message.aotake_sweep.dustbin_page_limit": "Dustbin page limit is set to: %s.",
+  "message.aotake_sweep.next_sweep_time_set": "§eNext sweep time was set by '%s§e' to occur in %s§e seconds."
 }
