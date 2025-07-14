@@ -122,6 +122,11 @@ public class ServerConfig {
     public static final ForgeConfigSpec.IntValue PERMISSION_DUSTBIN_OPEN;
 
     /**
+     * 为他人打开垃圾箱指令所需的权限等级
+     */
+    public static final ForgeConfigSpec.IntValue PERMISSION_DUSTBIN_OPEN_OTHER;
+
+    /**
      * 清空垃圾箱指令所需的权限等级
      */
     public static final ForgeConfigSpec.IntValue PERMISSION_DUSTBIN_CLEAR;
@@ -150,6 +155,11 @@ public class ServerConfig {
      * 清除掉落物指令所需的权限等级
      */
     public static final ForgeConfigSpec.IntValue PERMISSION_CLEAR_DROP;
+
+    /**
+     * 延迟本次清理指令所需的权限等级
+     */
+    public static final ForgeConfigSpec.IntValue PERMISSION_DELAY_SWEEP;
 
     // endregion 指令权限
 
@@ -327,6 +337,11 @@ public class ServerConfig {
                             , "打开垃圾箱指令所需的权限等级。")
                     .defineInRange("permissionDustbinOpen", 0, 0, 4);
 
+            PERMISSION_DUSTBIN_OPEN_OTHER = SERVER_BUILDER
+                    .comment("The permission level required to use the 'Open dustbin for others' command."
+                            , "为他人打开垃圾箱指令所需的权限等级。")
+                    .defineInRange("permissionDustbinOpenOther", 2, 0, 4);
+
             PERMISSION_DUSTBIN_CLEAR = SERVER_BUILDER
                     .comment("The permission level required to use the 'Clear dustbin' command."
                             , "清空垃圾箱指令所需的权限等级。")
@@ -356,6 +371,11 @@ public class ServerConfig {
                     .comment("The permission level required to use the 'Clear dropped items' command."
                             , "清除掉落物指令所需的权限等级。")
                     .defineInRange("permissionClearDrop", 1, 0, 4);
+
+            PERMISSION_DELAY_SWEEP = SERVER_BUILDER
+                    .comment("The permission level required to use the 'Delay sweep' command."
+                            , "延迟本次清理指令所需的权限等级。")
+                    .defineInRange("permissionDelaySweep", 1, 0, 4);
 
             SERVER_BUILDER.pop();
         }
@@ -412,12 +432,14 @@ public class ServerConfig {
 
         PERMISSION_VIRTUAL_OP.set(4);
         PERMISSION_DUSTBIN_OPEN.set(0);
+        PERMISSION_DUSTBIN_OPEN_OTHER.set(2);
         PERMISSION_DUSTBIN_CLEAR.set(1);
         PERMISSION_DUSTBIN_DROP.set(1);
         PERMISSION_CACHE_CLEAR.set(1);
         PERMISSION_CACHE_DROP.set(1);
         PERMISSION_SWEEP.set(0);
         PERMISSION_CLEAR_DROP.set(1);
+        PERMISSION_DELAY_SWEEP.set(1);
 
         SERVER_CONFIG.save();
     }
