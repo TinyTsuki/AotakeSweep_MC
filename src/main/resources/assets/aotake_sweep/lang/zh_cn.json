@@ -18,7 +18,7 @@
   "command.aotake_sweep.delay_sweep": "延后下次清理的触发时间",
   "command.aotake_sweep.language_detail": "设置玩家默认语言，server->使用服务器默认语言，client->使用客户端当前语言。\n参数列表：\n <language>",
   "command.aotake_sweep.virtual_op_detail": "给某个玩家添加使用某个指令的权限。\n参数列表：\n <操作> <玩家> [<指令类型列表>]",
-  "command.aotake_sweep.dustbin_open_detail": "打开垃圾箱。\n参数列表：\n [<页数>]",
+  "command.aotake_sweep.dustbin_open_detail": "打开垃圾箱。\n参数列表：\n [<页数>] [<玩家>]",
   "command.aotake_sweep.dustbin_clear_detail": "清空垃圾箱。\n参数列表：\n [<页数>]",
   "command.aotake_sweep.dustbin_drop_detail": "以掉落物的形式清空垃圾箱。\n参数列表：\n [<页数>]",
   "command.aotake_sweep.cache_clear_detail": "清空缓存区的垃圾。",
