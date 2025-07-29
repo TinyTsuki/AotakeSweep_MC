@@ -16,6 +16,7 @@ import net.minecraft.command.Commands;
 import net.minecraft.command.arguments.DimensionArgument;
 import net.minecraft.command.arguments.EntityArgument;
 import net.minecraft.entity.Entity;
+import net.minecraft.entity.EntityType;
 import net.minecraft.entity.item.ItemEntity;
 import net.minecraft.entity.player.ServerPlayerEntity;
 import net.minecraft.inventory.Inventory;
@@ -302,6 +303,7 @@ public class AotakeCommand {
             if (checkModStatus(context)) return 0;
             notifyHelp(context);
             boolean withEntity = getBooleanDefault(context, "withEntity", false);
+            boolean greedyMode = getBooleanDefault(context, "greedyMode", ServerConfig.GREEDY_MODE.get());
             int range = getIntDefault(context, "range", 0);
             ServerWorld dimension = getDimensionDefault(context, "dimension", null);
 
@@ -315,8 +317,9 @@ public class AotakeCommand {
             SweepResult result = new SweepResult();
             entities.stream()
                     .filter(Objects::nonNull)
-                    .filter(entity -> entity instanceof ItemEntity
-                            || (withEntity && ServerConfig.JUNK_ENTITY.get().contains(entity.getType().getRegistryName().toString()))
+                    .filter(entity -> (greedyMode && entity instanceof ItemEntity)
+                            || (!greedyMode && entity.getType() == EntityType.ITEM)
+                            || (withEntity && ServerConfig.JUNK_ENTITY.get().contains(AotakeUtils.getEntityTypeRegistryName(entity)))
                     ).forEach(entity -> {
                         if (entity instanceof ItemEntity) {
                             result.plusItemCount(((ItemEntity) entity).getItem().getCount());
@@ -561,11 +564,20 @@ public class AotakeCommand {
                         .executes(clearDropCommand)
                         .then(Commands.argument("withEntity", BoolArgumentType.bool())
                                 .executes(clearDropCommand)
+                                .then(Commands.argument("greedyMode", BoolArgumentType.bool())
+                                        .executes(clearDropCommand)
+                                )
                                 .then(Commands.argument("dimension", DimensionArgument.dimension())
                                         .executes(clearDropCommand)
+                                        .then(Commands.argument("greedyMode", BoolArgumentType.bool())
+                                                .executes(clearDropCommand)
+                                        )
                                 )
                                 .then(Commands.argument("range", IntegerArgumentType.integer(0))
                                         .executes(clearDropCommand)
+                                        .then(Commands.argument("greedyMode", BoolArgumentType.bool())
+                                                .executes(clearDropCommand)
+                                        )
                                 )
                         ); // endregion clearDrop
         LiteralArgumentBuilder<CommandSource> clearDustbin = // region clearDustbin
@@ -951,18 +963,33 @@ public class AotakeCommand {
                             // region 玩家设置
                             // 显示打扫结果信息
                             .then(Commands.literal("showSweepResult")
-                                    .then(Commands.argument("show", BoolArgumentType.bool())
+                                    .then(Commands.argument("show", StringArgumentType.word())
+                                            .suggests((context, suggestion) -> {
+                                                String show = getStringDefault(context, "show", "");
+                                                if ("true".contains(show) || StringUtils.isNullOrEmpty(show)) {
+                                                    suggestion.suggest("true");
+                                                }
+                                                if ("false".contains(show) || StringUtils.isNullOrEmpty(show)) {
+                                                    suggestion.suggest("false");
+                                                }
+                                                if ("change".contains(show) || StringUtils.isNullOrEmpty(show)) {
+                                                    suggestion.suggest("change");
+                                                }
+                                                return suggestion.buildFuture();
+                                            })
                                             .executes(context -> {
                                                 if (checkModStatus(context)) return 0;
                                                 notifyHelp(context);
-                                                boolean show = BoolArgumentType.getBool(context, "show");
+                                                String show = getStringDefault(context, "show", "change");
                                                 ServerPlayerEntity player = context.getSource().getPlayerOrException();
-                                                PlayerSweepDataCapability.getData(player).setShowSweepResult(show);
+                                                IPlayerSweepData data = PlayerSweepDataCapability.getData(player);
+                                                boolean r = "change".equalsIgnoreCase(show) ? !data.isShowSweepResult() : Boolean.parseBoolean(show);
+                                                data.setShowSweepResult(r);
                                                 AotakeUtils.sendMessage(player
                                                         , Component.translatable(EnumI18nType.MESSAGE
                                                                 , "player_show_sweep_result"
-                                                                , I18nUtils.enabled(AotakeUtils.getPlayerLanguage(player), show)
-                                                                , String.format("/%s config showSweepResult <true/false>", AotakeUtils.getCommandPrefix())
+                                                                , I18nUtils.enabled(AotakeUtils.getPlayerLanguage(player), r)
+                                                                , String.format("/%s config showSweepResult [<status>]", AotakeUtils.getCommandPrefix())
                                                         )
                                                 );
                                                 return 1;

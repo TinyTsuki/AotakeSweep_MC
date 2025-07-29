@@ -18,8 +18,7 @@ import net.minecraft.entity.player.ServerPlayerEntity;
 import net.minecraft.inventory.Inventory;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
-import net.minecraft.nbt.CompoundNBT;
-import net.minecraft.nbt.JsonToNBT;
+import net.minecraft.nbt.*;
 import net.minecraft.network.IPacket;
 import net.minecraft.network.play.server.SChatPacket;
 import net.minecraft.server.MinecraftServer;
@@ -491,6 +490,38 @@ public class AotakeUtils {
         return entities;
     }
 
+    private static final Map<String, SafeExpressionEvaluator> EXPRESSION_EVALUATOR_CACHE = new HashMap<>();
+
+    private static SafeExpressionEvaluator getSafeExpressionEvaluator(String expression) {
+        SafeExpressionEvaluator evaluator = EXPRESSION_EVALUATOR_CACHE.get(expression);
+        if (evaluator == null) {
+            evaluator = new SafeExpressionEvaluator(expression);
+            EXPRESSION_EVALUATOR_CACHE.put(expression, evaluator);
+        }
+        return evaluator;
+    }
+
+    private static boolean isNbtExpressionValid(Entity entity, KeyValue<String, String> kv) {
+        if (NBTPathUtils.has(entity.getPersistentData(), kv.getKey())) {
+            INBT tag = NBTPathUtils.getTagByPath(entity.getPersistentData(), kv.getKey());
+            SafeExpressionEvaluator evaluator = getSafeExpressionEvaluator(kv.getValue());
+            if (tag instanceof NumberNBT) {
+                evaluator.setVar("value", ((NumberNBT) tag).getAsDouble());
+            } else if (tag instanceof StringNBT) {
+                evaluator.setVar("value", tag.getAsString());
+            } else {
+                return false;
+            }
+            try {
+                return evaluator.evaluate() > 0;
+            } catch (Exception e) {
+                LOGGER.error("Invalid unsafe nbt expression: {}", kv.getValue(), e);
+                return false;
+            }
+        }
+        return false;
+    }
+
     public static List<Entity> getAllEntitiesByFilter(List<Entity> entities) {
         if (CollectionUtils.isNullOrEmpty(entities)) {
             entities = getAllEntities();
@@ -498,7 +529,8 @@ public class AotakeUtils {
         initSafeBlocks();
         List<Entity> filtered = entities.stream()
                 // 物品实体 与 垃圾实体
-                .filter(entity -> entity instanceof ItemEntity
+                .filter(entity -> (ServerConfig.GREEDY_MODE.get() && entity instanceof ItemEntity)
+                        || (!ServerConfig.GREEDY_MODE.get() && entity.getType() == EntityType.ITEM)
                         || ServerConfig.JUNK_ENTITY.get().contains(getEntityTypeRegistryName(entity))
                 )
                 .filter(entity -> !entity.hasCustomName())
@@ -562,6 +594,26 @@ public class AotakeUtils {
                 .flatMap(entry -> entry.getValue().stream())
                 .collect(Collectors.toList());
 
+        // 超过阈值的NBT白名单实体
+        List<Entity> exceededNbtWhiteBlackList = filtered.stream()
+                .filter(entity -> !entity.getPersistentData().isEmpty())
+                .filter(entity -> (!ServerConfig.ENTITY_NBT_WHITELIST.isEmpty() &&
+                        ServerConfig.ENTITY_NBT_WHITELIST.stream()
+                                .anyMatch(keyValue ->
+                                        isNbtExpressionValid(entity, keyValue)
+                                ))
+                        || (!ServerConfig.ENTITY_NBT_BLACKLIST.isEmpty() &&
+                        ServerConfig.ENTITY_NBT_BLACKLIST.stream()
+                                .noneMatch(keyValue ->
+                                        isNbtExpressionValid(entity, keyValue)
+                                ))
+                )
+                .collect(Collectors.groupingBy(Entity::getType, Collectors.toList()))
+                .entrySet().stream()
+                .filter(entry -> entry.getValue().size() > ServerConfig.NBT_WHITE_BLACK_LIST_ENTITY_LIMIT.get())
+                .flatMap(entry -> entry.getValue().stream())
+                .collect(Collectors.toList());
+
         // 过滤
         return filtered.stream().filter(entity -> {
             boolean isItem = entity instanceof ItemEntity;
@@ -577,7 +629,7 @@ public class AotakeUtils {
                 }
             }
 
-            // 白名单过滤
+            // 物品白名单过滤
             if (isItem && !ServerConfig.ITEM_WHITELIST.get().isEmpty()) {
                 if (ServerConfig.ITEM_WHITELIST.get().contains(itemName) &&
                         !exceededWhiteBlackList.contains(entity)
@@ -586,10 +638,34 @@ public class AotakeUtils {
                 }
             }
 
-            // 黑名单过滤
+            // 物品黑名单过滤
             if (isItem && !ServerConfig.ITEM_BLACKLIST.get().isEmpty()) {
                 if (!ServerConfig.ITEM_BLACKLIST.get().contains(itemName) &&
                         !exceededWhiteBlackList.contains(entity)
+                ) {
+                    return false;
+                }
+            }
+
+            // NBT白名单过滤
+            if (!ServerConfig.ENTITY_NBT_WHITELIST.isEmpty()) {
+                if (ServerConfig.ENTITY_NBT_WHITELIST.stream()
+                        .anyMatch(keyValue ->
+                                isNbtExpressionValid(entity, keyValue)
+                        )
+                        && !exceededNbtWhiteBlackList.contains(entity)
+                ) {
+                    return false;
+                }
+            }
+
+            // NBT黑名单过滤
+            if (!ServerConfig.ENTITY_NBT_BLACKLIST.isEmpty()) {
+                if (ServerConfig.ENTITY_NBT_BLACKLIST.stream()
+                        .noneMatch(keyValue ->
+                                isNbtExpressionValid(entity, keyValue)
+                        )
+                        && !exceededNbtWhiteBlackList.contains(entity)
                 ) {
                     return false;
                 }
@@ -636,8 +712,9 @@ public class AotakeUtils {
         }
 
         for (ServerPlayerEntity p : players) {
+            String language = AotakeUtils.getPlayerLanguage(p);
             Component msg = getWarningMessage(result == null || result.isEmpty() ? "fail" : "success"
-                    , getPlayerLanguage(p)
+                    , language
                     , result);
             if (PlayerSweepDataCapability.getData(p).isShowSweepResult()) {
                 String openCom = "/" + AotakeUtils.getCommand(EnumCommandType.DUSTBIN_OPEN);
@@ -647,10 +724,14 @@ public class AotakeUtils {
                         );
                 AotakeUtils.sendMessage(p, Component.empty()
                         .append(msg)
-                        .append(Component.translatable(EnumI18nType.MESSAGE, "not_show_button")
+                        .append(Component.literal("[x]")
                                 .setColor(EnumMCColor.RED.getColor())
+                                .setHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT
+                                        , Component.translatable(EnumI18nType.MESSAGE, "not_show_button")
+                                        .toTextComponent(language))
+                                )
                                 .setClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND
-                                        , "/" + AotakeUtils.getCommandPrefix() + " config showSweepResult false")
+                                        , "/" + AotakeUtils.getCommandPrefix() + " config showSweepResult change")
                                 )
                         )
                 );
