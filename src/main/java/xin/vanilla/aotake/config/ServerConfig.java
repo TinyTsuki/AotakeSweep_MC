@@ -4,11 +4,14 @@ import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.item.Items;
 import net.minecraftforge.common.ForgeConfigSpec;
 import net.minecraftforge.registries.ForgeRegistries;
+import xin.vanilla.aotake.data.KeyValue;
 import xin.vanilla.aotake.enums.EnumOverflowMode;
 import xin.vanilla.aotake.enums.EnumSelfCleanMode;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
+import java.util.stream.Collectors;
 
 public class ServerConfig {
 
@@ -105,6 +108,28 @@ public class ServerConfig {
      * 垃圾箱溢出时的处理方式
      */
     public static final ForgeConfigSpec.ConfigValue<String> DUSTBIN_OVERFLOW_MODE;
+
+    /**
+     * 贪婪模式
+     */
+    public static final ForgeConfigSpec.BooleanValue GREEDY_MODE;
+
+    /**
+     * 实体清理NBT白名单
+     */
+    public static final ForgeConfigSpec.ConfigValue<List<? extends String>> ENTITY_NBT_WHITELIST_RAW;
+    public static List<KeyValue<String, String>> ENTITY_NBT_WHITELIST;
+
+    /**
+     * 实体清理NBT黑名单
+     */
+    public static final ForgeConfigSpec.ConfigValue<List<? extends String>> ENTITY_NBT_BLACKLIST_RAW;
+    public static List<KeyValue<String, String>> ENTITY_NBT_BLACKLIST;
+
+    /**
+     * 实体清理NBT黑白名单超过指定数量也进行清理
+     */
+    public static final ForgeConfigSpec.IntValue NBT_WHITE_BLACK_LIST_ENTITY_LIMIT;
 
     // endregion 基础设置
 
@@ -319,6 +344,42 @@ public class ServerConfig {
                             , "REPLACE：将垃圾箱中的物品随机替换为溢出的物品。")
                     .define("dustbinOverflowMode", EnumOverflowMode.KEEP.name());
 
+            // 贪婪模式
+            GREEDY_MODE = SERVER_BUILDER
+                    .comment("Enable this to treat all ItemEntity and its subclasses as dropped items; otherwise, only entities with EntityType.ITEM will be treated as dropped items."
+                            , "开启后会将所有ItemEntity及其子类都视为掉落物，否则只会将EntityType为ITEM的视为掉落物。")
+                    .define("greedyMode", false);
+
+            // 实体清理NBT白名单
+            ENTITY_NBT_WHITELIST_RAW = SERVER_BUILDER
+                    .comment("The NBT whitelist for cleaning up entities, entities with the following NBT values will not be cleaned or recycled. Examples: [\"CreateData.Processing.Time -> value > 0\"]"
+                            , "'->' left side is an NBT path expression, similar to JsonPath; the right side of '->' is an NBT value expression used to check if the condition is met. The 'value' keyword represents the NBT value and cannot be omitted."
+                            , "Examples of NBT value expressions: value == 'string', sqrt(value) == 123, log(value) <= 2.5, pow(value, 2) != cos(value), sin(value) > 5, abs(value) >= 10"
+                            , "实体清理NBT白名单，包含以下NBT值的实体不会被清理。例子：[\"CreateData.Processing.Time -> value > 0\"]"
+                            , "'->'左边为NBT路径表达式，类似于JsonPath；'->'右边为NBT值表达式，用于判断是否满足条件，其中'value'代表NBT值，不可省略。"
+                            , "NBT值表达式例子： value == '字符串'、sqrt(value) == 123、log(value) <= 2.5、pow(value, 2) != cos(value)、sin(value) > 5、abs(value) >= 10")
+                    .defineList("entityNbtWhitelist", new ArrayList<>() {{
+                                add("CreateData.Processing.Time -> value > 0");
+                            }}
+                            , o -> o instanceof String);
+
+            // 实体清理NBT黑名单
+            ENTITY_NBT_BLACKLIST_RAW = SERVER_BUILDER
+                    .comment("The NBT blacklist for cleaning up entities, if this list is not empty, only the following NBT values will be cleaned and recycled, entities with NBT values outside the list will not be cleaned or recycled."
+                            , "'->' left side is an NBT path expression, similar to JsonPath; the right side of '->' is an NBT value expression used to check if the condition is met. The 'value' keyword represents the NBT value and cannot be omitted."
+                            , "Examples of NBT value expressions: value == 'string', sqrt(value) == 123, log(value) <= 2.5, pow(value, 2) != cos(value), sin(value) > 5, abs(value) >= 10"
+                            , "实体清理NBT黑名单，若该名单不为空，则将只会清理并回收以下NBT值的实体，名单外的实体将不会被清理。"
+                            , "'->'左边为NBT路径表达式，类似于JsonPath；'->'右边为NBT值表达式，用于判断是否满足条件，其中'value'代表NBT值，不可省略。"
+                            , "NBT值表达式例子： value == '字符串'、sqrt(value) == 123、log(value) <= 2.5、pow(value, 2) != cos(value)、sin(value) > 5、abs(value) >= 10")
+                    .defineList("entityNbtBlacklist", new ArrayList<>()
+                            , o -> o instanceof String);
+
+            // 黑白名单实体超过指定数量也进行清理
+            NBT_WHITE_BLACK_LIST_ENTITY_LIMIT = SERVER_BUILDER
+                    .comment("Even entities on the whitelist or not included in the blacklist will be cleared if their quantity on the server exceeds the specified limit."
+                            , "即使是NBT白名单内的实体，或不是NBT黑名单中的实体，只要在服务器中数量超过指定上限，也会被清理。")
+                    .defineInRange("nbtWhiteBlackListEntityLimit", 250, 1, Integer.MAX_VALUE);
+
             SERVER_BUILDER.pop();
         }
 
@@ -429,6 +490,12 @@ public class ServerConfig {
             add(EnumSelfCleanMode.NONE.name());
         }});
         DUSTBIN_OVERFLOW_MODE.set(EnumOverflowMode.KEEP.name());
+        GREEDY_MODE.set(false);
+        ENTITY_NBT_WHITELIST_RAW.set(new ArrayList<>() {{
+            add("CreateData.Processing.Time -> value > 0");
+        }});
+        ENTITY_NBT_BLACKLIST_RAW.set(new ArrayList<>());
+        NBT_WHITE_BLACK_LIST_ENTITY_LIMIT.set(250);
 
         PERMISSION_VIRTUAL_OP.set(4);
         PERMISSION_DUSTBIN_OPEN.set(0);
@@ -455,4 +522,31 @@ public class ServerConfig {
 
         SERVER_CONFIG.save();
     }
+
+    public static void bake() {
+        ENTITY_NBT_WHITELIST = ENTITY_NBT_WHITELIST_RAW.get().stream()
+                .map(s -> {
+                    String[] parts = s.split("->", 2);
+                    if (parts.length == 2) {
+                        return new KeyValue<>(parts[0].trim(), parts[1].trim());
+                    } else {
+                        return null;
+                    }
+                })
+                .filter(Objects::nonNull)
+                .collect(Collectors.toList());
+
+        ENTITY_NBT_BLACKLIST = ENTITY_NBT_BLACKLIST_RAW.get().stream()
+                .map(s -> {
+                    String[] parts = s.split("->", 2);
+                    if (parts.length == 2) {
+                        return new KeyValue<>(parts[0].trim(), parts[1].trim());
+                    } else {
+                        return null;
+                    }
+                })
+                .filter(Objects::nonNull)
+                .collect(Collectors.toList());
+    }
+
 }
