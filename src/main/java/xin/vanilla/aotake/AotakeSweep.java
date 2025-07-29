@@ -115,14 +115,12 @@ public class AotakeSweep {
     /**
      * 客户端设置阶段事件
      */
-    @SubscribeEvent
     public void onClientSetup(final FMLClientSetupEvent event) {
     }
 
     /**
      * 公共设置阶段事件
      */
-    @SubscribeEvent
     public void onCommonSetup(final FMLCommonSetupEvent event) {
         CustomConfig.loadCustomConfig(false);
     }
@@ -143,7 +141,6 @@ public class AotakeSweep {
         AotakeCommand.register(event.getDispatcher());
     }
 
-    @SubscribeEvent
     public void onConfigReload(ModConfigEvent event) {
         if (event.getConfig().getSpec() == ServerConfig.SERVER_CONFIG) {
             ServerConfig.bake();
