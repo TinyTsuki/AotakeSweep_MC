@@ -160,6 +160,13 @@ public class Component implements Cloneable, Serializable {
         return this;
     }
 
+    public Component setLanguageCodeIfEmpty(String languageCode) {
+        if (this.isLanguageCodeEmpty()) {
+            this.setLanguageCode(languageCode);
+        }
+        return this;
+    }
+
     // region NonNull Getter
 
     /**
@@ -334,10 +341,10 @@ public class Component implements Cloneable, Serializable {
     }
 
     public Component append(Object... objs) {
-        return this.append(this.getChildren().size(), objs);
+        return this.appendIndex(this.getChildren().size(), objs);
     }
 
-    public Component append(int index, Object... objs) {
+    public Component appendIndex(int index, Object... objs) {
         for (int i = 0; i < objs.length; i++) {
             Object obj = objs[i];
             if (obj instanceof Component) {
@@ -564,6 +571,10 @@ public class Component implements Cloneable, Serializable {
                             } else {
                                 Component argComponent = this.getArgs().get(index);
                                 if (argComponent.getI18nType() != EnumI18nType.PLAIN) {
+                                    // 语言代码传递
+                                    if (argComponent.isLanguageCodeEmpty()) {
+                                        argComponent.setLanguageCode(languageCode);
+                                    }
                                     try {
                                         // 颜色代码传递
                                         String colorCode = split[i].replaceAll("^.*?((?:§[\\da-fA-FKLMNORklmnor])*)$", "$1");
@@ -590,6 +601,7 @@ public class Component implements Cloneable, Serializable {
                         i++;
                     }
                 } else {
+                    this.args.forEach(arg -> arg.setLanguageCodeIfEmpty(languageCode));
                     components.add(net.minecraft.network.chat.Component.literal(StringUtils.format(this.text, this.args.toArray())).withStyle(this.getStyle()));
                 }
             }

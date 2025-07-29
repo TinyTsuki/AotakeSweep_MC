@@ -10,6 +10,7 @@ import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.ModContainer;
 import net.neoforged.fml.common.Mod;
 import net.neoforged.fml.config.ModConfig;
+import net.neoforged.fml.event.config.ModConfigEvent;
 import net.neoforged.fml.event.lifecycle.FMLClientSetupEvent;
 import net.neoforged.fml.event.lifecycle.FMLCommonSetupEvent;
 import net.neoforged.fml.loading.FMLEnvironment;
@@ -107,6 +108,8 @@ public class AotakeSweep {
         modEventBus.addListener(this::onClientSetup);
         // 注册公共设置事件
         modEventBus.addListener(this::onCommonSetup);
+        // 注册配置文件重载事件
+        modEventBus.addListener(this::onConfigReload);
 
         if (FMLEnvironment.dist == Dist.CLIENT) {
             modEventBus.addListener(ClientModEventHandler::registerKeyBindings);
@@ -145,6 +148,11 @@ public class AotakeSweep {
         AotakeCommand.register(event.getDispatcher());
     }
 
+    public void onConfigReload(ModConfigEvent event) {
+        if (event.getConfig().getSpec() == ServerConfig.SERVER_CONFIG) {
+            ServerConfig.bake();
+        }
+    }
 
     // region 资源ID
 
