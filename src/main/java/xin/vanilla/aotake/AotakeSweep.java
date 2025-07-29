@@ -102,6 +102,8 @@ public class AotakeSweep {
         FMLJavaModLoadingContext.get().getModEventBus().addListener(this::onClientSetup);
         // 注册公共设置事件
         FMLJavaModLoadingContext.get().getModEventBus().addListener(this::onCommonSetup);
+        // 注册配置文件重载事件
+        FMLJavaModLoadingContext.get().getModEventBus().addListener(this::onConfigReload);
     }
 
     /**
@@ -138,6 +140,12 @@ public class AotakeSweep {
         AotakeCommand.register(event.getDispatcher());
     }
 
+    @SubscribeEvent
+    public void onConfigReload(ModConfig.ModConfigEvent event) {
+        if (event.getConfig().getSpec() == ServerConfig.SERVER_CONFIG) {
+            ServerConfig.bake();
+        }
+    }
 
     // region 资源ID
 
