@@ -149,6 +149,9 @@ dependencies {
     // runtimeOnly fg.deobf("blank:InventoryProfilesNext-forge-1.16:1.10.602")
     // runtimeOnly fg.deobf("blank:kotlinforforge-1.17.0:obf")
     // runtimeOnly fg.deobf("blank:libIPN-forge-1.16:3.0.2")
+    // runtimeOnly fg.deobf("blank:create:mc1.16.5_v0.3.2g")
+    // runtimeOnly fg.deobf("blank:flywheel-1.16:0.2.5")
+    // runtimeOnly fg.deobf("blank:appliedenergistics2:8.4.7")
 
     // IE
     // runtimeOnly fg.deobf("blusunrize.immersiveengineering:ImmersiveEngineering:${ie_version}")
