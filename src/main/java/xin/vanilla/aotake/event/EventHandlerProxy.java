@@ -60,7 +60,7 @@ public class EventHandlerProxy {
 
     public static void onServerTick(TickEvent.ServerTickEvent event) {
         if (event.phase != TickEvent.Phase.END || AotakeSweep.isDisable()) return;
-        MinecraftServer server = AotakeSweep.getServerInstance();
+        MinecraftServer server = AotakeSweep.getServerInstance().key();
         if (server == null || !server.isRunning()) return;
 
         long now = System.currentTimeMillis();
@@ -69,7 +69,7 @@ public class EventHandlerProxy {
         // 扫地前提示
         String warnKey = String.valueOf(countdown / 1000);
         if (AotakeUtils.hasWarning(warnKey)) {
-            AotakeSweep.getServerInstance()
+            AotakeSweep.getServerInstance().key()
                     .getPlayerList()
                     .getPlayers()
                     .forEach(player -> AotakeUtils.sendActionBarMessage(player
@@ -80,7 +80,8 @@ public class EventHandlerProxy {
         // 扫地
         if (countdown <= 0) {
             nextSweepTime = now + ServerConfig.SWEEP_INTERVAL.get();
-            new Thread(AotakeUtils::sweep).start();
+            LOGGER.debug("Scheduled sweep will start");
+            AotakeScheduler.schedule(server, 1, AotakeUtils::sweep);
         }
 
         // 自清洁
@@ -140,8 +141,9 @@ public class EventHandlerProxy {
                                 Component.translatable(EnumI18nType.MESSAGE, "chunk_check_msg", overcrowdedChunks.get(0).getKey()));
                     }
 
-                    AotakeScheduler.schedule(server.overworld(), 25, () -> {
+                    AotakeScheduler.schedule(server, 25, () -> {
                         try {
+                            LOGGER.debug("Starting chunk sweep");
                             List<Entity> entities = overcrowdedChunks.stream()
                                     .flatMap(entry -> entry.getValue().stream())
                                     .collect(Collectors.toList());
@@ -149,6 +151,7 @@ public class EventHandlerProxy {
                         } catch (Exception e) {
                             LOGGER.error("Failed to sweep entities", e);
                         } finally {
+                            LOGGER.debug("Chunk sweep finished");
                             chunkSweepLock.set(false);
                         }
                     });
