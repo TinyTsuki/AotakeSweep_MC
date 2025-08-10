@@ -330,7 +330,7 @@ public class AotakeCommand {
                         }
                         AotakeUtils.removeEntity(entity, false);
                     });
-            AotakeSweep.getServerInstance()
+            AotakeSweep.getServerInstance().key()
                     .getPlayerList()
                     .getPlayers()
                     .forEach(player -> AotakeUtils.sendMessage(player
@@ -357,7 +357,7 @@ public class AotakeCommand {
                             ? context.getSource().getPlayerOrException().getDisplayName().getString()
                             : "server"
             );
-            AotakeSweep.getServerInstance()
+            AotakeSweep.getServerInstance().key()
                     .getPlayerList()
                     .getPlayers()
                     .forEach(p -> AotakeUtils.sendMessage(p, message));
@@ -390,7 +390,7 @@ public class AotakeCommand {
                             ? context.getSource().getPlayerOrException().getDisplayName().getString()
                             : "server"
             );
-            AotakeSweep.getServerInstance()
+            AotakeSweep.getServerInstance().key()
                     .getPlayerList()
                     .getPlayers()
                     .forEach(p -> AotakeUtils.sendMessage(p, message));
@@ -406,7 +406,7 @@ public class AotakeCommand {
                             ? context.getSource().getPlayerOrException().getDisplayName().getString()
                             : "server"
             );
-            AotakeSweep.getServerInstance()
+            AotakeSweep.getServerInstance().key()
                     .getPlayerList()
                     .getPlayers()
                     .forEach(p -> AotakeUtils.sendMessage(p, message));
@@ -439,7 +439,7 @@ public class AotakeCommand {
                             ? context.getSource().getPlayerOrException().getDisplayName().getString()
                             : "server"
             );
-            AotakeSweep.getServerInstance()
+            AotakeSweep.getServerInstance().key()
                     .getPlayerList()
                     .getPlayers()
                     .forEach(p -> AotakeUtils.sendMessage(p, message));
@@ -467,7 +467,7 @@ public class AotakeCommand {
                             , Component.literal(DateUtils.toDateTimeString(new Date(EventHandlerProxy.getNextSweepTime())) + " (Server Time)").toTextComponent())
                     )
             );
-            AotakeSweep.getServerInstance()
+            AotakeSweep.getServerInstance().key()
                     .getPlayerList()
                     .getPlayers()
                     .forEach(p -> AotakeUtils.sendMessage(p, message));
