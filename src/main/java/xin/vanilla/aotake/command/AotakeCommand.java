@@ -298,7 +298,7 @@ public class AotakeCommand {
                 }
             }
             Entity entity = context.getSource().getEntity();
-            new Thread(() -> AotakeUtils.sweep(entity instanceof ServerPlayer ? (ServerPlayer) entity : null, entities)).start();
+            AotakeScheduler.schedule(context.getSource().getServer(), 1, () -> AotakeUtils.sweep(entity instanceof ServerPlayer ? (ServerPlayer) entity : null, entities));
             return 1;
         };
         Command<CommandSourceStack> clearDropCommand = context -> {
@@ -740,8 +740,8 @@ public class AotakeCommand {
                                                 String lang;
                                                 if (source.getEntity() != null && source.getEntity() instanceof ServerPlayer) {
                                                     lang = AotakeUtils.getPlayerLanguage(source.getPlayerOrException());
-                                                        } else {
-                                                            lang = ServerConfig.DEFAULT_LANGUAGE.get();
+                                                } else {
+                                                    lang = ServerConfig.DEFAULT_LANGUAGE.get();
                                                 }
                                                 switch (mode) {
                                                     case 0:

@@ -613,14 +613,19 @@ public class AotakeUtils {
     }
 
     public static void sweep() {
+        LOGGER.debug("Sweep started");
         List<Entity> entities = getAllEntities();
         AotakeUtils.sweep(null, entities);
+        LOGGER.debug("Sweep finished");
     }
 
     public static void sweep(@Nullable ServerPlayer player, List<Entity> entities) {
         List<ServerPlayer> players = AotakeSweep.getServerInstance().getPlayerList().getPlayers();
         // 若服务器没有玩家
-        if (CollectionUtils.isNullOrEmpty(players) && !CommonConfig.SWEEP_WHEN_NO_PLAYER.get()) return;
+        if (CollectionUtils.isNullOrEmpty(players) && !CommonConfig.SWEEP_WHEN_NO_PLAYER.get()) {
+            LOGGER.debug("No player online, sweep canceled");
+            return;
+        }
 
         List<Entity> list = getAllEntitiesByFilter(entities);
 
