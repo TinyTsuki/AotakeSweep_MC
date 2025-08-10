@@ -129,7 +129,7 @@ public class WorldTrashData extends SavedData {
     }
 
     public static WorldTrashData get() {
-        return get(AotakeSweep.getServerInstance().getAllLevels().iterator().next());
+        return get(AotakeSweep.getServerInstance().key().getAllLevels().iterator().next());
     }
 
     public static WorldTrashData get(ServerPlayer player) {

@@ -5,12 +5,16 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.neoforge.event.tick.ServerTickEvent;
-import xin.vanilla.aotake.AotakeSweep;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
 public class AotakeScheduler {
+
+    private static final Logger LOGGER = LogManager.getLogger();
+
     private static final Queue<ScheduledTask> tasks = new ConcurrentLinkedQueue<>();
 
     public static void schedule(ServerLevel world, int delayTicks, Runnable action) {
@@ -21,15 +25,19 @@ public class AotakeScheduler {
 
     @SubscribeEvent
     public static void onServerTick(ServerTickEvent.Post event) {
-        MinecraftServer server = AotakeSweep.getServerInstance();
+        MinecraftServer server = event.getServer();
         long currentTick = server.getTickCount();
 
-        while (!tasks.isEmpty()) {
-            ScheduledTask task = tasks.peek();
-            if (task.executeTick <= currentTick) {
-                server.execute(task.runnable);
-                tasks.poll();
-            } else break;
+        try {
+            while (!tasks.isEmpty()) {
+                ScheduledTask task = tasks.peek();
+                if (task.executeTick <= currentTick) {
+                    server.execute(task.runnable);
+                    tasks.poll();
+                } else break;
+            }
+        } catch (Exception e) {
+            LOGGER.debug("Failed to execute task", e);
         }
     }
 
