@@ -25,6 +25,7 @@ import xin.vanilla.aotake.command.AotakeCommand;
 import xin.vanilla.aotake.config.CommonConfig;
 import xin.vanilla.aotake.config.CustomConfig;
 import xin.vanilla.aotake.config.ServerConfig;
+import xin.vanilla.aotake.data.KeyValue;
 import xin.vanilla.aotake.data.player.PlayerDataAttachment;
 import xin.vanilla.aotake.event.ClientModEventHandler;
 import xin.vanilla.aotake.network.ModNetworkHandler;
@@ -49,7 +50,7 @@ public class AotakeSweep {
      * 服务端实例
      */
     @Getter
-    private static MinecraftServer serverInstance;
+    private final static KeyValue<MinecraftServer, Boolean> serverInstance = new KeyValue<>(null, null);
 
     /**
      * 已安装mod的玩家列表</br>
@@ -131,7 +132,7 @@ public class AotakeSweep {
 
     @SubscribeEvent
     private void onServerStarting(ServerStartingEvent event) {
-        AotakeSweep.serverInstance = event.getServer();
+        AotakeSweep.serverInstance.setKey(event.getServer()).setValue(true);
     }
 
     @SubscribeEvent
@@ -140,6 +141,7 @@ public class AotakeSweep {
 
     @SubscribeEvent
     private void onServerStopping(ServerStoppingEvent event) {
+        AotakeSweep.serverInstance.setValue(false);
     }
 
     @SubscribeEvent
@@ -149,8 +151,11 @@ public class AotakeSweep {
     }
 
     public void onConfigReload(ModConfigEvent event) {
-        if (event.getConfig().getSpec() == ServerConfig.SERVER_CONFIG) {
-            ServerConfig.bake();
+        try {
+            if (event.getConfig().getSpec() == ServerConfig.SERVER_CONFIG && serverInstance.val()) {
+                ServerConfig.bake();
+            }
+        } catch (Exception ignored) {
         }
     }
 
