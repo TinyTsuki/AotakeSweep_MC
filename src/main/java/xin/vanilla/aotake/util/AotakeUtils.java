@@ -204,7 +204,7 @@ public class AotakeUtils {
      * 发送消息至所有玩家
      */
     public static void sendMessageToAll(Component message) {
-        for (ServerPlayer player : AotakeSweep.getServerInstance().getPlayerList().getPlayers()) {
+        for (ServerPlayer player : AotakeSweep.getServerInstance().key().getPlayerList().getPlayers()) {
             sendMessage(player, message);
         }
     }
@@ -265,7 +265,7 @@ public class AotakeUtils {
      * 发送操作栏消息至所有玩家
      */
     public static void sendActionBarMessageToAll(Component message) {
-        for (ServerPlayer player : AotakeSweep.getServerInstance().getPlayerList().getPlayers()) {
+        for (ServerPlayer player : AotakeSweep.getServerInstance().key().getPlayerList().getPlayers()) {
             sendActionBarMessage(player, message);
         }
     }
@@ -283,7 +283,7 @@ public class AotakeUtils {
      * @param packet 数据包
      */
     public static void broadcastPacket(Packet<?> packet) {
-        AotakeSweep.getServerInstance().getPlayerList().getPlayers().forEach(player -> player.connection.send(packet));
+        AotakeSweep.getServerInstance().key().getPlayerList().getPlayers().forEach(player -> player.connection.send(packet));
     }
 
     /**
@@ -412,9 +412,12 @@ public class AotakeUtils {
 
     public static List<Entity> getAllEntities() {
         List<Entity> entities = new ArrayList<>();
-        AotakeSweep.getServerInstance().getAllLevels()
-                .forEach(level -> level.getEntities().getAll().forEach(entities::add)
-                );
+        KeyValue<MinecraftServer, Boolean> serverInstance = AotakeSweep.getServerInstance();
+        if (serverInstance.val()) {
+            serverInstance.key().getAllLevels()
+                    .forEach(level -> level.getEntities().getAll().forEach(entities::add)
+                    );
+        }
         return entities;
     }
 
@@ -623,7 +626,11 @@ public class AotakeUtils {
     }
 
     public static void sweep(@Nullable ServerPlayer player, List<Entity> entities) {
-        List<ServerPlayer> players = AotakeSweep.getServerInstance().getPlayerList().getPlayers();
+        KeyValue<MinecraftServer, Boolean> serverInstance = AotakeSweep.getServerInstance();
+        // 服务器已关闭
+        if (!serverInstance.val()) return;
+
+        List<ServerPlayer> players = serverInstance.key().getPlayerList().getPlayers();
         // 若服务器没有玩家
         if (CollectionUtils.isNullOrEmpty(players) && !CommonConfig.SWEEP_WHEN_NO_PLAYER.get()) return;
 
@@ -774,7 +781,7 @@ public class AotakeUtils {
      * 获取指定维度的世界实例
      */
     public static ServerLevel getWorld(ResourceKey<Level> dimension) {
-        return AotakeSweep.getServerInstance().getLevel(dimension);
+        return AotakeSweep.getServerInstance().key().getLevel(dimension);
     }
 
     /**
@@ -811,7 +818,7 @@ public class AotakeUtils {
      */
     public static BlockState deserializeBlockState(String block) {
         try {
-            return BlockStateParser.parseForBlock(AotakeSweep.getServerInstance().getAllLevels().iterator().next().holderLookup(Registries.BLOCK)
+            return BlockStateParser.parseForBlock(AotakeSweep.getServerInstance().key().getAllLevels().iterator().next().holderLookup(Registries.BLOCK)
                     , new StringReader(block), false).blockState();
         } catch (Exception e) {
             LOGGER.error("Invalid unsafe block: {}", block, e);
@@ -902,7 +909,7 @@ public class AotakeUtils {
         net.minecraft.network.chat.Component name = getItemCustomName(itemStack);
         if (name != null) {
             result = net.minecraft.network.chat.Component.Serializer.toJson(name
-                    , AotakeSweep.getServerInstance().getAllLevels().iterator().next().registryAccess());
+                    , AotakeSweep.getServerInstance().key().getAllLevels().iterator().next().registryAccess());
         }
         return result;
     }
@@ -916,7 +923,7 @@ public class AotakeUtils {
         if (StringUtils.isNotNullOrEmpty(json)) {
             try {
                 result = net.minecraft.network.chat.Component.Serializer.fromJson(json
-                        , AotakeSweep.getServerInstance().getAllLevels().iterator().next().registryAccess());
+                        , AotakeSweep.getServerInstance().key().getAllLevels().iterator().next().registryAccess());
             } catch (Exception e) {
                 LOGGER.error("Invalid unsafe item name: {}", json, e);
             }
