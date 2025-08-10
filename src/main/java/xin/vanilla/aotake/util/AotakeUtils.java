@@ -275,7 +275,7 @@ public class AotakeUtils {
      * 发送消息至所有玩家
      */
     public static void sendMessageToAll(Component message) {
-        for (ServerPlayerEntity player : AotakeSweep.getServerInstance().getPlayerList().getPlayers()) {
+        for (ServerPlayerEntity player : AotakeSweep.getServerInstance().key().getPlayerList().getPlayers()) {
             sendMessage(player, message);
         }
     }
@@ -336,7 +336,7 @@ public class AotakeUtils {
      * 发送操作栏消息至所有玩家
      */
     public static void sendActionBarMessageToAll(Component message) {
-        for (ServerPlayerEntity player : AotakeSweep.getServerInstance().getPlayerList().getPlayers()) {
+        for (ServerPlayerEntity player : AotakeSweep.getServerInstance().key().getPlayerList().getPlayers()) {
             sendActionBarMessage(player, message);
         }
     }
@@ -354,7 +354,7 @@ public class AotakeUtils {
      * @param packet 数据包
      */
     public static void broadcastPacket(IPacket<?> packet) {
-        AotakeSweep.getServerInstance().getPlayerList().getPlayers().forEach(player -> player.connection.send(packet));
+        AotakeSweep.getServerInstance().key().getPlayerList().getPlayers().forEach(player -> player.connection.send(packet));
     }
 
     /**
@@ -483,10 +483,13 @@ public class AotakeUtils {
 
     public static List<Entity> getAllEntities() {
         List<Entity> entities = new ArrayList<>();
-        AotakeSweep.getServerInstance().getAllLevels()
-                .forEach(level -> entities.addAll(level.getEntities()
-                        .collect(Collectors.toList()))
-                );
+        KeyValue<MinecraftServer, Boolean> serverInstance = AotakeSweep.getServerInstance();
+        if (serverInstance.val()) {
+            serverInstance.key().getAllLevels()
+                    .forEach(level -> entities.addAll(level.getEntities()
+                            .collect(Collectors.toList()))
+                    );
+        }
         return entities;
     }
 
@@ -690,14 +693,23 @@ public class AotakeUtils {
     }
 
     public static void sweep() {
+        LOGGER.debug("Sweep started");
         List<Entity> entities = getAllEntities();
         AotakeUtils.sweep(null, entities);
+        LOGGER.debug("Sweep finished");
     }
 
     public static void sweep(@Nullable ServerPlayerEntity player, List<Entity> entities) {
-        List<ServerPlayerEntity> players = AotakeSweep.getServerInstance().getPlayerList().getPlayers();
+        KeyValue<MinecraftServer, Boolean> serverInstance = AotakeSweep.getServerInstance();
+        // 服务器已关闭
+        if (!serverInstance.val()) return;
+
+        List<ServerPlayerEntity> players = serverInstance.key().getPlayerList().getPlayers();
         // 若服务器没有玩家
-        if (CollectionUtils.isNullOrEmpty(players) && !CommonConfig.SWEEP_WHEN_NO_PLAYER.get()) return;
+        if (CollectionUtils.isNullOrEmpty(players) && !CommonConfig.SWEEP_WHEN_NO_PLAYER.get()) {
+            LOGGER.debug("No player online, sweep canceled");
+            return;
+        }
 
         List<Entity> list = getAllEntitiesByFilter(entities);
 
@@ -843,7 +855,7 @@ public class AotakeUtils {
      * 获取指定维度的世界实例
      */
     public static ServerWorld getWorld(RegistryKey<World> dimension) {
-        return AotakeSweep.getServerInstance().getLevel(dimension);
+        return AotakeSweep.getServerInstance().key().getLevel(dimension);
     }
 
     /**

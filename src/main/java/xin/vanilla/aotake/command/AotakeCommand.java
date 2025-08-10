@@ -296,7 +296,7 @@ public class AotakeCommand {
                 }
             }
             Entity entity = context.getSource().getEntity();
-            new Thread(() -> AotakeUtils.sweep(entity instanceof ServerPlayerEntity ? (ServerPlayerEntity) entity : null, entities)).start();
+            AotakeScheduler.schedule(context.getSource().getServer(), 1, () -> AotakeUtils.sweep(entity instanceof ServerPlayerEntity ? (ServerPlayerEntity) entity : null, entities));
             return 1;
         };
         Command<CommandSource> clearDropCommand = context -> {
@@ -328,7 +328,7 @@ public class AotakeCommand {
                         }
                         AotakeUtils.removeEntity(entity, false);
                     });
-            AotakeSweep.getServerInstance()
+            AotakeSweep.getServerInstance().key()
                     .getPlayerList()
                     .getPlayers()
                     .forEach(player -> AotakeUtils.sendMessage(player
@@ -355,7 +355,7 @@ public class AotakeCommand {
                             ? context.getSource().getPlayerOrException().getDisplayName().getString()
                             : "server"
             );
-            AotakeSweep.getServerInstance()
+            AotakeSweep.getServerInstance().key()
                     .getPlayerList()
                     .getPlayers()
                     .forEach(p -> AotakeUtils.sendMessage(p, message));
@@ -388,7 +388,7 @@ public class AotakeCommand {
                             ? context.getSource().getPlayerOrException().getDisplayName().getString()
                             : "server"
             );
-            AotakeSweep.getServerInstance()
+            AotakeSweep.getServerInstance().key()
                     .getPlayerList()
                     .getPlayers()
                     .forEach(p -> AotakeUtils.sendMessage(p, message));
@@ -404,7 +404,7 @@ public class AotakeCommand {
                             ? context.getSource().getPlayerOrException().getDisplayName().getString()
                             : "server"
             );
-            AotakeSweep.getServerInstance()
+            AotakeSweep.getServerInstance().key()
                     .getPlayerList()
                     .getPlayers()
                     .forEach(p -> AotakeUtils.sendMessage(p, message));
@@ -437,7 +437,7 @@ public class AotakeCommand {
                             ? context.getSource().getPlayerOrException().getDisplayName().getString()
                             : "server"
             );
-            AotakeSweep.getServerInstance()
+            AotakeSweep.getServerInstance().key()
                     .getPlayerList()
                     .getPlayers()
                     .forEach(p -> AotakeUtils.sendMessage(p, message));
@@ -465,7 +465,7 @@ public class AotakeCommand {
                             , Component.literal(DateUtils.toDateTimeString(new Date(EventHandlerProxy.getNextSweepTime())) + " (Server Time)").toTextComponent())
                     )
             );
-            AotakeSweep.getServerInstance()
+            AotakeSweep.getServerInstance().key()
                     .getPlayerList()
                     .getPlayers()
                     .forEach(p -> AotakeUtils.sendMessage(p, message));
@@ -735,9 +735,11 @@ public class AotakeCommand {
                                             .executes(context -> {
                                                 int mode = IntegerArgumentType.getInteger(context, "mode");
                                                 CommandSource source = context.getSource();
-                                                String lang = ServerConfig.DEFAULT_LANGUAGE.get();
+                                                String lang;
                                                 if (source.getEntity() != null && source.getEntity() instanceof ServerPlayerEntity) {
                                                     lang = AotakeUtils.getPlayerLanguage(source.getPlayerOrException());
+                                                } else {
+                                                    lang = ServerConfig.DEFAULT_LANGUAGE.get();
                                                 }
                                                 switch (mode) {
                                                     case 0:

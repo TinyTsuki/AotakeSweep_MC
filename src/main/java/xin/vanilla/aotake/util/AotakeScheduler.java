@@ -3,19 +3,22 @@ package xin.vanilla.aotake.util;
 import lombok.Data;
 import lombok.experimental.Accessors;
 import net.minecraft.server.MinecraftServer;
-import net.minecraft.world.server.ServerWorld;
 import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import xin.vanilla.aotake.AotakeSweep;
 
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
 public class AotakeScheduler {
+
+    private static final Logger LOGGER = LogManager.getLogger();
+
     private static final Queue<ScheduledTask> tasks = new ConcurrentLinkedQueue<>();
 
-    public static void schedule(ServerWorld world, int delayTicks, Runnable action) {
-        MinecraftServer server = world.getServer();
+    public static void schedule(MinecraftServer server, int delayTicks, Runnable action) {
         long executeAt = server.getTickCount() + delayTicks;
         tasks.add(new ScheduledTask(executeAt, action));
     }
@@ -23,15 +26,19 @@ public class AotakeScheduler {
     @SubscribeEvent
     public static void onServerTick(TickEvent.ServerTickEvent event) {
         if (event.phase != TickEvent.Phase.END) return;
-        MinecraftServer server = AotakeSweep.getServerInstance();
+        MinecraftServer server = AotakeSweep.getServerInstance().key();
         long currentTick = server.getTickCount();
 
-        while (!tasks.isEmpty()) {
-            ScheduledTask task = tasks.peek();
-            if (task.executeTick <= currentTick) {
-                server.execute(task.runnable);
-                tasks.poll();
-            } else break;
+        try {
+            while (!tasks.isEmpty()) {
+                ScheduledTask task = tasks.peek();
+                if (task.executeTick <= currentTick) {
+                    server.execute(task.runnable);
+                    tasks.poll();
+                } else break;
+            }
+        } catch (Exception e) {
+            LOGGER.debug("Failed to execute task", e);
         }
     }
 
