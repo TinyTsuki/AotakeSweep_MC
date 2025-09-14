@@ -703,52 +703,77 @@ public class AotakeUtils {
         KeyValue<MinecraftServer, Boolean> serverInstance = AotakeSweep.getServerInstance();
         // 服务器已关闭
         if (!serverInstance.val()) return;
-
         List<ServerPlayerEntity> players = serverInstance.key().getPlayerList().getPlayers();
-        // 若服务器没有玩家
-        if (CollectionUtils.isNullOrEmpty(players) && !CommonConfig.SWEEP_WHEN_NO_PLAYER.get()) {
-            LOGGER.debug("No player online, sweep canceled");
-            return;
-        }
 
-        List<Entity> list = getAllEntitiesByFilter(entities);
-
-        SweepResult result = null;
-        if (CollectionUtils.isNotNullOrEmpty(list)) {
-            // 清空旧的物品
-            if (ServerConfig.SELF_CLEAN_MODE.get().contains(EnumSelfCleanMode.SWEEP_CLEAR.name())) {
-                WorldTrashData.get().getDropList().clear();
-                WorldTrashData.get().getInventoryList().forEach(Inventory::clearContent);
+        try {
+            // 若服务器没有玩家
+            if (CollectionUtils.isNullOrEmpty(players) && !CommonConfig.SWEEP_WHEN_NO_PLAYER.get()) {
+                LOGGER.debug("No player online, sweep canceled");
+                return;
             }
-            result = AotakeSweep.getEntitySweeper().addDrops(list);
-        }
 
-        for (ServerPlayerEntity p : players) {
-            String language = AotakeUtils.getPlayerLanguage(p);
-            Component msg = getWarningMessage(result == null || result.isEmpty() ? "fail" : "success"
-                    , language
-                    , result);
-            if (PlayerSweepDataCapability.getData(p).isShowSweepResult()) {
-                String openCom = "/" + AotakeUtils.getCommand(EnumCommandType.DUSTBIN_OPEN);
-                msg.setClickEvent(new ClickEvent(ClickEvent.Action.SUGGEST_COMMAND, openCom))
-                        .setHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT
-                                , Component.literal(openCom).toTextComponent())
-                        );
-                AotakeUtils.sendMessage(p, Component.empty()
-                        .append(msg)
-                        .append(Component.literal("[x]")
-                                .setColor(EnumMCColor.RED.getColor())
-                                .setHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT
-                                        , Component.translatable(EnumI18nType.MESSAGE, "not_show_button")
-                                        .toTextComponent(language))
-                                )
-                                .setClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND
-                                        , "/" + AotakeUtils.getCommandPrefix() + " config showSweepResult change")
-                                )
-                        )
-                );
-            } else {
-                AotakeUtils.sendActionBarMessage(p, msg);
+            List<Entity> list = getAllEntitiesByFilter(entities);
+
+            SweepResult result = null;
+            if (CollectionUtils.isNotNullOrEmpty(list)) {
+                // 清空旧的物品
+                if (ServerConfig.SELF_CLEAN_MODE.get().contains(EnumSelfCleanMode.SWEEP_CLEAR.name())) {
+                    WorldTrashData.get().getDropList().clear();
+                    WorldTrashData.get().getInventoryList().forEach(Inventory::clearContent);
+                }
+                result = AotakeSweep.getEntitySweeper().addDrops(list);
+            }
+
+            for (ServerPlayerEntity p : players) {
+                String language = AotakeUtils.getPlayerLanguage(p);
+                Component msg = getWarningMessage(result == null || result.isEmpty() ? "fail" : "success"
+                        , language
+                        , result);
+                if (PlayerSweepDataCapability.getData(p).isShowSweepResult()) {
+                    String openCom = "/" + AotakeUtils.getCommand(EnumCommandType.DUSTBIN_OPEN);
+                    msg.setClickEvent(new ClickEvent(ClickEvent.Action.SUGGEST_COMMAND, openCom))
+                            .setHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT
+                                    , Component.literal(openCom).toTextComponent())
+                            );
+                    AotakeUtils.sendMessage(p, Component.empty()
+                            .append(msg)
+                            .append(Component.literal("[x]")
+                                    .setColor(EnumMCColor.RED.getColor())
+                                    .setHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT
+                                            , Component.translatable(EnumI18nType.MESSAGE, "not_show_button")
+                                            .toTextComponent(language))
+                                    )
+                                    .setClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND
+                                            , "/" + AotakeUtils.getCommandPrefix() + " config showSweepResult change")
+                                    )
+                            )
+                    );
+                } else {
+                    AotakeUtils.sendActionBarMessage(p, msg);
+                }
+            }
+        } catch (Exception e) {
+            LOGGER.error(e);
+            for (ServerPlayerEntity p : players) {
+                String language = AotakeUtils.getPlayerLanguage(p);
+                Component msg = getWarningMessage("error", language, null);
+                if (PlayerSweepDataCapability.getData(p).isShowSweepResult()) {
+                    AotakeUtils.sendMessage(p, Component.empty()
+                            .append(msg)
+                            .append(Component.literal("[x]")
+                                    .setColor(EnumMCColor.RED.getColor())
+                                    .setHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT
+                                            , Component.translatable(EnumI18nType.MESSAGE, "not_show_button")
+                                            .toTextComponent(language))
+                                    )
+                                    .setClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND
+                                            , "/" + AotakeUtils.getCommandPrefix() + " config showSweepResult change")
+                                    )
+                            )
+                    );
+                } else {
+                    AotakeUtils.sendActionBarMessage(p, msg);
+                }
             }
         }
 
