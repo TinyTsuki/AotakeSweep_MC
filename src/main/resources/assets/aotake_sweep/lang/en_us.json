@@ -46,6 +46,7 @@
   "message.aotake_sweep.player_default_language": "The default language of the player is set to %s.",
   "message.aotake_sweep.cleanup_will_start": "§r§eThe cleanup will start in §r§e%s§r§e seconds.",
   "message.aotake_sweep.cleanup_started": "§r§eCleaned up [itemCount] items and [entityCount] entities.",
+  "message.aotake_sweep.cleanup_error": "An error occurred while cleaning up, check the server logs for details.",
   "message.aotake_sweep.dustbin_cleared": "§eDustbin%s§ehas been cleared by '%s§e'.",
   "message.aotake_sweep.dustbin_dropped": "§eDustbin%s§ehas been dropped by '%s§e'.",
   "message.aotake_sweep.cache_cleared": "§eCache area has been cleared by '%s§e'.",
