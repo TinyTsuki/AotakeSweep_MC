@@ -50,7 +50,7 @@ public class AotakeSweep {
      * 服务端实例
      */
     @Getter
-    private final static KeyValue<MinecraftServer, Boolean> serverInstance = new KeyValue<>(null, null);
+    private final static KeyValue<MinecraftServer, Boolean> serverInstance = new KeyValue<>(null, true);
 
     /**
      * 已安装mod的玩家列表</br>

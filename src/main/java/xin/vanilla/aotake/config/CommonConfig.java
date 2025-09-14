@@ -205,6 +205,7 @@ public class CommonConfig {
                             , "提示内容，留空将使用内置提示。"
                             , "success时可选变量：[entityCount], [itemCount], [recycledItemCount], [recycledEntityCount]")
                     .define("sweepWarningContent", JsonUtils.GSON.toJson(new LinkedHashMap<String, String>() {{
+                        put("error", "§r§e香草酱坏掉了，这绝对不是香草酱的错！");
                         put("fail", "§r§e香草酱什么也没吃到，失落地离开了。");
                         put("success", "§r§e香草酱吃掉了[itemCount]个物品与[entityCount]个实体，并满意地离开了。");
                         put("1", "§r§e饥肠辘辘的香草酱将会在§r§e%s§r§e秒后到来！");
@@ -399,6 +400,7 @@ public class CommonConfig {
         CACHE_LIMIT.set(5000);
         SWEEP_WHEN_NO_PLAYER.set(false);
         SWEEP_WARNING_CONTENT.set(JsonUtils.GSON.toJson(new LinkedHashMap<String, String>() {{
+            put("error", "§r§e香草酱坏掉了，这绝对不是香草酱的错！");
             put("fail", "§r§e香草酱什么也没吃到，失落地离开了。");
             put("success", "§r§e香草酱吃掉了[itemCount]个物品与[entityCount]个实体，并满意地离开了。");
             put("1", "§r§e饥肠辘辘的香草酱将会在§r§e%s§r§e秒后到来！");
@@ -446,6 +448,7 @@ public class CommonConfig {
         resetConfig();
 
         SWEEP_WARNING_CONTENT.set(JsonUtils.GSON.toJson(new LinkedHashMap<String, String>() {{
+            put("error", "清理过程中发生了异常，请检查服务器异常日志。");
             put("fail", "§r§e世界很干净。");
             put("success", "§r§e清理了[itemCount]个物品与[entityCount]个实体。");
             put("1", "§r§e清理将会在§r§e%s§r§e秒后开始！");
@@ -466,6 +469,7 @@ public class CommonConfig {
         resetConfig();
 
         SWEEP_WARNING_CONTENT.set(JsonUtils.GSON.toJson(new LinkedHashMap<String, String>() {{
+            put("error", "An error occurred while cleaning up, check the server logs for details.");
             put("fail", "§r§eCleaned up nothing.");
             put("success", "§r§eCleaned up [itemCount] items and [entityCount] entities.");
             put("1", "§r§eThe cleanup will start in §r§e%s§r§e seconds!");
