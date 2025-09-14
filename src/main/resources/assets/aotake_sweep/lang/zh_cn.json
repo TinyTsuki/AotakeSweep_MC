@@ -46,6 +46,7 @@
   "message.aotake_sweep.player_default_language": "玩家默认语言被设置为：%s。",
   "message.aotake_sweep.cleanup_will_start": "§r§e清理将会在§r§e%s§r§e秒后开始。",
   "message.aotake_sweep.cleanup_started": "§r§e清理了[itemCount]个物品与[entityCount]个实体。",
+  "message.aotake_sweep.cleanup_error": "清理过程中发生了异常，请检查服务器异常日志。",
   "message.aotake_sweep.dustbin_cleared": "§e垃圾箱%s§e被『%s§e』清空了。",
   "message.aotake_sweep.dustbin_dropped": "§e垃圾箱%s§e被『%s§e』倒掉了。",
   "message.aotake_sweep.cache_cleared": "§e垃圾缓存区被『%s§e』清空了。",
