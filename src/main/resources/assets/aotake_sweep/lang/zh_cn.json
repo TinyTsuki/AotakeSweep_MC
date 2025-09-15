@@ -55,6 +55,7 @@
   "message.aotake_sweep.mod_status": "%s的启用状态被设置为：%s。",
   "message.aotake_sweep.mod_disabled": "§cMOD已被临时禁用。",
   "message.aotake_sweep.chunk_check_msg": "%s§e等区块实体超过阈值，即将进行清扫。",
+  "message.aotake_sweep.chunk_check_msg_hover": "点击补全传送指令",
   "message.aotake_sweep.entity_caught": "实体已捕获！",
   "message.aotake_sweep.entity_released": "实体已释放！",
   "message.aotake_sweep.sweep_interval": "服务器扫地间隔被设置为：%s毫秒。",
