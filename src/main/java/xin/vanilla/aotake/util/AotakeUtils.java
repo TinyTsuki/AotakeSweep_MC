@@ -35,6 +35,7 @@ import net.minecraft.world.item.component.CustomData;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraftforge.fml.ModList;
 import net.minecraftforge.network.PacketDistributor;
 import net.minecraftforge.registries.ForgeRegistries;
 import org.apache.logging.log4j.LogManager;
@@ -43,6 +44,7 @@ import xin.vanilla.aotake.AotakeSweep;
 import xin.vanilla.aotake.config.CommonConfig;
 import xin.vanilla.aotake.config.CustomConfig;
 import xin.vanilla.aotake.config.ServerConfig;
+import xin.vanilla.aotake.data.Coordinate;
 import xin.vanilla.aotake.data.KeyValue;
 import xin.vanilla.aotake.data.SweepResult;
 import xin.vanilla.aotake.data.player.PlayerSweepDataCapability;
@@ -172,6 +174,28 @@ public class AotakeUtils {
                     .anyMatch(s -> s.replaceConcise() == type.replaceConcise());
         } else {
             return false;
+        }
+    }
+
+    /**
+     * 获取传送指令
+     */
+    public static String genTeleportCommand(Coordinate coordinate) {
+        if (ModList.get().isLoaded("narcissus_farewell")) {
+            return String.format("/%s %s %s %s safe %s"
+                    , CompatNarcissus.getTpCommand()
+                    , coordinate.getXInt()
+                    , coordinate.getYInt()
+                    , coordinate.getZInt()
+                    , coordinate.getDimensionResourceId()
+            );
+        } else {
+            return String.format("/execute in %s as @s run tp %s %s %s"
+                    , coordinate.getDimensionResourceId()
+                    , coordinate.getXInt()
+                    , coordinate.getYInt()
+                    , coordinate.getZInt()
+            );
         }
     }
 
@@ -742,6 +766,9 @@ public class AotakeUtils {
         if (warns.isEmpty()) {
             warns.putAll(JsonUtils.GSON.fromJson(CommonConfig.SWEEP_WARNING_CONTENT.get(), new TypeToken<Map<String, String>>() {
             }.getType()));
+            warns.putIfAbsent("error", "message.aotake_sweep.cleanup_error");
+            warns.putIfAbsent("fail", "message.aotake_sweep.cleanup_started");
+            warns.putIfAbsent("success", "message.aotake_sweep.cleanup_started");
         }
     }
 
@@ -755,31 +782,27 @@ public class AotakeUtils {
         try {
             initWarns();
             String text = warns.get(key);
-            if (result != null) {
-                text = text.replaceAll("\\[itemCount]", String.valueOf(result.getItemCount()))
-                        .replaceAll("\\[entityCount]", String.valueOf(result.getEntityCount()))
-                        .replaceAll("\\[recycledItemCount]", String.valueOf(result.getRecycledItemCount()))
-                        .replaceAll("\\[recycledEntityCount]", String.valueOf(result.getRecycledEntityCount()));
+            if (StringUtils.isNotNullOrEmpty(text) && text.startsWith("message.aotake_sweep.")) {
+                text = I18nUtils.getTranslation(text, lang);
             }
+            if (StringUtils.toInt(key) > 0) {
+                if (StringUtils.isNullOrEmpty(text)) {
+                    text = Component.translatable(EnumI18nType.MESSAGE, "cleanup_will_start", key).toTextComponent(lang).getString();
+                } else {
+                    text = StringUtils.format(text, key);
+                }
+            } else if (StringUtils.isNullOrEmpty(text)) {
+                text = "";
+            }
+            if (result == null) result = new SweepResult();
+            text = text.replaceAll("\\[itemCount]", String.valueOf(result.getItemCount()))
+                    .replaceAll("\\[entityCount]", String.valueOf(result.getEntityCount()))
+                    .replaceAll("\\[recycledItemCount]", String.valueOf(result.getRecycledItemCount()))
+                    .replaceAll("\\[recycledEntityCount]", String.valueOf(result.getRecycledEntityCount()));
+
             msg = Component.literal(text);
             msg.appendArg(key);
         } catch (Exception ignored) {
-        }
-        if (msg == null) {
-            if (StringUtils.toInt(key) > 0) {
-                msg = Component.translatable(EnumI18nType.MESSAGE, "cleanup_will_start", key);
-            } else if ("success".equalsIgnoreCase(key)) {
-                String text = I18nUtils.getTranslation(EnumI18nType.MESSAGE, "cleanup_started", lang);
-                if (result != null) {
-                    text = text.replaceAll("\\[itemCount]", String.valueOf(result.getItemCount()))
-                            .replaceAll("\\[entityCount]", String.valueOf(result.getEntityCount()))
-                            .replaceAll("\\[recycledItemCount]", String.valueOf(result.getRecycledItemCount()))
-                            .replaceAll("\\[recycledEntityCount]", String.valueOf(result.getRecycledEntityCount()));
-                }
-                msg = Component.literal(text);
-            } else {
-                msg = Component.empty();
-            }
         }
         return msg;
     }
