@@ -11,6 +11,7 @@ import net.minecraftforge.event.server.ServerStartedEvent;
 import net.minecraftforge.event.server.ServerStartingEvent;
 import net.minecraftforge.event.server.ServerStoppingEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.minecraftforge.fml.ModLoadingContext;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.config.ModConfig;
 import net.minecraftforge.fml.event.config.ModConfigEvent;
@@ -82,7 +83,7 @@ public class AotakeSweep {
 
     // public static final Item JUNK_BALL = new JunkBall();
 
-    public AotakeSweep(FMLJavaModLoadingContext context) {
+    public AotakeSweep() {
 
         // 注册网络通道
         ModNetworkHandler.registerPackets();
@@ -98,18 +99,18 @@ public class AotakeSweep {
         MinecraftForge.EVENT_BUS.register(AotakeScheduler.class);
 
         // 注册配置
-        context.registerConfig(ModConfig.Type.COMMON, CommonConfig.COMMON_CONFIG);
-        context.registerConfig(ModConfig.Type.SERVER, ServerConfig.SERVER_CONFIG);
+        ModLoadingContext.get().registerConfig(ModConfig.Type.COMMON, CommonConfig.COMMON_CONFIG);
+        ModLoadingContext.get().registerConfig(ModConfig.Type.SERVER, ServerConfig.SERVER_CONFIG);
 
         // 注册客户端设置事件
-        context.getModEventBus().addListener(this::onClientSetup);
+        MinecraftForge.EVENT_BUS.addListener(this::onClientSetup);
         // 注册公共设置事件
-        context.getModEventBus().addListener(this::onCommonSetup);
+        MinecraftForge.EVENT_BUS.addListener(this::onCommonSetup);
         // 注册配置文件重载事件
-        context.getModEventBus().addListener(this::onConfigReload);
+        FMLJavaModLoadingContext.get().getModEventBus().addListener(this::onConfigReload);
 
         if (FMLEnvironment.dist == Dist.CLIENT) {
-            context.getModEventBus().addListener(ClientModEventHandler::registerKeyBindings);
+            FMLJavaModLoadingContext.get().getModEventBus().addListener(ClientModEventHandler::registerKeyBindings);
         }
     }
 
