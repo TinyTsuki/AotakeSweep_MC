@@ -3,6 +3,8 @@ package xin.vanilla.aotake.event;
 import lombok.Getter;
 import lombok.Setter;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.network.chat.ClickEvent;
+import net.minecraft.network.chat.HoverEvent;
 import net.minecraft.network.protocol.game.ClientboundSetPassengersPacket;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
@@ -33,6 +35,7 @@ import xin.vanilla.aotake.data.player.PlayerSweepDataCapability;
 import xin.vanilla.aotake.data.player.PlayerSweepDataProvider;
 import xin.vanilla.aotake.data.world.WorldTrashData;
 import xin.vanilla.aotake.enums.EnumI18nType;
+import xin.vanilla.aotake.enums.EnumMCColor;
 import xin.vanilla.aotake.enums.EnumSelfCleanMode;
 import xin.vanilla.aotake.util.AotakeScheduler;
 import xin.vanilla.aotake.util.AotakeUtils;
@@ -136,9 +139,37 @@ public class EventHandlerProxy {
                             .map(entry -> entry.getKey() + " has " + entry.getValue().size())
                             .collect(Collectors.joining("\n")));
 
+                    Map.Entry<String, List<Entity>> entityEntryList = overcrowdedChunks.get(0);
+                    Entity entity = entityEntryList.getValue().get(0);
                     for (ServerPlayer player : server.getPlayerList().getPlayers()) {
-                        AotakeUtils.sendActionBarMessage(player,
-                                Component.translatable(EnumI18nType.MESSAGE, "chunk_check_msg", overcrowdedChunks.get(0).getKey()));
+                        String language = AotakeUtils.getPlayerLanguage(player);
+
+                        Component message = Component.translatable(EnumI18nType.MESSAGE, "chunk_check_msg", entityEntryList.getKey());
+                        if (player.hasPermissions(1)
+                                && PlayerSweepDataCapability.getData(player).isShowSweepResult()
+                        ) {
+                            AotakeUtils.sendMessage(player, message
+                                    .setHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT
+                                            , Component.translatable(EnumI18nType.MESSAGE, "chunk_check_msg_hover")
+                                            .toTextComponent(language))
+                                    )
+                                    .setClickEvent(new ClickEvent(ClickEvent.Action.SUGGEST_COMMAND
+                                            , AotakeUtils.genTeleportCommand(new Coordinate(entity)))
+                                    )
+                                    .append(Component.literal("[x]")
+                                            .setColor(EnumMCColor.RED.getColor())
+                                            .setHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT
+                                                    , Component.translatable(EnumI18nType.MESSAGE, "not_show_button")
+                                                    .toTextComponent(language))
+                                            )
+                                            .setClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND
+                                                    , "/" + AotakeUtils.getCommandPrefix() + " config showSweepResult change")
+                                            )
+                                    )
+                            );
+                        } else {
+                            AotakeUtils.sendActionBarMessage(player, message);
+                        }
                     }
 
                     AotakeScheduler.schedule(server, 25, () -> {
