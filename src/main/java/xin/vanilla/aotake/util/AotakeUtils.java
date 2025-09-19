@@ -45,10 +45,7 @@ import xin.vanilla.aotake.data.KeyValue;
 import xin.vanilla.aotake.data.SweepResult;
 import xin.vanilla.aotake.data.player.PlayerSweepDataCapability;
 import xin.vanilla.aotake.data.world.WorldTrashData;
-import xin.vanilla.aotake.enums.EnumCommandType;
-import xin.vanilla.aotake.enums.EnumI18nType;
-import xin.vanilla.aotake.enums.EnumMCColor;
-import xin.vanilla.aotake.enums.EnumSelfCleanMode;
+import xin.vanilla.aotake.enums.*;
 import xin.vanilla.aotake.network.ModNetworkHandler;
 
 import javax.annotation.Nullable;
@@ -472,9 +469,16 @@ public class AotakeUtils {
         return false;
     }
 
-    public static List<Entity> getAllEntitiesByFilter(List<Entity> entities) {
+    public static List<Entity> getAllEntitiesByFilter(List<Entity> entities, boolean chuck) {
         if (CollectionUtils.isNullOrEmpty(entities)) {
             entities = getAllEntities();
+        }
+        if (chuck && Objects.equals(ServerConfig.CHUNK_CHECK_CLEAN_MODE.get(), EnumChunkCheckMode.ALL.name())) {
+            return entities.stream()
+                    .filter(entity -> !(entity instanceof Player))
+                    .filter(entity -> !entity.hasCustomName())
+                    .filter(entity -> !(entity instanceof TamableAnimal) || ((TamableAnimal) entity).getOwnerUUID() == null)
+                    .collect(Collectors.toList());
         }
         initSafeBlocks();
         List<Entity> filtered = entities.stream()
@@ -642,14 +646,19 @@ public class AotakeUtils {
     public static void sweep() {
         LOGGER.debug("Sweep started");
         List<Entity> entities = getAllEntities();
-        AotakeUtils.sweep(null, entities);
+        AotakeUtils.sweep(null, entities, false);
         LOGGER.debug("Sweep finished");
     }
 
-    public static void sweep(@Nullable ServerPlayer player, List<Entity> entities) {
+    public static void sweep(@Nullable ServerPlayer player, List<Entity> entities, boolean chuck) {
         KeyValue<MinecraftServer, Boolean> serverInstance = AotakeSweep.getServerInstance();
         // 服务器已关闭
         if (!serverInstance.val()) return;
+        if (chuck && Objects.equals(ServerConfig.CHUNK_CHECK_CLEAN_MODE.get(), EnumChunkCheckMode.NONE.name())) {
+            LOGGER.debug("Chunk check mode is NONE, sweep canceled");
+            return;
+        }
+
         List<ServerPlayer> players = serverInstance.key().getPlayerList().getPlayers();
 
         try {
@@ -659,7 +668,7 @@ public class AotakeUtils {
                 return;
             }
 
-            List<Entity> list = getAllEntitiesByFilter(entities);
+            List<Entity> list = getAllEntitiesByFilter(entities, chuck);
 
             SweepResult result = null;
             if (CollectionUtils.isNotNullOrEmpty(list)) {
