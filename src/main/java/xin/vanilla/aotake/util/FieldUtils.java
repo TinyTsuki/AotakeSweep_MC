@@ -21,7 +21,7 @@ public class FieldUtils {
         try {
             List<String> names = getPrivateFieldNames(Unsafe.class, Unsafe.class);
             if (CollectionUtils.isNotNullOrEmpty(names)) {
-                UNSAFE_FIELD_NAME = names.get(0);
+                UNSAFE_FIELD_NAME = names.getFirst();
             } else {
                 UNSAFE_FIELD_NAME = "theUnsafe";
             }

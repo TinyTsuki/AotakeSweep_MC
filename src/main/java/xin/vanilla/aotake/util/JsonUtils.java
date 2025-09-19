@@ -168,7 +168,7 @@ public class JsonUtils {
         if (keys.isEmpty()) {
             return "";
         }
-        return keys.get(0);
+        return keys.getFirst();
     }
 
     /**

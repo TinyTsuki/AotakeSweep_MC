@@ -298,7 +298,7 @@ public class AotakeCommand {
                 }
             }
             Entity entity = context.getSource().getEntity();
-            new Thread(() -> AotakeUtils.sweep(entity instanceof ServerPlayer ? (ServerPlayer) entity : null, entities)).start();
+            new Thread(() -> AotakeUtils.sweep(entity instanceof ServerPlayer ? (ServerPlayer) entity : null, entities, false)).start();
             return 1;
         };
         Command<CommandSourceStack> clearDropCommand = context -> {
