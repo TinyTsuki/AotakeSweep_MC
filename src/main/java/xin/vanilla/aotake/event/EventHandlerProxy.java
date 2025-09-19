@@ -37,10 +37,7 @@ import xin.vanilla.aotake.data.player.IPlayerSweepData;
 import xin.vanilla.aotake.data.player.PlayerSweepDataCapability;
 import xin.vanilla.aotake.data.player.PlayerSweepDataProvider;
 import xin.vanilla.aotake.data.world.WorldTrashData;
-import xin.vanilla.aotake.enums.EnumChunkCheckMode;
-import xin.vanilla.aotake.enums.EnumI18nType;
-import xin.vanilla.aotake.enums.EnumMCColor;
-import xin.vanilla.aotake.enums.EnumSelfCleanMode;
+import xin.vanilla.aotake.enums.*;
 import xin.vanilla.aotake.util.AotakeScheduler;
 import xin.vanilla.aotake.util.AotakeUtils;
 import xin.vanilla.aotake.util.Component;
@@ -132,7 +129,11 @@ public class EventHandlerProxy {
                                     : "unknown";
                             int chunkX = entity.blockPosition().getX() >> 4;
                             int chunkZ = entity.blockPosition().getZ() >> 4;
-                            return String.format("Dimension: %s, Chunk: %s %s, EntityType: %s", dimension, chunkX, chunkZ, AotakeUtils.getEntityTypeRegistryName(entity));
+                            if (EnumChunkCheckMode.DEFAULT.name().equals(ServerConfig.CHUNK_CHECK_MODE.get())) {
+                                return String.format("Dimension: %s, Chunk: %s %s", dimension, chunkX, chunkZ);
+                            } else {
+                                return String.format("Dimension: %s, Chunk: %s %s, EntityType: %s", dimension, chunkX, chunkZ, AotakeUtils.getEntityTypeRegistryName(entity));
+                            }
                         }))
                         .entrySet().stream()
                         .filter(entry -> entry.getValue().size() > ServerConfig.CHUNK_CHECK_LIMIT.get())
@@ -151,7 +152,7 @@ public class EventHandlerProxy {
                             String language = AotakeUtils.getPlayerLanguage(player);
 
                             Component message = Component.translatable(EnumI18nType.MESSAGE,
-                                    Objects.equals(ServerConfig.CHUNK_CHECK_CLEAN_MODE.get(), EnumChunkCheckMode.NONE.name())
+                                    Objects.equals(ServerConfig.CHUNK_CHECK_CLEAN_MODE.get(), EnumChunkCleanMode.NONE.name())
                                             ? "chunk_check_msg_no"
                                             : "chunk_check_msg_yes"
                                     , Component.literal(entityCoordinate.toChunkXZString())
