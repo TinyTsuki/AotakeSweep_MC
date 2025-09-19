@@ -4,7 +4,7 @@ import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.item.Items;
 import net.minecraftforge.common.ForgeConfigSpec;
 import xin.vanilla.aotake.data.KeyValue;
-import xin.vanilla.aotake.enums.EnumChunkCheckMode;
+import xin.vanilla.aotake.enums.EnumChunkCleanMode;
 import xin.vanilla.aotake.enums.EnumOverflowMode;
 import xin.vanilla.aotake.enums.EnumSelfCleanMode;
 
@@ -63,6 +63,11 @@ public class ServerConfig {
      * 区块实体过多提示
      */
     public static final ForgeConfigSpec.BooleanValue CHUNK_CHECK_NOTICE;
+
+    /**
+     * 区块实体过多检测模式
+     */
+    public static final ForgeConfigSpec.ConfigValue<String> CHUNK_CHECK_MODE;
 
     /**
      * 区块实体过多清理模式
@@ -240,41 +245,60 @@ public class ServerConfig {
                             , "自清洁间隔(毫秒)。")
                     .defineInRange("selfCleanInterval", 60 * 60 * 1000, 0L, 7 * 24 * 60 * 60 * 1000);
 
-            // 区块实体过多检测间隔(毫秒)
-            CHUNK_CHECK_INTERVAL = SERVER_BUILDER
-                    .comment("The interval for detecting excessive entities in a chunk (in milliseconds), 0 to disable."
-                            , "区块实体过多检测间隔(毫秒)，0为禁用。")
-                    .defineInRange("chunkCheckInterval", 5 * 1000, 0L, 7 * 24 * 60 * 60 * 1000);
+            // 区块实体过多检测
+            {
+                SERVER_BUILDER.comment("Chunk Check", "区块实体过多检测").push("chunk");
 
-            // 区块实体过多检测阈值
-            CHUNK_CHECK_LIMIT = SERVER_BUILDER
-                    .comment("The threshold for detecting excessive entities in a chunk."
-                            , "区块实体过多检测阈值。")
-                    .defineInRange("chunkCheckLimit", 250, 1, Integer.MAX_VALUE);
+                // 区块实体过多检测间隔(毫秒)
+                CHUNK_CHECK_INTERVAL = SERVER_BUILDER
+                        .comment("The interval for detecting excessive entities in a chunk (in milliseconds), 0 to disable."
+                                , "区块实体过多检测间隔(毫秒)，0为禁用。")
+                        .defineInRange("chunkCheckInterval", 5 * 1000, 0L, 7 * 24 * 60 * 60 * 1000);
 
-            // 区块实体过多检测保留的实体数量
-            CHUNK_CHECK_RETAIN = SERVER_BUILDER
-                    .comment("Entities retained during cleanup (Default: half of threshold to prevent excessive loss)."
-                            , "区块实体过多检测清理时保留的实体数量，默认保留检测阈值的一半，避免全部清理而导致损失过大。")
-                    .defineInRange("chunkCheckRetain", 125, 1, Integer.MAX_VALUE);
+                // 区块实体过多检测阈值
+                CHUNK_CHECK_LIMIT = SERVER_BUILDER
+                        .comment("The threshold for detecting excessive entities in a chunk."
+                                , "区块实体过多检测阈值。")
+                        .defineInRange("chunkCheckLimit", 250, 1, Integer.MAX_VALUE);
 
-            // 区块实体过多提示
-            CHUNK_CHECK_NOTICE = SERVER_BUILDER
-                    .comment("Show warning when too many entities in a chunk."
-                            , "区块内实体过多时的是否进行提示。")
-                    .define("chunkCheckNotice", true);
+                // 区块实体过多检测保留的实体数量
+                CHUNK_CHECK_RETAIN = SERVER_BUILDER
+                        .comment("Number of entities to retain during entity overload cleanup in a chunk. "
+                                , "By default, half of the detection threshold is retained to prevent excessive loss from clearing everything. "
+                                , "The retention behavior is affected by CHUNK_CHECK_MODE."
+                                , "区块实体过多检测清理时保留的实体数量，默认保留检测阈值的一半，避免全部清理而导致损失过大，保留方式受CHUNK_CHECK_MODE影响。")
+                        .defineInRange("chunkCheckRetain", 125, 1, Integer.MAX_VALUE);
 
-            // 区块实体过多清理模式
-            CHUNK_CHECK_CLEAN_MODE = SERVER_BUILDER
-                    .comment("The cleanup modes for detecting excessive entities in a chunk."
-                            , "NONE: Do not perform cleanup"
-                            , "DEFAULT: Clean up only non-whitelisted items and entities"
-                            , "ALL: Clean up all items and entities in the chunk"
-                            , "区块内实体过多时的清理模式。"
-                            , "NONE：不进行清理"
-                            , "DEFAULT：仅清理非白名单物品与实体"
-                            , "ALL：清理区块内所有物品与实体")
-                    .define("chunkCheckCleanMode", EnumChunkCheckMode.DEFAULT.name());
+                // 区块实体过多提示
+                CHUNK_CHECK_NOTICE = SERVER_BUILDER
+                        .comment("Show warning when too many entities in a chunk."
+                                , "区块内实体过多时的是否进行提示。")
+                        .define("chunkCheckNotice", true);
+
+                // 区块实体过多检测模式
+                CHUNK_CHECK_MODE = SERVER_BUILDER
+                        .comment("The check mode for detecting excessive entities in a chunk:"
+                                , "DEFAULT: Cleanup is triggered when the total number of entities in the chunk exceeds the threshold;"
+                                , "ADVANCED: Cleanup is triggered when a specific type of entity in the chunk exceeds the threshold."
+                                , "区块内实体过多检测模式："
+                                , "DEFAULT：区块内所有实体超过阈值触发清理；"
+                                , "ADVANCED：区块内某个类型实体超过阈值触发清理。")
+                        .define("chunkCheckMode", "DEFAULT");
+
+                // 区块实体过多清理模式
+                CHUNK_CHECK_CLEAN_MODE = SERVER_BUILDER
+                        .comment("The cleanup mode for detecting excessive entities in a chunk:"
+                                , "NONE: Do not perform cleanup;"
+                                , "DEFAULT: Clean up only non-whitelisted items and entities;"
+                                , "ALL: Clean up all items and entities in the chunk."
+                                , "区块内实体过多时的清理模式："
+                                , "NONE：不进行清理；"
+                                , "DEFAULT：仅清理非白名单物品与实体；"
+                                , "ALL：清理区块内所有物品与实体。")
+                        .define("chunkCheckCleanMode", EnumChunkCleanMode.DEFAULT.name());
+
+                SERVER_BUILDER.pop();
+            }
 
             // 使用以下物品捕获被清理的实体
             CATCH_ITEM = SERVER_BUILDER
@@ -485,7 +509,7 @@ public class ServerConfig {
         CHUNK_CHECK_LIMIT.set(250);
         CHUNK_CHECK_RETAIN.set(125);
         CHUNK_CHECK_NOTICE.set(true);
-        CHUNK_CHECK_CLEAN_MODE.set(EnumChunkCheckMode.DEFAULT.name());
+        CHUNK_CHECK_CLEAN_MODE.set(EnumChunkCleanMode.DEFAULT.name());
         CATCH_ITEM.set(new ArrayList<>() {{
             add(Items.SNOWBALL.getRegistryName().toString());
             add(Items.GLASS_BOTTLE.getRegistryName().toString());
