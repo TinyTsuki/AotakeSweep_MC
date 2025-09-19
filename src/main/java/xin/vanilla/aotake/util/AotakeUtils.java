@@ -550,7 +550,7 @@ public class AotakeUtils {
         if (CollectionUtils.isNullOrEmpty(entities)) {
             entities = getAllEntities();
         }
-        if (chuck && Objects.equals(ServerConfig.CHUNK_CHECK_CLEAN_MODE.get(), EnumChunkCheckMode.ALL.name())) {
+        if (chuck && Objects.equals(ServerConfig.CHUNK_CHECK_CLEAN_MODE.get(), EnumChunkCleanMode.ALL.name())) {
             return entities.stream()
                     .filter(entity -> !(entity instanceof PlayerEntity))
                     .filter(entity -> !entity.hasCustomName())
@@ -731,7 +731,7 @@ public class AotakeUtils {
         KeyValue<MinecraftServer, Boolean> serverInstance = AotakeSweep.getServerInstance();
         // 服务器已关闭
         if (!serverInstance.val()) return;
-        if (chuck && Objects.equals(ServerConfig.CHUNK_CHECK_CLEAN_MODE.get(), EnumChunkCheckMode.NONE.name())) {
+        if (chuck && Objects.equals(ServerConfig.CHUNK_CHECK_CLEAN_MODE.get(), EnumChunkCleanMode.NONE.name())) {
             LOGGER.debug("Chunk check mode is NONE, sweep canceled");
             return;
         }
