@@ -261,6 +261,10 @@ public class Coordinate implements Serializable, Cloneable {
         return StringUtils.toFixedEx(x, 1) + ", " + StringUtils.toFixedEx(y, 1) + ", " + StringUtils.toFixedEx(z, 1);
     }
 
+    public String toChunkXZString() {
+        return String.format("%d,%d", this.getXInt() >> 4, this.getZInt() >> 4);
+    }
+
     public String getDimensionResourceId() {
         return dimension.location().toString();
     }
