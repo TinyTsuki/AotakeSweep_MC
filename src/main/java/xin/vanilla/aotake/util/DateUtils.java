@@ -694,7 +694,7 @@ public class DateUtils {
                 .sorted(Comparator.reverseOrder())
                 .map(DateUtils::getDate)
                 .collect(Collectors.toList());
-        if (current == null) current = dateList.get(0);
+        if (current == null) current = dateList.getFirst();
         int continuousDays = 0;
         for (int i = 0; i < dateList.size(); i++) {
             Date date = dateList.get(i);
