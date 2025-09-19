@@ -227,15 +227,15 @@ public class SafeExpressionEvaluator {
     }
 
     private double applyFunction(String name, List<Double> args) {
-        if ("sqrt".equals(name)) return Math.sqrt(args.get(0));
-        if ("pow".equals(name)) return Math.pow(args.get(0), args.get(1));
-        if ("log".equals(name)) return Math.log(args.get(0));
-        if ("sin".equals(name)) return Math.sin(args.get(0));
-        if ("cos".equals(name)) return Math.cos(args.get(0));
-        if ("abs".equals(name)) return Math.abs(args.get(0));
+        if ("sqrt".equals(name)) return Math.sqrt(args.getFirst());
+        if ("pow".equals(name)) return Math.pow(args.getFirst(), args.get(1));
+        if ("log".equals(name)) return Math.log(args.getFirst());
+        if ("sin".equals(name)) return Math.sin(args.getFirst());
+        if ("cos".equals(name)) return Math.cos(args.getFirst());
+        if ("abs".equals(name)) return Math.abs(args.getFirst());
         if ("random".equals(name)) {
             if (args.size() != 2) throw new RuntimeException("random(start, end) need 2 arguments");
-            double min = args.get(0);
+            double min = args.getFirst();
             double max = args.get(1);
             if (min > max) {
                 double tmp = min;
