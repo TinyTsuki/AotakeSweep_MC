@@ -127,7 +127,7 @@ public class EventHandlerProxy {
                                     : "unknown";
                             int chunkX = entity.blockPosition().getX() >> 4;
                             int chunkZ = entity.blockPosition().getZ() >> 4;
-                            return "<" + dimension + ">:" + chunkX + "," + chunkZ;
+                            return String.format("Dimension: %s, Chunk: %s %s, EntityType: %s", dimension, chunkX, chunkZ, AotakeUtils.getEntityTypeRegistryName(entity));
                         }))
                         .entrySet().stream()
                         .filter(entry -> entry.getValue().size() > ServerConfig.CHUNK_CHECK_LIMIT.get())
@@ -135,20 +135,24 @@ public class EventHandlerProxy {
 
                 if (!overcrowdedChunks.isEmpty()) {
                     LOGGER.debug("Chunk check info:\n{}", overcrowdedChunks.stream()
-                            .map(entry -> entry.getKey() + " has " + entry.getValue().size())
+                            .map(entry -> String.format("%s, Entities: %s", entry.getKey(), entry.getValue().size()))
                             .collect(Collectors.joining("\n")));
 
                     if (ServerConfig.CHUNK_CHECK_NOTICE.get()) {
                         Map.Entry<String, List<Entity>> entityEntryList = overcrowdedChunks.get(0);
                         Entity entity = entityEntryList.getValue().get(0);
+                        Coordinate entityCoordinate = new Coordinate(entity);
                         for (ServerPlayerEntity player : server.getPlayerList().getPlayers()) {
                             String language = AotakeUtils.getPlayerLanguage(player);
 
                             Component message = Component.translatable(EnumI18nType.MESSAGE,
                                     Objects.equals(ServerConfig.CHUNK_CHECK_CLEAN_MODE.get(), EnumChunkCheckMode.NONE.name())
                                             ? "chunk_check_msg_no"
-                                            : "chunk_check_msg_clean_yes"
-                                    , entityEntryList.getKey()
+                                            : "chunk_check_msg_yes"
+                                    , Component.literal(entityCoordinate.toChunkXZString())
+                                            .setHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT
+                                                    , Component.literal(entityCoordinate.getDimensionResourceId()).toTextComponent())
+                                            )
                             );
                             if (player.hasPermissions(1)
                                     && PlayerSweepDataCapability.getData(player).isShowSweepResult()
@@ -159,7 +163,7 @@ public class EventHandlerProxy {
                                                 .toTextComponent(language))
                                         )
                                         .setClickEvent(new ClickEvent(ClickEvent.Action.SUGGEST_COMMAND
-                                                , AotakeUtils.genTeleportCommand(new Coordinate(entity)))
+                                                , AotakeUtils.genTeleportCommand(entityCoordinate))
                                         )
                                         .append(Component.literal("[+]")
                                                 .setColor(EnumMCColor.GREEN.getColor())
@@ -171,12 +175,11 @@ public class EventHandlerProxy {
                                                         , overcrowdedChunks.stream()
                                                         .map(entry -> {
                                                             Coordinate coordinate = new Coordinate(entry.getValue().get(0));
-                                                            return String.format("Dimension: %s, Chunk: %s %s, Entities: %s, Teleport: %s",
+                                                            return String.format("Dimension: %s, Chunk: %s %s, Entities: %s",
                                                                     coordinate.getDimensionResourceId(),
                                                                     coordinate.getXInt() >> 4,
                                                                     coordinate.getZInt() >> 4,
-                                                                    entry.getValue().size(),
-                                                                    AotakeUtils.genTeleportCommand(coordinate)
+                                                                    entry.getValue().size()
                                                             );
                                                         })
                                                         .collect(Collectors.joining("\n")))
@@ -198,6 +201,13 @@ public class EventHandlerProxy {
                             }
                         }
                     }
+
+                    // 将指定数量的实体移出列表实现不清理
+                    overcrowdedChunks.forEach(entry -> {
+                        List<Entity> entities = entry.getValue();
+                        if (entities.isEmpty()) return;
+                        entities.subList(0, Math.min(ServerConfig.CHUNK_CHECK_RETAIN.get(), entities.size())).clear();
+                    });
 
                     AotakeScheduler.schedule(server, 25, () -> {
                         try {
