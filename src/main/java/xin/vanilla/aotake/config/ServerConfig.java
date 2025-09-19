@@ -4,6 +4,7 @@ import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.item.Items;
 import net.minecraftforge.common.ForgeConfigSpec;
 import xin.vanilla.aotake.data.KeyValue;
+import xin.vanilla.aotake.enums.EnumChunkCheckMode;
 import xin.vanilla.aotake.enums.EnumOverflowMode;
 import xin.vanilla.aotake.enums.EnumSelfCleanMode;
 
@@ -52,6 +53,21 @@ public class ServerConfig {
      * 区块实体过多检测阈值
      */
     public static final ForgeConfigSpec.IntValue CHUNK_CHECK_LIMIT;
+
+    /**
+     * 区块实体清理时保留的实体数量
+     */
+    public static final ForgeConfigSpec.IntValue CHUNK_CHECK_RETAIN;
+
+    /**
+     * 区块实体过多提示
+     */
+    public static final ForgeConfigSpec.BooleanValue CHUNK_CHECK_NOTICE;
+
+    /**
+     * 区块实体过多清理模式
+     */
+    public static final ForgeConfigSpec.ConfigValue<String> CHUNK_CHECK_CLEAN_MODE;
 
     /**
      * 使用以下物品捕获被清理的实体
@@ -226,15 +242,39 @@ public class ServerConfig {
 
             // 区块实体过多检测间隔(毫秒)
             CHUNK_CHECK_INTERVAL = SERVER_BUILDER
-                    .comment("The interval for checking too many entities in chunks (in milliseconds), 0 to disable."
+                    .comment("The interval for detecting excessive entities in a chunk (in milliseconds), 0 to disable."
                             , "区块实体过多检测间隔(毫秒)，0为禁用。")
                     .defineInRange("chunkCheckInterval", 5 * 1000, 0L, 7 * 24 * 60 * 60 * 1000);
 
             // 区块实体过多检测阈值
             CHUNK_CHECK_LIMIT = SERVER_BUILDER
-                    .comment("The threshold for checking too many entities in chunks."
+                    .comment("The threshold for detecting excessive entities in a chunk."
                             , "区块实体过多检测阈值。")
                     .defineInRange("chunkCheckLimit", 250, 1, Integer.MAX_VALUE);
+
+            // 区块实体过多检测保留的实体数量
+            CHUNK_CHECK_RETAIN = SERVER_BUILDER
+                    .comment("Entities retained during cleanup (Default: half of threshold to prevent excessive loss)."
+                            , "区块实体过多检测清理时保留的实体数量，默认保留检测阈值的一半，避免全部清理而导致损失过大。")
+                    .defineInRange("chunkCheckRetain", 125, 1, Integer.MAX_VALUE);
+
+            // 区块实体过多提示
+            CHUNK_CHECK_NOTICE = SERVER_BUILDER
+                    .comment("Show warning when too many entities in a chunk."
+                            , "区块内实体过多时的是否进行提示。")
+                    .define("chunkCheckNotice", true);
+
+            // 区块实体过多清理模式
+            CHUNK_CHECK_CLEAN_MODE = SERVER_BUILDER
+                    .comment("The cleanup modes for detecting excessive entities in a chunk."
+                            , "NONE: Do not perform cleanup"
+                            , "DEFAULT: Clean up only non-whitelisted items and entities"
+                            , "ALL: Clean up all items and entities in the chunk"
+                            , "区块内实体过多时的清理模式。"
+                            , "NONE：不进行清理"
+                            , "DEFAULT：仅清理非白名单物品与实体"
+                            , "ALL：清理区块内所有物品与实体")
+                    .define("chunkCheckCleanMode", EnumChunkCheckMode.DEFAULT.name());
 
             // 使用以下物品捕获被清理的实体
             CATCH_ITEM = SERVER_BUILDER
@@ -244,17 +284,6 @@ public class ServerConfig {
                         add(Items.SNOWBALL.getRegistryName().toString());
                         add(Items.GLASS_BOTTLE.getRegistryName().toString());
                         add(Items.MUSIC_DISC_13.getRegistryName().toString());
-                        add(Items.MUSIC_DISC_CAT.getRegistryName().toString());
-                        add(Items.MUSIC_DISC_BLOCKS.getRegistryName().toString());
-                        add(Items.MUSIC_DISC_CHIRP.getRegistryName().toString());
-                        add(Items.MUSIC_DISC_FAR.getRegistryName().toString());
-                        add(Items.MUSIC_DISC_MALL.getRegistryName().toString());
-                        add(Items.MUSIC_DISC_MELLOHI.getRegistryName().toString());
-                        add(Items.MUSIC_DISC_STAL.getRegistryName().toString());
-                        add(Items.MUSIC_DISC_STRAD.getRegistryName().toString());
-                        add(Items.MUSIC_DISC_WARD.getRegistryName().toString());
-                        add(Items.MUSIC_DISC_WAIT.getRegistryName().toString());
-                        add(Items.MUSIC_DISC_PIGSTEP.getRegistryName().toString());
                     }}, o -> o instanceof String);
 
             // 允许被清理的实体
@@ -456,21 +485,13 @@ public class ServerConfig {
         SELF_CLEAN_INTERVAL.set(60 * 60 * 1000L);
         CHUNK_CHECK_INTERVAL.set(5 * 1000L);
         CHUNK_CHECK_LIMIT.set(250);
+        CHUNK_CHECK_RETAIN.set(125);
+        CHUNK_CHECK_NOTICE.set(true);
+        CHUNK_CHECK_CLEAN_MODE.set(EnumChunkCheckMode.DEFAULT.name());
         CATCH_ITEM.set(new ArrayList<>() {{
             add(Items.SNOWBALL.getRegistryName().toString());
             add(Items.GLASS_BOTTLE.getRegistryName().toString());
             add(Items.MUSIC_DISC_13.getRegistryName().toString());
-            add(Items.MUSIC_DISC_CAT.getRegistryName().toString());
-            add(Items.MUSIC_DISC_BLOCKS.getRegistryName().toString());
-            add(Items.MUSIC_DISC_CHIRP.getRegistryName().toString());
-            add(Items.MUSIC_DISC_FAR.getRegistryName().toString());
-            add(Items.MUSIC_DISC_MALL.getRegistryName().toString());
-            add(Items.MUSIC_DISC_MELLOHI.getRegistryName().toString());
-            add(Items.MUSIC_DISC_STAL.getRegistryName().toString());
-            add(Items.MUSIC_DISC_STRAD.getRegistryName().toString());
-            add(Items.MUSIC_DISC_WARD.getRegistryName().toString());
-            add(Items.MUSIC_DISC_WAIT.getRegistryName().toString());
-            add(Items.MUSIC_DISC_PIGSTEP.getRegistryName().toString());
         }});
         JUNK_ENTITY.set(new ArrayList<>() {{
             add(EntityType.ARROW.getRegistryName().toString());
