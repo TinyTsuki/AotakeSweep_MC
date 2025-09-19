@@ -55,6 +55,11 @@ public class ServerConfig {
     public static final ForgeConfigSpec.IntValue CHUNK_CHECK_LIMIT;
 
     /**
+     * 区块实体清理时保留的实体数量
+     */
+    public static final ForgeConfigSpec.IntValue CHUNK_CHECK_RETAIN;
+
+    /**
      * 区块实体过多提示
      */
     public static final ForgeConfigSpec.BooleanValue CHUNK_CHECK_NOTICE;
@@ -246,6 +251,12 @@ public class ServerConfig {
                     .comment("The threshold for detecting excessive entities in a chunk."
                             , "区块实体过多检测阈值。")
                     .defineInRange("chunkCheckLimit", 250, 1, Integer.MAX_VALUE);
+
+            // 区块实体过多检测保留的实体数量
+            CHUNK_CHECK_RETAIN = SERVER_BUILDER
+                    .comment("Entities retained during cleanup (Default: half of threshold to prevent excessive loss)."
+                            , "区块实体过多检测清理时保留的实体数量，默认保留检测阈值的一半，避免全部清理而导致损失过大。")
+                    .defineInRange("chunkCheckRetain", 125, 1, Integer.MAX_VALUE);
 
             // 区块实体过多提示
             CHUNK_CHECK_NOTICE = SERVER_BUILDER
@@ -474,6 +485,7 @@ public class ServerConfig {
         SELF_CLEAN_INTERVAL.set(60 * 60 * 1000L);
         CHUNK_CHECK_INTERVAL.set(5 * 1000L);
         CHUNK_CHECK_LIMIT.set(250);
+        CHUNK_CHECK_RETAIN.set(125);
         CHUNK_CHECK_NOTICE.set(true);
         CHUNK_CHECK_CLEAN_MODE.set(EnumChunkCheckMode.DEFAULT.name());
         CATCH_ITEM.set(new ArrayList<String>() {{
