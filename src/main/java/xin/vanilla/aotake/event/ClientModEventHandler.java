@@ -2,8 +2,6 @@ package xin.vanilla.aotake.event;
 
 import net.minecraft.client.KeyMapping;
 import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.common.capabilities.RegisterCapabilitiesEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fmlclient.registry.ClientRegistry;
 import org.apache.logging.log4j.LogManager;
@@ -43,11 +41,6 @@ public class ClientModEventHandler {
         ClientRegistry.registerKeyBinding(DUSTBIN_KEY);
         ClientRegistry.registerKeyBinding(DUSTBIN_PRE_KEY);
         ClientRegistry.registerKeyBinding(DUSTBIN_NEXT_KEY);
-    }
-
-    @SubscribeEvent
-    public static void registerCaps(RegisterCapabilitiesEvent event) {
-        EventHandlerProxy.registerCaps(event);
     }
 
 }
