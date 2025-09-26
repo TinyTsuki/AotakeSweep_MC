@@ -10,5 +10,4 @@ import org.apache.logging.log4j.Logger;
 public class ServerModEventHandler {
     private static final Logger LOGGER = LogManager.getLogger();
 
-
 }

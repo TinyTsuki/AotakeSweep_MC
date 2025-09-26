@@ -48,7 +48,7 @@ import xin.vanilla.aotake.config.ServerConfig;
 import xin.vanilla.aotake.data.Coordinate;
 import xin.vanilla.aotake.data.KeyValue;
 import xin.vanilla.aotake.data.SweepResult;
-import xin.vanilla.aotake.data.player.PlayerDataAttachment;
+import xin.vanilla.aotake.data.player.PlayerSweepData;
 import xin.vanilla.aotake.data.world.WorldTrashData;
 import xin.vanilla.aotake.enums.*;
 
@@ -490,7 +490,8 @@ public class AotakeUtils {
                 // 物品实体 与 垃圾实体
                 .filter(entity -> (ServerConfig.GREEDY_MODE.get() && entity instanceof ItemEntity)
                         || (!ServerConfig.GREEDY_MODE.get() && entity.getType() == EntityType.ITEM)
-                        || ServerConfig.JUNK_ENTITY.get().contains(getEntityTypeRegistryName(entity))
+                        || ((chuck || EnumEntityCleanMode.DEFAULT.name().equals(ServerConfig.JUNK_ENTITY_CLEAN_MODE.get()))
+                        && ServerConfig.JUNK_ENTITY.get().contains(getEntityTypeRegistryName(entity)))
                 )
                 .filter(entity -> !entity.hasCustomName())
                 .filter(entity -> !(entity instanceof TamableAnimal) || ((TamableAnimal) entity).getOwnerUUID() == null)
@@ -685,7 +686,7 @@ public class AotakeUtils {
                 Component msg = getWarningMessage(result == null || result.isEmpty() ? "fail" : "success"
                         , language
                         , result);
-                if (PlayerDataAttachment.getData(p).isShowSweepResult()) {
+                if (PlayerSweepData.getData(p).isShowSweepResult()) {
                     String openCom = "/" + AotakeUtils.getCommand(EnumCommandType.DUSTBIN_OPEN);
                     msg.setClickEvent(new ClickEvent(ClickEvent.Action.SUGGEST_COMMAND, openCom))
                             .setHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT
@@ -713,7 +714,7 @@ public class AotakeUtils {
             for (ServerPlayer p : players) {
                 String language = AotakeUtils.getPlayerLanguage(p);
                 Component msg = getWarningMessage("error", language, null);
-                if (PlayerDataAttachment.getData(p).isShowSweepResult()) {
+                if (PlayerSweepData.getData(p).isShowSweepResult()) {
                     AotakeUtils.sendMessage(p, Component.empty()
                             .append(msg)
                             .append(Component.literal("[x]")

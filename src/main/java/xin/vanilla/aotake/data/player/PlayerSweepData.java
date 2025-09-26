@@ -1,55 +1,88 @@
 package xin.vanilla.aotake.data.player;
 
-import lombok.Getter;
-import lombok.Setter;
-import net.minecraft.core.HolderLookup;
-import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.FriendlyByteBuf;
-import net.neoforged.neoforge.common.util.INBTSerializable;
-import org.jetbrains.annotations.NotNull;
+import net.minecraft.world.entity.player.Player;
+
+import java.util.Collections;
+import java.util.Map;
+import java.util.UUID;
+import java.util.WeakHashMap;
 
 /**
  * 玩家数据
  */
-@Setter
-@Getter
-public class PlayerSweepData implements INBTSerializable<CompoundTag> {
+public final class PlayerSweepData implements IPlayerData<PlayerSweepData> {
+
+    private static final Map<UUID, PlayerSweepData> CACHE = Collections.synchronizedMap(new WeakHashMap<>());
+
+    private final Player player;
+
+    private PlayerSweepData(Player player) {
+        this.player = player;
+    }
+
+    /**
+     * 获取或创建 PlayerSweepData
+     */
+    public static PlayerSweepData getData(Player player) {
+        return CACHE.computeIfAbsent(player.getUUID(), k -> new PlayerSweepData(player));
+    }
+
     /**
      * 是否已发送使用说明
      */
-    private boolean notified;
+    public boolean isNotified() {
+        return PlayerDataStorage.instance().getOrCreate(player).getBoolean("notified");
+    }
+
+    public void setNotified(boolean notified) {
+        PlayerDataStorage.instance().getOrCreate(player).putBoolean("notified", notified);
+    }
+
     /**
      * 是否显示清理结果
      */
-    private boolean showSweepResult = true;
+    public boolean isShowSweepResult() {
+        return PlayerDataStorage.instance().getOrCreate(player).getBoolean("showSweepResult");
+    }
 
+    public void setShowSweepResult(boolean showSweepResult) {
+        PlayerDataStorage.instance().getOrCreate(player).putBoolean("showSweepResult", showSweepResult);
+    }
+
+    /**
+     * 将数据写到网络包
+     */
+    @Override
     public void writeToBuffer(FriendlyByteBuf buffer) {
-        buffer.writeBoolean(this.notified);
-        buffer.writeBoolean(this.showSweepResult);
+        buffer.writeBoolean(isNotified());
+        buffer.writeBoolean(isShowSweepResult());
     }
 
+    /**
+     * 从网络包读数据
+     */
+    @Override
     public void readFromBuffer(FriendlyByteBuf buffer) {
-        this.notified = buffer.readBoolean();
-        this.showSweepResult = buffer.readBoolean();
+        this.setNotified(buffer.readBoolean());
+        this.setShowSweepResult(buffer.readBoolean());
     }
 
-    public void copyFrom(PlayerSweepData capability) {
-        this.notified = capability.isNotified();
-        this.showSweepResult = capability.isShowSweepResult();
-    }
-
+    /**
+     * 复制来自同类型实例的数据
+     */
     @Override
-    public CompoundTag serializeNBT(HolderLookup.@NotNull Provider provider) {
-        CompoundTag tag = new CompoundTag();
-        tag.putBoolean("notified", this.notified);
-        tag.putBoolean("showSweepResult", this.showSweepResult);
-        return tag;
+    public void copyFrom(PlayerSweepData playerData) {
+        this.setNotified(playerData.isNotified());
+        this.setShowSweepResult(playerData.isShowSweepResult());
     }
 
+    /**
+     * 保存
+     */
     @Override
-    public void deserializeNBT(HolderLookup.@NotNull Provider provider, CompoundTag nbt) {
-        this.notified = nbt.getBoolean("notified");
-        this.showSweepResult = nbt.getBoolean("showSweepResult");
+    public void save(Player player) {
+        PlayerDataStorage.instance().saveToDisk(player);
     }
 
 }

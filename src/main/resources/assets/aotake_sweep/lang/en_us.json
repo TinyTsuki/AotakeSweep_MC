@@ -24,7 +24,7 @@
   "command.aotake_sweep.cache_clear_detail": "Clear Cache Items。",
   "command.aotake_sweep.cache_drop_detail": "Drop Cache Items.\nParameters:\n [<return dropped items to their original location>]",
   "command.aotake_sweep.sweep_detail": "Manual Sweep.\nParameters:\n 1. [<dimension>]\n 2. [<range>]",
-  "command.aotake_sweep.clear_drop_detail": "Clear Drops.\nParameters:\n 1. [<withEntity>] [<greedyMode>]\n 2. [<withEntity>] [<dimension>] [<greedyMode>]\n 3. [withEntity] [<range>] [<greedyMode>]",
+  "command.aotake_sweep.clear_drop_detail": "Clear Drops.\nParameters:\n 1. [<greedyMode>] [<withEntity>] [allEntity]\n 2. [<greedyMode>] [<dimension>] [<withEntity>] [allEntity]\n 3. [<greedyMode>] [<range>] [withEntity] [allEntity]",
   "command.aotake_sweep.delay_sweep_detail": "Postpone the next scheduled sweep time.\nParameters:\n [<Delay in seconds>]",
   "command.aotake_sweep.concise": "Like %s",
   "word.aotake_sweep.enabled": "enabled",
