@@ -1,15 +1,14 @@
 package xin.vanilla.aotake.enums;
 
-public enum EnumChunkCleanMode {
-    NONE,
+public enum EnumEntityCleanMode {
     DEFAULT,
-    ALL,
+    CHUNK,
     ;
 
-    public static EnumChunkCleanMode valueOf(Object obj) {
-        if (obj instanceof EnumChunkCleanMode) return (EnumChunkCleanMode) obj;
+    public static EnumEntityCleanMode valueOf(Object obj) {
+        if (obj instanceof EnumEntityCleanMode) return (EnumEntityCleanMode) obj;
         if (obj instanceof String) {
-            for (EnumChunkCleanMode value : values()) {
+            for (EnumEntityCleanMode value : values()) {
                 if (value.name().equalsIgnoreCase((String) obj)) {
                     return value;
                 }
@@ -18,8 +17,8 @@ public enum EnumChunkCleanMode {
         return null;
     }
 
-    public static EnumChunkCleanMode valueOfOrDefault(Object obj) {
-        EnumChunkCleanMode value = valueOf(obj);
+    public static EnumEntityCleanMode valueOfOrDefault(Object obj) {
+        EnumEntityCleanMode value = valueOf(obj);
         return value == null ? DEFAULT : value;
     }
 
