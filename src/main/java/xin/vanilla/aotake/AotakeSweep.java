@@ -26,7 +26,6 @@ import xin.vanilla.aotake.config.CommonConfig;
 import xin.vanilla.aotake.config.CustomConfig;
 import xin.vanilla.aotake.config.ServerConfig;
 import xin.vanilla.aotake.data.KeyValue;
-import xin.vanilla.aotake.data.player.PlayerDataAttachment;
 import xin.vanilla.aotake.event.ClientModEventHandler;
 import xin.vanilla.aotake.network.ModNetworkHandler;
 import xin.vanilla.aotake.network.SplitPacket;
@@ -102,8 +101,6 @@ public class AotakeSweep {
         // 注册配置
         modContainer.registerConfig(ModConfig.Type.COMMON, CommonConfig.COMMON_CONFIG);
         modContainer.registerConfig(ModConfig.Type.SERVER, ServerConfig.SERVER_CONFIG);
-        // 注册数据附件
-        PlayerDataAttachment.ATTACHMENT_TYPES.register(modEventBus);
 
         // 注册客户端设置事件
         modEventBus.addListener(this::onClientSetup);

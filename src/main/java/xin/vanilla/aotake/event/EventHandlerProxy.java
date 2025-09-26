@@ -29,7 +29,6 @@ import xin.vanilla.aotake.config.ServerConfig;
 import xin.vanilla.aotake.data.ConcurrentShuffleList;
 import xin.vanilla.aotake.data.Coordinate;
 import xin.vanilla.aotake.data.KeyValue;
-import xin.vanilla.aotake.data.player.PlayerDataAttachment;
 import xin.vanilla.aotake.data.player.PlayerSweepData;
 import xin.vanilla.aotake.data.world.WorldTrashData;
 import xin.vanilla.aotake.enums.*;
@@ -156,7 +155,7 @@ public class EventHandlerProxy {
                                             )
                             );
                             if (player.hasPermissions(1)
-                                    && PlayerDataAttachment.getData(player).isShowSweepResult()
+                                    && PlayerSweepData.getData(player).isShowSweepResult()
                             ) {
                                 AotakeUtils.sendMessage(player, message
                                         .setHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT
@@ -256,9 +255,6 @@ public class EventHandlerProxy {
             ServerPlayer newPlayer = (ServerPlayer) event.getEntity();
             original.revive();
             AotakeUtils.clonePlayerLanguage(original, newPlayer);
-            PlayerSweepData oldDataCap = PlayerDataAttachment.getData(original);
-            PlayerSweepData newDataCap = PlayerDataAttachment.getData(newPlayer);
-            newDataCap.copyFrom(oldDataCap);
         }
     }
 
