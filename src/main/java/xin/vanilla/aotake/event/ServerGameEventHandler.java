@@ -1,8 +1,6 @@
 package xin.vanilla.aotake.event;
 
-import net.minecraft.world.entity.Entity;
 import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.event.AttachCapabilitiesEvent;
 import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.event.entity.player.PlayerContainerEvent;
 import net.minecraftforge.event.entity.player.PlayerEvent;
@@ -34,14 +32,6 @@ public class ServerGameEventHandler {
     @SubscribeEvent
     public static void onWorldTick(TickEvent.LevelTickEvent.Post event) {
         EventHandlerProxy.onWorldTick(event);
-    }
-
-    /**
-     * 能力附加事件
-     */
-    @SubscribeEvent
-    public static void onAttachCapabilityEvent(AttachCapabilitiesEvent<Entity> event) {
-        EventHandlerProxy.onAttachCapabilityEvent(event);
     }
 
     /**
