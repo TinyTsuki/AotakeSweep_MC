@@ -24,6 +24,7 @@ import net.minecraft.world.SimpleContainer;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.item.ItemEntity;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -34,8 +35,7 @@ import xin.vanilla.aotake.config.ServerConfig;
 import xin.vanilla.aotake.data.Coordinate;
 import xin.vanilla.aotake.data.KeyValue;
 import xin.vanilla.aotake.data.SweepResult;
-import xin.vanilla.aotake.data.player.IPlayerSweepData;
-import xin.vanilla.aotake.data.player.PlayerSweepDataCapability;
+import xin.vanilla.aotake.data.player.PlayerSweepData;
 import xin.vanilla.aotake.data.world.WorldTrashData;
 import xin.vanilla.aotake.enums.EnumCommandType;
 import xin.vanilla.aotake.enums.EnumI18nType;
@@ -304,6 +304,7 @@ public class AotakeCommand {
             notifyHelp(context);
             boolean withEntity = getBooleanDefault(context, "withEntity", false);
             boolean greedyMode = getBooleanDefault(context, "greedyMode", ServerConfig.GREEDY_MODE.get());
+            boolean allEntity = getBooleanDefault(context, "allEntity", false);
             int range = getIntDefault(context, "range", 0);
             ServerLevel dimension = getDimensionDefault(context, "dimension", null);
 
@@ -320,6 +321,7 @@ public class AotakeCommand {
                     .filter(entity -> (greedyMode && entity instanceof ItemEntity)
                             || (!greedyMode && entity.getType() == EntityType.ITEM)
                             || (withEntity && ServerConfig.JUNK_ENTITY.get().contains(AotakeUtils.getEntityTypeRegistryName(entity)))
+                            || (allEntity && !(entity instanceof Player))
                     ).forEach(entity -> {
                         if (entity instanceof ItemEntity) {
                             result.plusItemCount(((ItemEntity) entity).getItem().getCount());
@@ -562,21 +564,30 @@ public class AotakeCommand {
                 Commands.literal(CommonConfig.COMMAND_CLEAR_DROP.get())
                         .requires(source -> AotakeUtils.hasCommandPermission(source, EnumCommandType.CLEAR_DROP))
                         .executes(clearDropCommand)
-                        .then(Commands.argument("withEntity", BoolArgumentType.bool())
+                        .then(Commands.argument("greedyMode", BoolArgumentType.bool())
                                 .executes(clearDropCommand)
-                                .then(Commands.argument("greedyMode", BoolArgumentType.bool())
+                                .then(Commands.argument("withEntity", BoolArgumentType.bool())
                                         .executes(clearDropCommand)
+                                        .then(Commands.argument("allEntity", BoolArgumentType.bool())
+                                                .executes(clearDropCommand)
+                                        )
                                 )
                                 .then(Commands.argument("dimension", DimensionArgument.dimension())
                                         .executes(clearDropCommand)
-                                        .then(Commands.argument("greedyMode", BoolArgumentType.bool())
+                                        .then(Commands.argument("withEntity", BoolArgumentType.bool())
                                                 .executes(clearDropCommand)
+                                                .then(Commands.argument("allEntity", BoolArgumentType.bool())
+                                                        .executes(clearDropCommand)
+                                                )
                                         )
                                 )
                                 .then(Commands.argument("range", IntegerArgumentType.integer(0))
                                         .executes(clearDropCommand)
-                                        .then(Commands.argument("greedyMode", BoolArgumentType.bool())
+                                        .then(Commands.argument("withEntity", BoolArgumentType.bool())
                                                 .executes(clearDropCommand)
+                                                .then(Commands.argument("allEntity", BoolArgumentType.bool())
+                                                        .executes(clearDropCommand)
+                                                )
                                         )
                                 )
                         ); // endregion clearDrop
@@ -984,7 +995,7 @@ public class AotakeCommand {
                                                 notifyHelp(context);
                                                 String show = getStringDefault(context, "show", "change");
                                                 ServerPlayer player = context.getSource().getPlayerOrException();
-                                                IPlayerSweepData data = PlayerSweepDataCapability.getData(player);
+                                                PlayerSweepData data = PlayerSweepData.getData(player);
                                                 boolean r = "change".equalsIgnoreCase(show) ? !data.isShowSweepResult() : Boolean.parseBoolean(show);
                                                 data.setShowSweepResult(r);
                                                 AotakeUtils.sendMessage(player
@@ -1064,7 +1075,7 @@ public class AotakeCommand {
         CommandSourceStack source = context.getSource();
         Entity entity = source.getEntity();
         if (entity instanceof ServerPlayer player) {
-            IPlayerSweepData data = PlayerSweepDataCapability.getData(player);
+            PlayerSweepData data = PlayerSweepData.getData(player);
             if (!data.isNotified()) {
                 Component button = Component.literal("/" + AotakeUtils.getCommandPrefix())
                         .setColor(EnumMCColor.AQUA.getColor())

@@ -5,11 +5,9 @@ import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.inventory.ContainerScreen;
 import net.minecraft.client.player.LocalPlayer;
-import net.minecraft.world.entity.Entity;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.client.event.ClientPlayerNetworkEvent;
 import net.minecraftforge.client.event.ScreenEvent;
-import net.minecraftforge.event.AttachCapabilitiesEvent;
 import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.event.entity.player.PlayerContainerEvent;
 import net.minecraftforge.event.entity.player.PlayerEvent;
@@ -77,14 +75,6 @@ public class ClientGameEventHandler {
     @SubscribeEvent
     public static void onWorldTick(TickEvent.LevelTickEvent event) {
         EventHandlerProxy.onWorldTick(event);
-    }
-
-    /**
-     * 能力附加事件
-     */
-    @SubscribeEvent
-    public static void onAttachCapabilityEvent(AttachCapabilitiesEvent<Entity> event) {
-        EventHandlerProxy.onAttachCapabilityEvent(event);
     }
 
     /**
