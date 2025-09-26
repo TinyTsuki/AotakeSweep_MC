@@ -5,9 +5,7 @@ import net.minecraft.world.item.Items;
 import net.minecraftforge.common.ForgeConfigSpec;
 import net.minecraftforge.registries.ForgeRegistries;
 import xin.vanilla.aotake.data.KeyValue;
-import xin.vanilla.aotake.enums.EnumChunkCleanMode;
-import xin.vanilla.aotake.enums.EnumOverflowMode;
-import xin.vanilla.aotake.enums.EnumSelfCleanMode;
+import xin.vanilla.aotake.enums.*;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -84,6 +82,11 @@ public class ServerConfig {
      * 允许被清理的实体
      */
     public static final ForgeConfigSpec.ConfigValue<List<? extends String>> JUNK_ENTITY;
+
+    /**
+     * 实体清理模式
+     */
+    public static final ForgeConfigSpec.ConfigValue<String> JUNK_ENTITY_CLEAN_MODE;
 
     /**
      * 清理时允许被捕获的实体
@@ -284,7 +287,7 @@ public class ServerConfig {
                                 , "区块内实体过多检测模式："
                                 , "DEFAULT：区块内所有实体超过阈值触发清理；"
                                 , "ADVANCED：区块内某个类型实体超过阈值触发清理。")
-                        .define("chunkCheckMode", "DEFAULT");
+                        .define("chunkCheckMode", EnumChunkCheckMode.DEFAULT.name(), EnumChunkCheckMode::isValid);
 
                 // 区块实体过多清理模式
                 CHUNK_CHECK_CLEAN_MODE = SERVER_BUILDER
@@ -296,7 +299,7 @@ public class ServerConfig {
                                 , "NONE：不进行清理；"
                                 , "DEFAULT：仅清理非白名单物品与实体；"
                                 , "ALL：清理区块内所有物品与实体。")
-                        .define("chunkCheckCleanMode", EnumChunkCleanMode.DEFAULT.name());
+                        .define("chunkCheckCleanMode", EnumChunkCleanMode.DEFAULT.name(), EnumChunkCleanMode::isValid);
 
                 SERVER_BUILDER.pop();
             }
@@ -320,6 +323,16 @@ public class ServerConfig {
                                 add(ForgeRegistries.ENTITY_TYPES.getKey(EntityType.SPECTRAL_ARROW).toString());
                             }}, o -> o instanceof String
                     );
+
+            // 实体清理模式
+            JUNK_ENTITY_CLEAN_MODE = SERVER_BUILDER
+                    .comment("The cleanup mode for junk entities:"
+                            , "DEFAULT: Entities will be cleared during scheduled tasks, manual cleanup, and chunk checks;"
+                            , "CHUNK: Entities will only be cleared during chunk checks."
+                            , "实体清理模式："
+                            , "DEFAULT：定时、手动、区块检测都会清理实体；"
+                            , "CHUNK：仅区块检测会清理实体。")
+                    .define("junkEntityCleanMode", EnumEntityCleanMode.DEFAULT.name(), EnumEntityCleanMode::isValid);
 
             // 清理时允许被捕获的实体
             CATCH_ENTITY = SERVER_BUILDER
@@ -383,7 +396,7 @@ public class ServerConfig {
                             , "SCHEDULED_DELETE：定时随机删除垃圾箱内物品。")
                     .defineList("selfCleanMode", new ArrayList<>() {{
                         add(EnumSelfCleanMode.NONE.name());
-                    }}, o -> o instanceof String);
+                    }}, EnumSelfCleanMode::isValid);
 
             // 垃圾箱溢出时的处理方式
             DUSTBIN_OVERFLOW_MODE = SERVER_BUILDER
@@ -395,7 +408,7 @@ public class ServerConfig {
                             , "KEEP：储存至缓存，并在打开垃圾箱时填充至垃圾箱的空位；"
                             , "REMOVE：移除溢出物品；"
                             , "REPLACE：将垃圾箱中的物品随机替换为溢出的物品。")
-                    .define("dustbinOverflowMode", EnumOverflowMode.KEEP.name());
+                    .define("dustbinOverflowMode", EnumOverflowMode.KEEP.name(), EnumOverflowMode::isValid);
 
             // 贪婪模式
             GREEDY_MODE = SERVER_BUILDER
@@ -520,6 +533,7 @@ public class ServerConfig {
             add(ForgeRegistries.ENTITY_TYPES.getKey(EntityType.ARROW).toString());
             add(ForgeRegistries.ENTITY_TYPES.getKey(EntityType.SPECTRAL_ARROW).toString());
         }});
+        JUNK_ENTITY_CLEAN_MODE.set(EnumEntityCleanMode.DEFAULT.name());
         CATCH_ENTITY.set(new ArrayList<>() {{
             add(ForgeRegistries.ENTITY_TYPES.getKey(EntityType.EXPERIENCE_ORB).toString());
         }});
