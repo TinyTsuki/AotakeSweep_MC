@@ -29,7 +29,7 @@ import java.util.concurrent.ConcurrentHashMap;
 public class PlayerDataStorage {
     private static final Logger LOGGER = LogManager.getLogger();
 
-    private static final String SUFFIX = "_" + AotakeSweep.MODID + ".nbt";
+    private static final String SUFFIX = String.format(".%s.nbt", AotakeSweep.MODID);
 
     private final Map<UUID, CompoundTag> cache = new ConcurrentHashMap<>();
 
