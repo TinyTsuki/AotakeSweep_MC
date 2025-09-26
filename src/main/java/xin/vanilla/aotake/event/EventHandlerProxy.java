@@ -4,7 +4,6 @@ import lombok.Getter;
 import lombok.Setter;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityType;
-import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.entity.player.ServerPlayerEntity;
 import net.minecraft.inventory.Inventory;
 import net.minecraft.item.ItemStack;
@@ -16,9 +15,7 @@ import net.minecraft.util.text.ITextComponent;
 import net.minecraft.util.text.event.ClickEvent;
 import net.minecraft.util.text.event.HoverEvent;
 import net.minecraft.world.server.ServerWorld;
-import net.minecraftforge.common.util.LazyOptional;
 import net.minecraftforge.entity.PartEntity;
-import net.minecraftforge.event.AttachCapabilitiesEvent;
 import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.event.entity.player.*;
 import net.minecraftforge.eventbus.api.Event;
@@ -30,9 +27,7 @@ import xin.vanilla.aotake.config.ServerConfig;
 import xin.vanilla.aotake.data.ConcurrentShuffleList;
 import xin.vanilla.aotake.data.Coordinate;
 import xin.vanilla.aotake.data.KeyValue;
-import xin.vanilla.aotake.data.player.IPlayerSweepData;
-import xin.vanilla.aotake.data.player.PlayerSweepDataCapability;
-import xin.vanilla.aotake.data.player.PlayerSweepDataProvider;
+import xin.vanilla.aotake.data.player.PlayerSweepData;
 import xin.vanilla.aotake.data.world.WorldTrashData;
 import xin.vanilla.aotake.enums.*;
 import xin.vanilla.aotake.util.*;
@@ -156,7 +151,7 @@ public class EventHandlerProxy {
                                             )
                             );
                             if (player.hasPermissions(1)
-                                    && PlayerSweepDataCapability.getData(player).isShowSweepResult()
+                                    && PlayerSweepData.getData(player).isShowSweepResult()
                             ) {
                                 AotakeUtils.sendMessage(player, message
                                         .setHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT
@@ -252,11 +247,6 @@ public class EventHandlerProxy {
         }
     }
 
-    public static void onAttachCapabilityEvent(AttachCapabilitiesEvent<Entity> event) {
-        if (event.getObject() instanceof PlayerEntity) {
-            event.addCapability(AotakeSweep.createResource("player_sweep_data"), new PlayerSweepDataProvider());
-        }
-    }
 
     public static void onPlayerCloned(PlayerEvent.Clone event) {
         if (event.getPlayer() instanceof ServerPlayerEntity) {
@@ -264,9 +254,6 @@ public class EventHandlerProxy {
             ServerPlayerEntity newPlayer = (ServerPlayerEntity) event.getPlayer();
             original.revive();
             AotakeUtils.clonePlayerLanguage(original, newPlayer);
-            LazyOptional<IPlayerSweepData> oldDataCap = original.getCapability(PlayerSweepDataCapability.PLAYER_DATA);
-            LazyOptional<IPlayerSweepData> newDataCap = newPlayer.getCapability(PlayerSweepDataCapability.PLAYER_DATA);
-            oldDataCap.ifPresent(oldData -> newDataCap.ifPresent(newData -> newData.copyFrom(oldData)));
         }
     }
 

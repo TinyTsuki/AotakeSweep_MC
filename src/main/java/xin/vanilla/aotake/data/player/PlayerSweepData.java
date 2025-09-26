@@ -1,73 +1,89 @@
 package xin.vanilla.aotake.data.player;
 
+import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.entity.player.ServerPlayerEntity;
-import net.minecraft.nbt.CompoundNBT;
 import net.minecraft.network.PacketBuffer;
+
+import java.util.Collections;
+import java.util.Map;
+import java.util.UUID;
+import java.util.WeakHashMap;
 
 /**
  * 玩家数据
  */
-public class PlayerSweepData implements IPlayerSweepData {
+public final class PlayerSweepData implements IPlayerData<PlayerSweepData> {
+
+    private static final Map<UUID, PlayerSweepData> CACHE = Collections.synchronizedMap(new WeakHashMap<>());
+
+    private final PlayerEntity player;
+
+    private PlayerSweepData(PlayerEntity player) {
+        this.player = player;
+    }
+
+    /**
+     * 获取或创建 PlayerSweepData
+     */
+    public static PlayerSweepData getData(PlayerEntity player) {
+        return CACHE.computeIfAbsent(player.getUUID(), k -> new PlayerSweepData(player));
+    }
+
     /**
      * 是否已发送使用说明
      */
-    private boolean notified;
+    public boolean isNotified() {
+        return PlayerDataStorage.instance().getOrCreate(player).getBoolean("notified");
+    }
+
+    public void setNotified(boolean notified) {
+        PlayerDataStorage.instance().getOrCreate(player).putBoolean("notified", notified);
+    }
+
     /**
      * 是否显示清理结果
      */
-    private boolean showSweepResult = true;
-
-    @Override
-    public boolean isNotified() {
-        return this.notified;
-    }
-
-    @Override
-    public void setNotified(boolean notified) {
-        this.notified = notified;
-    }
-
-    @Override
     public boolean isShowSweepResult() {
-        return this.showSweepResult;
+        return PlayerDataStorage.instance().getOrCreate(player).getBoolean("showSweepResult");
     }
 
-    @Override
     public void setShowSweepResult(boolean showSweepResult) {
-        this.showSweepResult = showSweepResult;
+        PlayerDataStorage.instance().getOrCreate(player).putBoolean("showSweepResult", showSweepResult);
     }
 
+    /**
+     * 将数据写到网络包
+     */
+    @Override
     public void writeToBuffer(PacketBuffer buffer) {
-        buffer.writeBoolean(this.notified);
-        buffer.writeBoolean(this.showSweepResult);
+        buffer.writeBoolean(isNotified());
+        buffer.writeBoolean(isShowSweepResult());
     }
 
+    /**
+     * 从网络包读数据
+     */
+    @Override
     public void readFromBuffer(PacketBuffer buffer) {
-        this.notified = buffer.readBoolean();
-        this.showSweepResult = buffer.readBoolean();
+        this.setNotified(buffer.readBoolean());
+        this.setShowSweepResult(buffer.readBoolean());
     }
 
-    public void copyFrom(IPlayerSweepData capability) {
-        this.notified = capability.isNotified();
-        this.showSweepResult = capability.isShowSweepResult();
-    }
-
+    /**
+     * 复制来自同类型实例的数据
+     */
     @Override
-    public CompoundNBT serializeNBT() {
-        CompoundNBT tag = new CompoundNBT();
-        tag.putBoolean("notified", this.notified);
-        tag.putBoolean("showSweepResult", this.showSweepResult);
-        return tag;
+    public void copyFrom(PlayerSweepData playerData) {
+        this.setNotified(playerData.isNotified());
+        this.setShowSweepResult(playerData.isShowSweepResult());
     }
 
-    @Override
-    public void deserializeNBT(CompoundNBT nbt) {
-        this.notified = nbt.getBoolean("notified");
-        this.showSweepResult = nbt.getBoolean("showSweepResult");
-    }
-
+    /**
+     * 保存
+     */
     @Override
     public void save(ServerPlayerEntity player) {
-        player.getCapability(PlayerSweepDataCapability.PLAYER_DATA).ifPresent(this::copyFrom);
+        PlayerDataStorage.instance().saveToDisk(player);
     }
+
 }
