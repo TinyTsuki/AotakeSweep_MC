@@ -478,7 +478,7 @@ public class AotakeUtils {
         if (chuck && Objects.equals(ServerConfig.CHUNK_CHECK_CLEAN_MODE.get(), EnumChunkCleanMode.ALL.name())) {
             return entities.stream()
                     .filter(entity -> !(entity instanceof Player))
-                    .filter(entity -> !entity.hasCustomName())
+                    .filter(entity -> isItem(entity) || !entity.hasCustomName())
                     .filter(entity -> !(entity instanceof TamableAnimal) || ((TamableAnimal) entity).getOwnerUUID() == null)
                     .collect(Collectors.toList());
         }
@@ -490,7 +490,7 @@ public class AotakeUtils {
                         || ((chuck || EnumEntityCleanMode.DEFAULT.name().equals(ServerConfig.JUNK_ENTITY_CLEAN_MODE.get()))
                         && ServerConfig.JUNK_ENTITY.get().contains(getEntityTypeRegistryName(entity)))
                 )
-                .filter(entity -> !entity.hasCustomName())
+                .filter(entity -> isItem(entity) || !entity.hasCustomName())
                 .filter(entity -> !(entity instanceof TamableAnimal) || ((TamableAnimal) entity).getOwnerUUID() == null)
                 .toList();
 
@@ -635,11 +635,11 @@ public class AotakeUtils {
             BlockState above = blockStateCache.get(new KeyValue<>(level, entity.blockPosition().above()));
 
             boolean unsafe =
-                    !SAFE_BLOCKS.contains(AotakeUtils.getBlockRegistryName(state)) &&
+                    !SAFE_BLOCKS.contains(state == null ? null : AotakeUtils.getBlockRegistryName(state)) &&
                             !SAFE_BLOCKS_STATE.contains(state) &&
-                            !SAFE_BLOCKS_BELOW.contains(AotakeUtils.getBlockRegistryName(below)) &&
+                            !SAFE_BLOCKS_BELOW.contains(below == null ? null : AotakeUtils.getBlockRegistryName(below)) &&
                             !SAFE_BLOCKS_BELOW_STATE.contains(below) &&
-                            !SAFE_BLOCKS_ABOVE.contains(AotakeUtils.getBlockRegistryName(above)) &&
+                            !SAFE_BLOCKS_ABOVE.contains(above == null ? null : AotakeUtils.getBlockRegistryName(above)) &&
                             !SAFE_BLOCKS_ABOVE_STATE.contains(above);
 
             return unsafe || exceededSafeList.contains(entity);
@@ -991,6 +991,19 @@ public class AotakeUtils {
 
     public static String getPlayerUUIDString(@NonNull Player player) {
         return player.getUUID().toString();
+    }
+
+    public static boolean isItem(Entity entity) {
+        if (entity == null) {
+            return false;
+        }
+        if (ServerConfig.GREEDY_MODE.get()) {
+            // GREEDY_MODE = true → 用 instanceof 来判断
+            return entity instanceof ItemEntity;
+        } else {
+            // GREEDY_MODE = false → 用类型来判断
+            return entity.getType() == EntityType.ITEM;
+        }
     }
 
     // endregion 杂项
