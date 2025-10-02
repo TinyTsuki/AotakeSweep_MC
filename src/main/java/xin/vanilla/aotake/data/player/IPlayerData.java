@@ -1,6 +1,6 @@
 package xin.vanilla.aotake.data.player;
 
-import net.minecraft.entity.player.ServerPlayerEntity;
+import net.minecraft.nbt.CompoundNBT;
 import net.minecraft.network.PacketBuffer;
 
 /**
@@ -8,12 +8,29 @@ import net.minecraft.network.PacketBuffer;
  */
 public interface IPlayerData<T extends IPlayerData<T>> {
 
+    boolean isDirty();
+
+    void setDirty();
+
+    void setDirty(boolean dirty);
+
     void writeToBuffer(PacketBuffer buffer);
 
     void readFromBuffer(PacketBuffer buffer);
 
+    CompoundNBT serializeNBT();
+
+    void deserializeNBT(CompoundNBT nbt, boolean dirty);
+
     void copyFrom(T playerData);
 
-    void save(ServerPlayerEntity player);
+    void save();
+
+    default void saveEx() {
+        if (this.isDirty()) {
+            this.setDirty(false);
+            this.save();
+        }
+    }
 
 }
