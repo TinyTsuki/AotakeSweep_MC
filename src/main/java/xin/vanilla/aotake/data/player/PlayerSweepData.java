@@ -1,6 +1,8 @@
 package xin.vanilla.aotake.data.player;
 
+import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Player;
 
 import java.util.Collections;
@@ -13,12 +15,17 @@ import java.util.WeakHashMap;
  */
 public final class PlayerSweepData implements IPlayerData<PlayerSweepData> {
 
-    private static final Map<UUID, PlayerSweepData> CACHE = Collections.synchronizedMap(new WeakHashMap<>());
+    // region override
 
+    private static final Map<UUID, PlayerSweepData> CACHE = Collections.synchronizedMap(new WeakHashMap<>());
     private final Player player;
+    private boolean dirty = false;
 
     private PlayerSweepData(Player player) {
         this.player = player;
+        if (this.player instanceof ServerPlayer) {
+            this.deserializeNBT(PlayerDataManager.instance().getOrCreate(player).copy(), false);
+        }
     }
 
     /**
@@ -28,26 +35,19 @@ public final class PlayerSweepData implements IPlayerData<PlayerSweepData> {
         return CACHE.computeIfAbsent(player.getUUID(), k -> new PlayerSweepData(player));
     }
 
-    /**
-     * 是否已发送使用说明
-     */
-    public boolean isNotified() {
-        return PlayerDataStorage.instance().getOrCreate(player).getBoolean("notified");
+    @Override
+    public boolean isDirty() {
+        return this.dirty;
     }
 
-    public void setNotified(boolean notified) {
-        PlayerDataStorage.instance().getOrCreate(player).putBoolean("notified", notified);
+    @Override
+    public void setDirty() {
+        this.dirty = true;
     }
 
-    /**
-     * 是否显示清理结果
-     */
-    public boolean isShowSweepResult() {
-        return PlayerDataStorage.instance().getOrCreate(player).getBoolean("showSweepResult");
-    }
-
-    public void setShowSweepResult(boolean showSweepResult) {
-        PlayerDataStorage.instance().getOrCreate(player).putBoolean("showSweepResult", showSweepResult);
+    @Override
+    public void setDirty(boolean dirty) {
+        this.dirty = dirty;
     }
 
     /**
@@ -64,8 +64,27 @@ public final class PlayerSweepData implements IPlayerData<PlayerSweepData> {
      */
     @Override
     public void readFromBuffer(FriendlyByteBuf buffer) {
-        this.setNotified(buffer.readBoolean());
-        this.setShowSweepResult(buffer.readBoolean());
+        this.notified = buffer.readBoolean();
+        this.showSweepResult = buffer.readBoolean();
+
+        this.save();
+    }
+
+    @Override
+    public CompoundTag serializeNBT() {
+        CompoundTag tag = new CompoundTag();
+        tag.putBoolean("notified", this.isNotified());
+        tag.putBoolean("showSweepResult", this.isShowSweepResult());
+        return tag;
+    }
+
+    @Override
+    public void deserializeNBT(CompoundTag nbt, boolean dirty) {
+        this.notified = nbt.getBoolean("notified");
+        this.showSweepResult = nbt.getBoolean("showSweepResult");
+        if (dirty) {
+            this.save();
+        }
     }
 
     /**
@@ -73,16 +92,50 @@ public final class PlayerSweepData implements IPlayerData<PlayerSweepData> {
      */
     @Override
     public void copyFrom(PlayerSweepData playerData) {
-        this.setNotified(playerData.isNotified());
-        this.setShowSweepResult(playerData.isShowSweepResult());
+        if (playerData == null) return;
+
+        this.notified = playerData.isNotified();
+        this.showSweepResult = playerData.isShowSweepResult();
+
+        this.save();
+    }
+
+    @Override
+    public void save() {
+        if (this.player instanceof ServerPlayer) {
+            PlayerDataManager.instance().put(player, serializeNBT());
+        }
+    }
+
+    // endregion override
+
+    private boolean notified;
+    private boolean showSweepResult;
+
+    /**
+     * 是否已发送使用说明
+     */
+    public boolean isNotified() {
+        if (this.isDirty()) this.saveEx();
+        return this.notified;
+    }
+
+    public void setNotified(boolean notified) {
+        this.notified = notified;
+        this.save();
     }
 
     /**
-     * 保存
+     * 是否显示清理结果
      */
-    @Override
-    public void save(Player player) {
-        PlayerDataStorage.instance().saveToDisk(player);
+    public boolean isShowSweepResult() {
+        if (this.isDirty()) this.saveEx();
+        return this.showSweepResult;
+    }
+
+    public void setShowSweepResult(boolean showSweepResult) {
+        this.showSweepResult = showSweepResult;
+        this.save();
     }
 
 }
