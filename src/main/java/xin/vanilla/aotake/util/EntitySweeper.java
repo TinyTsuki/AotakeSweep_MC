@@ -21,6 +21,7 @@ import xin.vanilla.aotake.enums.EnumSelfCleanMode;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 public class EntitySweeper {
@@ -65,6 +66,8 @@ public class EntitySweeper {
             }
         }
         entitiesToRemove.clear();
+
+        WorldTrashData.get().setDirty();
 
         return result;
     }
@@ -143,10 +146,14 @@ public class EntitySweeper {
             if (remaining.isEmpty()) break;
 
             if (inv.canAddItem(remaining)) {
-                ItemStack leftover = inv.addItem(remaining);
-                int inserted = remaining.getCount() - leftover.getCount();
-                recycledCount += inserted;
-                remaining = leftover;
+                List<ItemStack> remainingList = new ArrayList<>();
+                for (ItemStack itemStack : splitItemStack(remaining, inv.getMaxStackSize())) {
+                    ItemStack leftover = inv.addItem(itemStack);
+                    int inserted = itemStack.getCount() - leftover.getCount();
+                    recycledCount += inserted;
+                    remainingList.add(leftover);
+                }
+                remaining = mergeItemStack(remainingList);
             }
         }
         // 剩余部分进行溢出处理
@@ -217,5 +224,53 @@ public class EntitySweeper {
                 world.removeEntity(keyValue.getKey(), keyValue.getValue());
             }
         }
+    }
+
+    /**
+     * 按 count 拆分 ItemStack
+     *
+     * @param stack 原始物品栈
+     * @param count 每个子栈最大数量
+     */
+    private static List<ItemStack> splitItemStack(ItemStack stack, int count) {
+        if (stack == null || stack.isEmpty() || count <= 0) {
+            return new ArrayList<>();
+        }
+
+        final int total = stack.getCount();
+        final int parts = (total + count - 1) / count;
+
+        return IntStream.range(0, parts)
+                .mapToObj(i -> {
+                    int splitSize = Math.min(count, total - i * count);
+                    ItemStack s = stack.copy();
+                    s.setCount(splitSize);
+                    return s;
+                })
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * 合并多个 ItemStack
+     *
+     * @param stacks 要合并的物品栈(必须是相同的物品)
+     */
+    private static ItemStack mergeItemStack(List<ItemStack> stacks) {
+        if (stacks == null || stacks.isEmpty()) {
+            return ItemStack.EMPTY;
+        }
+
+        ItemStack base = stacks.get(0).copy();
+        if (base.isEmpty()) {
+            return ItemStack.EMPTY;
+        }
+
+        int totalCount = stacks.stream()
+                // .filter(s -> s != null && !s.isEmpty() && ItemStack.isSame(base, s))
+                .mapToInt(ItemStack::getCount)
+                .sum();
+
+        base.setCount(totalCount);
+        return base;
     }
 }
