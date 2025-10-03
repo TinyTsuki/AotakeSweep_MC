@@ -352,6 +352,7 @@ public class AotakeCommand {
             } else {
                 WorldTrashData.get().getInventoryList().get(page - 1).clearContent();
             }
+            WorldTrashData.get().setDirty();
             Component message = Component.translatable(EnumI18nType.MESSAGE
                     , "dustbin_cleared"
                     , page == 0 ? "" : String.format(" %s ", page)
@@ -385,6 +386,7 @@ public class AotakeCommand {
                         }
                     })
             );
+            WorldTrashData.get().setDirty();
             Component message = Component.translatable(EnumI18nType.MESSAGE
                     , "dustbin_dropped"
                     , page == 0 ? "" : String.format(" %s ", page)
@@ -402,6 +404,7 @@ public class AotakeCommand {
             if (checkModStatus(context)) return 0;
             notifyHelp(context);
             WorldTrashData.get().getDropList().clear();
+            WorldTrashData.get().setDirty();
             Component message = Component.translatable(EnumI18nType.MESSAGE
                     , "cache_cleared"
                     , context.getSource().getEntity() instanceof ServerPlayer
@@ -435,6 +438,7 @@ public class AotakeCommand {
                     level.addFreshEntity(entity);
                 }
             });
+            WorldTrashData.get().setDirty();
             Component message = Component.translatable(EnumI18nType.MESSAGE
                     , "cache_dropped"
                     , context.getSource().getEntity() instanceof ServerPlayer
