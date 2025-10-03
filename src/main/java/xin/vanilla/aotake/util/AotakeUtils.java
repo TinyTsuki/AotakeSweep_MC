@@ -53,6 +53,9 @@ import xin.vanilla.aotake.data.world.WorldTrashData;
 import xin.vanilla.aotake.enums.*;
 
 import javax.annotation.Nullable;
+import java.io.File;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Function;
@@ -818,6 +821,51 @@ public class AotakeUtils {
     }
 
     // endregion 扫地
+
+
+    // region nbt文件读写
+
+    public static CompoundTag readCompressed(InputStream stream) {
+        try {
+            return NbtIo.readCompressed(stream, NbtAccounter.unlimitedHeap());
+        } catch (Exception e) {
+            LOGGER.error("Failed to read compressed stream", e);
+            return new CompoundTag();
+        }
+    }
+
+    public static CompoundTag readCompressed(File file) {
+        try {
+            return NbtIo.readCompressed(file.toPath(), NbtAccounter.unlimitedHeap());
+        } catch (Exception e) {
+            LOGGER.error("Failed to read compressed file: {}", file.getAbsolutePath(), e);
+            return new CompoundTag();
+        }
+    }
+
+    public static boolean writeCompressed(CompoundTag tag, File file) {
+        boolean result = false;
+        try {
+            NbtIo.writeCompressed(tag, file.toPath());
+            result = true;
+        } catch (Exception e) {
+            LOGGER.error("Failed to write compressed file: {}", file.getAbsolutePath(), e);
+        }
+        return result;
+    }
+
+    public static boolean writeCompressed(CompoundTag tag, OutputStream stream) {
+        boolean result = false;
+        try {
+            NbtIo.writeCompressed(tag, stream);
+            result = true;
+        } catch (Exception e) {
+            LOGGER.error("Failed to write compressed stream", e);
+        }
+        return result;
+    }
+
+    // endregion nbt文件读写
 
 
     // region 杂项

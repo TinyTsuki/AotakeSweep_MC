@@ -90,6 +90,7 @@ public class EventHandlerProxy {
             if (ServerConfig.SELF_CLEAN_MODE.get().contains(EnumSelfCleanMode.SCHEDULED_CLEAR.name())) {
                 worldTrashData.getDropList().clear();
                 worldTrashData.getInventoryList().forEach(SimpleContainer::clearContent);
+                WorldTrashData.get().setDirty();
             }
             // 随机删除
             else if (ServerConfig.SELF_CLEAN_MODE.get().contains(EnumSelfCleanMode.SCHEDULED_DELETE.name())) {
@@ -104,6 +105,7 @@ public class EventHandlerProxy {
                             .findAny()
                             .ifPresent(i -> inventory.setItem(i, ItemStack.EMPTY));
                 }
+                WorldTrashData.get().setDirty();
             }
         }
 
@@ -383,7 +385,7 @@ public class EventHandlerProxy {
                 CompoundTag aotake = new CompoundTag();
 
                 aotake.putBoolean("byPlayer", true);
-                aotake.put("entity", entity.serializeNBT(entity.registryAccess()));
+                aotake.put("entity", entity.saveWithoutId(new CompoundTag()));
                 aotake.putString("name", AotakeUtils.getItemCustomNameJson(copy));
                 customData.put(AotakeSweep.MODID, aotake);
                 copy.set(DataComponents.CUSTOM_DATA, CustomData.of(customData));
