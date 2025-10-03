@@ -88,6 +88,7 @@ public class EventHandlerProxy {
             if (ServerConfig.SELF_CLEAN_MODE.get().contains(EnumSelfCleanMode.SCHEDULED_CLEAR.name())) {
                 worldTrashData.getDropList().clear();
                 worldTrashData.getInventoryList().forEach(SimpleContainer::clearContent);
+                WorldTrashData.get().setDirty();
             }
             // 随机删除
             else if (ServerConfig.SELF_CLEAN_MODE.get().contains(EnumSelfCleanMode.SCHEDULED_DELETE.name())) {
@@ -102,6 +103,7 @@ public class EventHandlerProxy {
                             .findAny()
                             .ifPresent(i -> inventory.setItem(i, ItemStack.EMPTY));
                 }
+                WorldTrashData.get().setDirty();
             }
         }
 
