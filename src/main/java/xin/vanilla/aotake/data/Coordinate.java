@@ -33,7 +33,7 @@ public class Coordinate implements Serializable, Cloneable {
     private double yaw = 0;
     private double pitch = 0;
     private ResourceKey<Level> dimension = Level.OVERWORLD;
-    private Direction direction = Direction.UP;
+    private Direction direction = null;
 
     public Coordinate(@NonNull Entity entity) {
         this.x = entity.getX();
@@ -289,14 +289,14 @@ public class Coordinate implements Serializable, Cloneable {
             String[] split = str.split(",");
             if (split.length == 5) {
                 ResourceKey<Level> dimension = ResourceKey.create(Registries.DIMENSION, AotakeSweep.parseResource(split[0].trim()));
-                Direction direction = Direction.byName(split[4].trim());
+                Direction direction = valuOfDirection(split[4].trim());
                 result = new Coordinate(StringUtils.toDouble(split[1]), StringUtils.toDouble(split[2]), StringUtils.toDouble(split[3]), dimension).setDirection(direction);
             } else if (split.length == 4) {
                 if (split[0].contains(":")) {
                     ResourceKey<Level> dimension = ResourceKey.create(Registries.DIMENSION, AotakeSweep.parseResource(split[0].trim()));
                     result = new Coordinate(StringUtils.toDouble(split[1]), StringUtils.toDouble(split[2]), StringUtils.toDouble(split[3]), dimension);
                 } else if (Arrays.stream(Direction.values()).anyMatch(dir -> dir.getName().equals(split[3].trim()))) {
-                    Direction direction = Direction.byName(split[3].trim());
+                    Direction direction = valuOfDirection(split[3].trim());
                     result = new Coordinate(StringUtils.toDouble(split[0]), StringUtils.toDouble(split[1]), StringUtils.toDouble(split[2])).setDirection(direction);
                 }
             } else if (split.length == 3) {
@@ -305,5 +305,15 @@ public class Coordinate implements Serializable, Cloneable {
         } catch (Throwable ignored) {
         }
         return result;
+    }
+
+    private static Direction valuOfDirection(String str) {
+        try {
+            return Arrays.stream(Direction.values())
+                    .filter(dir -> dir.getName().equalsIgnoreCase(str) || dir.name().equalsIgnoreCase(str))
+                    .findFirst().orElse(null);
+        } catch (Throwable ignored) {
+            return null;
+        }
     }
 }
