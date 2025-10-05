@@ -7,6 +7,7 @@ import lombok.NonNull;
 import lombok.experimental.Accessors;
 import net.minecraft.entity.Entity;
 import net.minecraft.nbt.CompoundNBT;
+import net.minecraft.util.Direction;
 import net.minecraft.util.RegistryKey;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.vector.Vector3d;
@@ -18,6 +19,7 @@ import xin.vanilla.aotake.util.StringUtils;
 
 import java.io.Serializable;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Random;
 
@@ -31,6 +33,7 @@ public class Coordinate implements Serializable, Cloneable {
     private double yaw = 0;
     private double pitch = 0;
     private RegistryKey<World> dimension = World.OVERWORLD;
+    private Direction direction = Direction.UP;
 
     public Coordinate(@NonNull Entity entity) {
         this.x = entity.getX();
@@ -274,5 +277,29 @@ public class Coordinate implements Serializable, Cloneable {
                 && Math.abs((int) coordinate.y - (int) y) <= range
                 && Math.abs((int) coordinate.z - (int) z) <= range
                 && coordinate.dimension.equals(dimension);
+    }
+
+    public static Coordinate fromSimpleString(String str) {
+        Coordinate result = null;
+        try {
+            String[] split = str.split(",");
+            if (split.length == 5) {
+                RegistryKey<World> dimension = RegistryKey.create(Registry.DIMENSION_REGISTRY, AotakeSweep.parseResource(split[0].trim()));
+                Direction direction = Direction.byName(split[4].trim());
+                result = new Coordinate(StringUtils.toDouble(split[1]), StringUtils.toDouble(split[2]), StringUtils.toDouble(split[3]), dimension).setDirection(direction);
+            } else if (split.length == 4) {
+                if (split[0].contains(":")) {
+                    RegistryKey<World> dimension = RegistryKey.create(Registry.DIMENSION_REGISTRY, AotakeSweep.parseResource(split[0].trim()));
+                    result = new Coordinate(StringUtils.toDouble(split[1]), StringUtils.toDouble(split[2]), StringUtils.toDouble(split[3]), dimension);
+                } else if (Arrays.stream(Direction.values()).anyMatch(dir -> dir.getName().equals(split[3].trim()))) {
+                    Direction direction = Direction.byName(split[3].trim());
+                    result = new Coordinate(StringUtils.toDouble(split[0]), StringUtils.toDouble(split[1]), StringUtils.toDouble(split[2])).setDirection(direction);
+                }
+            } else if (split.length == 3) {
+                result = new Coordinate(StringUtils.toDouble(split[0]), StringUtils.toDouble(split[1]), StringUtils.toDouble(split[2]));
+            }
+        } catch (Throwable ignored) {
+        }
+        return result;
     }
 }

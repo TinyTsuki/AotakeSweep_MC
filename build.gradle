@@ -173,6 +173,8 @@ dependencies {
     // runtimeOnly fg.deobf("blank:flywheel-1.16:0.2.5")
     // runtimeOnly fg.deobf("blank:appliedenergistics2:8.4.7")
 
+    // AE
+    runtimeOnly fg.deobf("blank:appliedenergistics2:8.4.7")
     // IE
     runtimeOnly fg.deobf("blusunrize.immersiveengineering:ImmersiveEngineering:${ie_version}")
 
