@@ -18,6 +18,7 @@ import net.minecraft.world.server.ServerWorld;
 import net.minecraftforge.common.util.WorldCapabilityData;
 import xin.vanilla.aotake.AotakeSweep;
 import xin.vanilla.aotake.config.CommonConfig;
+import xin.vanilla.aotake.config.ServerConfig;
 import xin.vanilla.aotake.data.ConcurrentShuffleList;
 import xin.vanilla.aotake.data.Coordinate;
 import xin.vanilla.aotake.data.DropStatistics;
@@ -55,6 +56,12 @@ public class WorldTrashData extends WorldCapabilityData {
     }
 
     public void load(CompoundNBT nbt) {
+        // 未开启持久化直接返回
+        try {
+            if (Boolean.FALSE.equals(ServerConfig.DUSTBIN_PERSISTENT.get())) return;
+        } catch (Throwable ignored) {
+        }
+
         this.dropList = new ConcurrentShuffleList<>();
         ListNBT dropListNBT = nbt.getList("dropList", 10);
         ConcurrentShuffleList<KeyValue<Coordinate, ItemStack>> drops = new ConcurrentShuffleList<>();
@@ -90,6 +97,12 @@ public class WorldTrashData extends WorldCapabilityData {
     @Override
     @NonNull
     public CompoundNBT save(CompoundNBT nbt) {
+        // 未开启持久化直接返回
+        try {
+            if (Boolean.FALSE.equals(ServerConfig.DUSTBIN_PERSISTENT.get())) return nbt;
+        } catch (Throwable ignored) {
+        }
+
         ListNBT dropsNBT = new ListNBT();
         for (KeyValue<Coordinate, ItemStack> drop : this.getDropList()) {
             if (drop == null || drop.getValue() == null) continue;

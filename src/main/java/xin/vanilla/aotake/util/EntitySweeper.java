@@ -10,11 +10,13 @@ import net.minecraft.util.RegistryKey;
 import net.minecraft.world.World;
 import net.minecraft.world.server.ServerWorld;
 import net.minecraftforge.entity.PartEntity;
+import net.minecraftforge.items.IItemHandler;
 import xin.vanilla.aotake.AotakeSweep;
 import xin.vanilla.aotake.config.CommonConfig;
 import xin.vanilla.aotake.config.ServerConfig;
 import xin.vanilla.aotake.data.*;
 import xin.vanilla.aotake.data.world.WorldTrashData;
+import xin.vanilla.aotake.enums.EnumDustbinMode;
 import xin.vanilla.aotake.enums.EnumOverflowMode;
 import xin.vanilla.aotake.enums.EnumSelfCleanMode;
 
@@ -132,16 +134,78 @@ public class EntitySweeper {
     private void handleItemRecycling(Coordinate coordinate, ItemStack item, SweepResult result) {
         // 自清洁模式
         if (ServerConfig.SELF_CLEAN_MODE.get().contains(EnumSelfCleanMode.SWEEP_DELETE.name())) {
-            Inventory inv = this.inventoryList.get(AotakeSweep.RANDOM.nextInt(this.inventoryList.size()));
-            IntStream.range(0, inv.getContainerSize())
-                    .filter(i -> !inv.getItem(i).isEmpty())
-                    .findAny()
-                    .ifPresent(i -> inv.setItem(i, ItemStack.EMPTY));
+            switch (EnumDustbinMode.valueOfOrDefault(ServerConfig.DUSTBIN_MODE.get())) {
+                case VIRTUAL: {
+                    selfCleanVirtualDustbin();
+                }
+                break;
+                case BLOCK: {
+                    selfCleanDustbinBlock();
+                }
+                break;
+                default: {
+                    selfCleanVirtualDustbin();
+                    selfCleanDustbinBlock();
+                }
+            }
         }
 
         ItemStack remaining = item;
-        int recycledCount = 0;
+        int recycledCount = item.getCount();
 
+        switch (EnumDustbinMode.valueOfOrDefault(ServerConfig.DUSTBIN_MODE.get())) {
+            case VIRTUAL: {
+                remaining = addItemToVirtualDustbin(remaining);
+            }
+            break;
+            case BLOCK: {
+                remaining = addItemToDustbinBlock(remaining);
+            }
+            break;
+            case VIRTUAL_BLOCK: {
+                remaining = addItemToVirtualDustbin(remaining);
+                remaining = addItemToDustbinBlock(remaining);
+            }
+            break;
+            case BLOCK_VIRTUAL: {
+                remaining = addItemToDustbinBlock(remaining);
+                remaining = addItemToVirtualDustbin(remaining);
+            }
+            break;
+        }
+
+        // 剩余部分进行溢出处理
+        if (!remaining.isEmpty()) {
+            recycledCount = recycledCount - remaining.getCount();
+            handleOverflow(coordinate, remaining, result);
+        }
+
+        result.setRecycledItemCount(recycledCount);
+    }
+
+    private void selfCleanVirtualDustbin() {
+        Inventory inv = this.inventoryList.get(AotakeSweep.RANDOM.nextInt(this.inventoryList.size()));
+        IntStream.range(0, inv.getContainerSize())
+                .filter(i -> !inv.getItem(i).isEmpty())
+                .findAny()
+                .ifPresent(i -> inv.setItem(i, ItemStack.EMPTY));
+    }
+
+    private void selfCleanDustbinBlock() {
+        for (String pos : ServerConfig.DUSTBIN_BLOCK_POSITIONS.get()) {
+            Coordinate dustbinPos = Coordinate.fromSimpleString(pos);
+            IItemHandler handler = AotakeUtils.getBlockItemHandler(dustbinPos);
+            if (handler != null) {
+                IntStream.range(0, handler.getSlots())
+                        .filter(i -> !handler.getStackInSlot(i).isEmpty())
+                        .findAny()
+                        .ifPresent(i -> handler.extractItem(i, handler.getSlotLimit(i), false));
+            }
+        }
+    }
+
+    private ItemStack addItemToVirtualDustbin(ItemStack item) {
+        ItemStack remaining = item;
         for (Inventory inv : this.inventoryList) {
             if (remaining.isEmpty()) break;
 
@@ -149,19 +213,21 @@ public class EntitySweeper {
                 List<ItemStack> remainingList = new ArrayList<>();
                 for (ItemStack itemStack : splitItemStack(remaining, inv.getMaxStackSize())) {
                     ItemStack leftover = inv.addItem(itemStack);
-                    int inserted = itemStack.getCount() - leftover.getCount();
-                    recycledCount += inserted;
                     remainingList.add(leftover);
                 }
                 remaining = mergeItemStack(remainingList);
             }
         }
-        // 剩余部分进行溢出处理
-        if (!remaining.isEmpty()) {
-            handleOverflow(coordinate, remaining, result);
-        }
+        return remaining;
+    }
 
-        result.setRecycledItemCount(recycledCount);
+    private ItemStack addItemToDustbinBlock(ItemStack item) {
+        ItemStack remaining = item;
+        for (String pos : ServerConfig.DUSTBIN_BLOCK_POSITIONS.get()) {
+            Coordinate dustbinPos = Coordinate.fromSimpleString(pos);
+            remaining = AotakeUtils.addItemToBlock(remaining, dustbinPos);
+        }
+        return remaining;
     }
 
     private void handleOverflow(Coordinate coordinate, ItemStack item, SweepResult result) {
@@ -176,9 +242,27 @@ public class EntitySweeper {
             }
             break;
             case REPLACE: {
-                Inventory inv = this.inventoryList.get(AotakeSweep.RANDOM.nextInt(this.inventoryList.size()));
-                int slot = AotakeSweep.RANDOM.nextInt(inv.getContainerSize());
-                inv.setItem(slot, item.copy());
+                switch (EnumDustbinMode.valueOfOrDefault(ServerConfig.DUSTBIN_MODE.get())) {
+                    case VIRTUAL:
+                    case VIRTUAL_BLOCK: {
+                        Inventory inv = this.inventoryList.get(AotakeSweep.RANDOM.nextInt(this.inventoryList.size()));
+                        int slot = AotakeSweep.RANDOM.nextInt(inv.getContainerSize());
+                        inv.setItem(slot, item.copy());
+                    }
+                    break;
+                    case BLOCK:
+                    case BLOCK_VIRTUAL: {
+                        String pos = CollectionUtils.getRandomElement(ServerConfig.DUSTBIN_BLOCK_POSITIONS.get());
+                        Coordinate dustbinPos = Coordinate.fromSimpleString(pos);
+                        IItemHandler handler = AotakeUtils.getBlockItemHandler(dustbinPos);
+                        if (handler != null) {
+                            int slot = AotakeSweep.RANDOM.nextInt(handler.getSlots());
+                            handler.extractItem(slot, handler.getSlotLimit(slot), false);
+                            handler.insertItem(slot, item.copy(), false);
+                        }
+                    }
+                    break;
+                }
             }
             break;
             case REMOVE:
