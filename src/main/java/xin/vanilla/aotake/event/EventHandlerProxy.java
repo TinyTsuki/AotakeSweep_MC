@@ -93,10 +93,11 @@ public class EventHandlerProxy {
         if (ServerConfig.SELF_CLEAN_INTERVAL.get() <= now - lastSelfCleanTime) {
             lastSelfCleanTime = now;
             WorldTrashData worldTrashData = WorldTrashData.get();
+            List<Inventory> inventories = worldTrashData.getInventoryList();
             // 清空
             if (ServerConfig.SELF_CLEAN_MODE.get().contains(EnumSelfCleanMode.SCHEDULED_CLEAR.name())) {
                 worldTrashData.getDropList().clear();
-                worldTrashData.getInventoryList().forEach(Inventory::clearContent);
+                if (CollectionUtils.isNotNullOrEmpty(inventories)) inventories.forEach(Inventory::clearContent);
                 WorldTrashData.get().setDirty();
             }
             // 随机删除
@@ -105,12 +106,13 @@ public class EventHandlerProxy {
                     ConcurrentShuffleList<KeyValue<Coordinate, ItemStack>> dropList = worldTrashData.getDropList();
                     dropList.removeRandom();
                 } else {
-                    List<Inventory> inventories = worldTrashData.getInventoryList();
-                    Inventory inventory = inventories.get(AotakeSweep.RANDOM.nextInt(inventories.size()));
-                    IntStream.range(0, inventory.getContainerSize())
-                            .filter(i -> !inventory.getItem(i).isEmpty())
-                            .findAny()
-                            .ifPresent(i -> inventory.setItem(i, ItemStack.EMPTY));
+                    if (CollectionUtils.isNotNullOrEmpty(inventories)) {
+                        Inventory inventory = inventories.get(AotakeSweep.RANDOM.nextInt(inventories.size()));
+                        IntStream.range(0, inventory.getContainerSize())
+                                .filter(i -> !inventory.getItem(i).isEmpty())
+                                .findAny()
+                                .ifPresent(i -> inventory.setItem(i, ItemStack.EMPTY));
+                    }
                 }
                 WorldTrashData.get().setDirty();
             }
