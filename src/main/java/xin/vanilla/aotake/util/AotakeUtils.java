@@ -21,8 +21,6 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.sounds.SoundEvent;
-import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.SimpleContainer;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
@@ -34,8 +32,14 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.component.CustomData;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraftforge.common.capabilities.ForgeCapabilities;
+import net.minecraftforge.common.util.LazyOptional;
 import net.minecraftforge.fml.ModList;
+import net.minecraftforge.items.IItemHandler;
+import net.minecraftforge.items.ItemHandlerHelper;
+import net.minecraftforge.items.ItemStackHandler;
 import net.minecraftforge.network.PacketDistributor;
 import net.minecraftforge.registries.ForgeRegistries;
 import org.apache.logging.log4j.LogManager;
@@ -59,6 +63,7 @@ import java.io.OutputStream;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Function;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -477,26 +482,79 @@ public class AotakeUtils {
         return false;
     }
 
+    public static boolean isItem(Entity entity) {
+        if (entity == null) {
+            return false;
+        }
+        if (CollectionUtils.isNullOrEmpty(ServerConfig.ITEM_TYPE_LIST.get())) {
+            return entity instanceof ItemEntity;
+        } else {
+            return entity.getType() == EntityType.ITEM || ServerConfig.ITEM_TYPE_LIST.get().contains(getEntityTypeRegistryName(entity));
+        }
+    }
+
+    public static boolean isJunkItem(Entity entity) {
+        boolean result = false;
+        if (isItem(entity)) {
+            // 空列表
+            if (CollectionUtils.isNullOrEmpty(ServerConfig.ITEM_LIST.get())) {
+                result = EnumListType.WHITE.name().equals(ServerConfig.ITEM_LIST_MODE.get());
+            }
+            // 黑名单模式
+            else if (EnumListType.BLACK.name().equals(ServerConfig.ITEM_LIST_MODE.get())) {
+                result = ServerConfig.ITEM_LIST.get().contains(getItemRegistryName(((ItemEntity) entity).getItem()));
+            }
+            // 白名单模式
+            else {
+                result = !ServerConfig.ITEM_LIST.get().contains(getItemRegistryName(((ItemEntity) entity).getItem()));
+            }
+        }
+        return result;
+    }
+
+    public static boolean isJunkEntity(Entity entity, boolean chuck) {
+        boolean result = false;
+        if (entity != null && !(entity instanceof Player) && !entity.hasCustomName()) {
+            if (chuck) {
+                // 空列表
+                if (CollectionUtils.isNullOrEmpty(ServerConfig.CHUNK_CHECK_ENTITY_LIST.get())) {
+                    result = EnumListType.WHITE.name().equals(ServerConfig.CHUNK_CHECK_ENTITY_LIST_MODE.get());
+                }
+                // 黑名单模式
+                else if (EnumListType.BLACK.name().equals(ServerConfig.CHUNK_CHECK_ENTITY_LIST_MODE.get())) {
+                    result = ServerConfig.CHUNK_CHECK_ENTITY_LIST.get().contains(getEntityTypeRegistryName(entity));
+                }
+                // 白名单模式
+                else {
+                    result = !ServerConfig.CHUNK_CHECK_ENTITY_LIST.get().contains(getEntityTypeRegistryName(entity));
+                }
+            } else {
+                // 空列表
+                if (CollectionUtils.isNullOrEmpty(ServerConfig.ENTITY_LIST.get())) {
+                    result = EnumListType.WHITE.name().equals(ServerConfig.ENTITY_LIST_MODE.get());
+                }
+                // 黑名单模式
+                else if (EnumListType.BLACK.name().equals(ServerConfig.ENTITY_LIST_MODE.get())) {
+                    result = ServerConfig.ENTITY_LIST.get().contains(getEntityTypeRegistryName(entity));
+                }
+                // 白名单模式
+                else {
+                    result = !ServerConfig.ENTITY_LIST.get().contains(getEntityTypeRegistryName(entity));
+                }
+            }
+        }
+        return result;
+    }
+
     public static List<Entity> getAllEntitiesByFilter(List<Entity> entities, boolean chuck) {
         if (CollectionUtils.isNullOrEmpty(entities)) {
             entities = getAllEntities();
         }
-        if (chuck && Objects.equals(ServerConfig.CHUNK_CHECK_CLEAN_MODE.get(), EnumChunkCleanMode.ALL.name())) {
-            return entities.stream()
-                    .filter(entity -> !(entity instanceof Player))
-                    .filter(entity -> isItem(entity) || !entity.hasCustomName())
-                    .filter(entity -> !(entity instanceof TamableAnimal) || ((TamableAnimal) entity).getOwnerUUID() == null)
-                    .collect(Collectors.toList());
-        }
         initSafeBlocks();
         List<Entity> filtered = entities.stream()
-                // 物品实体 与 垃圾实体
-                .filter(entity -> (ServerConfig.GREEDY_MODE.get() && entity instanceof ItemEntity)
-                        || (!ServerConfig.GREEDY_MODE.get() && entity.getType() == EntityType.ITEM)
-                        || ((chuck || EnumEntityCleanMode.DEFAULT.name().equals(ServerConfig.JUNK_ENTITY_CLEAN_MODE.get()))
-                        && ServerConfig.JUNK_ENTITY.get().contains(getEntityTypeRegistryName(entity)))
-                )
-                .filter(entity -> isItem(entity) || !entity.hasCustomName())
+                // 物品实体 或 垃圾实体
+                .filter(entity -> isItem(entity) || isJunkEntity(entity, chuck))
+                // 非驯养实体
                 .filter(entity -> !(entity instanceof TamableAnimal) || ((TamableAnimal) entity).getOwnerUUID() == null)
                 .toList();
 
@@ -513,16 +571,14 @@ public class AotakeUtils {
 
         // 超过阈值的黑白名单物品
         List<Entity> exceededWhiteBlackList = filtered.stream()
+                // 物品
                 .filter(entity -> entity instanceof ItemEntity)
                 .map(entity -> (ItemEntity) entity)
-                .filter(item -> (!ServerConfig.ITEM_WHITELIST.get().isEmpty()
-                        && ServerConfig.ITEM_WHITELIST.get().contains(getItemRegistryName(item.getItem())))
-                        || (!ServerConfig.ITEM_BLACKLIST.get().isEmpty()
-                        && !ServerConfig.ITEM_BLACKLIST.get().contains(getItemRegistryName(item.getItem())))
-                )
+                // 白名单物品
+                .filter(item -> !isJunkItem(item))
                 .collect(Collectors.groupingBy(item -> getItemRegistryName(item.getItem()), Collectors.toList()))
                 .entrySet().stream()
-                .filter(entry -> entry.getValue().size() > ServerConfig.ITEM_WHITE_BLACK_LIST_ENTITY_LIMIT.get())
+                .filter(entry -> entry.getValue().size() > ServerConfig.ITEM_LIST_LIMIT.get())
                 .flatMap(entry -> entry.getValue().stream())
                 .collect(Collectors.toList());
 
@@ -578,13 +634,12 @@ public class AotakeUtils {
                 .toList();
 
         // 过滤
-        return filtered.stream().filter(entity -> {
+        Predicate<Entity> predicate = entity -> {
             boolean isItem = entity instanceof ItemEntity;
-            String itemName = isItem ? getItemRegistryName(((ItemEntity) entity).getItem()) : null;
 
             // 掉落时间过滤
             if (isItem && ServerConfig.SWEEP_ITEM_AGE.get() > 0) {
-                if (entity.level().isAreaLoaded(entity.blockPosition(), 0)
+                if (entity.level().isLoaded(entity.blockPosition())
                         && entity.tickCount < ServerConfig.SWEEP_ITEM_AGE.get()
                         && entity.tickCount > 0
                 ) {
@@ -592,22 +647,9 @@ public class AotakeUtils {
                 }
             }
 
-            // 物品白名单过滤
-            if (isItem && !ServerConfig.ITEM_WHITELIST.get().isEmpty()) {
-                if (ServerConfig.ITEM_WHITELIST.get().contains(itemName) &&
-                        !exceededWhiteBlackList.contains(entity)
-                ) {
-                    return false;
-                }
-            }
-
-            // 物品黑名单过滤
-            if (isItem && !ServerConfig.ITEM_BLACKLIST.get().isEmpty()) {
-                if (!ServerConfig.ITEM_BLACKLIST.get().contains(itemName) &&
-                        !exceededWhiteBlackList.contains(entity)
-                ) {
-                    return false;
-                }
+            // 物品名单过滤
+            if (!isJunkItem(entity) && !exceededWhiteBlackList.contains(entity)) {
+                return false;
             }
 
             // NBT白名单过滤
@@ -649,7 +691,9 @@ public class AotakeUtils {
                             !SAFE_BLOCKS_ABOVE_STATE.contains(above);
 
             return unsafe || exceededSafeList.contains(entity);
-        }).collect(Collectors.toList());
+        };
+
+        return filtered.stream().filter(predicate).collect(Collectors.toList());
     }
 
     public static void sweep() {
@@ -661,10 +705,6 @@ public class AotakeUtils {
         KeyValue<MinecraftServer, Boolean> serverInstance = AotakeSweep.getServerInstance();
         // 服务器已关闭
         if (!serverInstance.val()) return;
-        if (chuck && Objects.equals(ServerConfig.CHUNK_CHECK_CLEAN_MODE.get(), EnumChunkCleanMode.NONE.name())) {
-            LOGGER.debug("Chunk check mode is NONE, sweep canceled");
-            return;
-        }
 
         List<ServerPlayer> players = serverInstance.key().getPlayerList().getPlayers();
 
@@ -678,8 +718,20 @@ public class AotakeUtils {
             if (CollectionUtils.isNotNullOrEmpty(list)) {
                 // 清空旧的物品
                 if (ServerConfig.SELF_CLEAN_MODE.get().contains(EnumSelfCleanMode.SWEEP_CLEAR.name())) {
-                    WorldTrashData.get().getDropList().clear();
-                    WorldTrashData.get().getInventoryList().forEach(SimpleContainer::clearContent);
+                    switch (EnumDustbinMode.valueOfOrDefault(ServerConfig.DUSTBIN_MODE.get())) {
+                        case VIRTUAL: {
+                            clearVirtualDustbin();
+                        }
+                        break;
+                        case BLOCK: {
+                            clearDustbinBlock();
+                        }
+                        break;
+                        default: {
+                            clearVirtualDustbin();
+                            clearDustbinBlock();
+                        }
+                    }
                 }
                 result = AotakeSweep.getEntitySweeper().addDrops(list);
             }
@@ -689,7 +741,8 @@ public class AotakeUtils {
                 Component msg = getWarningMessage(result == null || result.isEmpty() ? "fail" : "success"
                         , language
                         , result);
-                if (PlayerSweepData.getData(p).isShowSweepResult()) {
+                PlayerSweepData playerData = PlayerSweepData.getData(p);
+                if (playerData.isShowSweepResult()) {
                     String openCom = "/" + AotakeUtils.getCommand(EnumCommandType.DUSTBIN_OPEN);
                     msg.setClickEvent(new ClickEvent(ClickEvent.Action.SUGGEST_COMMAND, openCom))
                             .setHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT
@@ -711,13 +764,20 @@ public class AotakeUtils {
                 } else {
                     AotakeUtils.sendActionBarMessage(p, msg);
                 }
+                if (playerData.isEnableWarningVoice()) {
+                    String voice = getWarningVoice(result == null || result.isEmpty() ? "fail" : "success");
+                    if (StringUtils.isNotNullOrEmpty(voice)) {
+                        AotakeUtils.executeCommandNoOutput(p, String.format("playsound %s voice @s", voice));
+                    }
+                }
             }
         } catch (Exception e) {
             LOGGER.error(e);
             for (ServerPlayer p : players) {
                 String language = AotakeUtils.getPlayerLanguage(p);
                 Component msg = getWarningMessage("error", language, null);
-                if (PlayerSweepData.getData(p).isShowSweepResult()) {
+                PlayerSweepData playerData = PlayerSweepData.getData(p);
+                if (playerData.isShowSweepResult()) {
                     AotakeUtils.sendMessage(p, Component.empty()
                             .append(msg)
                             .append(Component.literal("[x]")
@@ -734,9 +794,34 @@ public class AotakeUtils {
                 } else {
                     AotakeUtils.sendActionBarMessage(p, msg);
                 }
+                if (playerData.isEnableWarningVoice()) {
+                    String voice = getWarningVoice("error");
+                    if (StringUtils.isNotNullOrEmpty(voice)) {
+                        AotakeUtils.executeCommandNoOutput(p, String.format("playsound %s voice @s", voice));
+                    }
+                }
             }
         }
+    }
 
+    private static void clearVirtualDustbin() {
+        WorldTrashData.get().getDropList().clear();
+        WorldTrashData.get().getInventoryList().forEach(SimpleContainer::clearContent);
+        WorldTrashData.get().setDirty();
+    }
+
+    private static void clearDustbinBlock() {
+        for (String pos : ServerConfig.DUSTBIN_BLOCK_POSITIONS.get()) {
+            Coordinate coordinate = Coordinate.fromSimpleString(pos);
+            if (coordinate != null) {
+                IItemHandler handler = getBlockItemHandler(coordinate);
+                if (handler != null) {
+                    for (int i = 0; i < handler.getSlots(); i++) {
+                        handler.extractItem(i, handler.getSlotLimit(i), false);
+                    }
+                }
+            }
+        }
     }
 
     /**
@@ -774,6 +859,7 @@ public class AotakeUtils {
     }
 
     private static final Map<String, String> warns = new HashMap<>();
+    private static final Map<String, String> voices = new HashMap<>();
 
     private static void initWarns() {
         if (warns.isEmpty()) {
@@ -782,6 +868,11 @@ public class AotakeUtils {
             warns.putIfAbsent("error", "message.aotake_sweep.cleanup_error");
             warns.putIfAbsent("fail", "message.aotake_sweep.cleanup_started");
             warns.putIfAbsent("success", "message.aotake_sweep.cleanup_started");
+        }
+        if (voices.isEmpty()) {
+            voices.putAll(JsonUtils.GSON.fromJson(CommonConfig.SWEEP_WARNING_VOICE.get(), new TypeToken<Map<String, String>>() {
+            }.getType()));
+            voices.put("initialized", "initialized");
         }
     }
 
@@ -818,6 +909,16 @@ public class AotakeUtils {
         } catch (Exception ignored) {
         }
         return msg;
+    }
+
+    public static String getWarningVoice(String key) {
+        String id = null;
+        try {
+            initWarns();
+            id = CollectionUtils.getRandomElement(voices.get(key).split(","));
+        } catch (Exception ignored) {
+        }
+        return id;
     }
 
     // endregion 扫地
@@ -884,25 +985,23 @@ public class AotakeUtils {
     }
 
     /**
+     * 执行指令
+     */
+    public static boolean executeCommandNoOutput(@NonNull ServerPlayer player, @NonNull String command) {
+        AtomicBoolean result = new AtomicBoolean(false);
+        try {
+            player.getServer().getCommands().performPrefixedCommand(player.createCommandSourceStack().withSuppressedOutput().withCallback((r, count) -> result.set(r)), command);
+        } catch (Exception e) {
+            LOGGER.error("Failed to execute command: {}", command, e);
+        }
+        return result.get();
+    }
+
+    /**
      * 获取指定维度的世界实例
      */
     public static ServerLevel getWorld(ResourceKey<Level> dimension) {
         return AotakeSweep.getServerInstance().key().getLevel(dimension);
-    }
-
-    /**
-     * 播放音效
-     *
-     * @param player 玩家
-     * @param sound  音效
-     * @param volume 音量
-     * @param pitch  音调
-     */
-    public static void playSound(ServerPlayer player, ResourceLocation sound, float volume, float pitch) {
-        SoundEvent soundEvent = ForgeRegistries.SOUND_EVENTS.getValue(sound);
-        if (soundEvent != null) {
-            player.playNotifySound(soundEvent, SoundSource.PLAYERS, volume, pitch);
-        }
     }
 
     /**
@@ -1041,17 +1140,60 @@ public class AotakeUtils {
         return player.getUUID().toString();
     }
 
-    public static boolean isItem(Entity entity) {
-        if (entity == null) {
-            return false;
+    /**
+     * 将物品添加到指定的方块容器
+     */
+    public static ItemStack addItemToBlock(ItemStack stack, Coordinate coordinate) {
+        if (stack == null || stack.isEmpty()) return ItemStack.EMPTY;
+        ServerLevel level = AotakeSweep.getServerInstance().key().getLevel(coordinate.getDimension());
+        if (level == null) return stack;
+
+        BlockPos pos = coordinate.toBlockPos();
+        if (!level.isLoaded(pos)) return stack;
+
+        BlockEntity te = level.getBlockEntity(pos);
+        if (te == null) return stack;
+
+        try {
+            LazyOptional<IItemHandler> capOpt = te.getCapability(ForgeCapabilities.ITEM_HANDLER, coordinate.getDirection());
+            if (capOpt.isPresent()) {
+                if (capOpt.isPresent()) {
+                    IItemHandler handler = capOpt.orElse(new ItemStackHandler());
+                    ItemStack remaining = ItemHandlerHelper.insertItem(handler, stack.copy(), false);
+                    te.setChanged();
+                    return remaining;
+                }
+            }
+        } catch (Throwable ignored) {
         }
-        if (ServerConfig.GREEDY_MODE.get()) {
-            // GREEDY_MODE = true → 用 instanceof 来判断
-            return entity instanceof ItemEntity;
-        } else {
-            // GREEDY_MODE = false → 用类型来判断
-            return entity.getType() == EntityType.ITEM;
+
+        return stack;
+    }
+
+    /**
+     * 获取指定的方块容器
+     */
+    public static IItemHandler getBlockItemHandler(Coordinate coordinate) {
+        ServerLevel level = AotakeSweep.getServerInstance().key().getLevel(coordinate.getDimension());
+        if (level == null) return null;
+
+        BlockPos pos = coordinate.toBlockPos();
+        if (!level.isLoaded(pos)) return null;
+
+        BlockEntity te = level.getBlockEntity(pos);
+        if (te == null) return null;
+
+        try {
+            LazyOptional<IItemHandler> capOpt = te.getCapability(ForgeCapabilities.ITEM_HANDLER, coordinate.getDirection());
+            if (capOpt.isPresent()) {
+                if (capOpt.isPresent()) {
+                    return capOpt.orElse(new ItemStackHandler());
+                }
+            }
+        } catch (Throwable ignored) {
         }
+
+        return null;
     }
 
     // endregion 杂项
