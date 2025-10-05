@@ -7,17 +7,20 @@ import lombok.NoArgsConstructor;
 import lombok.NonNull;
 import lombok.experimental.Accessors;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.core.Registry;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.phys.Vec3;
 import xin.vanilla.aotake.AotakeSweep;
 import xin.vanilla.aotake.util.JsonUtils;
 import xin.vanilla.aotake.util.StringUtils;
 
 import java.io.Serializable;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Random;
 
@@ -31,6 +34,7 @@ public class Coordinate implements Serializable, Cloneable {
     private double yaw = 0;
     private double pitch = 0;
     private ResourceKey<Level> dimension = Level.OVERWORLD;
+    private Direction direction = Direction.UP;
 
     public Coordinate(@NonNull Entity entity) {
         this.x = entity.getX();
@@ -120,6 +124,10 @@ public class Coordinate implements Serializable, Cloneable {
 
     public Vector3d toVector3d() {
         return new Vector3d(x, y, z);
+    }
+
+    public Vec3 toVec3() {
+        return new Vec3(x, y, z);
     }
 
     public Coordinate fromBlockPos(BlockPos pos) {
@@ -274,5 +282,29 @@ public class Coordinate implements Serializable, Cloneable {
                 && Math.abs((int) coordinate.y - (int) y) <= range
                 && Math.abs((int) coordinate.z - (int) z) <= range
                 && coordinate.dimension.equals(dimension);
+    }
+
+    public static Coordinate fromSimpleString(String str) {
+        Coordinate result = null;
+        try {
+            String[] split = str.split(",");
+            if (split.length == 5) {
+                ResourceKey<Level> dimension = ResourceKey.create(Registry.DIMENSION_REGISTRY, AotakeSweep.parseResource(split[0].trim()));
+                Direction direction = Direction.byName(split[4].trim());
+                result = new Coordinate(StringUtils.toDouble(split[1]), StringUtils.toDouble(split[2]), StringUtils.toDouble(split[3]), dimension).setDirection(direction);
+            } else if (split.length == 4) {
+                if (split[0].contains(":")) {
+                    ResourceKey<Level> dimension = ResourceKey.create(Registry.DIMENSION_REGISTRY, AotakeSweep.parseResource(split[0].trim()));
+                    result = new Coordinate(StringUtils.toDouble(split[1]), StringUtils.toDouble(split[2]), StringUtils.toDouble(split[3]), dimension);
+                } else if (Arrays.stream(Direction.values()).anyMatch(dir -> dir.getName().equals(split[3].trim()))) {
+                    Direction direction = Direction.byName(split[3].trim());
+                    result = new Coordinate(StringUtils.toDouble(split[0]), StringUtils.toDouble(split[1]), StringUtils.toDouble(split[2])).setDirection(direction);
+                }
+            } else if (split.length == 3) {
+                result = new Coordinate(StringUtils.toDouble(split[0]), StringUtils.toDouble(split[1]), StringUtils.toDouble(split[2]));
+            }
+        } catch (Throwable ignored) {
+        }
+        return result;
     }
 }
