@@ -1,106 +1,4 @@
 
-#Base Settings
-#基础设置
-[common]
-	#Even items on the whitelist or not included in the blacklist will be cleared if their quantity on the server exceeds the specified limit.
-	#即使是白名单内的物品，或不是黑名单中的物品，只要在服务器中数量超过指定上限，也会被清理。
-	#Range: > 1
-	itemWhiteBlackListEntityLimit = 250
-	#Even entities on the whitelist or not included in the blacklist will be cleared if their quantity on the server exceeds the specified limit.
-	#即使是NBT白名单内的实体，或不是NBT黑名单中的实体，只要在服务器中数量超过指定上限，也会被清理。
-	#Range: > 1
-	nbtWhiteBlackListEntityLimit = 250
-	#The entity that can be cleaned up.
-	#允许被清理的实体。
-	junkEntity = ["minecraft:arrow", "minecraft:spectral_arrow"]
-	#The header content of the help command.
-	#帮助指令信息头部内容。
-	helpHeader = "-----==== Aotake Sweep Help (%d/%d) ====-----"
-	#The item used to capture the entity being cleaned up.
-	#使用以下物品捕获被清理的实体。
-	catchItem = ["minecraft:snowball", "minecraft:glass_bottle", "minecraft:music_disc_13", "minecraft:music_disc_cat", "minecraft:music_disc_blocks", "minecraft:music_disc_chirp", "minecraft:music_disc_far", "minecraft:music_disc_mall", "minecraft:music_disc_mellohi", "minecraft:music_disc_stal", "minecraft:music_disc_strad", "minecraft:music_disc_ward", "minecraft:music_disc_wait", "minecraft:music_disc_pigstep"]
-	#The self-cleaning mode of the dustbin.
-	#NONE: No self-cleaning mode enabled;
-	#SWEEP_CLEAR: Clear the dustbin before sweeping;
-	#SWEEP_DELETE: Randomly delete items in the dustbin during sweeping;
-	#SCHEDULED_CLEAR: Scheduled clearing of the dustbin;
-	#SCHEDULED_DELETE: Scheduled random deletion of items in the dustbin.
-	#垃圾箱自清洁模式。
-	#NONE：不启用自清洁模式；
-	#SWEEP_CLEAR：在扫地前清空垃圾箱；
-	#SWEEP_DELETE：在扫地时随机删除垃圾箱内物品；
-	#SCHEDULED_CLEAR：定时清空垃圾箱；
-	#SCHEDULED_DELETE：定时随机删除垃圾箱内物品。
-	selfCleanMode = ["NONE"]
-	#Enable this to treat all ItemEntity and its subclasses as dropped items; otherwise, only entities with EntityType.ITEM will be treated as dropped items.
-	#开启后会将所有ItemEntity及其子类都视为掉落物，否则只会将EntityType为ITEM的视为掉落物。
-	greedyMode = false
-	#The item blacklist for cleaning up items, if this list is not empty, only the following items will be cleaned and recycled, items outside the list will not be cleaned or recycled.
-	#物品清理黑名单，若该名单不为空，则将只会清理并回收以下物品，名单外的物品将不会被清理与回收。
-	itemBlacklist = []
-	#The NBT whitelist for cleaning up entities, entities with the following NBT values will not be cleaned or recycled. Examples: ["CreateData.Processing.Time -> value > 0"]
-	#'->' left side is an NBT path expression, similar to JsonPath; the right side of '->' is an NBT value expression used to check if the condition is met. The 'value' keyword represents the NBT value and cannot be omitted.
-	#Examples of NBT value expressions: value == 'string', sqrt(value) == 123, log(value) <= 2.5, pow(value, 2) != cos(value), sin(value) > 5, abs(value) >= 10
-	#实体清理NBT白名单，包含以下NBT值的实体不会被清理。例子：["CreateData.Processing.Time -> value > 0"]
-	#'->'左边为NBT路径表达式，类似于JsonPath；'->'右边为NBT值表达式，用于判断是否满足条件，其中'value'代表NBT值，不可省略。
-	#NBT值表达式例子： value == '字符串'、sqrt(value) == 123、log(value) <= 2.5、pow(value, 2) != cos(value)、sin(value) > 5、abs(value) >= 10
-	entityNbtWhitelist = ["CreateData.Processing.Time -> value > 0"]
-	#The NBT blacklist for cleaning up entities, if this list is not empty, only the following NBT values will be cleaned and recycled, entities with NBT values outside the list will not be cleaned or recycled.
-	#'->' left side is an NBT path expression, similar to JsonPath; the right side of '->' is an NBT value expression used to check if the condition is met. The 'value' keyword represents the NBT value and cannot be omitted.
-	#Examples of NBT value expressions: value == 'string', sqrt(value) == 123, log(value) <= 2.5, pow(value, 2) != cos(value), sin(value) > 5, abs(value) >= 10
-	#实体清理NBT黑名单，若该名单不为空，则将只会清理并回收以下NBT值的实体，名单外的实体将不会被清理。
-	#'->'左边为NBT路径表达式，类似于JsonPath；'->'右边为NBT值表达式，用于判断是否满足条件，其中'value'代表NBT值，不可省略。
-	#NBT值表达式例子： value == '字符串'、sqrt(value) == 123、log(value) <= 2.5、pow(value, 2) != cos(value)、sin(value) > 5、abs(value) >= 10
-	entityNbtBlacklist = []
-	#The item whitelist for cleaning up items, the following items will not be cleaned or recycled.
-	#物品清理白名单，以下物品不会被清理与回收。
-	itemWhitelist = []
-	#Whether to allow players to use items to capture entities.
-	#是否允许玩家使用物品捕获实体。
-	allowCatchEntity = false
-	#Only clean up items that have been dropped for more than the specified ticks. Note: If a chunk is not loaded, dropped items will not tick, which may cause items to accumulate continuously.
-	#仅清理掉落超过指定tick的物品。注意：若区块未被加载，掉落物的tick不会增加，从而导致物品越堆越多。
-	#Range: 0 ~ 1728000
-	sweepItemDelay = 5
-	#The handling method when the dustbin overflows.
-	#KEEP: Store to cache and fill in empty space in the dustbin when opening it;
-	#REMOVE: Remove the overflowing items;
-	#REPLACE: Randomly replace items in the dustbin with overflowing items.
-	#垃圾箱溢出时的处理方式。
-	#KEEP：储存至缓存，并在打开垃圾箱时填充至垃圾箱的空位；
-	#REMOVE：移除溢出物品；
-	#REPLACE：将垃圾箱中的物品随机替换为溢出的物品。
-	dustbinOverflowMode = "KEEP"
-	#The default language of the server.
-	#服务器默认语言。
-	defaultLanguage = "en_us"
-	#The interval of self-cleaning (in milliseconds).
-	#自清洁间隔(毫秒)。
-	#Range: 0 ~ 604800000
-	selfCleanInterval = 3600000
-	#The entity that can be captured when cleaned up.
-	#清理时允许被捕获的实体。
-	catchEntity = []
-	#The number of help information displayed per page.
-	#每页显示的帮助信息数量。
-	#Range: 1 ~ 9999
-	helpInfoNumPerPage = 5
-	#The item redlist for cleaning up items, the following items will only be cleaned and not recycled.
-	#物品清理红名单，以下物品将只会被清理而不会被回收。
-	itemRedlist = []
-	#The interval for checking too many entities in chunks (in milliseconds), 0 to disable.
-	#区块实体过多检测间隔(毫秒)，0为禁用。
-	#Range: 0 ~ 604800000
-	chunkCheckInterval = 5000
-	#The threshold for checking too many entities in chunks.
-	#区块实体过多检测阈值。
-	#Range: > 1
-	chunkCheckLimit = 250
-	#The interval of sweeping (in milliseconds).
-	#扫地间隔(毫秒)。
-	#Range: 0 ~ 604800000
-	sweepInterval = 600000
-
 #Command Permission
 #指令权限
 [permission]
@@ -144,4 +42,199 @@
 	#触发扫地指令所需的权限等级。
 	#Range: 0 ~ 4
 	permissionSweep = 0
+
+#Base Settings
+#基础设置
+[base]
+
+	#Regularly Sweep
+	#定时清理
+	[base.sweep]
+		#The interval of sweeping (in milliseconds).
+		#扫地间隔(毫秒)。
+		#Range: 0 ~ 604800000
+		sweepInterval = 600000
+
+		#Item
+		#物品
+		[base.sweep.item]
+			#The application mode of the item list:
+			#BLACK: Blacklist, only the items listed will be cleaned up;
+			#WHITE: Whitelist, all items except those listed will be cleaned up.
+			#物品名单应用模式：
+			#BLACK：黑名单，仅会清理列表中列出的物品；
+			#WHITE：白名单，将会清理列表中未列出的所有物品。
+			itemListMode = "WHITE"
+			#The item list, the following entities will be cleaned up according to the itemListMode.
+			#物品名单，与配置 itemListMode 共同决定列表中的实体是否清理。
+			itemList = []
+			#The item type list, the following entities will be viewed as items when cleaning up. If the list is empty, all entities that inherit ItemEntity will be viewed as items, such as dropped SlashBlade, etc.
+			#物品类型列表，以下实体在清理时会被视为掉落物。若列表为空则会将所有继承自ItemEntity的实体都视为物品，如丢在地上的拔刀剑等。
+			itemTypeList = []
+			#The item redlist for cleaning up items, the following items will only be cleaned and not recycled.
+			#物品清理红名单，以下物品将只会被清理而不会被回收。
+			itemRedlist = []
+			#Even items on the whitelist or not included in the blacklist will be cleared if their quantity on the server exceeds the specified limit.
+			#即使是白名单内的物品，或不是黑名单中的物品，只要在服务器中数量超过指定上限，也会被清理。
+			#Range: > 1
+			itemListLimit = 250
+			#Only clean up items that have been dropped for more than the specified ticks. Note: If a chunk is not loaded, dropped items will not tick, which may cause items to accumulate continuously.
+			#仅清理掉落超过指定tick的物品。注意：若区块未被加载，掉落物的tick不会增加，从而导致物品越堆越多。
+			#Range: 0 ~ 1728000
+			sweepItemDelay = 5
+
+		#Entity
+		#实体
+		[base.sweep.entity]
+			#The application mode of the entity list:
+			#BLACK: Blacklist, only the entities listed will be cleaned up;
+			#WHITE: Whitelist, all entities except those listed will be cleaned up.
+			#实体名单应用模式：
+			#BLACK：黑名单，仅会清理列表中列出的实体；
+			#WHITE：白名单，将会清理列表中未列出的所有实体。
+			entityListMode = "BLACK"
+			#Even entities on the whitelist or not included in the blacklist will be cleared if their quantity on the server exceeds the specified limit.
+			#即使是NBT白名单内的实体，或不是NBT黑名单中的实体，只要在服务器中数量超过指定上限，也会被清理。
+			#Range: > 1
+			nbtWhiteBlackListEntityLimit = 250
+			#The entity list, the following entities will be cleaned up according to the entityListMode.
+			#实体名单，与配置 entityListMode 共同决定列表中的实体是否清理。
+			entityList = ["minecraft:arrow", "minecraft:spectral_arrow"]
+			#The NBT whitelist for cleaning up entities, entities with the following NBT values will not be cleaned or recycled.
+			#'->' left side is an NBT path expression, similar to JsonPath; the right side of '->' is an NBT value expression used to check if the condition is met. The 'value' keyword represents the NBT value and cannot be omitted.
+			#Examples of NBT value expressions: value == 'string', sqrt(value) == 123, log(value) <= 2.5, pow(value, 2) != cos(value), sin(value) > 5, abs(value) >= 10
+			#实体清理NBT白名单，包含以下NBT值的实体不会被清理。
+			#'->'左边为NBT路径表达式，类似于JsonPath；'->'右边为NBT值表达式，用于判断是否满足条件，其中'value'代表NBT值，不可省略。
+			#NBT值表达式例子： value == '字符串'、sqrt(value) == 123、log(value) <= 2.5、pow(value, 2) != cos(value)、sin(value) > 5、abs(value) >= 10
+			entityNbtWhitelist = ["CreateData.Processing.Time -> value > 0"]
+			#The NBT blacklist for cleaning up entities, if this list is not empty, only the following NBT values will be cleaned and recycled, entities with NBT values outside the list will not be cleaned or recycled.
+			#'->' left side is an NBT path expression, similar to JsonPath; the right side of '->' is an NBT value expression used to check if the condition is met. The 'value' keyword represents the NBT value and cannot be omitted.
+			#Examples of NBT value expressions: value == 'string', sqrt(value) == 123, log(value) <= 2.5, pow(value, 2) != cos(value), sin(value) > 5, abs(value) >= 10
+			#实体清理NBT黑名单，若该名单不为空，则将只会清理并回收以下NBT值的实体，名单外的实体将不会被清理。
+			#'->'左边为NBT路径表达式，类似于JsonPath；'->'右边为NBT值表达式，用于判断是否满足条件，其中'value'代表NBT值，不可省略。
+			#NBT值表达式例子： value == '字符串'、sqrt(value) == 123、log(value) <= 2.5、pow(value, 2) != cos(value)、sin(value) > 5、abs(value) >= 10
+			entityNbtBlacklist = []
+
+	#Common Settings
+	#通用配置
+	[base.common]
+		#The default language of the server.
+		#服务器默认语言。
+		defaultLanguage = "en_us"
+		#The header content of the help command.
+		#帮助指令信息头部内容。
+		helpHeader = "-----==== Aotake Sweep Help (%d/%d) ====-----"
+		#The number of help information displayed per page.
+		#每页显示的帮助信息数量。
+		#Range: 1 ~ 9999
+		helpInfoNumPerPage = 5
+
+	#Dustbin
+	#垃圾箱
+	[base.dustbin]
+		#Whether to persistently store dustbin items to server files.
+		#是否将垃圾箱物品持久化存储至服务器文件。若未启用持久化，服务器关闭后垃圾箱内物品将会丢失。
+		dustbinPersistent = true
+		#The handling method when the dustbin overflows.
+		#KEEP: Store to cache and fill in empty space in the dustbin when opening it;
+		#REMOVE: Remove the overflowing items;
+		#REPLACE: Randomly replace items in the dustbin with overflowing items.
+		#垃圾箱溢出时的处理方式。
+		#KEEP：储存至缓存，并在打开垃圾箱时填充至垃圾箱的空位；
+		#REMOVE：移除溢出物品；
+		#REPLACE：将垃圾箱中的物品随机替换为溢出的物品。
+		dustbinOverflowMode = "KEEP"
+		#Dustbin Block Application Mode.
+		#When using a dustbin block, make sure the block is a valid container. Commands may not be able to open the container interface directly.
+		#When VIRTUAL_BLOCK or BLOCK_VIRTUAL, the command will only open a virtual dustbin interface.
+		#VIRTUAL: Only virtual dustbin;
+		#BLOCK: Only dustbin block;
+		#VIRTUAL_BLOCK: Virtual dustbin and dustbin block are enabled, and virtual dustbin is preferred;
+		#BLOCK_VIRTUAL: Dustbin block and virtual dustbin are enabled, and dustbin block is preferred.
+		#垃圾箱方块应用模式。使用垃圾箱方块时，请确保方块是正常的容器，并且可能无法使用指令打开容器页面，同时启用时指令仅打开虚拟垃圾箱页面。
+		#VIRTUAL：仅虚拟垃圾箱；
+		#BLOCK：仅垃圾箱方块；
+		#VIRTUAL_BLOCK：虚拟垃圾箱和垃圾箱方块同时启用，且优先使用虚拟垃圾箱；
+		#BLOCK_VIRTUAL：垃圾箱方块和虚拟垃圾箱同时启用，且优先使用垃圾箱方块。
+		dustbinBlockMode = "VIRTUAL"
+		#The interval of self-cleaning (in milliseconds).
+		#自清洁间隔(毫秒)。
+		#Range: 0 ~ 604800000
+		selfCleanInterval = 3600000
+		#The self-cleaning mode of the dustbin.
+		#NONE: No self-cleaning mode enabled;
+		#SWEEP_CLEAR: Clear the dustbin before sweeping;
+		#SWEEP_DELETE: Randomly delete items in the dustbin during sweeping;
+		#SCHEDULED_CLEAR: Scheduled clearing of the dustbin;
+		#SCHEDULED_DELETE: Scheduled random deletion of items in the dustbin.
+		#垃圾箱自清洁模式。
+		#NONE：不启用自清洁模式；
+		#SWEEP_CLEAR：在扫地前清空垃圾箱；
+		#SWEEP_DELETE：在扫地时随机删除垃圾箱内物品；
+		#SCHEDULED_CLEAR：定时清空垃圾箱；
+		#SCHEDULED_DELETE：定时随机删除垃圾箱内物品。
+		selfCleanMode = ["NONE"]
+		#The position of the dustbin block, format: dimension, x, y, z, side
+		#dimension: dimension ID, such as minecraft:overworld
+		#x, y, z: coordinates
+		#side: side of the block, can be empty. optional values: DOWN, UP, NORTH, SOUTH, WEST, EAST
+		#垃圾箱方块位置，格式： dimension, x, y, z, side
+		#dimension: 维度ID，如minecraft:overworld
+		#x, y, z: 坐标
+		#side: 方块面，可为空。可选值：DOWN、UP、NORTH、SOUTH、WEST、EAST
+		dustbinBlockPositions = []
+
+	#Chunk Check
+	#区块实体过多检测
+	[base.chunk]
+		#Show warning when too many entities in a chunk.
+		#区块内实体过多时的是否进行提示。
+		chunkCheckNotice = true
+		#The check mode for detecting excessive entities in a chunk:
+		#DEFAULT: Cleanup is triggered when the total number of entities in the chunk exceeds the threshold;
+		#ADVANCED: Cleanup is triggered when a specific type of entity in the chunk exceeds the threshold.
+		#区块内实体过多检测模式：
+		#DEFAULT：区块内所有实体超过阈值触发清理；
+		#ADVANCED：区块内某个类型实体超过阈值触发清理。
+		chunkCheckMode = "DEFAULT"
+		#The entity list of chunk check, the following entities will be cleaned up according to the chunkCheckEntityListMode.
+		#区块检测实体名单，与配置 chunkCheckEntityListMode 共同决定列表中的实体是否清理。
+		chunkCheckEntityList = []
+		#Number of entities to retain during entity overload cleanup in a chunk. 
+		#By default, half of the detection threshold is retained to prevent excessive loss from clearing everything. 
+		#The retention behavior is affected by chunkCheckMode.
+		#区块实体过多检测清理时保留的实体数量，默认保留检测阈值的一半，避免全部清理而导致损失过大，保留方式受chunkCheckMode影响。
+		#Range: > 1
+		chunkCheckRetain = 125
+		#The application mode of the entity list of chunk check:
+		#BLACK: Blacklist, only the entities listed will be cleaned up;
+		#WHITE: Whitelist, all entities except those listed will be cleaned up.
+		#区块检测实体名单应用模式：
+		#BLACK：黑名单，仅会清理列表中列出的实体；
+		#WHITE：白名单，将会清理列表中未列出的所有实体。
+		chunkCheckEntityListMode = "WHITE"
+		#The interval for detecting excessive entities in a chunk (in milliseconds), 0 to disable.
+		#区块实体过多检测间隔(毫秒)，0为禁用。
+		#Range: 0 ~ 604800000
+		chunkCheckInterval = 5000
+		#The threshold for detecting excessive entities in a chunk.
+		#区块实体过多检测阈值。
+		#Range: > 1
+		chunkCheckLimit = 250
+		#Only notice when too many entities in a chunk.
+		#区块内实体过多时的是否仅进行提示。
+		chunkCheckOnlyNotice = false
+
+	#Catch Entity
+	#实体捕获
+	[base.catch]
+		#The item used to capture the entity being cleaned up.
+		#使用以下物品捕获被清理的实体。
+		catchItem = ["minecraft:snowball", "minecraft:glass_bottle", "minecraft:music_disc_13"]
+		#The entity that can be captured when cleaned up.
+		#清理时允许被捕获的实体。
+		catchEntity = []
+		#Whether to allow players to use items to capture entities.
+		#是否允许玩家使用物品捕获实体。
+		allowCatchEntity = false
 
