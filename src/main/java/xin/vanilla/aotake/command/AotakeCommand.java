@@ -10,22 +10,29 @@ import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.context.CommandContext;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import com.mojang.brigadier.suggestion.SuggestionProvider;
+import com.mojang.brigadier.suggestion.SuggestionsBuilder;
 import lombok.NonNull;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.commands.arguments.DimensionArgument;
 import net.minecraft.commands.arguments.EntityArgument;
+import net.minecraft.core.Direction;
 import net.minecraft.network.chat.ClickEvent;
 import net.minecraft.network.chat.HoverEvent;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.InteractionResult;
 import net.minecraft.world.MenuProvider;
 import net.minecraft.world.SimpleContainer;
 import net.minecraft.world.entity.Entity;
-import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.phys.BlockHitResult;
+import net.minecraft.world.phys.Vec3;
+import net.minecraftforge.items.IItemHandler;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import xin.vanilla.aotake.AotakeSweep;
@@ -37,10 +44,7 @@ import xin.vanilla.aotake.data.KeyValue;
 import xin.vanilla.aotake.data.SweepResult;
 import xin.vanilla.aotake.data.player.PlayerSweepData;
 import xin.vanilla.aotake.data.world.WorldTrashData;
-import xin.vanilla.aotake.enums.EnumCommandType;
-import xin.vanilla.aotake.enums.EnumI18nType;
-import xin.vanilla.aotake.enums.EnumMCColor;
-import xin.vanilla.aotake.enums.EnumOperationType;
+import xin.vanilla.aotake.enums.*;
 import xin.vanilla.aotake.event.EventHandlerProxy;
 import xin.vanilla.aotake.network.packet.CustomConfigSyncToClient;
 import xin.vanilla.aotake.util.*;
@@ -272,9 +276,10 @@ public class AotakeCommand {
                 targetList.add(context.getSource().getPlayerOrException());
             }
             int page = getIntDefault(context, "page", 1);
-            if (page > CommonConfig.DUSTBIN_PAGE_LIMIT.get())
-                throw CommandSyntaxException.BUILT_IN_EXCEPTIONS.integerTooHigh().create(page, CommonConfig.DUSTBIN_PAGE_LIMIT.get());
-            else if (page < 1)
+            int totalPage = getDustbinTotalPage();
+            if (page > totalPage)
+                throw CommandSyntaxException.BUILT_IN_EXCEPTIONS.integerTooHigh().create(page, totalPage);
+            if (page < 1)
                 throw CommandSyntaxException.BUILT_IN_EXCEPTIONS.integerTooLow().create(page, 1);
 
             for (ServerPlayer player : targetList) {
@@ -305,7 +310,7 @@ public class AotakeCommand {
             if (checkModStatus(context)) return 0;
             notifyHelp(context);
             boolean withEntity = getBooleanDefault(context, "withEntity", false);
-            boolean greedyMode = getBooleanDefault(context, "greedyMode", ServerConfig.GREEDY_MODE.get());
+            boolean greedyMode = getBooleanDefault(context, "greedyMode", false);
             boolean allEntity = getBooleanDefault(context, "allEntity", false);
             int range = getIntDefault(context, "range", 0);
             ServerLevel dimension = getDimensionDefault(context, "dimension", null);
@@ -321,8 +326,8 @@ public class AotakeCommand {
             entities.stream()
                     .filter(Objects::nonNull)
                     .filter(entity -> (greedyMode && entity instanceof ItemEntity)
-                            || (!greedyMode && entity.getType() == EntityType.ITEM)
-                            || (withEntity && ServerConfig.JUNK_ENTITY.get().contains(AotakeUtils.getEntityTypeRegistryName(entity)))
+                            || (!greedyMode && AotakeUtils.isItem(entity))
+                            || (withEntity && AotakeUtils.isJunkEntity(entity, false))
                             || (allEntity && !(entity instanceof Player))
                     ).forEach(entity -> {
                         if (entity instanceof ItemEntity) {
@@ -347,12 +352,44 @@ public class AotakeCommand {
             if (checkModStatus(context)) return 0;
             notifyHelp(context);
             int page = getIntDefault(context, "page", 0);
-            if (page == 0) {
-                WorldTrashData.get().getInventoryList().forEach(SimpleContainer::clearContent);
-            } else {
-                WorldTrashData.get().getInventoryList().get(page - 1).clearContent();
+            int vPage = CommonConfig.DUSTBIN_PAGE_LIMIT.get();
+            int bPage = ServerConfig.DUSTBIN_BLOCK_POSITIONS.get().size();
+            switch (EnumDustbinMode.valueOfOrDefault(ServerConfig.DUSTBIN_MODE.get())) {
+                case VIRTUAL: {
+                    clearVirtualDustbin(page);
+                }
+                break;
+                case BLOCK: {
+                    clearDustbinBlock(page);
+                }
+                break;
+                case VIRTUAL_BLOCK: {
+                    if (page > 0 && page <= vPage + bPage) {
+                        if (page <= vPage) {
+                            clearVirtualDustbin(page);
+                        } else {
+                            clearDustbinBlock(page - vPage);
+                        }
+                    } else if (page == 0) {
+                        clearVirtualDustbin(page);
+                        clearDustbinBlock(page);
+                    }
+                }
+                break;
+                case BLOCK_VIRTUAL: {
+                    if (page > 0 && page <= vPage + bPage) {
+                        if (page <= bPage) {
+                            clearDustbinBlock(page);
+                        } else {
+                            clearVirtualDustbin(page - bPage);
+                        }
+                    } else if (page == 0) {
+                        clearDustbinBlock(page);
+                        clearVirtualDustbin(page);
+                    }
+                }
+                break;
             }
-            WorldTrashData.get().setDirty();
             Component message = Component.translatable(EnumI18nType.MESSAGE
                     , "dustbin_cleared"
                     , page == 0 ? "" : String.format(" %s ", page)
@@ -371,22 +408,44 @@ public class AotakeCommand {
             notifyHelp(context);
             ServerPlayer player = context.getSource().getPlayerOrException();
             int page = getIntDefault(context, "page", 0);
-            List<SimpleContainer> inventories = new ArrayList<>();
-            if (page == 0) {
-                inventories.addAll(WorldTrashData.get().getInventoryList());
-            } else {
-                inventories.add(WorldTrashData.get().getInventoryList().get(page - 1));
-            }
-            inventories.forEach(inventory -> inventory.removeAllItems()
-                    .forEach(item -> {
-                        if (!item.isEmpty()) {
-                            Entity entity = AotakeUtils.getEntityFromItem(player.serverLevel(), item);
-                            entity.moveTo(player.getX(), player.getY(), player.getZ(), player.getYRot(), player.getXRot());
-                            player.serverLevel().addFreshEntity(entity);
+            int vPage = CommonConfig.DUSTBIN_PAGE_LIMIT.get();
+            int bPage = ServerConfig.DUSTBIN_BLOCK_POSITIONS.get().size();
+            switch (EnumDustbinMode.valueOfOrDefault(ServerConfig.DUSTBIN_MODE.get())) {
+                case VIRTUAL: {
+                    dropVirtualDustbin(player, page);
+                }
+                break;
+                case BLOCK: {
+                    dropDustbinBlock(player, page);
+                }
+                break;
+                case VIRTUAL_BLOCK: {
+                    if (page > 0 && page <= vPage + bPage) {
+                        if (page <= vPage) {
+                            dropVirtualDustbin(player, page);
+                        } else {
+                            dropDustbinBlock(player, page - vPage);
                         }
-                    })
-            );
-            WorldTrashData.get().setDirty();
+                    } else if (page == 0) {
+                        dropVirtualDustbin(player, page);
+                        dropDustbinBlock(player, page);
+                    }
+                }
+                break;
+                case BLOCK_VIRTUAL: {
+                    if (page > 0 && page <= vPage + bPage) {
+                        if (page <= bPage) {
+                            dropDustbinBlock(player, page);
+                        } else {
+                            dropVirtualDustbin(player, page - bPage);
+                        }
+                    } else if (page == 0) {
+                        dropDustbinBlock(player, page);
+                        dropVirtualDustbin(player, page);
+                    }
+                }
+                break;
+            }
             Component message = Component.translatable(EnumI18nType.MESSAGE
                     , "dustbin_dropped"
                     , page == 0 ? "" : String.format(" %s ", page)
@@ -542,10 +601,11 @@ public class AotakeCommand {
                         .executes(openDustbinCommand)
                         .then(Commands.argument("page", IntegerArgumentType.integer(1))
                                 .suggests((context, builder) -> {
-                                    IntStream.range(1, CommonConfig.DUSTBIN_PAGE_LIMIT.get() + 1)
+                                    int totalPage = getDustbinTotalPage();
+                                    IntStream.range(1, totalPage + 1)
                                             .filter(i -> i == 1
                                                     || i % 5 == 0
-                                                    || i == CommonConfig.DUSTBIN_PAGE_LIMIT.get()
+                                                    || i == totalPage
                                             )
                                             .forEach(builder::suggest);
                                     return builder.buildFuture();
@@ -601,11 +661,12 @@ public class AotakeCommand {
                 Commands.literal(CommonConfig.COMMAND_DUSTBIN_CLEAR.get())
                         .requires(source -> AotakeUtils.hasCommandPermission(source, EnumCommandType.DUSTBIN_CLEAR))
                         .executes(clearDustbinCommand)
-                        .then(Commands.argument("page", IntegerArgumentType.integer(1, CommonConfig.DUSTBIN_PAGE_LIMIT.get()))
+                        .then(Commands.argument("page", IntegerArgumentType.integer(1))
                                 .suggests((context, builder) -> {
-                                    IntStream.range(1, CommonConfig.DUSTBIN_PAGE_LIMIT.get() + 1)
+                                    int totalPage = getDustbinTotalPage();
+                                    IntStream.range(1, totalPage + 1)
                                             .filter(i -> i == 1
-                                                    || i == CommonConfig.DUSTBIN_PAGE_LIMIT.get()
+                                                    || i == totalPage
                                                     || !WorldTrashData.get().getInventoryList().get(i - 1).isEmpty())
                                             .forEach(builder::suggest);
                                     return builder.buildFuture();
@@ -616,11 +677,12 @@ public class AotakeCommand {
                 Commands.literal(CommonConfig.COMMAND_DUSTBIN_DROP.get())
                         .requires(source -> AotakeUtils.hasCommandPermission(source, EnumCommandType.DUSTBIN_DROP))
                         .executes(dropDustbinCommand)
-                        .then(Commands.argument("page", IntegerArgumentType.integer(1, CommonConfig.DUSTBIN_PAGE_LIMIT.get()))
+                        .then(Commands.argument("page", IntegerArgumentType.integer(1))
                                 .suggests((context, builder) -> {
-                                    IntStream.range(1, CommonConfig.DUSTBIN_PAGE_LIMIT.get() + 1)
+                                    int totalPage = getDustbinTotalPage();
+                                    IntStream.range(1, totalPage + 1)
                                             .filter(i -> i == 1
-                                                    || i == CommonConfig.DUSTBIN_PAGE_LIMIT.get()
+                                                    || i == totalPage
                                                     || !WorldTrashData.get().getInventoryList().get(i - 1).isEmpty())
                                             .forEach(builder::suggest);
                                     return builder.buildFuture();
@@ -985,15 +1047,9 @@ public class AotakeCommand {
                                     .then(Commands.argument("show", StringArgumentType.word())
                                             .suggests((context, suggestion) -> {
                                                 String show = getStringDefault(context, "show", "");
-                                                if ("true".contains(show) || StringUtils.isNullOrEmpty(show)) {
-                                                    suggestion.suggest("true");
-                                                }
-                                                if ("false".contains(show) || StringUtils.isNullOrEmpty(show)) {
-                                                    suggestion.suggest("false");
-                                                }
-                                                if ("change".contains(show) || StringUtils.isNullOrEmpty(show)) {
-                                                    suggestion.suggest("change");
-                                                }
+                                                addSuggestion(suggestion, show, "true");
+                                                addSuggestion(suggestion, show, "false");
+                                                addSuggestion(suggestion, show, "change");
                                                 return suggestion.buildFuture();
                                             })
                                             .executes(context -> {
@@ -1006,9 +1062,38 @@ public class AotakeCommand {
                                                 data.setShowSweepResult(r);
                                                 AotakeUtils.sendMessage(player
                                                         , Component.translatable(EnumI18nType.MESSAGE
-                                                                , "player_show_sweep_result"
+                                                                , "show_sweep_result"
                                                                 , I18nUtils.enabled(AotakeUtils.getPlayerLanguage(player), r)
                                                                 , String.format("/%s config showSweepResult [<status>]", AotakeUtils.getCommandPrefix())
+                                                        )
+                                                );
+                                                return 1;
+                                            })
+                                    )
+                            )
+                            // 播放提示语音
+                            .then(Commands.literal("enableWarningVoice")
+                                    .then(Commands.argument("enable", StringArgumentType.word())
+                                            .suggests((context, suggestion) -> {
+                                                String enable = getStringDefault(context, "enable", "");
+                                                addSuggestion(suggestion, enable, "true");
+                                                addSuggestion(suggestion, enable, "false");
+                                                addSuggestion(suggestion, enable, "change");
+                                                return suggestion.buildFuture();
+                                            })
+                                            .executes(context -> {
+                                                if (checkModStatus(context)) return 0;
+                                                notifyHelp(context);
+                                                String enable = getStringDefault(context, "enable", "change");
+                                                ServerPlayer player = context.getSource().getPlayerOrException();
+                                                PlayerSweepData data = PlayerSweepData.getData(player);
+                                                boolean r = "change".equalsIgnoreCase(enable) ? !data.isEnableWarningVoice() : Boolean.parseBoolean(enable);
+                                                data.setEnableWarningVoice(r);
+                                                AotakeUtils.sendMessage(player
+                                                        , Component.translatable(EnumI18nType.MESSAGE
+                                                                , "warning_voice"
+                                                                , I18nUtils.enabled(AotakeUtils.getPlayerLanguage(player), r)
+                                                                , String.format("/%s config enableWarningVoice [<status>]", AotakeUtils.getCommandPrefix())
                                                         )
                                                 );
                                                 return 1;
@@ -1107,10 +1192,193 @@ public class AotakeCommand {
     }
 
     private static int dustbin(@NonNull ServerPlayer player, int page) {
+        int result = 0;
+        int vPage = CommonConfig.DUSTBIN_PAGE_LIMIT.get();
+        int bPage = ServerConfig.DUSTBIN_BLOCK_POSITIONS.get().size();
+        switch (EnumDustbinMode.valueOfOrDefault(ServerConfig.DUSTBIN_MODE.get())) {
+            case VIRTUAL: {
+                result = openVirtualDustbin(player, page);
+            }
+            break;
+            case BLOCK: {
+                result = openDustbinBlock(player, page);
+            }
+            break;
+            case VIRTUAL_BLOCK: {
+                if (page > 0 && page <= vPage + bPage) {
+                    if (page <= vPage) {
+                        result = openVirtualDustbin(player, page);
+                    } else {
+                        result = openDustbinBlock(player, page - vPage);
+                    }
+                }
+            }
+            break;
+            case BLOCK_VIRTUAL: {
+                if (page > 0 && page <= vPage + bPage) {
+                    if (page <= bPage) {
+                        result = openDustbinBlock(player, page);
+                    } else {
+                        result = openVirtualDustbin(player, page - bPage);
+                    }
+                }
+            }
+            break;
+        }
+
+        if (result > 0) AotakeSweep.getPlayerDustbinPage().put(AotakeUtils.getPlayerUUIDString(player), page);
+        return result;
+    }
+
+    private static int openVirtualDustbin(@NonNull ServerPlayer player, int page) {
         MenuProvider trashContainer = WorldTrashData.getTrashContainer(player, page);
         if (trashContainer == null) return 0;
         int result = player.openMenu(trashContainer).orElse(0);
+
         if (result > 0) AotakeSweep.getPlayerDustbinPage().put(AotakeUtils.getPlayerUUIDString(player), page);
+        return result;
+    }
+
+    private static int openDustbinBlock(@NonNull ServerPlayer player, int page) {
+        int result = 0;
+        List<? extends String> positions = ServerConfig.DUSTBIN_BLOCK_POSITIONS.get();
+        if (CollectionUtils.isNotNullOrEmpty(positions) && positions.size() >= page) {
+            Coordinate coordinate = Coordinate.fromSimpleString(positions.get(page - 1));
+
+            Direction direction = coordinate.getDirection();
+            // 命中点：方块中心或面上
+            Vec3 center = coordinate.toVec3().add(0.5, 0.5, 0.5);
+            Vec3 hitVec = center.add(direction.getStepX() * 0.500001, direction.getStepY() * 0.500001, direction.getStepZ() * 0.500001);
+
+            BlockHitResult ray = new BlockHitResult(hitVec, direction, coordinate.toBlockPos(), false);
+
+            BlockState state = player.serverLevel().getBlockState(coordinate.toBlockPos());
+            InteractionResult res = state.use(player.serverLevel(), player, InteractionHand.MAIN_HAND, ray);
+            if (res.consumesAction()) {
+                result = 1;
+            }
+        }
+
+        if (result > 0) AotakeSweep.getPlayerDustbinPage().put(AotakeUtils.getPlayerUUIDString(player), page);
+        return result;
+    }
+
+    private static void addSuggestion(SuggestionsBuilder suggestion, String input, String suggest) {
+        if (suggest.contains(input) || StringUtils.isNullOrEmpty(input)) {
+            suggestion.suggest(suggest);
+        }
+    }
+
+    private static void clearVirtualDustbin(int page) {
+        if (page == 0) {
+            WorldTrashData.get().getInventoryList().forEach(SimpleContainer::clearContent);
+        } else {
+            WorldTrashData.get().getInventoryList().get(page - 1).clearContent();
+        }
+        WorldTrashData.get().setDirty();
+    }
+
+    private static void clearDustbinBlock(int page) {
+        if (page == 0) {
+            for (String pos : ServerConfig.DUSTBIN_BLOCK_POSITIONS.get()) {
+                Coordinate coordinate = Coordinate.fromSimpleString(pos);
+                if (coordinate != null) {
+                    IItemHandler handler = AotakeUtils.getBlockItemHandler(coordinate);
+                    if (handler != null) {
+                        for (int i = 0; i < handler.getSlots(); i++) {
+                            handler.extractItem(i, handler.getSlotLimit(i), false);
+                        }
+                    }
+                }
+            }
+        } else {
+            Coordinate coordinate = Coordinate.fromSimpleString(ServerConfig.DUSTBIN_BLOCK_POSITIONS.get().get(page - 1));
+            if (coordinate != null) {
+                IItemHandler handler = AotakeUtils.getBlockItemHandler(coordinate);
+                if (handler != null) {
+                    for (int i = 0; i < handler.getSlots(); i++) {
+                        handler.extractItem(i, handler.getSlotLimit(i), false);
+                    }
+                }
+            }
+        }
+    }
+
+    private static void dropVirtualDustbin(ServerPlayer player, int page) {
+        List<SimpleContainer> inventories = new ArrayList<>();
+        if (page == 0) {
+            inventories.addAll(WorldTrashData.get().getInventoryList());
+        } else {
+            inventories.add(WorldTrashData.get().getInventoryList().get(page - 1));
+        }
+        inventories.forEach(inventory -> inventory.removeAllItems()
+                .forEach(item -> {
+                    if (!item.isEmpty()) {
+                        Entity entity = AotakeUtils.getEntityFromItem(player.serverLevel(), item);
+                        entity.moveTo(player.getX(), player.getY(), player.getZ(), player.getYRot(), player.getXRot());
+                        player.serverLevel().addFreshEntity(entity);
+                    }
+                })
+        );
+        WorldTrashData.get().setDirty();
+    }
+
+    private static void dropDustbinBlock(ServerPlayer player, int page) {
+        if (page == 0) {
+            for (String pos : ServerConfig.DUSTBIN_BLOCK_POSITIONS.get()) {
+                Coordinate coordinate = Coordinate.fromSimpleString(pos);
+                if (coordinate != null) {
+                    IItemHandler handler = AotakeUtils.getBlockItemHandler(coordinate);
+                    if (handler != null) {
+                        for (int i = 0; i < handler.getSlots(); i++) {
+                            ItemStack stack = handler.extractItem(i, handler.getSlotLimit(i), false);
+                            if (!stack.isEmpty()) {
+                                Entity entity = AotakeUtils.getEntityFromItem(player.serverLevel(), stack);
+                                entity.moveTo(player.getX(), player.getY(), player.getZ(), player.getYRot(), player.getXRot());
+                                player.serverLevel().addFreshEntity(entity);
+                            }
+                        }
+                    }
+                }
+            }
+        } else {
+            Coordinate coordinate = Coordinate.fromSimpleString(ServerConfig.DUSTBIN_BLOCK_POSITIONS.get().get(page - 1));
+            if (coordinate != null) {
+                IItemHandler handler = AotakeUtils.getBlockItemHandler(coordinate);
+                if (handler != null) {
+                    for (int i = 0; i < handler.getSlots(); i++) {
+                        ItemStack stack = handler.extractItem(i, handler.getSlotLimit(i), false);
+                        if (!stack.isEmpty()) {
+                            Entity entity = AotakeUtils.getEntityFromItem(player.serverLevel(), stack);
+                            entity.moveTo(player.getX(), player.getY(), player.getZ(), player.getYRot(), player.getXRot());
+                            player.serverLevel().addFreshEntity(entity);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private static int getDustbinTotalPage() {
+        int result = 0;
+        switch (EnumDustbinMode.valueOfOrDefault(ServerConfig.DUSTBIN_MODE.get())) {
+            case VIRTUAL: {
+                result = CommonConfig.DUSTBIN_PAGE_LIMIT.get();
+            }
+            break;
+            case BLOCK: {
+                result = ServerConfig.DUSTBIN_BLOCK_POSITIONS.get().size();
+            }
+            break;
+            case VIRTUAL_BLOCK: {
+                result = CommonConfig.DUSTBIN_PAGE_LIMIT.get() + ServerConfig.DUSTBIN_BLOCK_POSITIONS.get().size();
+            }
+            break;
+            case BLOCK_VIRTUAL: {
+                result = ServerConfig.DUSTBIN_BLOCK_POSITIONS.get().size() + CommonConfig.DUSTBIN_PAGE_LIMIT.get();
+            }
+            break;
+        }
         return result;
     }
 }

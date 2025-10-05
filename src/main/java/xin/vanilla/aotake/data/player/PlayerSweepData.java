@@ -57,6 +57,7 @@ public final class PlayerSweepData implements IPlayerData<PlayerSweepData> {
     public void writeToBuffer(FriendlyByteBuf buffer) {
         buffer.writeBoolean(isNotified());
         buffer.writeBoolean(isShowSweepResult());
+        buffer.writeBoolean(isEnableWarningVoice());
     }
 
     /**
@@ -66,6 +67,7 @@ public final class PlayerSweepData implements IPlayerData<PlayerSweepData> {
     public void readFromBuffer(FriendlyByteBuf buffer) {
         this.notified = buffer.readBoolean();
         this.showSweepResult = buffer.readBoolean();
+        this.enableWarningVoice = buffer.readBoolean();
 
         this.save();
     }
@@ -75,6 +77,7 @@ public final class PlayerSweepData implements IPlayerData<PlayerSweepData> {
         CompoundTag tag = new CompoundTag();
         tag.putBoolean("notified", this.isNotified());
         tag.putBoolean("showSweepResult", this.isShowSweepResult());
+        tag.putBoolean("enableWarningVoice", this.isEnableWarningVoice());
         return tag;
     }
 
@@ -82,6 +85,7 @@ public final class PlayerSweepData implements IPlayerData<PlayerSweepData> {
     public void deserializeNBT(CompoundTag nbt, boolean dirty) {
         this.notified = nbt.getBoolean("notified");
         this.showSweepResult = nbt.getBoolean("showSweepResult");
+        this.enableWarningVoice = nbt.getBoolean("enableWarningVoice");
         if (dirty) {
             this.save();
         }
@@ -96,6 +100,7 @@ public final class PlayerSweepData implements IPlayerData<PlayerSweepData> {
 
         this.notified = playerData.isNotified();
         this.showSweepResult = playerData.isShowSweepResult();
+        this.enableWarningVoice = playerData.isEnableWarningVoice();
 
         this.save();
     }
@@ -111,6 +116,7 @@ public final class PlayerSweepData implements IPlayerData<PlayerSweepData> {
 
     private boolean notified;
     private boolean showSweepResult;
+    private boolean enableWarningVoice;
 
     /**
      * 是否已发送使用说明
@@ -135,6 +141,16 @@ public final class PlayerSweepData implements IPlayerData<PlayerSweepData> {
 
     public void setShowSweepResult(boolean showSweepResult) {
         this.showSweepResult = showSweepResult;
+        this.save();
+    }
+
+    public boolean isEnableWarningVoice() {
+        if (this.isDirty()) this.saveEx();
+        return this.enableWarningVoice;
+    }
+
+    public void setEnableWarningVoice(boolean enableWarningVoice) {
+        this.enableWarningVoice = enableWarningVoice;
         this.save();
     }
 
