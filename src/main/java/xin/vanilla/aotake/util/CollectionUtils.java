@@ -84,6 +84,64 @@ public class CollectionUtils {
     }
 
     /**
+     * 从给定的集合中取第一个元素
+     */
+    public static <T> T getFirst(Collection<T> elements) {
+        if (elements == null || elements.isEmpty()) {
+            return null;
+        }
+
+        return getNthElement(elements, 0);
+    }
+
+    /**
+     * 从给定的集合中取第一个元素
+     */
+    public static <T> T getFirst(T[] elements) {
+        if (elements == null || elements.length == 0) {
+            return null;
+        }
+
+        return elements[0];
+    }
+
+    /**
+     * 从给定的集合中取最后一个元素
+     */
+    public static <T> T getLast(Collection<T> elements) {
+        if (elements == null || elements.isEmpty()) {
+            return null;
+        }
+
+        return getNthElement(elements, elements.size() - 1);
+    }
+
+    /**
+     * 从给定的集合中取最后一个元素
+     */
+    public static <T> T getLast(T[] elements) {
+        if (elements == null || elements.length == 0) {
+            return null;
+        }
+
+        return elements[elements.length - 1];
+    }
+
+    public static <T> T getOrDefault(Collection<T> elements, int index, T defaultValue) {
+        if (elements == null || elements.isEmpty() || index >= elements.size()) {
+            return defaultValue;
+        }
+        return getNthElement(elements, index);
+    }
+
+    public static <T> T getOrDefault(T[] elements, int index, T defaultValue) {
+        if (elements == null || elements.length == 0 || index >= elements.length) {
+            return defaultValue;
+        }
+        return elements[index];
+    }
+
+    /**
      * 获取集合中指定索引位置的元素。
      *
      * @param <T>      集合中元素的类型

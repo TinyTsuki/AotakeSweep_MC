@@ -662,10 +662,14 @@ public class AotakeCommand {
                         .then(Commands.argument("page", IntegerArgumentType.integer(1))
                                 .suggests((context, builder) -> {
                                     int totalPage = getDustbinTotalPage();
+                                    List<Inventory> inventories = WorldTrashData.get().getInventoryList();
                                     IntStream.range(1, totalPage + 1)
-                                            .filter(i -> i == 1
-                                                    || i == totalPage
-                                                    || !WorldTrashData.get().getInventoryList().get(i - 1).isEmpty())
+                                            .filter(i -> {
+                                                Inventory inventory = CollectionUtils.getOrDefault(inventories, i - 1, null);
+                                                return i == 1
+                                                        || i == totalPage
+                                                        || (inventory != null && !inventory.isEmpty());
+                                            })
                                             .forEach(builder::suggest);
                                     return builder.buildFuture();
                                 })
@@ -678,10 +682,14 @@ public class AotakeCommand {
                         .then(Commands.argument("page", IntegerArgumentType.integer(1))
                                 .suggests((context, builder) -> {
                                     int totalPage = getDustbinTotalPage();
+                                    List<Inventory> inventories = WorldTrashData.get().getInventoryList();
                                     IntStream.range(1, totalPage + 1)
-                                            .filter(i -> i == 1
-                                                    || i == totalPage
-                                                    || !WorldTrashData.get().getInventoryList().get(i - 1).isEmpty())
+                                            .filter(i -> {
+                                                Inventory inventory = CollectionUtils.getOrDefault(inventories, i - 1, null);
+                                                return i == 1
+                                                        || i == totalPage
+                                                        || (inventory != null && !inventory.isEmpty());
+                                            })
                                             .forEach(builder::suggest);
                                     return builder.buildFuture();
                                 })
@@ -1270,10 +1278,12 @@ public class AotakeCommand {
     }
 
     private static void clearVirtualDustbin(int page) {
+        List<Inventory> inventories = WorldTrashData.get().getInventoryList();
         if (page == 0) {
-            WorldTrashData.get().getInventoryList().forEach(Inventory::clearContent);
+            inventories.forEach(Inventory::clearContent);
         } else {
-            WorldTrashData.get().getInventoryList().get(page - 1).clearContent();
+            Inventory inventory = CollectionUtils.getOrDefault(inventories, page - 1, null);
+            if (inventory != null) inventory.clearContent();
         }
         WorldTrashData.get().setDirty();
     }
@@ -1305,13 +1315,15 @@ public class AotakeCommand {
     }
 
     private static void dropVirtualDustbin(ServerPlayerEntity player, int page) {
-        List<Inventory> inventories = new ArrayList<>();
+        List<Inventory> inventoryList = new ArrayList<>();
+        List<Inventory> inventories = WorldTrashData.get().getInventoryList();
         if (page == 0) {
-            inventories.addAll(WorldTrashData.get().getInventoryList());
+            if (CollectionUtils.isNotNullOrEmpty(inventories)) inventoryList.addAll(inventories);
         } else {
-            inventories.add(WorldTrashData.get().getInventoryList().get(page - 1));
+            Inventory inventory = CollectionUtils.getOrDefault(inventories, page - 1, null);
+            if (inventory != null) inventoryList.add(inventory);
         }
-        inventories.forEach(inventory -> inventory.removeAllItems()
+        inventoryList.forEach(inventory -> inventory.removeAllItems()
                 .forEach(item -> {
                     if (!item.isEmpty()) {
                         Entity entity = AotakeUtils.getEntityFromItem(player.getLevel(), item);

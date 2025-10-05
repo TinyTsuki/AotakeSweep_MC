@@ -887,7 +887,8 @@ public class AotakeUtils {
 
     private static void clearVirtualDustbin() {
         WorldTrashData.get().getDropList().clear();
-        WorldTrashData.get().getInventoryList().forEach(Inventory::clearContent);
+        List<Inventory> inventories = WorldTrashData.get().getInventoryList();
+        if (CollectionUtils.isNotNullOrEmpty(inventories)) inventories.forEach(Inventory::clearContent);
         WorldTrashData.get().setDirty();
     }
 
