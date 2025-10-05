@@ -28,15 +28,14 @@ import xin.vanilla.aotake.data.Coordinate;
 import xin.vanilla.aotake.data.KeyValue;
 import xin.vanilla.aotake.data.player.PlayerSweepData;
 import xin.vanilla.aotake.data.world.WorldTrashData;
-import xin.vanilla.aotake.enums.*;
-import xin.vanilla.aotake.util.AotakeScheduler;
-import xin.vanilla.aotake.util.AotakeUtils;
-import xin.vanilla.aotake.util.Component;
-import xin.vanilla.aotake.util.EntitySweeper;
+import xin.vanilla.aotake.enums.EnumChunkCheckMode;
+import xin.vanilla.aotake.enums.EnumI18nType;
+import xin.vanilla.aotake.enums.EnumMCColor;
+import xin.vanilla.aotake.enums.EnumSelfCleanMode;
+import xin.vanilla.aotake.util.*;
 
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -65,12 +64,21 @@ public class EventHandlerProxy {
         // 扫地前提示
         String warnKey = String.valueOf(countdown / 1000);
         if (AotakeUtils.hasWarning(warnKey)) {
-            event.getServer()
+            for (ServerPlayer player : event.getServer()
                     .getPlayerList()
                     .getPlayers()
-                    .forEach(player -> AotakeUtils.sendActionBarMessage(player
-                            , AotakeUtils.getWarningMessage(warnKey, AotakeUtils.getPlayerLanguage(player), null)
-                    ));
+            ) {
+                Component warningMessage = AotakeUtils.getWarningMessage(warnKey, AotakeUtils.getPlayerLanguage(player), null);
+                if (warningMessage != null) {
+                    AotakeUtils.sendActionBarMessage(player, warningMessage);
+                }
+                if (PlayerSweepData.getData(player).isEnableWarningVoice()) {
+                    String voice = AotakeUtils.getWarningVoice(warnKey);
+                    if (StringUtils.isNotNullOrEmpty(voice)) {
+                        AotakeUtils.executeCommandNoOutput(player, String.format("playsound %s voice @s", voice));
+                    }
+                }
+            }
         }
 
         // 扫地
@@ -146,7 +154,7 @@ public class EventHandlerProxy {
                             String language = AotakeUtils.getPlayerLanguage(player);
 
                             Component message = Component.translatable(EnumI18nType.MESSAGE,
-                                    Objects.equals(ServerConfig.CHUNK_CHECK_CLEAN_MODE.get(), EnumChunkCleanMode.NONE.name())
+                                    ServerConfig.CHUNK_CHECK_ONLY_NOTICE.get()
                                             ? "chunk_check_msg_no"
                                             : "chunk_check_msg_yes"
                                     , Component.literal(entityCoordinate.toChunkXZString())
