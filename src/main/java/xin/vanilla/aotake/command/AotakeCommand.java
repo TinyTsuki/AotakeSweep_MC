@@ -1244,6 +1244,7 @@ public class AotakeCommand {
             Coordinate coordinate = Coordinate.fromSimpleString(positions.get(page - 1));
 
             Direction direction = coordinate.getDirection();
+            if (direction == null) direction = Direction.UP;
             // 命中点：方块中心或面上
             Vec3 center = coordinate.toVec3().add(0.5, 0.5, 0.5);
             Vec3 hitVec = center.add(direction.getStepX() * 0.500001, direction.getStepY() * 0.500001, direction.getStepZ() * 0.500001);
