@@ -1,0 +1,42 @@
+{
+  "error": {
+    "sounds": [
+      {
+        "name": "aotake_sweep:voice/error_01",
+        "stream": false
+      }
+    ]
+  },
+  "fail": {
+    "sounds": [
+      {
+        "name": "aotake_sweep:voice/fail_01",
+        "stream": false
+      }
+    ]
+  },
+  "success": {
+    "sounds": [
+      {
+        "name": "aotake_sweep:voice/success_01",
+        "stream": false
+      }
+    ]
+  },
+  "agog": {
+    "sounds": [
+      {
+        "name": "aotake_sweep:voice/agog_01",
+        "stream": false
+      }
+    ]
+  },
+  "hungry": {
+    "sounds": [
+      {
+        "name": "aotake_sweep:voice/hungry_01",
+        "stream": false
+      }
+    ]
+  }
+}
