@@ -17,6 +17,7 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.saveddata.SavedData;
 import xin.vanilla.aotake.AotakeSweep;
 import xin.vanilla.aotake.config.CommonConfig;
+import xin.vanilla.aotake.config.ServerConfig;
 import xin.vanilla.aotake.data.ConcurrentShuffleList;
 import xin.vanilla.aotake.data.Coordinate;
 import xin.vanilla.aotake.data.DropStatistics;
@@ -55,6 +56,12 @@ public class WorldTrashData extends SavedData {
 
     public static WorldTrashData load(CompoundTag nbt) {
         WorldTrashData data = new WorldTrashData();
+        // 未开启持久化直接返回
+        try {
+            if (Boolean.FALSE.equals(ServerConfig.DUSTBIN_PERSISTENT.get())) return data;
+        } catch (Throwable ignored) {
+        }
+
         data.dropList = new ConcurrentShuffleList<>();
         ListTag dropListTag = nbt.getList("dropList", 10);
         ConcurrentShuffleList<KeyValue<Coordinate, ItemStack>> drops = new ConcurrentShuffleList<>();
@@ -91,6 +98,12 @@ public class WorldTrashData extends SavedData {
     @Override
     @ParametersAreNonnullByDefault
     public CompoundTag save(CompoundTag nbt) {
+        // 未开启持久化直接返回
+        try {
+            if (Boolean.FALSE.equals(ServerConfig.DUSTBIN_PERSISTENT.get())) return nbt;
+        } catch (Throwable ignored) {
+        }
+
         ListTag dropsNBT = new ListTag();
         for (KeyValue<Coordinate, ItemStack> drop : this.getDropList()) {
             if (drop == null || drop.getValue() == null) continue;
