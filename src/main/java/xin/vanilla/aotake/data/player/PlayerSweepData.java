@@ -84,8 +84,10 @@ public final class PlayerSweepData implements IPlayerData<PlayerSweepData> {
     @Override
     public void deserializeNBT(CompoundNBT nbt, boolean dirty) {
         this.notified = nbt.getBoolean("notified");
-        this.showSweepResult = nbt.getBoolean("showSweepResult");
-        this.enableWarningVoice = nbt.getBoolean("enableWarningVoice");
+        // 默认显示
+        this.showSweepResult = !nbt.contains("showSweepResult") || nbt.getBoolean("showSweepResult");
+        // 默认启用
+        this.enableWarningVoice = !nbt.contains("enableWarningVoice") || nbt.getBoolean("enableWarningVoice");
         if (dirty) {
             this.save();
         }
