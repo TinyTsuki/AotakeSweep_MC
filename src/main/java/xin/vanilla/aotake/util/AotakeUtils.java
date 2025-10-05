@@ -34,11 +34,11 @@ import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraftforge.common.util.LazyOptional;
 import net.minecraftforge.fml.ModList;
-import net.minecraftforge.network.PacketDistributor;
 import net.minecraftforge.items.CapabilityItemHandler;
 import net.minecraftforge.items.IItemHandler;
 import net.minecraftforge.items.ItemHandlerHelper;
 import net.minecraftforge.items.ItemStackHandler;
+import net.minecraftforge.network.PacketDistributor;
 import net.minecraftforge.registries.ForgeRegistries;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -808,7 +808,8 @@ public class AotakeUtils {
 
     private static void clearVirtualDustbin() {
         WorldTrashData.get().getDropList().clear();
-        WorldTrashData.get().getInventoryList().forEach(SimpleContainer::clearContent);
+        List<SimpleContainer> inventories = WorldTrashData.get().getInventoryList();
+        if (CollectionUtils.isNotNullOrEmpty(inventories)) inventories.forEach(SimpleContainer::clearContent);
         WorldTrashData.get().setDirty();
     }
 
