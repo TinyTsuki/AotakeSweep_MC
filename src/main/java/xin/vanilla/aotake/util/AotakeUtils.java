@@ -645,7 +645,7 @@ public class AotakeUtils {
             }
 
             // 物品名单过滤
-            if (!isJunkItem(entity) && !exceededWhiteBlackList.contains(entity)) {
+            if (isItem && !isJunkItem(entity) && !exceededWhiteBlackList.contains(entity)) {
                 return false;
             }
 
