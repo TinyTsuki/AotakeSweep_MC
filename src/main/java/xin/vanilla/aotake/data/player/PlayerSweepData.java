@@ -114,6 +114,10 @@ public final class PlayerSweepData implements IPlayerData<PlayerSweepData> {
         }
     }
 
+    public static void clear() {
+        CACHE.clear();
+    }
+
     // endregion override
 
     private boolean notified;
