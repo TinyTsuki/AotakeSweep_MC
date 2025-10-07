@@ -21,6 +21,7 @@ import net.minecraftforge.eventbus.api.Event;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import xin.vanilla.aotake.AotakeSweep;
+import xin.vanilla.aotake.config.CommonConfig;
 import xin.vanilla.aotake.config.CustomConfig;
 import xin.vanilla.aotake.config.ServerConfig;
 import xin.vanilla.aotake.data.ConcurrentShuffleList;
@@ -50,6 +51,7 @@ public class EventHandlerProxy {
     private static long lastSaveConfTime = System.currentTimeMillis();
     private static long lastReadConfTime = System.currentTimeMillis();
     private static long lastChunkCheckTime = System.currentTimeMillis();
+    private static long lastVoiceTime = System.currentTimeMillis();
     private static final AtomicBoolean chunkSweepLock = new AtomicBoolean(false);
 
 
@@ -72,10 +74,20 @@ public class EventHandlerProxy {
                 if (warningMessage != null) {
                     AotakeUtils.sendActionBarMessage(player, warningMessage);
                 }
+            }
+        }
+        // 扫地前提示音效
+        if (AotakeUtils.hasWarningVoice(warnKey) && lastVoiceTime + 1010 < now) {
+            lastVoiceTime = now;
+            for (ServerPlayer player : AotakeSweep.getServerInstance().key()
+                    .getPlayerList()
+                    .getPlayers()
+            ) {
                 if (PlayerSweepData.getData(player).isEnableWarningVoice()) {
                     String voice = AotakeUtils.getWarningVoice(warnKey);
+                    float volume = CommonConfig.SWEEP_WARNING_VOICE_VOLUME.get() / 100f;
                     if (StringUtils.isNotNullOrEmpty(voice)) {
-                        AotakeUtils.executeCommandNoOutput(player, String.format("playsound %s voice @s", voice));
+                        AotakeUtils.executeCommandNoOutput(player, String.format("playsound %s voice @s ~ ~ ~ %s", voice, volume));
                     }
                 }
             }
