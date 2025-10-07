@@ -231,7 +231,7 @@ public class EntitySweeper {
             if (handler != null) {
                 int invMax = IntStream.range(0, handler.getSlots())
                         .map(handler::getSlotLimit)
-                        .filter(i -> i <= 0)
+                        .filter(i -> i > 0)
                         .min().orElse(64);
                 List<ItemStack> remainingList = new ArrayList<>();
                 List<ItemStack> itemStackList = splitItemStack(remaining, invMax);
