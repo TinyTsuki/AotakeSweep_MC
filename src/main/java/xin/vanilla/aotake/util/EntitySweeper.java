@@ -318,18 +318,19 @@ public class EntitySweeper {
     }
 
     /**
-     * 按 count 拆分 ItemStack
+     * 按 invMax 拆分 ItemStack
      *
-     * @param stack 原始物品栈
-     * @param count 每个子栈最大数量
+     * @param stack  原始物品栈
+     * @param invMax 每个子栈最大数量
      */
-    private static List<ItemStack> splitItemStack(ItemStack stack, int count) {
-        if (stack == null || stack.isEmpty() || count <= 0) {
+    private static List<ItemStack> splitItemStack(ItemStack stack, int invMax) {
+        if (stack == null || stack.isEmpty() || invMax <= 0) {
             return new ArrayList<>();
         }
+        int count = Math.min(invMax, stack.getMaxStackSize());
 
-        final int total = stack.getCount();
-        final int parts = (total + count - 1) / count;
+        int total = stack.getCount();
+        int parts = (int) Math.ceil((double) total / count);
 
         return IntStream.range(0, parts)
                 .mapToObj(i -> {
