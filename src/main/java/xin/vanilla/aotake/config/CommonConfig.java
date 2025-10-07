@@ -41,6 +41,11 @@ public class CommonConfig {
     public static final ForgeConfigSpec.ConfigValue<String> SWEEP_WARNING_VOICE;
 
     /**
+     * 打扫前提示语音音量
+     */
+    public static final ForgeConfigSpec.IntValue SWEEP_WARNING_VOICE_VOLUME;
+
+    /**
      * 实体处于该方块中时不会被清理
      */
     public static final ForgeConfigSpec.ConfigValue<List<? extends String>> SAFE_BLOCKS;
@@ -247,6 +252,12 @@ public class CommonConfig {
                             put("30", "aotake_sweep:hungry");
                         }}, new TypeToken<LinkedHashMap<String, String>>() {
                         }.getType()));
+
+                // 打扫前提示语音音量
+                SWEEP_WARNING_VOICE_VOLUME = COMMON_BUILDER
+                        .comment("The volume of the notification sound."
+                                , "提示语音音量。")
+                        .defineInRange("sweepWarningVoiceVolume", 33, 0, 100);
 
                 COMMON_BUILDER.pop();
             }
