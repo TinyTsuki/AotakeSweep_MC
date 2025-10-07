@@ -23,6 +23,7 @@ import xin.vanilla.aotake.config.CommonConfig;
 import xin.vanilla.aotake.config.CustomConfig;
 import xin.vanilla.aotake.config.ServerConfig;
 import xin.vanilla.aotake.data.KeyValue;
+import xin.vanilla.aotake.data.player.PlayerSweepData;
 import xin.vanilla.aotake.event.ClientModEventHandler;
 import xin.vanilla.aotake.network.ModNetworkHandler;
 import xin.vanilla.aotake.network.SplitPacket;
@@ -132,6 +133,7 @@ public class AotakeSweep {
 
     private void onServerStopping(FMLServerStoppingEvent event) {
         AotakeSweep.serverInstance.setValue(false);
+        PlayerSweepData.clear();
     }
 
     @SubscribeEvent

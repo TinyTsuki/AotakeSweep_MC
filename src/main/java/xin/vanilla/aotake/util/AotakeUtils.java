@@ -847,8 +847,9 @@ public class AotakeUtils {
                 }
                 if (playerData.isEnableWarningVoice()) {
                     String voice = getWarningVoice(result == null || result.isEmpty() ? "fail" : "success");
+                    float volume = CommonConfig.SWEEP_WARNING_VOICE_VOLUME.get() / 100f;
                     if (StringUtils.isNotNullOrEmpty(voice)) {
-                        AotakeUtils.executeCommandNoOutput(p, String.format("playsound %s voice @s", voice));
+                        AotakeUtils.executeCommandNoOutput(p, String.format("playsound %s voice @s ~ ~ ~ %s", voice, volume));
                     }
                 }
             }
@@ -877,8 +878,9 @@ public class AotakeUtils {
                 }
                 if (playerData.isEnableWarningVoice()) {
                     String voice = getWarningVoice("error");
+                    float volume = CommonConfig.SWEEP_WARNING_VOICE_VOLUME.get() / 100f;
                     if (StringUtils.isNotNullOrEmpty(voice)) {
-                        AotakeUtils.executeCommandNoOutput(p, String.format("playsound %s voice @s", voice));
+                        AotakeUtils.executeCommandNoOutput(p, String.format("playsound %s voice @s ~ ~ ~ %s", voice, volume));
                     }
                 }
             }
@@ -988,6 +990,11 @@ public class AotakeUtils {
         } catch (Exception ignored) {
         }
         return msg;
+    }
+
+    public static boolean hasWarningVoice(String key) {
+        initWarns();
+        return voices.containsKey(key);
     }
 
     public static String getWarningVoice(String key) {
