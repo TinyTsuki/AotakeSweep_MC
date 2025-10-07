@@ -211,11 +211,13 @@ public class EntitySweeper {
 
             if (inv.canAddItem(remaining)) {
                 List<ItemStack> remainingList = new ArrayList<>();
-                for (ItemStack itemStack : splitItemStack(remaining, inv.getMaxStackSize())) {
+                List<ItemStack> itemStackList = splitItemStack(remaining, inv.getMaxStackSize());
+                int splits = itemStackList.size();
+                for (ItemStack itemStack : itemStackList) {
                     ItemStack leftover = inv.addItem(itemStack);
                     remainingList.add(leftover);
                 }
-                remaining = mergeItemStack(remainingList);
+                if (splits > 0) remaining = mergeItemStack(remainingList);
             }
         }
         return remaining;
@@ -225,7 +227,21 @@ public class EntitySweeper {
         ItemStack remaining = item;
         for (String pos : ServerConfig.DUSTBIN_BLOCK_POSITIONS.get()) {
             Coordinate dustbinPos = Coordinate.fromSimpleString(pos);
-            remaining = AotakeUtils.addItemToBlock(remaining, dustbinPos);
+            IItemHandler handler = AotakeUtils.getBlockItemHandler(dustbinPos);
+            if (handler != null) {
+                int invMax = IntStream.range(0, handler.getSlots())
+                        .map(handler::getSlotLimit)
+                        .filter(i -> i <= 0)
+                        .min().orElse(64);
+                List<ItemStack> remainingList = new ArrayList<>();
+                List<ItemStack> itemStackList = splitItemStack(remaining, invMax);
+                int splits = itemStackList.size();
+                for (ItemStack itemStack : itemStackList) {
+                    ItemStack leftover = AotakeUtils.addItemToBlock(itemStack, dustbinPos);
+                    remainingList.add(leftover);
+                }
+                if (splits > 0) remaining = mergeItemStack(remainingList);
+            }
         }
         return remaining;
     }
