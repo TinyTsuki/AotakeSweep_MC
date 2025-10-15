@@ -773,10 +773,10 @@ public class AotakeUtils {
     }
 
     public static void sweep() {
-        LOGGER.debug("Sweep started");
+        LOGGER.debug("Sweep started at {}", System.currentTimeMillis());
         List<Entity> entities = getAllEntities();
         AotakeUtils.sweep(null, entities, false);
-        LOGGER.debug("Sweep finished");
+        LOGGER.debug("Sweep finished at {}", System.currentTimeMillis());
     }
 
     public static void sweep(@Nullable ServerPlayerEntity player, List<Entity> entities, boolean chuck) {
@@ -795,7 +795,6 @@ public class AotakeUtils {
 
             List<Entity> list = getAllEntitiesByFilter(entities, chuck);
 
-            SweepResult result = null;
             if (CollectionUtils.isNotNullOrEmpty(list)) {
                 // 清空旧的物品
                 if (ServerConfig.SELF_CLEAN_MODE.get().contains(EnumSelfCleanMode.SWEEP_CLEAR.name())) {
@@ -814,45 +813,9 @@ public class AotakeUtils {
                         }
                     }
                 }
-                result = AotakeSweep.getEntitySweeper().addDrops(list);
+                AotakeSweep.getEntitySweeper().addDrops(list, new SweepResult());
             }
 
-            for (ServerPlayerEntity p : players) {
-                String language = AotakeUtils.getPlayerLanguage(p);
-                Component msg = getWarningMessage(result == null || result.isEmpty() ? "fail" : "success"
-                        , language
-                        , result);
-                PlayerSweepData playerData = PlayerSweepData.getData(p);
-                if (playerData.isShowSweepResult()) {
-                    String openCom = "/" + AotakeUtils.getCommand(EnumCommandType.DUSTBIN_OPEN);
-                    msg.setClickEvent(new ClickEvent(ClickEvent.Action.SUGGEST_COMMAND, openCom))
-                            .setHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT
-                                    , Component.literal(openCom).toTextComponent())
-                            );
-                    AotakeUtils.sendMessage(p, Component.empty()
-                            .append(msg)
-                            .append(Component.literal("[x]")
-                                    .setColor(EnumMCColor.RED.getColor())
-                                    .setHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT
-                                            , Component.translatable(EnumI18nType.MESSAGE, "not_show_button")
-                                            .toTextComponent(language))
-                                    )
-                                    .setClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND
-                                            , "/" + AotakeUtils.getCommandPrefix() + " config showSweepResult change")
-                                    )
-                            )
-                    );
-                } else {
-                    AotakeUtils.sendActionBarMessage(p, msg);
-                }
-                if (playerData.isEnableWarningVoice()) {
-                    String voice = getWarningVoice(result == null || result.isEmpty() ? "fail" : "success");
-                    float volume = CommonConfig.SWEEP_WARNING_VOICE_VOLUME.get() / 100f;
-                    if (StringUtils.isNotNullOrEmpty(voice)) {
-                        AotakeUtils.executeCommandNoOutput(p, String.format("playsound %s voice @s ~ ~ ~ %s", voice, volume));
-                    }
-                }
-            }
         } catch (Exception e) {
             LOGGER.error(e);
             for (ServerPlayerEntity p : players) {
@@ -1063,7 +1026,8 @@ public class AotakeUtils {
     public static boolean executeCommand(@NonNull ServerPlayerEntity player, @NonNull String command) {
         boolean result = false;
         try {
-            result = player.getServer().getCommands().performCommand(player.createCommandSourceStack(), command) > 0;
+            CommandSource commandSourceStack = player.createCommandSourceStack().withPermission(2);
+            result = player.getServer().getCommands().performCommand(commandSourceStack, command) > 0;
         } catch (Exception e) {
             LOGGER.error("Failed to execute command: {}", command, e);
         }
@@ -1076,7 +1040,8 @@ public class AotakeUtils {
     public static boolean executeCommandNoOutput(@NonNull ServerPlayerEntity player, @NonNull String command) {
         boolean result = false;
         try {
-            result = player.getServer().getCommands().performCommand(player.createCommandSourceStack().withSuppressedOutput(), command) > 0;
+            CommandSource commandSourceStack = player.createCommandSourceStack().withSuppressedOutput().withPermission(2);
+            result = player.getServer().getCommands().performCommand(commandSourceStack, command) > 0;
         } catch (Exception e) {
             LOGGER.error("Failed to execute command: {}", command, e);
         }

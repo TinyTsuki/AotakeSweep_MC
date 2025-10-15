@@ -1,9 +1,11 @@
 package xin.vanilla.aotake.util;
 
 
-import java.util.Collection;
-import java.util.Random;
+import java.lang.reflect.Array;
+import java.util.*;
 import java.util.concurrent.ThreadLocalRandom;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 public class CollectionUtils {
 
@@ -160,4 +162,61 @@ public class CollectionUtils {
         // This should never happen due to the size check in getRandomElement.
         throw new IllegalStateException("Could not find element at the specified index.");
     }
+
+    /**
+     * 将集合根据指定数量分成多个子集合
+     */
+    public static <T> List<List<T>> splitToCollections(Collection<T> source, int size) {
+        if (source == null || source.isEmpty() || size <= 0)
+            return Collections.emptyList();
+
+        List<T> list = new ArrayList<>(source);
+        int total = list.size();
+        return IntStream.range(0, (total + size - 1) / size)
+                .mapToObj(i -> list.subList(i * size, Math.min(total, (i + 1) * size)))
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * 将集合根据指定数量分成多个子数组
+     */
+    public static <T> List<T[]> splitToArrays(Collection<T> source, int size, Class<T> type) {
+        if (source == null || source.isEmpty() || size <= 0)
+            return Collections.emptyList();
+
+        List<T> list = new ArrayList<>(source);
+        int total = list.size();
+        T[] array = list.toArray((T[]) Array.newInstance(type, total));
+
+        return IntStream.range(0, (total + size - 1) / size)
+                .mapToObj(i -> Arrays.copyOfRange(array, i * size, Math.min(total, (i + 1) * size)))
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * 将数组根据指定数量分成多个子集合
+     */
+    public static <T> List<List<T>> splitToCollections(T[] array, int size) {
+        if (array == null || array.length == 0 || size <= 0)
+            return Collections.emptyList();
+
+        int total = array.length;
+        return IntStream.range(0, (total + size - 1) / size)
+                .mapToObj(i -> Arrays.asList(Arrays.copyOfRange(array, i * size, Math.min(total, (i + 1) * size))))
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * 将数组根据指定数量分成多个子数组
+     */
+    public static <T> List<T[]> splitToArrays(T[] array, int size) {
+        if (array == null || array.length == 0 || size <= 0)
+            return Collections.emptyList();
+
+        int total = array.length;
+        return IntStream.range(0, (total + size - 1) / size)
+                .mapToObj(i -> Arrays.copyOfRange(array, i * size, Math.min(total, (i + 1) * size)))
+                .collect(Collectors.toList());
+    }
+
 }

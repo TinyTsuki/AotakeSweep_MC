@@ -185,6 +185,17 @@ public class ServerConfig {
      */
     public static final ForgeConfigSpec.ConfigValue<String> DUSTBIN_MODE;
 
+
+    /**
+     * 每tick清理实体上限
+     */
+    public static final ForgeConfigSpec.IntValue SWEEP_ENTITY_LIMIT;
+
+    /**
+     * 每批次清理间隔tick
+     */
+    public static final ForgeConfigSpec.IntValue SWEEP_ENTITY_INTERVAL;
+
     // endregion 基础设置
 
 
@@ -570,6 +581,25 @@ public class ServerConfig {
                 SERVER_BUILDER.pop();
             }
 
+            // 分批次清理
+            {
+                SERVER_BUILDER.comment("Batch", "批次").push("batch");
+
+                // 每tick清理实体上限
+                SWEEP_ENTITY_LIMIT = SERVER_BUILDER
+                        .comment("The maximum number of entities to be swept per tick."
+                                , "每tick清理实体上限，避免单次清理过多实体导致服务器卡顿。")
+                        .defineInRange("sweepEntityLimit", 250, 1, Integer.MAX_VALUE);
+
+                // 每批次清理间隔tick
+                SWEEP_ENTITY_INTERVAL = SERVER_BUILDER
+                        .comment("The interval between sweeps in ticks."
+                                , "每批次清理间隔tick。")
+                        .defineInRange("sweepEntityInterval", 5, 1, Integer.MAX_VALUE);
+
+                SERVER_BUILDER.pop();
+            }
+
             SERVER_BUILDER.pop();
         }
 
@@ -689,6 +719,8 @@ public class ServerConfig {
         DUSTBIN_PERSISTENT.set(true);
         DUSTBIN_BLOCK_POSITIONS.set(new ArrayList<>());
         DUSTBIN_MODE.set(EnumDustbinMode.VIRTUAL.name());
+        SWEEP_ENTITY_LIMIT.set(250);
+        SWEEP_ENTITY_INTERVAL.set(5);
 
         PERMISSION_VIRTUAL_OP.set(4);
         PERMISSION_DUSTBIN_OPEN.set(0);
