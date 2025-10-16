@@ -196,6 +196,11 @@ public class ServerConfig {
      */
     public static final ForgeConfigSpec.IntValue SWEEP_ENTITY_INTERVAL;
 
+    /**
+     * 每次清理的批次上限
+     */
+    public static final ForgeConfigSpec.IntValue SWEEP_BATCH_LIMIT;
+
     // endregion 基础设置
 
 
@@ -587,15 +592,22 @@ public class ServerConfig {
 
                 // 每tick清理实体上限
                 SWEEP_ENTITY_LIMIT = SERVER_BUILDER
-                        .comment("The maximum number of entities to be swept per tick."
+                        .comment("The maximum number of entities to clean up per tick, prevents server lag caused by removing too many entities at once."
                                 , "每tick清理实体上限，避免单次清理过多实体导致服务器卡顿。")
-                        .defineInRange("sweepEntityLimit", 250, 1, Integer.MAX_VALUE);
+                        .defineInRange("sweepEntityLimit", 500, 1, Integer.MAX_VALUE);
 
                 // 每批次清理间隔tick
                 SWEEP_ENTITY_INTERVAL = SERVER_BUILDER
                         .comment("The interval between sweeps in ticks."
                                 , "每批次清理间隔tick。")
-                        .defineInRange("sweepEntityInterval", 5, 1, Integer.MAX_VALUE);
+                        .defineInRange("sweepEntityInterval", 2, 1, Integer.MAX_VALUE);
+
+                // 每次清理的批次上限
+                SWEEP_BATCH_LIMIT = SERVER_BUILDER
+                        .comment("The maximum number of batches per cleanup, prevents excessive batching that could slow down the cleanup process."
+                                , "This setting takes priority over sweepEntityLimit."
+                                , "每次清理的批次上限，避免单次清理分批次过多导致清理过慢，该配置项优先级大于sweepEntityLimit。")
+                        .defineInRange("sweepBatchLimit", 10, 1, Integer.MAX_VALUE);
 
                 SERVER_BUILDER.pop();
             }
@@ -719,8 +731,9 @@ public class ServerConfig {
         DUSTBIN_PERSISTENT.set(true);
         DUSTBIN_BLOCK_POSITIONS.set(new ArrayList<>());
         DUSTBIN_MODE.set(EnumDustbinMode.VIRTUAL.name());
-        SWEEP_ENTITY_LIMIT.set(250);
-        SWEEP_ENTITY_INTERVAL.set(5);
+        SWEEP_ENTITY_LIMIT.set(500);
+        SWEEP_ENTITY_INTERVAL.set(2);
+        SWEEP_BATCH_LIMIT.set(10);
 
         PERMISSION_VIRTUAL_OP.set(4);
         PERMISSION_DUSTBIN_OPEN.set(0);
