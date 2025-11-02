@@ -36,7 +36,7 @@ public class EntitySweeper {
     private static final Map<RegistryKey<World>, Queue<KeyValue<Entity, Boolean>>> pendingRemovals = new ConcurrentHashMap<>();
 
     private List<Inventory> inventoryList;
-    private ConcurrentShuffleList<KeyValue<Coordinate, ItemStack>> dropList;
+    private ConcurrentShuffleList<KeyValue<WorldCoordinate, ItemStack>> dropList;
     private Queue<DropStatistics> dropCount;
 
     private final Set<Entity> entitiesToRemove = ConcurrentHashMap.newKeySet();
@@ -144,7 +144,7 @@ public class EntitySweeper {
 
     private SweepResult processDrop(@NonNull Entity original) {
         SweepResult result = new SweepResult();
-        Coordinate coordinate = new Coordinate(original);
+        WorldCoordinate coordinate = new WorldCoordinate(original);
         Entity entity = (original instanceof PartEntity) ? ((PartEntity<?>) original).getParent() : original;
 
         String typeKey = (entity instanceof ItemEntity)
@@ -199,7 +199,7 @@ public class EntitySweeper {
         return result;
     }
 
-    private void handleItemRecycling(Coordinate coordinate, ItemStack item, SweepResult result) {
+    private void handleItemRecycling(WorldCoordinate coordinate, ItemStack item, SweepResult result) {
         // 自清洁模式
         if (ServerConfig.SELF_CLEAN_MODE.get().contains(EnumSelfCleanMode.SWEEP_DELETE.name())) {
             switch (EnumDustbinMode.valueOfOrDefault(ServerConfig.DUSTBIN_MODE.get())) {
@@ -261,7 +261,7 @@ public class EntitySweeper {
 
     private void selfCleanDustbinBlock() {
         for (String pos : ServerConfig.DUSTBIN_BLOCK_POSITIONS.get()) {
-            Coordinate dustbinPos = Coordinate.fromSimpleString(pos);
+            WorldCoordinate dustbinPos = WorldCoordinate.fromSimpleString(pos);
             IItemHandler handler = AotakeUtils.getBlockItemHandler(dustbinPos);
             if (handler != null) {
                 IntStream.range(0, handler.getSlots())
@@ -294,7 +294,7 @@ public class EntitySweeper {
     private ItemStack addItemToDustbinBlock(ItemStack item) {
         ItemStack remaining = item;
         for (String pos : ServerConfig.DUSTBIN_BLOCK_POSITIONS.get()) {
-            Coordinate dustbinPos = Coordinate.fromSimpleString(pos);
+            WorldCoordinate dustbinPos = WorldCoordinate.fromSimpleString(pos);
             IItemHandler handler = AotakeUtils.getBlockItemHandler(dustbinPos);
             if (handler != null) {
                 int invMax = IntStream.range(0, handler.getSlots())
@@ -314,7 +314,7 @@ public class EntitySweeper {
         return remaining;
     }
 
-    private void handleOverflow(Coordinate coordinate, ItemStack item, SweepResult result) {
+    private void handleOverflow(WorldCoordinate coordinate, ItemStack item, SweepResult result) {
         EnumOverflowMode mode = EnumOverflowMode.valueOf(ServerConfig.DUSTBIN_OVERFLOW_MODE.get());
 
         switch (mode) {
@@ -337,7 +337,7 @@ public class EntitySweeper {
                     case BLOCK:
                     case BLOCK_VIRTUAL: {
                         String pos = CollectionUtils.getRandomElement(ServerConfig.DUSTBIN_BLOCK_POSITIONS.get());
-                        Coordinate dustbinPos = Coordinate.fromSimpleString(pos);
+                        WorldCoordinate dustbinPos = WorldCoordinate.fromSimpleString(pos);
                         IItemHandler handler = AotakeUtils.getBlockItemHandler(dustbinPos);
                         if (handler != null) {
                             int slot = AotakeSweep.RANDOM.nextInt(handler.getSlots());

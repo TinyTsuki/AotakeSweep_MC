@@ -7,7 +7,7 @@ import net.minecraft.nbt.CompoundNBT;
 @Data
 @Accessors(chain = true)
 public class DropStatistics {
-    private final Coordinate coordinate;
+    private final WorldCoordinate coordinate;
     private final String name;
     private final long time;
     private final long itemCount;
@@ -25,7 +25,7 @@ public class DropStatistics {
 
     public static DropStatistics deserializeNBT(CompoundNBT tag) {
         return new DropStatistics(
-                Coordinate.readFromNBT(tag.getCompound("coordinate"))
+                WorldCoordinate.readFromNBT(tag.getCompound("coordinate"))
                 , tag.getString("name")
                 , tag.getLong("time")
                 , tag.getLong("itemCount")

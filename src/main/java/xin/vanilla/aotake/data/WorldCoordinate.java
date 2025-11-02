@@ -26,7 +26,7 @@ import java.util.Random;
 @Data
 @Accessors(chain = true)
 @NoArgsConstructor
-public class Coordinate implements Serializable, Cloneable {
+public class WorldCoordinate implements Serializable, Cloneable {
     private double x = 0;
     private double y = 0;
     private double z = 0;
@@ -35,7 +35,7 @@ public class Coordinate implements Serializable, Cloneable {
     private RegistryKey<World> dimension = World.OVERWORLD;
     private Direction direction = null;
 
-    public Coordinate(@NonNull Entity entity) {
+    public WorldCoordinate(@NonNull Entity entity) {
         this.x = entity.getX();
         this.y = entity.getY();
         this.z = entity.getZ();
@@ -44,20 +44,20 @@ public class Coordinate implements Serializable, Cloneable {
         this.dimension = entity.level.dimension();
     }
 
-    public Coordinate(double x, double y, double z) {
+    public WorldCoordinate(double x, double y, double z) {
         this.x = x;
         this.y = y;
         this.z = z;
     }
 
-    public Coordinate(double x, double y, double z, RegistryKey<World> dimension) {
+    public WorldCoordinate(double x, double y, double z, RegistryKey<World> dimension) {
         this.x = x;
         this.y = y;
         this.z = z;
         this.dimension = dimension;
     }
 
-    public Coordinate(double x, double y, double z, double yaw, double pitch) {
+    public WorldCoordinate(double x, double y, double z, double yaw, double pitch) {
         this.x = x;
         this.y = y;
         this.z = z;
@@ -65,7 +65,7 @@ public class Coordinate implements Serializable, Cloneable {
         this.pitch = pitch;
     }
 
-    public Coordinate(double x, double y, double z, double yaw, double pitch, RegistryKey<World> dimension) {
+    public WorldCoordinate(double x, double y, double z, double yaw, double pitch, RegistryKey<World> dimension) {
         this.x = x;
         this.y = y;
         this.z = z;
@@ -125,31 +125,31 @@ public class Coordinate implements Serializable, Cloneable {
         return new Vector3d(x, y, z);
     }
 
-    public Coordinate fromBlockPos(BlockPos pos) {
+    public WorldCoordinate fromBlockPos(BlockPos pos) {
         this.x = pos.getX();
         this.y = pos.getY();
         this.z = pos.getZ();
         return this;
     }
 
-    public Coordinate fromVector3d(Vector3d pos) {
+    public WorldCoordinate fromVector3d(Vector3d pos) {
         this.x = pos.x();
         this.y = pos.y();
         this.z = pos.z();
         return this;
     }
 
-    public Coordinate addX(double x) {
+    public WorldCoordinate addX(double x) {
         this.x += x;
         return this;
     }
 
-    public Coordinate addY(double y) {
+    public WorldCoordinate addY(double y) {
         this.y += y;
         return this;
     }
 
-    public Coordinate addZ(double z) {
+    public WorldCoordinate addZ(double z) {
         this.z += z;
         return this;
     }
@@ -171,8 +171,8 @@ public class Coordinate implements Serializable, Cloneable {
     /**
      * 反序列化
      */
-    public static Coordinate readFromNBT(CompoundNBT tag) {
-        Coordinate coordinate = new Coordinate();
+    public static WorldCoordinate readFromNBT(CompoundNBT tag) {
+        WorldCoordinate coordinate = new WorldCoordinate();
         coordinate.x = tag.getDouble("x");
         coordinate.y = tag.getDouble("y");
         coordinate.z = tag.getDouble("z");
@@ -199,9 +199,9 @@ public class Coordinate implements Serializable, Cloneable {
     /**
      * 从JsonString反序列化
      */
-    public static Coordinate fromJsonString(String jsonString) {
+    public static WorldCoordinate fromJsonString(String jsonString) {
         JsonObject json = JsonUtils.GSON.fromJson(jsonString, JsonObject.class);
-        Coordinate coordinate = new Coordinate();
+        WorldCoordinate coordinate = new WorldCoordinate();
         coordinate.x = JsonUtils.getDouble(json, "x", 0);
         coordinate.y = JsonUtils.getDouble(json, "y", 0);
         coordinate.z = JsonUtils.getDouble(json, "z", 0);
@@ -213,9 +213,9 @@ public class Coordinate implements Serializable, Cloneable {
     }
 
     @Override
-    public Coordinate clone() {
+    public WorldCoordinate clone() {
         try {
-            Coordinate cloned = (Coordinate) super.clone();
+            WorldCoordinate cloned = (WorldCoordinate) super.clone();
             cloned.dimension = this.dimension;
             cloned.x = this.x;
             cloned.y = this.y;
@@ -228,15 +228,15 @@ public class Coordinate implements Serializable, Cloneable {
         }
     }
 
-    public Coordinate above() {
+    public WorldCoordinate above() {
         return this.clone().addY(1);
     }
 
-    public Coordinate below() {
+    public WorldCoordinate below() {
         return this.clone().addY(-1);
     }
 
-    public double distanceFrom(Coordinate coordinate) {
+    public double distanceFrom(WorldCoordinate coordinate) {
         return Math.sqrt(Math.pow(coordinate.x - x, 2) + Math.pow(coordinate.y - y, 2) + Math.pow(coordinate.z - z, 2));
     }
 
@@ -244,7 +244,7 @@ public class Coordinate implements Serializable, Cloneable {
         return Math.sqrt(Math.pow(x - this.x, 2) + Math.pow(y - this.y, 2) + Math.pow(z - this.z, 2));
     }
 
-    public double distanceFrom2D(Coordinate coordinate) {
+    public double distanceFrom2D(WorldCoordinate coordinate) {
         return Math.sqrt(Math.pow(coordinate.x - x, 2) + Math.pow(coordinate.z - z, 2));
     }
 
@@ -272,31 +272,31 @@ public class Coordinate implements Serializable, Cloneable {
         return dimension.location().toString();
     }
 
-    public boolean equalsOfRange(Coordinate coordinate, int range) {
+    public boolean equalsOfRange(WorldCoordinate coordinate, int range) {
         return Math.abs((int) coordinate.x - (int) x) <= range
                 && Math.abs((int) coordinate.y - (int) y) <= range
                 && Math.abs((int) coordinate.z - (int) z) <= range
                 && coordinate.dimension.equals(dimension);
     }
 
-    public static Coordinate fromSimpleString(String str) {
-        Coordinate result = null;
+    public static WorldCoordinate fromSimpleString(String str) {
+        WorldCoordinate result = null;
         try {
             String[] split = str.split(",");
             if (split.length == 5) {
                 RegistryKey<World> dimension = RegistryKey.create(Registry.DIMENSION_REGISTRY, AotakeSweep.parseResource(split[0].trim()));
                 Direction direction = valuOfDirection(split[4].trim());
-                result = new Coordinate(StringUtils.toDouble(split[1]), StringUtils.toDouble(split[2]), StringUtils.toDouble(split[3]), dimension).setDirection(direction);
+                result = new WorldCoordinate(StringUtils.toDouble(split[1]), StringUtils.toDouble(split[2]), StringUtils.toDouble(split[3]), dimension).setDirection(direction);
             } else if (split.length == 4) {
                 if (split[0].contains(":")) {
                     RegistryKey<World> dimension = RegistryKey.create(Registry.DIMENSION_REGISTRY, AotakeSweep.parseResource(split[0].trim()));
-                    result = new Coordinate(StringUtils.toDouble(split[1]), StringUtils.toDouble(split[2]), StringUtils.toDouble(split[3]), dimension);
+                    result = new WorldCoordinate(StringUtils.toDouble(split[1]), StringUtils.toDouble(split[2]), StringUtils.toDouble(split[3]), dimension);
                 } else if (Arrays.stream(Direction.values()).anyMatch(dir -> dir.getName().equals(split[3].trim()))) {
                     Direction direction = valuOfDirection(split[3].trim());
-                    result = new Coordinate(StringUtils.toDouble(split[0]), StringUtils.toDouble(split[1]), StringUtils.toDouble(split[2])).setDirection(direction);
+                    result = new WorldCoordinate(StringUtils.toDouble(split[0]), StringUtils.toDouble(split[1]), StringUtils.toDouble(split[2])).setDirection(direction);
                 }
             } else if (split.length == 3) {
-                result = new Coordinate(StringUtils.toDouble(split[0]), StringUtils.toDouble(split[1]), StringUtils.toDouble(split[2]));
+                result = new WorldCoordinate(StringUtils.toDouble(split[0]), StringUtils.toDouble(split[1]), StringUtils.toDouble(split[2]));
             }
         } catch (Throwable ignored) {
         }

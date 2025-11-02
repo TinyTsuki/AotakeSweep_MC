@@ -48,9 +48,9 @@ import xin.vanilla.aotake.AotakeSweep;
 import xin.vanilla.aotake.config.CommonConfig;
 import xin.vanilla.aotake.config.CustomConfig;
 import xin.vanilla.aotake.config.ServerConfig;
-import xin.vanilla.aotake.data.Coordinate;
 import xin.vanilla.aotake.data.KeyValue;
 import xin.vanilla.aotake.data.SweepResult;
+import xin.vanilla.aotake.data.WorldCoordinate;
 import xin.vanilla.aotake.data.player.PlayerSweepData;
 import xin.vanilla.aotake.data.world.WorldTrashData;
 import xin.vanilla.aotake.enums.*;
@@ -260,7 +260,7 @@ public class AotakeUtils {
     /**
      * 获取传送指令
      */
-    public static String genTeleportCommand(Coordinate coordinate) {
+    public static String genTeleportCommand(WorldCoordinate coordinate) {
         if (ModList.get().isLoaded("narcissus_farewell")) {
             return String.format("/%s %s %s %s safe %s"
                     , CompatNarcissus.getTpCommand()
@@ -277,6 +277,36 @@ public class AotakeUtils {
                     , coordinate.getZInt()
             );
         }
+    }
+
+    /**
+     * 执行指令
+     */
+    public static boolean executeCommand(@NonNull ServerPlayerEntity player, @NonNull String command) {
+        boolean result = false;
+        try {
+            MinecraftServer server = player.getServer();
+            CommandSource commandSourceStack = player.createCommandSourceStack().withPermission(2);
+            result = server.getCommands().performCommand(commandSourceStack, command) > 0;
+        } catch (Exception e) {
+            LOGGER.error("Failed to execute command: {}", command, e);
+        }
+        return result;
+    }
+
+    /**
+     * 执行指令
+     */
+    public static boolean executeCommandNoOutput(@NonNull ServerPlayerEntity player, @NonNull String command) {
+        boolean result = false;
+        try {
+            MinecraftServer server = player.getServer();
+            CommandSource commandSourceStack = player.createCommandSourceStack().withSuppressedOutput().withPermission(2);
+            result = server.getCommands().performCommand(commandSourceStack, command) > 0;
+        } catch (Exception e) {
+            LOGGER.error("Failed to execute command: {}", command, e);
+        }
+        return result;
     }
 
     // endregion 指令相关
@@ -795,26 +825,26 @@ public class AotakeUtils {
 
             List<Entity> list = getAllEntitiesByFilter(entities, chuck);
 
-            if (CollectionUtils.isNotNullOrEmpty(list)) {
-                // 清空旧的物品
-                if (ServerConfig.SELF_CLEAN_MODE.get().contains(EnumSelfCleanMode.SWEEP_CLEAR.name())) {
-                    switch (EnumDustbinMode.valueOfOrDefault(ServerConfig.DUSTBIN_MODE.get())) {
-                        case VIRTUAL: {
-                            clearVirtualDustbin();
-                        }
-                        break;
-                        case BLOCK: {
-                            clearDustbinBlock();
-                        }
-                        break;
-                        default: {
-                            clearVirtualDustbin();
-                            clearDustbinBlock();
-                        }
+            // if (CollectionUtils.isNotNullOrEmpty(list)) {
+            // 清空旧的物品
+            if (ServerConfig.SELF_CLEAN_MODE.get().contains(EnumSelfCleanMode.SWEEP_CLEAR.name())) {
+                switch (EnumDustbinMode.valueOfOrDefault(ServerConfig.DUSTBIN_MODE.get())) {
+                    case VIRTUAL: {
+                        clearVirtualDustbin();
+                    }
+                    break;
+                    case BLOCK: {
+                        clearDustbinBlock();
+                    }
+                    break;
+                    default: {
+                        clearVirtualDustbin();
+                        clearDustbinBlock();
                     }
                 }
-                AotakeSweep.getEntitySweeper().addDrops(list, new SweepResult());
             }
+            AotakeSweep.getEntitySweeper().addDrops(list, new SweepResult());
+            // }
 
         } catch (Exception e) {
             LOGGER.error(e);
@@ -859,7 +889,7 @@ public class AotakeUtils {
 
     private static void clearDustbinBlock() {
         for (String pos : ServerConfig.DUSTBIN_BLOCK_POSITIONS.get()) {
-            Coordinate coordinate = Coordinate.fromSimpleString(pos);
+            WorldCoordinate coordinate = WorldCoordinate.fromSimpleString(pos);
             if (coordinate != null) {
                 IItemHandler handler = getBlockItemHandler(coordinate);
                 if (handler != null) {
@@ -1021,34 +1051,6 @@ public class AotakeUtils {
     // region 杂项
 
     /**
-     * 执行指令
-     */
-    public static boolean executeCommand(@NonNull ServerPlayerEntity player, @NonNull String command) {
-        boolean result = false;
-        try {
-            CommandSource commandSourceStack = player.createCommandSourceStack().withPermission(2);
-            result = player.getServer().getCommands().performCommand(commandSourceStack, command) > 0;
-        } catch (Exception e) {
-            LOGGER.error("Failed to execute command: {}", command, e);
-        }
-        return result;
-    }
-
-    /**
-     * 执行指令
-     */
-    public static boolean executeCommandNoOutput(@NonNull ServerPlayerEntity player, @NonNull String command) {
-        boolean result = false;
-        try {
-            CommandSource commandSourceStack = player.createCommandSourceStack().withSuppressedOutput().withPermission(2);
-            result = player.getServer().getCommands().performCommand(commandSourceStack, command) > 0;
-        } catch (Exception e) {
-            LOGGER.error("Failed to execute command: {}", command, e);
-        }
-        return result;
-    }
-
-    /**
      * 获取指定维度的世界实例
      */
     public static ServerWorld getWorld(RegistryKey<World> dimension) {
@@ -1192,10 +1194,18 @@ public class AotakeUtils {
         return player.getUUID().toString();
     }
 
+    public static String getPlayerName(@NonNull PlayerEntity player) {
+        return player.getName().getString();
+    }
+
+    public static ServerPlayerEntity getPlayerByUUID(String uuid) {
+        return AotakeSweep.getServerInstance().key().getPlayerList().getPlayer(UUID.fromString(uuid));
+    }
+
     /**
      * 将物品添加到指定的方块容器
      */
-    public static ItemStack addItemToBlock(ItemStack stack, Coordinate coordinate) {
+    public static ItemStack addItemToBlock(ItemStack stack, WorldCoordinate coordinate) {
         if (stack == null || stack.isEmpty()) return ItemStack.EMPTY;
         ServerWorld level = AotakeSweep.getServerInstance().key().getLevel(coordinate.getDimension());
         if (level == null) return stack;
@@ -1225,7 +1235,7 @@ public class AotakeUtils {
     /**
      * 获取指定的方块容器
      */
-    public static IItemHandler getBlockItemHandler(Coordinate coordinate) {
+    public static IItemHandler getBlockItemHandler(WorldCoordinate coordinate) {
         ServerWorld level = AotakeSweep.getServerInstance().key().getLevel(coordinate.getDimension());
         if (level == null) return null;
 

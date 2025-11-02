@@ -35,12 +35,19 @@ public class ClientModEventHandler {
             GLFW.GLFW_KEY_RIGHT, CATEGORIES);
 
     /**
+     * 切换进度条显示按键
+     */
+    public static KeyBinding PROGRESS_KEY = new KeyBinding("key.aotake_sweep.progress",
+            GLFW.GLFW_KEY_TAB, CATEGORIES);
+
+    /**
      * 注册键绑定
      */
     public static void registerKeyBindings() {
         ClientRegistry.registerKeyBinding(DUSTBIN_KEY);
         ClientRegistry.registerKeyBinding(DUSTBIN_PRE_KEY);
         ClientRegistry.registerKeyBinding(DUSTBIN_NEXT_KEY);
+        ClientRegistry.registerKeyBinding(PROGRESS_KEY);
     }
 
 }
