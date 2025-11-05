@@ -39,14 +39,15 @@ import xin.vanilla.aotake.AotakeSweep;
 import xin.vanilla.aotake.config.CommonConfig;
 import xin.vanilla.aotake.config.CustomConfig;
 import xin.vanilla.aotake.config.ServerConfig;
-import xin.vanilla.aotake.data.Coordinate;
 import xin.vanilla.aotake.data.KeyValue;
 import xin.vanilla.aotake.data.SweepResult;
+import xin.vanilla.aotake.data.WorldCoordinate;
 import xin.vanilla.aotake.data.player.PlayerSweepData;
 import xin.vanilla.aotake.data.world.WorldTrashData;
 import xin.vanilla.aotake.enums.*;
 import xin.vanilla.aotake.event.EventHandlerProxy;
 import xin.vanilla.aotake.network.packet.CustomConfigSyncToClient;
+import xin.vanilla.aotake.network.packet.SweepTimeSyncToClient;
 import xin.vanilla.aotake.util.*;
 
 import java.util.*;
@@ -479,15 +480,15 @@ public class AotakeCommand {
             notifyHelp(context);
             boolean originalPos = getBooleanDefault(context, "originalPos", false);
             ServerPlayer player = context.getSource().getPlayerOrException();
-            List<KeyValue<Coordinate, ItemStack>> items = WorldTrashData.get().getDropList().snapshot();
+            List<KeyValue<WorldCoordinate, ItemStack>> items = WorldTrashData.get().getDropList().snapshot();
             WorldTrashData.get().getDropList().clear();
             items.forEach(kv -> {
                 if (!kv.getValue().isEmpty()) {
-                    Coordinate coordinate;
+                    WorldCoordinate coordinate;
                     if (originalPos) {
                         coordinate = kv.getKey();
                     } else {
-                        coordinate = new Coordinate(player);
+                        coordinate = new WorldCoordinate(player);
                     }
                     ServerLevel level = AotakeUtils.getWorld(coordinate.getDimension());
                     Entity entity = AotakeUtils.getEntityFromItem(level, kv.getValue());
@@ -520,6 +521,10 @@ public class AotakeCommand {
                 if (nextSweepTime < current.getTime())
                     nextSweepTime = current.getTime() + ServerConfig.SWEEP_INTERVAL.get();
                 EventHandlerProxy.setNextSweepTime(nextSweepTime);
+            }
+            // 给已安装mod玩家同步扫地倒计时
+            for (String uuid : AotakeSweep.getCustomConfigStatus()) {
+                AotakeUtils.sendPacketToPlayer(new SweepTimeSyncToClient(), AotakeUtils.getPlayerByUUID(uuid));
             }
             long seconds = (EventHandlerProxy.getNextSweepTime() - current.getTime()) / 1000;
             Component message = Component.translatable(EnumI18nType.MESSAGE, "next_sweep_time_set"
@@ -1249,7 +1254,7 @@ public class AotakeCommand {
         int result = 0;
         List<? extends String> positions = ServerConfig.DUSTBIN_BLOCK_POSITIONS.get();
         if (CollectionUtils.isNotNullOrEmpty(positions) && positions.size() >= page) {
-            Coordinate coordinate = Coordinate.fromSimpleString(positions.get(page - 1));
+            WorldCoordinate coordinate = WorldCoordinate.fromSimpleString(positions.get(page - 1));
 
             Direction direction = coordinate.getDirection();
             if (direction == null) direction = Direction.UP;
@@ -1290,7 +1295,7 @@ public class AotakeCommand {
     private static void clearDustbinBlock(int page) {
         if (page == 0) {
             for (String pos : ServerConfig.DUSTBIN_BLOCK_POSITIONS.get()) {
-                Coordinate coordinate = Coordinate.fromSimpleString(pos);
+                WorldCoordinate coordinate = WorldCoordinate.fromSimpleString(pos);
                 if (coordinate != null) {
                     IItemHandler handler = AotakeUtils.getBlockItemHandler(coordinate);
                     if (handler != null) {
@@ -1301,7 +1306,7 @@ public class AotakeCommand {
                 }
             }
         } else {
-            Coordinate coordinate = Coordinate.fromSimpleString(ServerConfig.DUSTBIN_BLOCK_POSITIONS.get().get(page - 1));
+            WorldCoordinate coordinate = WorldCoordinate.fromSimpleString(ServerConfig.DUSTBIN_BLOCK_POSITIONS.get().get(page - 1));
             if (coordinate != null) {
                 IItemHandler handler = AotakeUtils.getBlockItemHandler(coordinate);
                 if (handler != null) {
@@ -1337,7 +1342,7 @@ public class AotakeCommand {
     private static void dropDustbinBlock(ServerPlayer player, int page) {
         if (page == 0) {
             for (String pos : ServerConfig.DUSTBIN_BLOCK_POSITIONS.get()) {
-                Coordinate coordinate = Coordinate.fromSimpleString(pos);
+                WorldCoordinate coordinate = WorldCoordinate.fromSimpleString(pos);
                 if (coordinate != null) {
                     IItemHandler handler = AotakeUtils.getBlockItemHandler(coordinate);
                     if (handler != null) {
@@ -1353,7 +1358,7 @@ public class AotakeCommand {
                 }
             }
         } else {
-            Coordinate coordinate = Coordinate.fromSimpleString(ServerConfig.DUSTBIN_BLOCK_POSITIONS.get().get(page - 1));
+            WorldCoordinate coordinate = WorldCoordinate.fromSimpleString(ServerConfig.DUSTBIN_BLOCK_POSITIONS.get().get(page - 1));
             if (coordinate != null) {
                 IItemHandler handler = AotakeUtils.getBlockItemHandler(coordinate);
                 if (handler != null) {
