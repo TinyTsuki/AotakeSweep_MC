@@ -1,11 +1,15 @@
 package xin.vanilla.aotake.data;
 
 import lombok.Data;
+import lombok.experimental.Accessors;
+
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * 清理结果
  */
 @Data
+@Accessors(chain = true)
 public class SweepResult {
     /**
      * 清理的物品数量
@@ -26,6 +30,16 @@ public class SweepResult {
      * 回收实体数量
      */
     private long recycledEntityCount;
+
+    /**
+     * 当前批次
+     */
+    private AtomicInteger batch = new AtomicInteger(0);
+
+    /**
+     * 总批次
+     */
+    private long totalBatch;
 
     public SweepResult plusItemCount() {
         this.itemCount++;
@@ -64,6 +78,11 @@ public class SweepResult {
 
     public SweepResult plusRecycledEntityCount(long count) {
         this.recycledEntityCount += count;
+        return this;
+    }
+
+    public synchronized SweepResult incrementBatch() {
+        this.batch.incrementAndGet();
         return this;
     }
 

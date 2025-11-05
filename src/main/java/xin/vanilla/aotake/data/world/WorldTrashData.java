@@ -19,11 +19,10 @@ import xin.vanilla.aotake.AotakeSweep;
 import xin.vanilla.aotake.config.CommonConfig;
 import xin.vanilla.aotake.config.ServerConfig;
 import xin.vanilla.aotake.data.ConcurrentShuffleList;
-import xin.vanilla.aotake.data.Coordinate;
 import xin.vanilla.aotake.data.DropStatistics;
 import xin.vanilla.aotake.data.KeyValue;
+import xin.vanilla.aotake.data.WorldCoordinate;
 import xin.vanilla.aotake.enums.EnumI18nType;
-import xin.vanilla.aotake.enums.EnumMCColor;
 import xin.vanilla.aotake.util.AotakeUtils;
 import xin.vanilla.aotake.util.Component;
 
@@ -45,7 +44,7 @@ public class WorldTrashData extends SavedData {
     /**
      * 掉落物列表
      */
-    private ConcurrentShuffleList<KeyValue<Coordinate, ItemStack>> dropList = new ConcurrentShuffleList<>();
+    private ConcurrentShuffleList<KeyValue<WorldCoordinate, ItemStack>> dropList = new ConcurrentShuffleList<>();
     /**
      * 掉落物统计
      */
@@ -64,12 +63,12 @@ public class WorldTrashData extends SavedData {
 
         data.dropList = new ConcurrentShuffleList<>();
         ListTag dropListTag = nbt.getList("dropList", 10);
-        ConcurrentShuffleList<KeyValue<Coordinate, ItemStack>> drops = new ConcurrentShuffleList<>();
+        ConcurrentShuffleList<KeyValue<WorldCoordinate, ItemStack>> drops = new ConcurrentShuffleList<>();
         for (int i = 0; i < dropListTag.size(); i++) {
             CompoundTag drop = dropListTag.getCompound(i);
             ItemStack item = ItemStack.of(drop.getCompound("item"));
             drops.add(new KeyValue<>(
-                    Coordinate.readFromNBT(drop.getCompound("coordinate"))
+                    WorldCoordinate.readFromNBT(drop.getCompound("coordinate"))
                     , item
             ));
         }
@@ -105,7 +104,7 @@ public class WorldTrashData extends SavedData {
         }
 
         ListTag dropsNBT = new ListTag();
-        for (KeyValue<Coordinate, ItemStack> drop : this.getDropList()) {
+        for (KeyValue<WorldCoordinate, ItemStack> drop : this.getDropList()) {
             if (drop == null || drop.getValue() == null) continue;
             CompoundTag dropTag = new CompoundTag();
             dropTag.put("item", drop.getValue().serializeNBT());
@@ -127,7 +126,7 @@ public class WorldTrashData extends SavedData {
         return nbt;
     }
 
-    private void setDrops(ConcurrentShuffleList<KeyValue<Coordinate, ItemStack>> drops) {
+    private void setDrops(ConcurrentShuffleList<KeyValue<WorldCoordinate, ItemStack>> drops) {
         this.dropList = drops;
         super.setDirty();
     }
@@ -169,7 +168,7 @@ public class WorldTrashData extends SavedData {
 
         // 将当前页垃圾箱填充满
         SimpleContainer inventory = inventories.get(page - 1);
-        ConcurrentShuffleList<KeyValue<Coordinate, ItemStack>> drops = get().getDropList();
+        ConcurrentShuffleList<KeyValue<WorldCoordinate, ItemStack>> drops = get().getDropList();
 
         fillInventory(inventory, drops);
 
@@ -178,7 +177,7 @@ public class WorldTrashData extends SavedData {
             @Override
             public net.minecraft.network.chat.Component getDisplayName() {
                 return Component.translatable(EnumI18nType.KEY, "categories")
-                        .setColor(EnumMCColor.DARK_GREEN.getColor())
+                        .setColor(0x5DA530)
                         .append(String.format("(%s/%s)", page, limit))
                         .toTextComponent(AotakeUtils.getPlayerLanguage(player));
             }
@@ -190,10 +189,10 @@ public class WorldTrashData extends SavedData {
         };
     }
 
-    private static void fillInventory(SimpleContainer inventory, ConcurrentShuffleList<KeyValue<Coordinate, ItemStack>> drops) {
-        List<KeyValue<Coordinate, ItemStack>> leftovers = new ArrayList<>();
+    private static void fillInventory(SimpleContainer inventory, ConcurrentShuffleList<KeyValue<WorldCoordinate, ItemStack>> drops) {
+        List<KeyValue<WorldCoordinate, ItemStack>> leftovers = new ArrayList<>();
 
-        for (KeyValue<Coordinate, ItemStack> drop : drops.snapshot()) {
+        for (KeyValue<WorldCoordinate, ItemStack> drop : drops.snapshot()) {
             ItemStack stack = drop.getValue();
             if (stack == null || stack.isEmpty()) continue;
 
