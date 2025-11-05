@@ -3,6 +3,7 @@
   "key.aotake_sweep.open_dustbin": "Open Dustbin",
   "key.aotake_sweep.open_dustbin_pre": "Dustbin Previous Page",
   "key.aotake_sweep.open_dustbin_next": "Dustbin Next Page",
+  "key.aotake_sweep.progress": "Show progress bar",
   "item.aotake_sweep.junk_ball": "Junk Ball",
   "itemGroup.aotake_sweep": "Aotake Sweep",
   "command.aotake_sweep.help": "[<page>|<type>] Query command help information",
