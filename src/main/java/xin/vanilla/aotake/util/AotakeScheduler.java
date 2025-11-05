@@ -1,9 +1,12 @@
 package xin.vanilla.aotake.util;
 
 import lombok.experimental.Accessors;
+import net.minecraft.client.Minecraft;
 import net.minecraft.server.MinecraftServer;
-import net.minecraft.server.level.ServerLevel;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.api.distmarker.OnlyIn;
 import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.neoforge.client.event.ClientTickEvent;
 import net.neoforged.neoforge.event.tick.ServerTickEvent;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -15,12 +18,19 @@ public class AotakeScheduler {
 
     private static final Logger LOGGER = LogManager.getLogger();
 
-    private static final Queue<ScheduledTask> tasks = new ConcurrentLinkedQueue<>();
+    private static final Queue<ScheduledTask> serverTasks = new ConcurrentLinkedQueue<>();
+    private static final Queue<ScheduledTask> clientTasks = new ConcurrentLinkedQueue<>();
+    private static long clientTicks = 0;
 
-    public static void schedule(ServerLevel world, int delayTicks, Runnable action) {
-        MinecraftServer server = world.getServer();
+    public static void schedule(MinecraftServer server, int delayTicks, Runnable action) {
         long executeAt = server.getTickCount() + delayTicks;
-        tasks.add(new ScheduledTask(executeAt, action));
+        serverTasks.add(new ScheduledTask(executeAt, action, false));
+    }
+
+    @OnlyIn(Dist.CLIENT)
+    public static void schedule(int delayTicks, Runnable action) {
+        long executeAt = clientTicks + delayTicks;
+        clientTasks.add(new ScheduledTask(executeAt, action, true));
     }
 
     @SubscribeEvent
@@ -29,11 +39,34 @@ public class AotakeScheduler {
         long currentTick = server.getTickCount();
 
         try {
-            while (!tasks.isEmpty()) {
-                ScheduledTask task = tasks.peek();
+            while (!serverTasks.isEmpty()) {
+                ScheduledTask task = serverTasks.peek();
                 if (task.executeTick <= currentTick) {
-                    server.execute(task.runnable);
-                    tasks.poll();
+                    if (!task.clientSide) {
+                        server.execute(task.runnable);
+                    }
+                    serverTasks.poll();
+                } else break;
+            }
+        } catch (Exception e) {
+            LOGGER.debug("Failed to execute task", e);
+        }
+    }
+
+    @OnlyIn(Dist.CLIENT)
+    @SubscribeEvent
+    public static void onClientTick(ClientTickEvent.Post event) {
+        clientTicks++;
+        long currentTick = clientTicks;
+
+        try {
+            while (!clientTasks.isEmpty()) {
+                ScheduledTask task = clientTasks.peek();
+                if (task.executeTick <= currentTick) {
+                    if (task.clientSide) {
+                        Minecraft.getInstance().execute(task.runnable);
+                    }
+                    clientTasks.poll();
                 } else break;
             }
         } catch (Exception e) {
@@ -42,6 +75,6 @@ public class AotakeScheduler {
     }
 
     @Accessors(chain = true)
-    private record ScheduledTask(long executeTick, Runnable runnable) {
+    private record ScheduledTask(long executeTick, Runnable runnable, boolean clientSide) {
     }
 }

@@ -1,31 +1,35 @@
 package xin.vanilla.aotake.event;
 
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.components.Button;
-import net.minecraft.client.gui.components.Tooltip;
+import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.inventory.ContainerScreen;
 import net.minecraft.client.player.LocalPlayer;
+import net.minecraft.resources.ResourceLocation;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.client.event.ClientPlayerNetworkEvent;
 import net.neoforged.neoforge.client.event.ClientTickEvent;
+import net.neoforged.neoforge.client.event.RenderGuiLayerEvent;
 import net.neoforged.neoforge.client.event.ScreenEvent;
+import net.neoforged.neoforge.client.gui.VanillaGuiLayers;
 import net.neoforged.neoforge.event.entity.player.*;
 import net.neoforged.neoforge.event.tick.LevelTickEvent;
 import net.neoforged.neoforge.event.tick.ServerTickEvent;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import xin.vanilla.aotake.AotakeSweep;
+import xin.vanilla.aotake.config.ClientConfig;
+import xin.vanilla.aotake.data.KeyValue;
 import xin.vanilla.aotake.enums.EnumCommandType;
 import xin.vanilla.aotake.enums.EnumI18nType;
-import xin.vanilla.aotake.enums.EnumMCColor;
 import xin.vanilla.aotake.network.packet.ClearDustbinToServer;
 import xin.vanilla.aotake.network.packet.ClientLoadedToServer;
 import xin.vanilla.aotake.network.packet.OpenDustbinToServer;
-import xin.vanilla.aotake.util.AotakeUtils;
-import xin.vanilla.aotake.util.Component;
+import xin.vanilla.aotake.screen.ProgressRender;
+import xin.vanilla.aotake.screen.component.Text;
+import xin.vanilla.aotake.util.*;
 
 /**
  * 客户端 Game事件处理器
@@ -39,7 +43,12 @@ public class ClientGameEventHandler {
         LOGGER.debug("Client: Player logged out.");
     }
 
-    private static boolean keyDown = false;
+    private static long lastTime = 0;
+
+    /**
+     * 重新打开垃圾箱页面前鼠标位置
+     */
+    private static final KeyValue<Double, Double> mousePos = new KeyValue<>(0D, 0D);
 
     /**
      * 客户端Tick事件
@@ -47,16 +56,18 @@ public class ClientGameEventHandler {
     @SubscribeEvent
     public static void onClientTick(ClientTickEvent.Post event) {
         if (Minecraft.getInstance().screen == null) {
-            if (ClientModEventHandler.DUSTBIN_KEY.consumeClick()) {
-                if (!keyDown) {
-                    AotakeUtils.sendPacketToServer(new OpenDustbinToServer(0));
-                    keyDown = true;
+            if (ClientModEventHandler.DUSTBIN_KEY.isDown() && System.currentTimeMillis() - lastTime > 100) {
+                lastTime = System.currentTimeMillis();
+                AotakeUtils.sendPacketToServer(new OpenDustbinToServer(0));
+            }
+            if (ClientConfig.PROGRESS_BAR_KEY_APPLY_MODE.get()) {
+                if (ClientModEventHandler.PROGRESS_KEY.isDown() && System.currentTimeMillis() - lastTime > 100) {
+                    lastTime = System.currentTimeMillis();
+                    ProgressRender.setShowProgress(!ProgressRender.isShowProgress());
                 }
             } else {
-                keyDown = false;
+                ProgressRender.setShowProgress(ClientModEventHandler.PROGRESS_KEY.isDown());
             }
-        } else {
-            keyDown = false;
         }
     }
 
@@ -135,6 +146,14 @@ public class ClientGameEventHandler {
     }
 
     /**
+     * 玩家登录事件
+     */
+    @SubscribeEvent
+    public static void onPlayerLoggedIn(PlayerEvent.PlayerLoggedInEvent event) {
+        EventHandlerProxy.onPlayerLoggedIn(event);
+    }
+
+    /**
      * 玩家登出事件
      */
     @SubscribeEvent
@@ -144,105 +163,312 @@ public class ClientGameEventHandler {
 
     private static final Component MOD_NAME = Component.translatable(EnumI18nType.KEY, "categories");
 
+    private static final MouseHelper mouseHelper = new MouseHelper();
+
     @SubscribeEvent
     public static void onRenderScreen(ScreenEvent.Init.Post event) {
         Screen screen = event.getScreen();
-        if (screen instanceof ContainerScreen
-                && Minecraft.getInstance().player != null
+        Minecraft mc = Minecraft.getInstance();
+        if (!(screen instanceof ContainerScreen
+                && mc.player != null
                 && screen.getTitle().getString()
-                .startsWith(MOD_NAME.toTextComponent(AotakeUtils.getPlayerLanguage(Minecraft.getInstance().player)).getString())
-        ) {
-            LocalPlayer player = Minecraft.getInstance().player;
-            int yOffset = 0;
-            // 清空缓存区
-            if (AotakeUtils.hasCommandPermission(player, EnumCommandType.CACHE_CLEAR)) {
-                event.addListener(
-                        new Button.Builder(Component.literal("✕").setColor(EnumMCColor.RED.getColor()).toTextComponent()
-                                , button -> AotakeUtils.sendPacketToServer(new ClearDustbinToServer(true, true)))
-                                .size(20, 20)
-                                .pos(screen.width / 2 - 88 - 21, screen.height / 2 - 111 + 21 * (yOffset++))
-                                .tooltip(Tooltip.create(Component.translatable(EnumI18nType.MESSAGE, "clear_cache").toTextComponent(AotakeUtils.getClientLanguage())))
-                                .build()
-                );
-            }
-            // 清空所有页
-            if (AotakeUtils.hasCommandPermission(player, EnumCommandType.CACHE_CLEAR)) {
-                event.addListener(
-                        new Button.Builder(Component.literal("✕").setColor(EnumMCColor.RED.getColor()).toTextComponent()
-                                , button -> AotakeUtils.sendPacketToServer(new ClearDustbinToServer(true, false)))
-                                .size(20, 20)
-                                .pos(screen.width / 2 - 88 - 21, screen.height / 2 - 111 + 21 * (yOffset++))
-                                .tooltip(Tooltip.create(Component.translatable(EnumI18nType.MESSAGE, "clear_all_dustbin").toTextComponent(AotakeUtils.getClientLanguage())))
-                                .build()
-                );
-                // 清空当前页
-                event.addListener(
-                        new Button.Builder(Component.literal("✕").setColor(EnumMCColor.YELLOW.getColor()).toTextComponent()
-                                , button -> AotakeUtils.sendPacketToServer(new ClearDustbinToServer(false, false)))
-                                .size(20, 20)
-                                .pos(screen.width / 2 - 88 - 21, screen.height / 2 - 111 + 21 * (yOffset++))
-                                .tooltip(Tooltip.create(Component.translatable(EnumI18nType.MESSAGE, "clear_cur_dustbin").toTextComponent(AotakeUtils.getClientLanguage())))
-                                .build()
-                );
-            }
-            // 刷新当前页
-            event.addListener(
-                    new Button.Builder(Component.literal("↻").toTextComponent()
-                            , button -> AotakeUtils.sendPacketToServer(new OpenDustbinToServer(0)))
-                            .size(20, 20)
-                            .pos(screen.width / 2 - 88 - 21, screen.height / 2 - 111 + 21 * (yOffset++))
-                            .tooltip(Tooltip.create(Component.translatable(EnumI18nType.MESSAGE, "refresh_page").toTextComponent(AotakeUtils.getClientLanguage())))
-                            .build()
-            );
-            // 上一页
-            event.addListener(
-                    new Button.Builder(Component.literal("▲").toTextComponent()
-                            , button -> AotakeUtils.sendPacketToServer(new OpenDustbinToServer(-1)))
-                            .size(20, 20)
-                            .pos(screen.width / 2 - 88 - 21, screen.height / 2 - 111 + 21 * (yOffset++))
-                            .tooltip(Tooltip.create(Component.translatable(EnumI18nType.MESSAGE, "previous_page").toTextComponent(AotakeUtils.getClientLanguage())))
-                            .build()
-            );
-            // 下一页
-            event.addListener(
-                    new Button.Builder(Component.literal("▼").toTextComponent()
-                            , button -> AotakeUtils.sendPacketToServer(new OpenDustbinToServer(1)))
-                            .size(20, 20)
-                            .pos(screen.width / 2 - 88 - 21, screen.height / 2 - 111 + 21 * (yOffset++))
-                            .tooltip(Tooltip.create(Component.translatable(EnumI18nType.MESSAGE, "next_page").toTextComponent(AotakeUtils.getClientLanguage())))
-                            .build()
-            );
+                .startsWith(MOD_NAME.toTextComponent(AotakeUtils.getPlayerLanguage(mc.player)).getString())
+        )) {
+            return;
+        }
+        for (int i = 0; i < 20; i++) {
+            AotakeScheduler.schedule(i, () -> {
+                if (mousePos.key() > -1 && mousePos.val() > -1) {
+                    KeyValue<Double, Double> pos = MouseHelper.getRawCursorPos();
+                    if (Math.abs(pos.key() - mousePos.key()) < 1 && Math.abs(pos.val() - mousePos.val()) < 1) {
+                        mousePos.setKey(-1D).setValue(-1D);
+                    }
+                    if (mousePos.key() > -1 && mousePos.val() > -1) {
+                        MouseHelper.setMouseRawPos(mousePos);
+                    }
+                }
+            });
         }
     }
 
     @SubscribeEvent
-    public static void onRenderScreen(ScreenEvent.KeyPressed.Pre event) {
-        if (event.getScreen() instanceof ContainerScreen
-                && Minecraft.getInstance().player != null
-                && event.getScreen().getTitle().getString()
-                .startsWith(MOD_NAME.toTextComponent(AotakeUtils.getPlayerLanguage(Minecraft.getInstance().player)).getString())
-        ) {
-            if (event instanceof ScreenEvent.KeyPressed.Pre keyEvent) {
-                if (keyEvent.getModifiers() != 0) return;
-                if (keyEvent.getKeyCode() == ClientModEventHandler.DUSTBIN_KEY.getKey().getValue()) {
-                    if (!keyDown) {
-                        Minecraft.getInstance().setScreen(null);
-                        keyDown = true;
-                    }
-                } else if (keyEvent.getKeyCode() == ClientModEventHandler.DUSTBIN_PRE_KEY.getKey().getValue()) {
-                    if (!keyDown) {
-                        AotakeUtils.sendPacketToServer(new OpenDustbinToServer(-1));
-                        keyDown = true;
-                    }
-                } else if (keyEvent.getKeyCode() == ClientModEventHandler.DUSTBIN_NEXT_KEY.getKey().getValue()) {
-                    if (!keyDown) {
-                        AotakeUtils.sendPacketToServer(new OpenDustbinToServer(1));
-                        keyDown = true;
-                    }
-                } else {
-                    keyDown = false;
+    public static void onRenderScreen(ScreenEvent.Render.Post event) {
+        Screen screen = event.getScreen();
+        Minecraft mc = Minecraft.getInstance();
+        if (!(screen instanceof ContainerScreen
+                && mc.player != null
+                && screen.getTitle().getString()
+                .startsWith(MOD_NAME.toTextComponent(AotakeUtils.getPlayerLanguage(mc.player)).getString())
+        )) {
+            return;
+        }
+
+        LocalPlayer player = mc.player;
+        int mouseX = event.getMouseX();
+        int mouseY = event.getMouseY();
+        mouseHelper.tick(mouseX, mouseY);
+
+        GuiGraphics graphics = event.getGuiGraphics();
+        int baseW = 16;
+        int baseH = 16;
+        int baseX = screen.width / 2 - 88;
+        int baseY = screen.height / 2 - 110;
+        int yOffset = 0;
+        // 清空缓存区
+        if (AotakeUtils.hasCommandPermission(player, EnumCommandType.CACHE_CLEAR)) {
+            int w = baseW;
+            int h = baseH;
+            int x = baseX - w - 1;
+            int y = baseY + (h + 1) * (yOffset++);
+            boolean hover = mouseHelper.isHoverInRect(x, y, w, h);
+
+            if (mouseHelper.isLeftPressing() && hover) {
+                x--;
+                y--;
+                w += 2;
+                h += 2;
+            }
+
+            ResourceLocation texture = TextureUtils.loadCustomTexture(TextureUtils.INTERNAL_THEME_DIR + "clear_cache.png");
+            AbstractGuiUtils.blitBlend(graphics, texture, x, y, 0, 0, w, h, w, h);
+
+            if (hover) {
+                AbstractGuiUtils.drawPopupMessage(Text.empty()
+                                .setText(Component.translatable(EnumI18nType.MESSAGE, "clear_cache"))
+                                .setGraphics(graphics)
+                        , mouseX
+                        , mouseY
+                        , screen.width
+                        , screen.height
+                );
+            }
+
+            if (mouseHelper.isLeftPressedInRect(x, y, w, h)) {
+                AotakeUtils.sendPacketToServer(new ClearDustbinToServer(true, true));
+            }
+        }
+        if (AotakeUtils.hasCommandPermission(player, EnumCommandType.DUSTBIN_CLEAR)) {
+            // 清空所有页
+            {
+                int w = baseW;
+                int h = baseH;
+                int x = baseX - w - 1;
+                int y = baseY + (h + 1) * (yOffset++);
+                boolean hover = mouseHelper.isHoverInRect(x, y, w, h);
+
+                if (mouseHelper.isLeftPressing() && hover) {
+                    x--;
+                    y--;
+                    w += 2;
+                    h += 2;
+                }
+
+                ResourceLocation texture = TextureUtils.loadCustomTexture(TextureUtils.INTERNAL_THEME_DIR + "clear_all.png");
+                AbstractGuiUtils.blitBlend(graphics, texture, x, y, 0, 0, w, h, w, h);
+
+                if (hover) {
+                    AbstractGuiUtils.drawPopupMessage(Text.empty()
+                                    .setText(Component.translatable(EnumI18nType.MESSAGE, "clear_all_dustbin"))
+                                    .setGraphics(graphics)
+                            , mouseX
+                            , mouseY
+                            , screen.width
+                            , screen.height
+                    );
+                }
+
+                if (mouseHelper.isLeftPressedInRect(x, y, w, h)) {
+                    AotakeUtils.sendPacketToServer(new ClearDustbinToServer(true, false));
                 }
             }
+
+            // 清空当前页
+            {
+                int w = baseW;
+                int h = baseH;
+                int x = baseX - w - 1;
+                int y = baseY + (h + 1) * (yOffset++);
+                boolean hover = mouseHelper.isHoverInRect(x, y, w, h);
+
+                if (mouseHelper.isLeftPressing() && hover) {
+                    x--;
+                    y--;
+                    w += 2;
+                    h += 2;
+                }
+
+                ResourceLocation texture = TextureUtils.loadCustomTexture(TextureUtils.INTERNAL_THEME_DIR + "clear_page.png");
+                AbstractGuiUtils.blitBlend(graphics, texture, x, y, 0, 0, w, h, w, h);
+
+                if (hover) {
+                    AbstractGuiUtils.drawPopupMessage(Text.empty()
+                                    .setText(Component.translatable(EnumI18nType.MESSAGE, "clear_cur_dustbin"))
+                                    .setGraphics(graphics)
+                            , mouseX
+                            , mouseY
+                            , screen.width
+                            , screen.height
+                    );
+                }
+
+                if (mouseHelper.isLeftPressedInRect(x, y, w, h)) {
+                    AotakeUtils.sendPacketToServer(new ClearDustbinToServer(false, false));
+                }
+            }
+        }
+        // 刷新当前页
+        {
+            int w = baseW;
+            int h = baseH;
+            int x = baseX - w - 1;
+            int y = baseY + (h + 1) * (yOffset++);
+            boolean hover = mouseHelper.isHoverInRect(x, y, w, h);
+
+            if (mouseHelper.isLeftPressing() && hover) {
+                x--;
+                y--;
+                w += 2;
+                h += 2;
+            }
+
+            ResourceLocation texture = TextureUtils.loadCustomTexture(TextureUtils.INTERNAL_THEME_DIR + "refresh.png");
+            AbstractGuiUtils.blitBlend(graphics, texture, x, y, 0, 0, w, h, w, h);
+
+            if (hover) {
+                AbstractGuiUtils.drawPopupMessage(Text.empty()
+                                .setText(Component.translatable(EnumI18nType.MESSAGE, "refresh_page"))
+                                .setGraphics(graphics)
+                        , mouseX
+                        , mouseY
+                        , screen.width
+                        , screen.height
+                );
+            }
+
+            if (mouseHelper.isLeftPressedInRect(x, y, w, h)) {
+                KeyValue<Double, Double> cursorPos = MouseHelper.getRawCursorPos();
+                mousePos.setKey(cursorPos.getKey()).setValue(cursorPos.getValue());
+                AotakeUtils.sendPacketToServer(new OpenDustbinToServer(0));
+            }
+        }
+        // 上一页
+        {
+            int w = baseW;
+            int h = baseH;
+            int x = baseX - w - 1;
+            int y = baseY + (h + 1) * (yOffset++);
+            boolean hover = mouseHelper.isHoverInRect(x, y, w, h);
+
+            if (mouseHelper.isLeftPressing() && hover) {
+                x--;
+                y--;
+                w += 2;
+                h += 2;
+            }
+
+            ResourceLocation texture = TextureUtils.loadCustomTexture(TextureUtils.INTERNAL_THEME_DIR + "up.png");
+            AbstractGuiUtils.blitBlend(graphics, texture, x, y, 0, 0, w, h, w, h);
+
+            if (hover) {
+                AbstractGuiUtils.drawPopupMessage(Text.empty()
+                                .setText(Component.translatable(EnumI18nType.MESSAGE, "previous_page"))
+                                .setGraphics(graphics)
+                        , mouseX
+                        , mouseY
+                        , screen.width
+                        , screen.height
+                );
+            }
+
+            if (mouseHelper.isLeftPressedInRect(x, y, w, h)) {
+                KeyValue<Double, Double> cursorPos = MouseHelper.getRawCursorPos();
+                mousePos.setKey(cursorPos.getKey()).setValue(cursorPos.getValue());
+                AotakeUtils.sendPacketToServer(new OpenDustbinToServer(-1));
+            }
+        }
+        // 下一页
+        {
+            int w = baseW;
+            int h = baseH;
+            int x = baseX - w - 1;
+            int y = baseY + (h + 1) * (yOffset++);
+            boolean hover = mouseHelper.isHoverInRect(x, y, w, h);
+
+            if (mouseHelper.isLeftPressing() && hover) {
+                x--;
+                y--;
+                w += 2;
+                h += 2;
+            }
+
+            ResourceLocation texture = TextureUtils.loadCustomTexture(TextureUtils.INTERNAL_THEME_DIR + "down.png");
+            AbstractGuiUtils.blitBlend(graphics, texture, x, y, 0, 0, w, h, w, h);
+
+            if (hover) {
+                AbstractGuiUtils.drawPopupMessage(Text.empty()
+                                .setText(Component.translatable(EnumI18nType.MESSAGE, "next_page"))
+                                .setGraphics(graphics)
+                        , mouseX
+                        , mouseY
+                        , screen.width
+                        , screen.height
+                );
+            }
+
+            if (mouseHelper.isLeftPressedInRect(x, y, w, h)) {
+                KeyValue<Double, Double> cursorPos = MouseHelper.getRawCursorPos();
+                mousePos.setKey(cursorPos.getKey()).setValue(cursorPos.getValue());
+                AotakeUtils.sendPacketToServer(new OpenDustbinToServer(1));
+            }
+        }
+
+    }
+
+    @SubscribeEvent
+    public static void onRenderScreen(ScreenEvent.KeyPressed.Pre event) {
+        Screen screen = event.getScreen();
+        Minecraft mc = Minecraft.getInstance();
+        if (!(screen instanceof ContainerScreen
+                && mc.player != null
+                && screen.getTitle().getString()
+                .startsWith(MOD_NAME.toTextComponent(AotakeUtils.getPlayerLanguage(mc.player)).getString())
+        )) {
+            return;
+        }
+        if (event.getModifiers() != 0) return;
+        if (event.getKeyCode() == ClientModEventHandler.DUSTBIN_KEY.getKey().getValue()) {
+            if (System.currentTimeMillis() - lastTime > 200) {
+                lastTime = System.currentTimeMillis();
+                mc.setScreen(null);
+            }
+        } else if (event.getKeyCode() == ClientModEventHandler.DUSTBIN_PRE_KEY.getKey().getValue()) {
+            if (System.currentTimeMillis() - lastTime > 200) {
+                lastTime = System.currentTimeMillis();
+                KeyValue<Double, Double> cursorPos = MouseHelper.getRawCursorPos();
+                mousePos.setKey(cursorPos.getKey()).setValue(cursorPos.getValue());
+                AotakeUtils.sendPacketToServer(new OpenDustbinToServer(-1));
+            }
+        } else if (event.getKeyCode() == ClientModEventHandler.DUSTBIN_NEXT_KEY.getKey().getValue()) {
+            if (System.currentTimeMillis() - lastTime > 200) {
+                lastTime = System.currentTimeMillis();
+                KeyValue<Double, Double> cursorPos = MouseHelper.getRawCursorPos();
+                mousePos.setKey(cursorPos.getKey()).setValue(cursorPos.getValue());
+                AotakeUtils.sendPacketToServer(new OpenDustbinToServer(1));
+            }
+        }
+    }
+
+    @SubscribeEvent
+    public static void onRenderOverlay(RenderGuiLayerEvent.Pre event) {
+        if (event.getName() == VanillaGuiLayers.EXPERIENCE_BAR || event.getName() == VanillaGuiLayers.EXPERIENCE_LEVEL) {
+            ProgressRender.renderProgress(event);
+        }
+    }
+
+    @SubscribeEvent
+    public static void onRenderOverlay(RenderGuiLayerEvent.Post event) {
+        if (event.getName() == VanillaGuiLayers.EXPERIENCE_BAR || event.getName() == VanillaGuiLayers.EXPERIENCE_LEVEL) {
+            ProgressRender.renderProgress(event);
         }
     }
 

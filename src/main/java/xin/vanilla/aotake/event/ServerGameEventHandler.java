@@ -82,6 +82,14 @@ public class ServerGameEventHandler {
     }
 
     /**
+     * 玩家登录事件
+     */
+    @SubscribeEvent
+    public static void onPlayerLoggedIn(PlayerEvent.PlayerLoggedInEvent event) {
+        EventHandlerProxy.onPlayerLoggedIn(event);
+    }
+
+    /**
      * 玩家登出事件
      */
     @SubscribeEvent

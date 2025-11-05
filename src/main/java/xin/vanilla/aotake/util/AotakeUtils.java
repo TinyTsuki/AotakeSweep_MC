@@ -50,9 +50,9 @@ import xin.vanilla.aotake.AotakeSweep;
 import xin.vanilla.aotake.config.CommonConfig;
 import xin.vanilla.aotake.config.CustomConfig;
 import xin.vanilla.aotake.config.ServerConfig;
-import xin.vanilla.aotake.data.Coordinate;
 import xin.vanilla.aotake.data.KeyValue;
 import xin.vanilla.aotake.data.SweepResult;
+import xin.vanilla.aotake.data.WorldCoordinate;
 import xin.vanilla.aotake.data.player.PlayerSweepData;
 import xin.vanilla.aotake.data.world.WorldTrashData;
 import xin.vanilla.aotake.enums.*;
@@ -186,7 +186,7 @@ public class AotakeUtils {
     /**
      * 获取传送指令
      */
-    public static String genTeleportCommand(Coordinate coordinate) {
+    public static String genTeleportCommand(WorldCoordinate coordinate) {
         if (ModList.get().isLoaded("narcissus_farewell")) {
             return String.format("/%s %s %s %s safe %s"
                     , CompatNarcissus.getTpCommand()
@@ -203,6 +203,41 @@ public class AotakeUtils {
                     , coordinate.getZInt()
             );
         }
+    }
+
+    /**
+     * 执行指令
+     */
+    public static boolean executeCommand(@NonNull ServerPlayer player, @NonNull String command) {
+        AtomicBoolean result = new AtomicBoolean(false);
+        try {
+            MinecraftServer server = player.getServer();
+            CommandSourceStack commandSourceStack = player.createCommandSourceStack()
+                    .withPermission(2)
+                    .withCallback((r, count) -> result.set(r));
+            server.getCommands().performPrefixedCommand(commandSourceStack, command);
+        } catch (Exception e) {
+            LOGGER.error("Failed to execute command: {}", command, e);
+        }
+        return result.get();
+    }
+
+    /**
+     * 执行指令
+     */
+    public static boolean executeCommandNoOutput(@NonNull ServerPlayer player, @NonNull String command) {
+        AtomicBoolean result = new AtomicBoolean(false);
+        try {
+            MinecraftServer server = player.getServer();
+            CommandSourceStack commandSourceStack = player.createCommandSourceStack()
+                    .withSuppressedOutput()
+                    .withPermission(2)
+                    .withCallback((r, count) -> result.set(r));
+            server.getCommands().performPrefixedCommand(commandSourceStack, command);
+        } catch (Exception e) {
+            LOGGER.error("Failed to execute command: {}", command, e);
+        }
+        return result.get();
     }
 
     // endregion 指令相关
@@ -494,9 +529,26 @@ public class AotakeUtils {
         }
     }
 
-    public static boolean isJunkItem(Entity entity) {
+    public static boolean isJunkItem(Entity entity, boolean chuck) {
         boolean result = false;
         if (isItem(entity)) {
+            List<? extends String> dimensions = ServerConfig.DIMENSION_LIST.get();
+            boolean inDim;
+            // 空列表
+            if (CollectionUtils.isNullOrEmpty(dimensions)) {
+                inDim = EnumListType.WHITE.name().equals(ServerConfig.DIMENSION_LIST_MODE.get());
+            }
+            // 黑名单模式
+            else if (EnumListType.BLACK.name().equals(ServerConfig.DIMENSION_LIST_MODE.get())) {
+                inDim = dimensions.contains(getDimensionRegistryName(entity.level()));
+            }
+            // 白名单模式
+            else {
+                inDim = !dimensions.contains(getDimensionRegistryName(entity.level()));
+            }
+            if (!(inDim || chuck && ServerConfig.DIMENSION_LIST_IGNORE_CHUNK.get())) return false;
+            // else 在维度 或 (区块模式 且 开启忽略区块)
+
             // 空列表
             if (CollectionUtils.isNullOrEmpty(ServerConfig.ITEM_LIST.get())) {
                 result = EnumListType.WHITE.name().equals(ServerConfig.ITEM_LIST_MODE.get());
@@ -516,6 +568,22 @@ public class AotakeUtils {
     public static boolean isJunkEntity(Entity entity, boolean chuck) {
         boolean result = false;
         if (entity != null && !(entity instanceof Player) && !entity.hasCustomName()) {
+            List<? extends String> dimensions = ServerConfig.DIMENSION_LIST.get();
+            boolean inDim;
+            // 空列表
+            if (CollectionUtils.isNullOrEmpty(dimensions)) {
+                inDim = EnumListType.WHITE.name().equals(ServerConfig.DIMENSION_LIST_MODE.get());
+            }
+            // 黑名单模式
+            else if (EnumListType.BLACK.name().equals(ServerConfig.DIMENSION_LIST_MODE.get())) {
+                inDim = dimensions.contains(getDimensionRegistryName(entity.level()));
+            }
+            // 白名单模式
+            else {
+                inDim = !dimensions.contains(getDimensionRegistryName(entity.level()));
+            }
+            if (!(inDim || (chuck && ServerConfig.DIMENSION_LIST_IGNORE_CHUNK.get()))) return false;
+            // else 在维度 或 (区块模式 且 开启忽略区块)
             if (chuck) {
                 // 空列表
                 if (CollectionUtils.isNullOrEmpty(ServerConfig.CHUNK_CHECK_ENTITY_LIST.get())) {
@@ -576,7 +644,7 @@ public class AotakeUtils {
                 .filter(entity -> entity instanceof ItemEntity)
                 .map(entity -> (ItemEntity) entity)
                 // 白名单物品
-                .filter(item -> !isJunkItem(item))
+                .filter(item -> !isJunkItem(item, chuck))
                 .collect(Collectors.groupingBy(item -> getItemRegistryName(item.getItem()), Collectors.toList()))
                 .entrySet().stream()
                 .filter(entry -> entry.getValue().size() > ServerConfig.ITEM_LIST_LIMIT.get())
@@ -649,7 +717,7 @@ public class AotakeUtils {
             }
 
             // 物品名单过滤
-            if (isItem && !isJunkItem(entity) && !exceededWhiteBlackList.contains(entity)) {
+            if (isItem && !isJunkItem(entity, chuck) && !exceededWhiteBlackList.contains(entity)) {
                 return false;
             }
 
@@ -698,8 +766,10 @@ public class AotakeUtils {
     }
 
     public static void sweep() {
+        LOGGER.debug("Sweep started at {}", System.currentTimeMillis());
         List<Entity> entities = getAllEntities();
         AotakeUtils.sweep(null, entities, false);
+        LOGGER.debug("Sweep finished at {}", System.currentTimeMillis());
     }
 
     public static void sweep(@Nullable ServerPlayer player, List<Entity> entities, boolean chuck) {
@@ -715,64 +785,27 @@ public class AotakeUtils {
 
             List<Entity> list = getAllEntitiesByFilter(entities, chuck);
 
-            SweepResult result = null;
-            if (CollectionUtils.isNotNullOrEmpty(list)) {
-                // 清空旧的物品
-                if (ServerConfig.SELF_CLEAN_MODE.get().contains(EnumSelfCleanMode.SWEEP_CLEAR.name())) {
-                    switch (EnumDustbinMode.valueOfOrDefault(ServerConfig.DUSTBIN_MODE.get())) {
-                        case VIRTUAL: {
-                            clearVirtualDustbin();
-                        }
-                        break;
-                        case BLOCK: {
-                            clearDustbinBlock();
-                        }
-                        break;
-                        default: {
-                            clearVirtualDustbin();
-                            clearDustbinBlock();
-                        }
+            // if (CollectionUtils.isNotNullOrEmpty(list)) {
+            // 清空旧的物品
+            if (ServerConfig.SELF_CLEAN_MODE.get().contains(EnumSelfCleanMode.SWEEP_CLEAR.name())) {
+                switch (EnumDustbinMode.valueOfOrDefault(ServerConfig.DUSTBIN_MODE.get())) {
+                    case VIRTUAL: {
+                        clearVirtualDustbin();
+                    }
+                    break;
+                    case BLOCK: {
+                        clearDustbinBlock();
+                    }
+                    break;
+                    default: {
+                        clearVirtualDustbin();
+                        clearDustbinBlock();
                     }
                 }
-                result = AotakeSweep.getEntitySweeper().addDrops(list);
             }
+            AotakeSweep.getEntitySweeper().addDrops(list, new SweepResult());
+            // }
 
-            for (ServerPlayer p : players) {
-                String language = AotakeUtils.getPlayerLanguage(p);
-                Component msg = getWarningMessage(result == null || result.isEmpty() ? "fail" : "success"
-                        , language
-                        , result);
-                PlayerSweepData playerData = PlayerSweepData.getData(p);
-                if (playerData.isShowSweepResult()) {
-                    String openCom = "/" + AotakeUtils.getCommand(EnumCommandType.DUSTBIN_OPEN);
-                    msg.setClickEvent(new ClickEvent(ClickEvent.Action.SUGGEST_COMMAND, openCom))
-                            .setHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT
-                                    , Component.literal(openCom).toTextComponent())
-                            );
-                    AotakeUtils.sendMessage(p, Component.empty()
-                            .append(msg)
-                            .append(Component.literal("[x]")
-                                    .setColor(EnumMCColor.RED.getColor())
-                                    .setHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT
-                                            , Component.translatable(EnumI18nType.MESSAGE, "not_show_button")
-                                            .toTextComponent(language))
-                                    )
-                                    .setClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND
-                                            , "/" + AotakeUtils.getCommandPrefix() + " config showSweepResult change")
-                                    )
-                            )
-                    );
-                } else {
-                    AotakeUtils.sendActionBarMessage(p, msg);
-                }
-                if (playerData.isEnableWarningVoice()) {
-                    String voice = getWarningVoice(result == null || result.isEmpty() ? "fail" : "success");
-                    float volume = CommonConfig.SWEEP_WARNING_VOICE_VOLUME.get() / 100f;
-                    if (StringUtils.isNotNullOrEmpty(voice)) {
-                        AotakeUtils.executeCommandNoOutput(p, String.format("playsound %s voice @s ~ ~ ~ %s", voice, volume));
-                    }
-                }
-            }
         } catch (Exception e) {
             LOGGER.error(e);
             for (ServerPlayer p : players) {
@@ -816,7 +849,7 @@ public class AotakeUtils {
 
     private static void clearDustbinBlock() {
         for (String pos : ServerConfig.DUSTBIN_BLOCK_POSITIONS.get()) {
-            Coordinate coordinate = Coordinate.fromSimpleString(pos);
+            WorldCoordinate coordinate = WorldCoordinate.fromSimpleString(pos);
             if (coordinate != null) {
                 IItemHandler handler = getBlockItemHandler(coordinate);
                 if (handler != null) {
@@ -981,32 +1014,6 @@ public class AotakeUtils {
     // region 杂项
 
     /**
-     * 执行指令
-     */
-    public static boolean executeCommand(@NonNull ServerPlayer player, @NonNull String command) {
-        AtomicBoolean result = new AtomicBoolean(false);
-        try {
-            player.getServer().getCommands().performPrefixedCommand(player.createCommandSourceStack().withCallback((r, count) -> result.set(r)), command);
-        } catch (Exception e) {
-            LOGGER.error("Failed to execute command: {}", command, e);
-        }
-        return result.get();
-    }
-
-    /**
-     * 执行指令
-     */
-    public static boolean executeCommandNoOutput(@NonNull ServerPlayer player, @NonNull String command) {
-        AtomicBoolean result = new AtomicBoolean(false);
-        try {
-            player.getServer().getCommands().performPrefixedCommand(player.createCommandSourceStack().withSuppressedOutput().withCallback((r, count) -> result.set(r)), command);
-        } catch (Exception e) {
-            LOGGER.error("Failed to execute command: {}", command, e);
-        }
-        return result.get();
-    }
-
-    /**
      * 获取指定维度的世界实例
      */
     public static ServerLevel getWorld(ResourceKey<Level> dimension) {
@@ -1149,10 +1156,18 @@ public class AotakeUtils {
         return player.getUUID().toString();
     }
 
+    public static String getPlayerName(@NonNull Player player) {
+        return player.getName().getString();
+    }
+
+    public static ServerPlayer getPlayerByUUID(String uuid) {
+        return AotakeSweep.getServerInstance().key().getPlayerList().getPlayer(UUID.fromString(uuid));
+    }
+
     /**
      * 将物品添加到指定的方块容器
      */
-    public static ItemStack addItemToBlock(ItemStack stack, Coordinate coordinate) {
+    public static ItemStack addItemToBlock(ItemStack stack, WorldCoordinate coordinate) {
         if (stack == null || stack.isEmpty()) return ItemStack.EMPTY;
 
         try {
@@ -1169,7 +1184,7 @@ public class AotakeUtils {
     /**
      * 获取指定的方块容器
      */
-    public static IItemHandler getBlockItemHandler(Coordinate coordinate) {
+    public static IItemHandler getBlockItemHandler(WorldCoordinate coordinate) {
         ServerLevel level = AotakeSweep.getServerInstance().key().getLevel(coordinate.getDimension());
         if (level == null) return null;
 
@@ -1199,6 +1214,10 @@ public class AotakeUtils {
         }
 
         return handler;
+    }
+
+    public static String getDimensionRegistryName(Level world) {
+        return world.dimension().location().toString();
     }
 
     // endregion 杂项
