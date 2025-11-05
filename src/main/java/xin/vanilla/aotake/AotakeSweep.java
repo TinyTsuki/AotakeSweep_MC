@@ -19,6 +19,7 @@ import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import xin.vanilla.aotake.command.AotakeCommand;
+import xin.vanilla.aotake.config.ClientConfig;
 import xin.vanilla.aotake.config.CommonConfig;
 import xin.vanilla.aotake.config.CustomConfig;
 import xin.vanilla.aotake.config.ServerConfig;
@@ -50,10 +51,7 @@ public class AotakeSweep {
     private final static KeyValue<MinecraftServer, Boolean> serverInstance = new KeyValue<>(null, true);
 
     /**
-     * 已安装mod的玩家列表</br>
-     * 玩家UUID:是否已同步数据</br>
-     * 在该map的玩家都为已安装mod</br>
-     * 布尔值为false时为未同步数据，将会在玩家tick事件中检测并同步数据
+     * 已安装mod的玩家列表
      */
     @Getter
     private static final Set<String> customConfigStatus = new HashSet<>();
@@ -69,6 +67,19 @@ public class AotakeSweep {
      */
     @Getter
     private static final Map<String, Integer> playerDustbinPage = new ConcurrentHashMap<>();
+
+    /**
+     * 客户端-服务器时间
+     */
+    @Getter
+    private static final KeyValue<Long, Long> clientServerTime = new KeyValue<>(0L, 0L);
+
+    /**
+     * 扫地间隔-下次扫地时间
+     */
+    @Getter
+    private static final KeyValue<Long, Long> sweepTime = new KeyValue<>(0L, 0L);
+
 
     public static final Random RANDOM = new Random();
 
@@ -99,6 +110,7 @@ public class AotakeSweep {
         // 注册配置
         ModLoadingContext.get().registerConfig(ModConfig.Type.COMMON, CommonConfig.COMMON_CONFIG);
         ModLoadingContext.get().registerConfig(ModConfig.Type.SERVER, ServerConfig.SERVER_CONFIG);
+        ModLoadingContext.get().registerConfig(ModConfig.Type.CLIENT, ClientConfig.CLIENT_CONFIG);
 
         // 注册客户端设置事件
         FMLJavaModLoadingContext.get().getModEventBus().addListener(this::onClientSetup);
