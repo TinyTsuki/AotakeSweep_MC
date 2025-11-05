@@ -29,14 +29,15 @@ import xin.vanilla.aotake.config.CommonConfig;
 import xin.vanilla.aotake.config.CustomConfig;
 import xin.vanilla.aotake.config.ServerConfig;
 import xin.vanilla.aotake.data.ConcurrentShuffleList;
-import xin.vanilla.aotake.data.Coordinate;
 import xin.vanilla.aotake.data.KeyValue;
+import xin.vanilla.aotake.data.WorldCoordinate;
 import xin.vanilla.aotake.data.player.PlayerSweepData;
 import xin.vanilla.aotake.data.world.WorldTrashData;
 import xin.vanilla.aotake.enums.EnumChunkCheckMode;
 import xin.vanilla.aotake.enums.EnumI18nType;
 import xin.vanilla.aotake.enums.EnumMCColor;
 import xin.vanilla.aotake.enums.EnumSelfCleanMode;
+import xin.vanilla.aotake.network.packet.SweepTimeSyncToClient;
 import xin.vanilla.aotake.util.*;
 
 import java.util.List;
@@ -74,6 +75,8 @@ public class EventHandlerProxy {
                     .getPlayerList()
                     .getPlayers()
             ) {
+                // 给已安装mod玩家同步扫地倒计时
+                AotakeUtils.sendPacketToPlayer(new SweepTimeSyncToClient(), player);
                 Component warningMessage = AotakeUtils.getWarningMessage(warnKey, AotakeUtils.getPlayerLanguage(player), null);
                 if (warningMessage != null) {
                     AotakeUtils.sendActionBarMessage(player, warningMessage);
@@ -101,6 +104,10 @@ public class EventHandlerProxy {
         if (countdown <= 0) {
             nextSweepTime = now + ServerConfig.SWEEP_INTERVAL.get();
             new Thread(AotakeUtils::sweep).start();
+            // 给已安装mod玩家同步扫地倒计时
+            for (String uuid : AotakeSweep.getCustomConfigStatus()) {
+                AotakeUtils.sendPacketToPlayer(new SweepTimeSyncToClient(), AotakeUtils.getPlayerByUUID(uuid));
+            }
         }
 
         // 自清洁
@@ -117,7 +124,7 @@ public class EventHandlerProxy {
             // 随机删除
             else if (ServerConfig.SELF_CLEAN_MODE.get().contains(EnumSelfCleanMode.SCHEDULED_DELETE.name())) {
                 if (AotakeSweep.RANDOM.nextBoolean()) {
-                    ConcurrentShuffleList<KeyValue<Coordinate, ItemStack>> dropList = worldTrashData.getDropList();
+                    ConcurrentShuffleList<KeyValue<WorldCoordinate, ItemStack>> dropList = worldTrashData.getDropList();
                     dropList.removeRandom();
                 } else {
                     if (CollectionUtils.isNotNullOrEmpty(inventories)) {
@@ -166,7 +173,7 @@ public class EventHandlerProxy {
                     if (ServerConfig.CHUNK_CHECK_NOTICE.get()) {
                         Map.Entry<String, List<Entity>> entityEntryList = overcrowdedChunks.getFirst();
                         Entity entity = entityEntryList.getValue().getFirst();
-                        Coordinate entityCoordinate = new Coordinate(entity);
+                        WorldCoordinate entityCoordinate = new WorldCoordinate(entity);
                         for (ServerPlayer player : server.getPlayerList().getPlayers()) {
                             String language = AotakeUtils.getPlayerLanguage(player);
 
@@ -199,7 +206,7 @@ public class EventHandlerProxy {
                                                 .setClickEvent(new ClickEvent(ClickEvent.Action.COPY_TO_CLIPBOARD
                                                         , overcrowdedChunks.stream()
                                                         .map(entry -> {
-                                                            Coordinate coordinate = new Coordinate(entry.getValue().getFirst());
+                                                            WorldCoordinate coordinate = new WorldCoordinate(entry.getValue().getFirst());
                                                             return String.format("Dimension: %s, Chunk: %s %s, Entities: %s",
                                                                     coordinate.getDimensionResourceId(),
                                                                     coordinate.getXInt() >> 4,
@@ -234,7 +241,7 @@ public class EventHandlerProxy {
                         entities.subList(0, Math.min(ServerConfig.CHUNK_CHECK_RETAIN.get(), entities.size())).clear();
                     });
 
-                    AotakeScheduler.schedule(server.overworld(), 25, () -> {
+                    AotakeScheduler.schedule(server, 25, () -> {
                         try {
                             List<Entity> entities = overcrowdedChunks.stream()
                                     .flatMap(entry -> entry.getValue().stream())
@@ -305,14 +312,14 @@ public class EventHandlerProxy {
         if (AotakeSweep.isDisable()) return;
         if (event.getEntity() instanceof ServerPlayer player) {
             ItemStack original = event.getItemStack();
-            releaseEntity(event, player, original, new Coordinate(event.getHitVec().getLocation().x(), event.getHitVec().getLocation().y(), event.getHitVec().getLocation().z()));
+            releaseEntity(event, player, original, new WorldCoordinate(event.getHitVec().getLocation().x(), event.getHitVec().getLocation().y(), event.getHitVec().getLocation().z()));
         }
     }
 
     /**
      * 释放实体
      */
-    private static Entity releaseEntity(PlayerInteractEvent event, ServerPlayer player, ItemStack original, Coordinate coordinate) {
+    private static Entity releaseEntity(PlayerInteractEvent event, ServerPlayer player, ItemStack original, WorldCoordinate coordinate) {
         ItemStack copy = original.copy();
         copy.setCount(1);
 
@@ -382,7 +389,7 @@ public class EventHandlerProxy {
                 if (customData.contains(AotakeSweep.MODID)) {
                     CompoundTag aotake = customData.getCompound(AotakeSweep.MODID);
                     if (!aotake.isEmpty()) {
-                        Coordinate coordinate = new Coordinate(entity.getX(), entity.getY(), entity.getZ());
+                        WorldCoordinate coordinate = new WorldCoordinate(entity.getX(), entity.getY(), entity.getZ());
                         Entity back = releaseEntity(event, player, original, coordinate);
                         if (back != null) {
                             // 让实体骑乘
@@ -463,12 +470,24 @@ public class EventHandlerProxy {
     }
 
     /**
+     * 玩家登录事件
+     */
+    public static void onPlayerLoggedIn(PlayerEvent.PlayerLoggedInEvent event) {
+        if (event.getEntity() instanceof ServerPlayer player) {
+            AotakeUtils.sendPacketToPlayer(new SweepTimeSyncToClient(), player);
+        }
+    }
+
+    /**
      * 玩家登出事件
      */
     public static void onPlayerLoggedOut(PlayerEvent.PlayerLoggedOutEvent event) {
         // 玩家退出服务器时移除mod安装状态
         if (event.getEntity() instanceof ServerPlayer) {
             AotakeSweep.getCustomConfigStatus().remove(event.getEntity().getStringUUID());
+        } else {
+            AotakeSweep.getClientServerTime().setKey(0L).setValue(0L);
+            AotakeSweep.getSweepTime().setKey(0L).setValue(0L);
         }
     }
 }
