@@ -3,10 +3,7 @@ package xin.vanilla.aotake.network;
 import net.minecraftforge.fmllegacy.network.NetworkRegistry;
 import net.minecraftforge.fmllegacy.network.simple.SimpleChannel;
 import xin.vanilla.aotake.AotakeSweep;
-import xin.vanilla.aotake.network.packet.ClearDustbinToServer;
-import xin.vanilla.aotake.network.packet.ClientLoadedToServer;
-import xin.vanilla.aotake.network.packet.CustomConfigSyncToClient;
-import xin.vanilla.aotake.network.packet.OpenDustbinToServer;
+import xin.vanilla.aotake.network.packet.*;
 
 public class ModNetworkHandler {
     private static final String PROTOCOL_VERSION = "1";
@@ -27,5 +24,6 @@ public class ModNetworkHandler {
         INSTANCE.registerMessage(nextID(), ClearDustbinToServer.class, ClearDustbinToServer::toBytes, ClearDustbinToServer::new, ClearDustbinToServer::handle);
         INSTANCE.registerMessage(nextID(), ClientLoadedToServer.class, ClientLoadedToServer::toBytes, ClientLoadedToServer::new, ClientLoadedToServer::handle);
         INSTANCE.registerMessage(nextID(), CustomConfigSyncToClient.class, CustomConfigSyncToClient::toBytes, CustomConfigSyncToClient::new, CustomConfigSyncToClient::handle);
+        INSTANCE.registerMessage(nextID(), SweepTimeSyncToClient.class, SweepTimeSyncToClient::toBytes, SweepTimeSyncToClient::new, SweepTimeSyncToClient::handle);
     }
 }

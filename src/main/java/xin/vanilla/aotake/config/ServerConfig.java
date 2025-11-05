@@ -185,6 +185,39 @@ public class ServerConfig {
      */
     public static final ForgeConfigSpec.ConfigValue<String> DUSTBIN_MODE;
 
+
+    /**
+     * 每tick清理实体上限
+     */
+    public static final ForgeConfigSpec.IntValue SWEEP_ENTITY_LIMIT;
+
+    /**
+     * 每批次清理间隔tick
+     */
+    public static final ForgeConfigSpec.IntValue SWEEP_ENTITY_INTERVAL;
+
+    /**
+     * 每次清理的批次上限
+     */
+    public static final ForgeConfigSpec.IntValue SWEEP_BATCH_LIMIT;
+
+
+    /**
+     * 维度名单
+     */
+    public static final ForgeConfigSpec.ConfigValue<List<? extends String>> DIMENSION_LIST;
+
+    /**
+     * 维度名单应用模式
+     */
+    public static final ForgeConfigSpec.ConfigValue<String> DIMENSION_LIST_MODE;
+
+    /**
+     * 区块清理是否忽略维度名单
+     */
+    public static final ForgeConfigSpec.BooleanValue DIMENSION_LIST_IGNORE_CHUNK;
+
+
     // endregion 基础设置
 
 
@@ -570,6 +603,62 @@ public class ServerConfig {
                 SERVER_BUILDER.pop();
             }
 
+            // 分批次清理
+            {
+                SERVER_BUILDER.comment("Batch", "批次").push("batch");
+
+                // 每tick清理实体上限
+                SWEEP_ENTITY_LIMIT = SERVER_BUILDER
+                        .comment("The maximum number of entities to clean up per tick, prevents server lag caused by removing too many entities at once."
+                                , "每tick清理实体上限，避免单次清理过多实体导致服务器卡顿。")
+                        .defineInRange("sweepEntityLimit", 500, 1, Integer.MAX_VALUE);
+
+                // 每批次清理间隔tick
+                SWEEP_ENTITY_INTERVAL = SERVER_BUILDER
+                        .comment("The interval between sweeps in ticks."
+                                , "每批次清理间隔tick。")
+                        .defineInRange("sweepEntityInterval", 2, 1, Integer.MAX_VALUE);
+
+                // 每次清理的批次上限
+                SWEEP_BATCH_LIMIT = SERVER_BUILDER
+                        .comment("The maximum number of batches per cleanup, prevents excessive batching that could slow down the cleanup process."
+                                , "This setting takes priority over sweepEntityLimit."
+                                , "每次清理的批次上限，避免单次清理分批次过多导致清理过慢，该配置项优先级大于sweepEntityLimit。")
+                        .defineInRange("sweepBatchLimit", 10, 1, Integer.MAX_VALUE);
+
+                SERVER_BUILDER.pop();
+            }
+
+            // 维度
+            {
+                SERVER_BUILDER.comment("Dimension", "维度").push("dimension");
+
+                // 维度名单
+                DIMENSION_LIST = SERVER_BUILDER
+                        .comment("The dimension list, the following dimensions will be cleaned up according to the dimensionListMode."
+                                , "维度名单，与配置 dimensionListMode 共同决定列表中的维度是否清理。")
+                        .defineList("dimensionList", new ArrayList<>()
+                                , o -> o instanceof String);
+
+                // 维度名单应用模式
+                DIMENSION_LIST_MODE = SERVER_BUILDER
+                        .comment("The application mode of the dimension list:"
+                                , "BLACK: Blacklist, only the dimension listed will be cleaned up;"
+                                , "WHITE: Whitelist, all dimensions except those listed will be cleaned up."
+                                , "维度名单应用模式："
+                                , "BLACK：黑名单，仅会清理列表中列出的维度；"
+                                , "WHITE：白名单，将会清理列表中未列出的所有维度。")
+                        .define("dimensionListMode", EnumListType.WHITE.name(), EnumListType::isValid);
+
+                // 区块清理是否忽略维度名单
+                DIMENSION_LIST_IGNORE_CHUNK = SERVER_BUILDER
+                        .comment("Whether to ignore the dimension list when cleaning up chunks."
+                                , "是否在清理区块时忽略维度名单。")
+                        .define("dimensionListIgnoreChunk", false);
+
+                SERVER_BUILDER.pop();
+            }
+
             SERVER_BUILDER.pop();
         }
 
@@ -689,6 +778,9 @@ public class ServerConfig {
         DUSTBIN_PERSISTENT.set(true);
         DUSTBIN_BLOCK_POSITIONS.set(new ArrayList<>());
         DUSTBIN_MODE.set(EnumDustbinMode.VIRTUAL.name());
+        SWEEP_ENTITY_LIMIT.set(500);
+        SWEEP_ENTITY_INTERVAL.set(2);
+        SWEEP_BATCH_LIMIT.set(10);
 
         PERMISSION_VIRTUAL_OP.set(4);
         PERMISSION_DUSTBIN_OPEN.set(0);
@@ -700,6 +792,9 @@ public class ServerConfig {
         PERMISSION_SWEEP.set(0);
         PERMISSION_CLEAR_DROP.set(1);
         PERMISSION_DELAY_SWEEP.set(1);
+
+        DIMENSION_LIST.set(new ArrayList<>());
+        DIMENSION_LIST_MODE.set(EnumListType.WHITE.name());
 
         SERVER_CONFIG.save();
     }
