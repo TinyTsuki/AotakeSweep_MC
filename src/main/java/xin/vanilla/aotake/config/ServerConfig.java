@@ -201,6 +201,23 @@ public class ServerConfig {
      */
     public static final ForgeConfigSpec.IntValue SWEEP_BATCH_LIMIT;
 
+
+    /**
+     * 维度名单
+     */
+    public static final ForgeConfigSpec.ConfigValue<List<? extends String>> DIMENSION_LIST;
+
+    /**
+     * 维度名单应用模式
+     */
+    public static final ForgeConfigSpec.ConfigValue<String> DIMENSION_LIST_MODE;
+
+    /**
+     * 区块清理是否忽略维度名单
+     */
+    public static final ForgeConfigSpec.BooleanValue DIMENSION_LIST_IGNORE_CHUNK;
+
+
     // endregion 基础设置
 
 
@@ -612,6 +629,36 @@ public class ServerConfig {
                 SERVER_BUILDER.pop();
             }
 
+            // 维度
+            {
+                SERVER_BUILDER.comment("Dimension", "维度").push("dimension");
+
+                // 维度名单
+                DIMENSION_LIST = SERVER_BUILDER
+                        .comment("The dimension list, the following dimensions will be cleaned up according to the dimensionListMode."
+                                , "维度名单，与配置 dimensionListMode 共同决定列表中的维度是否清理。")
+                        .defineList("dimensionList", new ArrayList<>()
+                                , o -> o instanceof String);
+
+                // 维度名单应用模式
+                DIMENSION_LIST_MODE = SERVER_BUILDER
+                        .comment("The application mode of the dimension list:"
+                                , "BLACK: Blacklist, only the dimension listed will be cleaned up;"
+                                , "WHITE: Whitelist, all dimensions except those listed will be cleaned up."
+                                , "维度名单应用模式："
+                                , "BLACK：黑名单，仅会清理列表中列出的维度；"
+                                , "WHITE：白名单，将会清理列表中未列出的所有维度。")
+                        .define("dimensionListMode", EnumListType.WHITE.name(), EnumListType::isValid);
+
+                // 区块清理是否忽略维度名单
+                DIMENSION_LIST_IGNORE_CHUNK = SERVER_BUILDER
+                        .comment("Whether to ignore the dimension list when cleaning up chunks."
+                                , "是否在清理区块时忽略维度名单。")
+                        .define("dimensionListIgnoreChunk", false);
+
+                SERVER_BUILDER.pop();
+            }
+
             SERVER_BUILDER.pop();
         }
 
@@ -745,6 +792,9 @@ public class ServerConfig {
         PERMISSION_SWEEP.set(0);
         PERMISSION_CLEAR_DROP.set(1);
         PERMISSION_DELAY_SWEEP.set(1);
+
+        DIMENSION_LIST.set(new ArrayList<>());
+        DIMENSION_LIST_MODE.set(EnumListType.WHITE.name());
 
         SERVER_CONFIG.save();
     }

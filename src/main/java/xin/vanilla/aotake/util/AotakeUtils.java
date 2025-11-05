@@ -599,9 +599,26 @@ public class AotakeUtils {
         }
     }
 
-    public static boolean isJunkItem(Entity entity) {
+    public static boolean isJunkItem(Entity entity, boolean chuck) {
         boolean result = false;
         if (isItem(entity)) {
+            List<? extends String> dimensions = ServerConfig.DIMENSION_LIST.get();
+            boolean inDim;
+            // 空列表
+            if (CollectionUtils.isNullOrEmpty(dimensions)) {
+                inDim = EnumListType.WHITE.name().equals(ServerConfig.DIMENSION_LIST_MODE.get());
+            }
+            // 黑名单模式
+            else if (EnumListType.BLACK.name().equals(ServerConfig.DIMENSION_LIST_MODE.get())) {
+                inDim = dimensions.contains(getDimensionRegistryName(entity.level));
+            }
+            // 白名单模式
+            else {
+                inDim = !dimensions.contains(getDimensionRegistryName(entity.level));
+            }
+            if (!(inDim || chuck && ServerConfig.DIMENSION_LIST_IGNORE_CHUNK.get())) return false;
+            // else 在维度 或 (区块模式 且 开启忽略区块)
+
             // 空列表
             if (CollectionUtils.isNullOrEmpty(ServerConfig.ITEM_LIST.get())) {
                 result = EnumListType.WHITE.name().equals(ServerConfig.ITEM_LIST_MODE.get());
@@ -621,6 +638,23 @@ public class AotakeUtils {
     public static boolean isJunkEntity(Entity entity, boolean chuck) {
         boolean result = false;
         if (entity != null && !(entity instanceof PlayerEntity) && !entity.hasCustomName()) {
+            List<? extends String> dimensions = ServerConfig.DIMENSION_LIST.get();
+            boolean inDim;
+            // 空列表
+            if (CollectionUtils.isNullOrEmpty(dimensions)) {
+                inDim = EnumListType.WHITE.name().equals(ServerConfig.DIMENSION_LIST_MODE.get());
+            }
+            // 黑名单模式
+            else if (EnumListType.BLACK.name().equals(ServerConfig.DIMENSION_LIST_MODE.get())) {
+                inDim = dimensions.contains(getDimensionRegistryName(entity.level));
+            }
+            // 白名单模式
+            else {
+                inDim = !dimensions.contains(getDimensionRegistryName(entity.level));
+            }
+            if (!(inDim || (chuck && ServerConfig.DIMENSION_LIST_IGNORE_CHUNK.get()))) return false;
+            // else 在维度 或 (区块模式 且 开启忽略区块)
+
             if (chuck) {
                 // 空列表
                 if (CollectionUtils.isNullOrEmpty(ServerConfig.CHUNK_CHECK_ENTITY_LIST.get())) {
@@ -681,7 +715,7 @@ public class AotakeUtils {
                 .filter(entity -> entity instanceof ItemEntity)
                 .map(entity -> (ItemEntity) entity)
                 // 白名单物品
-                .filter(item -> !isJunkItem(item))
+                .filter(item -> !isJunkItem(item, chuck))
                 .collect(Collectors.groupingBy(item -> getItemRegistryName(item.getItem()), Collectors.toList()))
                 .entrySet().stream()
                 .filter(entry -> entry.getValue().size() > ServerConfig.ITEM_LIST_LIMIT.get())
@@ -754,7 +788,7 @@ public class AotakeUtils {
             }
 
             // 物品名单过滤
-            if (isItem && !isJunkItem(entity) && !exceededWhiteBlackList.contains(entity)) {
+            if (isItem && !isJunkItem(entity, chuck) && !exceededWhiteBlackList.contains(entity)) {
                 return false;
             }
 
@@ -1256,6 +1290,10 @@ public class AotakeUtils {
         }
 
         return null;
+    }
+
+    public static String getDimensionRegistryName(World world) {
+        return world.dimension().location().toString();
     }
 
     // endregion 杂项
