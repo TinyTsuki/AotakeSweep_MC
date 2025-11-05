@@ -3,8 +3,11 @@ package xin.vanilla.aotake.util;
 import lombok.NonNull;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.network.chat.ClickEvent;
+import net.minecraft.network.chat.HoverEvent;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.SimpleContainer;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.item.ItemEntity;
@@ -14,14 +17,15 @@ import net.minecraft.world.item.component.CustomData;
 import net.minecraft.world.level.Level;
 import net.minecraftforge.entity.PartEntity;
 import net.minecraftforge.items.IItemHandler;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import xin.vanilla.aotake.AotakeSweep;
 import xin.vanilla.aotake.config.CommonConfig;
 import xin.vanilla.aotake.config.ServerConfig;
 import xin.vanilla.aotake.data.*;
+import xin.vanilla.aotake.data.player.PlayerSweepData;
 import xin.vanilla.aotake.data.world.WorldTrashData;
-import xin.vanilla.aotake.enums.EnumDustbinMode;
-import xin.vanilla.aotake.enums.EnumOverflowMode;
-import xin.vanilla.aotake.enums.EnumSelfCleanMode;
+import xin.vanilla.aotake.enums.*;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -30,10 +34,12 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 public class EntitySweeper {
+    private static final Logger LOGGER = LogManager.getLogger();
+
     private static final Map<ResourceKey<Level>, Queue<KeyValue<Entity, Boolean>>> pendingRemovals = new ConcurrentHashMap<>();
 
     private List<SimpleContainer> inventoryList;
-    private ConcurrentShuffleList<KeyValue<Coordinate, ItemStack>> dropList;
+    private ConcurrentShuffleList<KeyValue<WorldCoordinate, ItemStack>> dropList;
     private Queue<DropStatistics> dropCount;
 
     private final Set<Entity> entitiesToRemove = ConcurrentHashMap.newKeySet();
@@ -52,12 +58,28 @@ public class EntitySweeper {
         }
     }
 
-    public SweepResult addDrops(@NonNull List<Entity> entities) {
+    public SweepResult addDrops(@NonNull List<Entity> entities, SweepResult result) {
+        if (result.getTotalBatch() == 0) LOGGER.debug("AddDrops started at {}", System.currentTimeMillis());
         this.init();
 
-        SweepResult result = new SweepResult();
-        Set<Integer> seenEntities = new HashSet<>();
+        if (CollectionUtils.isNotNullOrEmpty(entities) && entities.size() > ServerConfig.SWEEP_ENTITY_LIMIT.get()) {
+            List<List<Entity>> lists = CollectionUtils.splitToCollections(entities, ServerConfig.SWEEP_ENTITY_LIMIT.get(), ServerConfig.SWEEP_BATCH_LIMIT.get());
+            result.setTotalBatch(lists.size());
+            if (lists.size() > 1) {
+                for (int i = 1; i < lists.size(); i++) {
+                    List<Entity> entityList = lists.get(i);
+                    AotakeScheduler.schedule(AotakeSweep.getServerInstance().key()
+                            , ServerConfig.SWEEP_ENTITY_INTERVAL.get() * i
+                            , () -> AotakeSweep.getEntitySweeper().addDrops(entityList, result)
+                    );
+                }
+                entities = lists.get(0);
+            }
+        } else if (result.getTotalBatch() == 0) {
+            result.setTotalBatch(1);
+        }
 
+        Set<Integer> seenEntities = new HashSet<>();
         for (Entity entity : entities) {
             int id = System.identityHashCode(entity);
             if (seenEntities.add(id)) {
@@ -74,12 +96,58 @@ public class EntitySweeper {
 
         WorldTrashData.get().setDirty();
 
+        result.incrementBatch();
+
+        if (result.getBatch().get() == result.getTotalBatch()) {
+            LOGGER.debug("AddDrops finished at {}", System.currentTimeMillis());
+
+            List<ServerPlayer> players = AotakeSweep.getServerInstance().key().getPlayerList().getPlayers();
+            for (ServerPlayer p : players) {
+                String language = AotakeUtils.getPlayerLanguage(p);
+                Component msg = AotakeUtils.getWarningMessage(result.isEmpty() ? "fail" : "success"
+                        , language
+                        , result);
+                PlayerSweepData playerData = PlayerSweepData.getData(p);
+                if (playerData.isShowSweepResult()) {
+                    String openCom = "/" + AotakeUtils.getCommand(EnumCommandType.DUSTBIN_OPEN);
+                    msg.setClickEvent(new ClickEvent(ClickEvent.Action.SUGGEST_COMMAND, openCom))
+                            .setHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT
+                                    , Component.literal(openCom).toTextComponent())
+                            );
+                    AotakeUtils.sendMessage(p, Component.empty()
+                            .append(msg)
+                            .append(Component.literal("[x]")
+                                    .setColor(EnumMCColor.RED.getColor())
+                                    .setHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT
+                                            , Component.translatable(EnumI18nType.MESSAGE, "not_show_button")
+                                            .toTextComponent(language))
+                                    )
+                                    .setClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND
+                                            , "/" + AotakeUtils.getCommandPrefix() + " config showSweepResult change")
+                                    )
+                            )
+                    );
+                } else {
+                    AotakeUtils.sendActionBarMessage(p, msg);
+                }
+                if (playerData.isEnableWarningVoice()) {
+                    String voice = AotakeUtils.getWarningVoice(result.isEmpty() ? "fail" : "success");
+                    float volume = CommonConfig.SWEEP_WARNING_VOICE_VOLUME.get() / 100f;
+                    if (StringUtils.isNotNullOrEmpty(voice)) {
+                        AotakeUtils.executeCommandNoOutput(p, String.format("playsound %s voice @s ~ ~ ~ %s", voice, volume));
+                    }
+                }
+            }
+        } else {
+            LOGGER.debug("AddDrops {}/{} at {}", result.getBatch().get(), result.getTotalBatch(), System.currentTimeMillis());
+        }
+
         return result;
     }
 
     private SweepResult processDrop(@NonNull Entity original) {
         SweepResult result = new SweepResult();
-        Coordinate coordinate = new Coordinate(original);
+        WorldCoordinate coordinate = new WorldCoordinate(original);
         Entity entity = (original instanceof PartEntity) ? ((PartEntity<?>) original).getParent() : original;
 
         String typeKey = (entity instanceof ItemEntity)
@@ -138,7 +206,7 @@ public class EntitySweeper {
         return result;
     }
 
-    private void handleItemRecycling(Coordinate coordinate, ItemStack item, SweepResult result) {
+    private void handleItemRecycling(WorldCoordinate coordinate, ItemStack item, SweepResult result) {
         // 自清洁模式
         if (ServerConfig.SELF_CLEAN_MODE.get().contains(EnumSelfCleanMode.SWEEP_DELETE.name())) {
             switch (EnumDustbinMode.valueOfOrDefault(ServerConfig.DUSTBIN_MODE.get())) {
@@ -200,7 +268,7 @@ public class EntitySweeper {
 
     private void selfCleanDustbinBlock() {
         for (String pos : ServerConfig.DUSTBIN_BLOCK_POSITIONS.get()) {
-            Coordinate dustbinPos = Coordinate.fromSimpleString(pos);
+            WorldCoordinate dustbinPos = WorldCoordinate.fromSimpleString(pos);
             IItemHandler handler = AotakeUtils.getBlockItemHandler(dustbinPos);
             if (handler != null) {
                 IntStream.range(0, handler.getSlots())
@@ -233,7 +301,7 @@ public class EntitySweeper {
     private ItemStack addItemToDustbinBlock(ItemStack item) {
         ItemStack remaining = item;
         for (String pos : ServerConfig.DUSTBIN_BLOCK_POSITIONS.get()) {
-            Coordinate dustbinPos = Coordinate.fromSimpleString(pos);
+            WorldCoordinate dustbinPos = WorldCoordinate.fromSimpleString(pos);
             IItemHandler handler = AotakeUtils.getBlockItemHandler(dustbinPos);
             if (handler != null) {
                 int invMax = IntStream.range(0, handler.getSlots())
@@ -253,7 +321,7 @@ public class EntitySweeper {
         return remaining;
     }
 
-    private void handleOverflow(Coordinate coordinate, ItemStack item, SweepResult result) {
+    private void handleOverflow(WorldCoordinate coordinate, ItemStack item, SweepResult result) {
         EnumOverflowMode mode = EnumOverflowMode.valueOf(ServerConfig.DUSTBIN_OVERFLOW_MODE.get());
 
         switch (mode) {
@@ -276,7 +344,7 @@ public class EntitySweeper {
                     case BLOCK:
                     case BLOCK_VIRTUAL: {
                         String pos = CollectionUtils.getRandomElement(ServerConfig.DUSTBIN_BLOCK_POSITIONS.get());
-                        Coordinate dustbinPos = Coordinate.fromSimpleString(pos);
+                        WorldCoordinate dustbinPos = WorldCoordinate.fromSimpleString(pos);
                         IItemHandler handler = AotakeUtils.getBlockItemHandler(dustbinPos);
                         if (handler != null) {
                             int slot = AotakeSweep.RANDOM.nextInt(handler.getSlots());

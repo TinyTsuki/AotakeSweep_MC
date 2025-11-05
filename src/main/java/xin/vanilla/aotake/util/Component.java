@@ -68,12 +68,12 @@ public class Component implements Cloneable, Serializable {
      * 文本颜色
      */
     @Getter
-    private Integer color = 0xFFFFFFFF;
+    private xin.vanilla.aotake.data.Color color = xin.vanilla.aotake.data.Color.white();
     /**
      * 文本背景色
      */
     @Getter
-    private Integer bgColor = 0xFFFFFFFF;
+    private xin.vanilla.aotake.data.Color bgColor = xin.vanilla.aotake.data.Color.argb(0x00000000);
     /**
      * 是否有阴影
      */
@@ -130,44 +130,37 @@ public class Component implements Cloneable, Serializable {
         this.i18nType = i18nType;
     }
 
-    /**
-     * 设置文本颜色，若为RGB，则转换为ARGB
-     * 无法判断全透明的情况，全透明直接设置为null
-     *
-     * @param color 颜色
-     */
-    public Component setColor(Integer color) {
-        if (color == null || (color >> 24) != 0) {
-            this.color = color;
-        } else {
-            this.color = color | 0xFF000000;
-        }
+    public Component setColor(xin.vanilla.aotake.data.Color color) {
+        this.color = color;
         return this;
     }
 
-    /**
-     * 设置文本颜色，若为RGB，则转换为ARGB
-     * 无法判断全透明的情况，全透明直接设置为null
-     *
-     * @param bgColor 颜色
-     */
-    public Component setBgColor(Integer bgColor) {
-        if (bgColor == null || (bgColor >> 24) != 0) {
-            this.bgColor = bgColor;
-        } else {
-            this.bgColor = bgColor | 0xFF000000;
-        }
+    public Component setColor(int rgb) {
+        this.color = xin.vanilla.aotake.data.Color.rgb(rgb);
         return this;
     }
 
-    public Component setLanguageCodeIfEmpty(String languageCode) {
-        if (this.isLanguageCodeEmpty()) {
-            this.setLanguageCode(languageCode);
-        }
+    public Component setBgColor(xin.vanilla.aotake.data.Color color) {
+        this.bgColor = color;
+        return this;
+    }
+
+    public Component setBgColor(int rgb) {
+        this.bgColor = xin.vanilla.aotake.data.Color.rgb(rgb);
         return this;
     }
 
     // region NonNull Getter
+
+    /**
+     * 内容是否为空
+     */
+    public boolean isEmpty() {
+        return StringUtils.isNullOrEmptyEx(this.getText())
+                && this.getOriginal() == null
+                && this.getChildren().isEmpty()
+                && this.getArgs().isEmpty();
+    }
 
     /**
      * 获取语言代码
@@ -227,20 +220,6 @@ public class Component implements Cloneable, Serializable {
      */
     public boolean isLanguageCodeEmpty() {
         return this.languageCode == null;
-    }
-
-    /**
-     * 文本颜色是否为空
-     */
-    public boolean isColorEmpty() {
-        return this.color == null;
-    }
-
-    /**
-     * 文本背景色是否为空
-     */
-    public boolean isBgColorEmpty() {
-        return this.bgColor == null;
     }
 
     /**
@@ -407,10 +386,10 @@ public class Component implements Cloneable, Serializable {
         if (this.isLanguageCodeEmpty() && !component.isLanguageCodeEmpty()) {
             this.setLanguageCode(component.getLanguageCode());
         }
-        if ((this.isColorEmpty() || this.getColor() == 0xFFFFFFFF) && !component.isColorEmpty()) {
+        if ((this.getColor().isEmpty()) && !component.getColor().isEmpty()) {
             this.setColor(component.getColor());
         }
-        if ((this.isBgColorEmpty() || this.getBgColor() == 0xFFFFFFFF) && !component.isBgColorEmpty()) {
+        if ((this.getBgColor().isEmpty()) && !component.getBgColor().isEmpty()) {
             this.setBgColor(component.getBgColor());
         }
         if (this.isShadowEmpty() && !component.isShadowEmpty()) {
@@ -442,8 +421,8 @@ public class Component implements Cloneable, Serializable {
 
     public Style getStyle() {
         Style style = Style.EMPTY;
-        if (!isColorEmpty() && getColor() != 0xFFFFFFFF)
-            style = style.withColor(TextColor.fromRgb(getColor()));
+        if (!this.getColor().isEmpty() && this.getColor().color() != 0xFFFFFF)
+            style = style.withColor(TextColor.fromRgb(getColor().rgb()));
         style = style.withUnderlined(this.isUnderlined())
                 .withStrikethrough(this.isStrikethrough())
                 .withObfuscated(this.isObfuscated())
@@ -488,10 +467,10 @@ public class Component implements Cloneable, Serializable {
      */
     public String getString(String languageCode, boolean igStyle, boolean igColor) {
         StringBuilder result = new StringBuilder();
-        String colorStr = isColorEmpty() ? "§f" : StringUtils.argbToMinecraftColorString(getColor());
+        String colorStr = this.getColor().isEmpty() ? "§f" : StringUtils.argbToMinecraftColorString(getColor().rgb());
         igColor = igColor && colorStr.equalsIgnoreCase("§f");
-        // 如果颜色值为null则说明为透明，则不显示内容，所以返回空文本
-        if (!this.isColorEmpty()) {
+        // 如果颜色值为透明，则不显示内容，所以返回空文本
+        if (!this.getColor().isEmpty()) {
             if (!igStyle) {
                 if (!igColor) {
                     result.append(colorStr);
@@ -548,7 +527,7 @@ public class Component implements Cloneable, Serializable {
             components.add((MutableComponent) this.original);
         } else {
             // 如果颜色值为null则说明为透明，则不显示内容，所以返回空文本组件
-            if (!this.isColorEmpty()) {
+            if (!this.getColor().isEmpty()) {
                 if (this.i18nType != EnumI18nType.PLAIN) {
                     String text = I18nUtils.getTranslation(I18nUtils.getKey(this.i18nType, this.text), languageCode);
                     String[] split = text.split(StringUtils.FORMAT_REGEX, -1);
@@ -581,14 +560,14 @@ public class Component implements Cloneable, Serializable {
                                         formattedArg = new Component(String.format(placeholder.replaceAll("^%\\d+\\$", "%"), colorCode + argComponent)).withStyle(argComponent);
                                     } catch (Exception e) {
                                         // 颜色传递
-                                        if (argComponent.isColorEmpty()) {
+                                        if (argComponent.getColor().isEmpty()) {
                                             argComponent.setColor(this.color);
                                         }
                                         formattedArg = argComponent;
                                     }
                                 } else {
                                     // 颜色传递
-                                    if (argComponent.isColorEmpty()) {
+                                    if (argComponent.getColor().isEmpty()) {
                                         argComponent.setColor(this.color);
                                     }
                                     formattedArg = argComponent;
@@ -601,8 +580,7 @@ public class Component implements Cloneable, Serializable {
                         i++;
                     }
                 } else {
-                    this.args.forEach(arg -> arg.setLanguageCodeIfEmpty(languageCode));
-                    components.add(net.minecraft.network.chat.Component.literal(StringUtils.format(this.text, this.args.toArray())).withStyle(this.getStyle()));
+                    components.add(net.minecraft.network.chat.Component.literal(this.text).withStyle(this.getStyle()));
                 }
             }
         }
@@ -622,7 +600,7 @@ public class Component implements Cloneable, Serializable {
      */
     public net.minecraft.network.chat.Component toTranslatedTextComponent() {
         MutableComponent result = net.minecraft.network.chat.Component.translatable("");
-        if (!this.isColorEmpty() || !this.isBgColorEmpty()) {
+        if (!this.getColor().isEmpty() || !this.getBgColor().isEmpty()) {
             if (this.i18nType != EnumI18nType.PLAIN) {
                 Object[] objects = this.getArgs().stream().map(component -> {
                     if (component.i18nType == EnumI18nType.PLAIN) {
@@ -776,8 +754,8 @@ public class Component implements Cloneable, Serializable {
         result.setText(JsonUtils.getString(jsonObject, "text"));
         result.setI18nType(EnumI18nType.valueOf(JsonUtils.getString(jsonObject, "i18nType")));
         result.setLanguageCode(JsonUtils.getString(jsonObject, "languageCode"));
-        result.setColor(JsonUtils.getInt(jsonObject, "color"));
-        result.setBgColor(JsonUtils.getInt(jsonObject, "bgColor"));
+        result.setColor(xin.vanilla.aotake.data.Color.argb(JsonUtils.getInt(jsonObject, "color")));
+        result.setBgColor(xin.vanilla.aotake.data.Color.argb(JsonUtils.getInt(jsonObject, "bgColor")));
         result.setShadow(JsonUtils.getBoolean(jsonObject, "shadow"));
         result.setBold(JsonUtils.getBoolean(jsonObject, "bold"));
         result.setItalic(JsonUtils.getBoolean(jsonObject, "italic"));
@@ -799,32 +777,32 @@ public class Component implements Cloneable, Serializable {
         return result;
     }
 
-    public static JsonObject serialize(Component reward) {
+    public static JsonObject serialize(Component component) {
         JsonObject result = new JsonObject();
-        JsonUtils.set(result, "text", reward.getText());
-        JsonUtils.set(result, "i18nType", reward.getI18nType().name());
-        JsonUtils.set(result, "languageCode", reward.getLanguageCode());
-        JsonUtils.set(result, "color", reward.getColor());
-        JsonUtils.set(result, "bgColor", reward.getBgColor());
-        JsonUtils.set(result, "shadow", reward.isShadow());
-        JsonUtils.set(result, "bold", reward.isBold());
-        JsonUtils.set(result, "italic", reward.isItalic());
-        JsonUtils.set(result, "underlined", reward.isUnderlined());
-        JsonUtils.set(result, "strikethrough", reward.isStrikethrough());
-        JsonUtils.set(result, "obfuscated", reward.isObfuscated());
-        if (reward.getClickEvent() != null) {
-            ClickEvent.CODEC.encodeStart(JsonOps.INSTANCE, reward.getClickEvent()).result().ifPresent(value -> result.add("clickEvent", value));
+        JsonUtils.set(result, "text", component.getText());
+        JsonUtils.set(result, "i18nType", component.getI18nType().name());
+        JsonUtils.set(result, "languageCode", component.getLanguageCode());
+        JsonUtils.set(result, "color", component.getColor().argb());
+        JsonUtils.set(result, "bgColor", component.getBgColor().argb());
+        JsonUtils.set(result, "shadow", component.isShadow());
+        JsonUtils.set(result, "bold", component.isBold());
+        JsonUtils.set(result, "italic", component.isItalic());
+        JsonUtils.set(result, "underlined", component.isUnderlined());
+        JsonUtils.set(result, "strikethrough", component.isStrikethrough());
+        JsonUtils.set(result, "obfuscated", component.isObfuscated());
+        if (component.getClickEvent() != null) {
+            ClickEvent.CODEC.encodeStart(JsonOps.INSTANCE, component.getClickEvent()).result().ifPresent(value -> result.add("clickEvent", value));
         }
-        if (reward.getHoverEvent() != null) {
-            HoverEvent.CODEC.encodeStart(JsonOps.INSTANCE, reward.getHoverEvent()).result().ifPresent(value -> result.add("hoverEvent", value));
+        if (component.getHoverEvent() != null) {
+            HoverEvent.CODEC.encodeStart(JsonOps.INSTANCE, component.getHoverEvent()).result().ifPresent(value -> result.add("hoverEvent", value));
         }
         JsonArray children = new JsonArray();
-        for (Component child : reward.getChildren()) {
+        for (Component child : component.getChildren()) {
             children.add(serialize(child));
         }
         JsonUtils.set(result, "children", children);
         JsonArray args = new JsonArray();
-        for (Component arg : reward.getArgs()) {
+        for (Component arg : component.getArgs()) {
             args.add(serialize(arg));
         }
         JsonUtils.set(result, "args", args);

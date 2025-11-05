@@ -4,7 +4,7 @@ import lombok.experimental.Accessors;
 import net.minecraft.nbt.CompoundTag;
 
 @Accessors(chain = true)
-public record DropStatistics(Coordinate coordinate, String name, long time, long itemCount, long entityCount) {
+public record DropStatistics(WorldCoordinate coordinate, String name, long time, long itemCount, long entityCount) {
     public CompoundTag serializeNBT() {
         CompoundTag tag = new CompoundTag();
         tag.put("coordinate", coordinate.writeToNBT());
@@ -17,7 +17,7 @@ public record DropStatistics(Coordinate coordinate, String name, long time, long
 
     public static DropStatistics deserializeNBT(CompoundTag tag) {
         return new DropStatistics(
-                Coordinate.readFromNBT(tag.getCompound("coordinate"))
+                WorldCoordinate.readFromNBT(tag.getCompound("coordinate"))
                 , tag.getString("name")
                 , tag.getLong("time")
                 , tag.getLong("itemCount")

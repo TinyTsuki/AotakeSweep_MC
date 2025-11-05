@@ -1,13 +1,18 @@
 package xin.vanilla.aotake.event;
 
 import net.minecraft.client.KeyMapping;
+import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.client.event.AddGuiOverlayLayersEvent;
 import net.minecraftforge.client.event.RegisterKeyMappingsEvent;
+import net.minecraftforge.client.gui.overlay.ForgeLayeredDraw;
 import net.minecraftforge.fml.common.Mod;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.lwjgl.glfw.GLFW;
 import xin.vanilla.aotake.AotakeSweep;
+import xin.vanilla.aotake.screen.ProgressRender;
 
 /**
  * 客户端 Mod事件处理器
@@ -35,6 +40,12 @@ public class ClientModEventHandler {
             GLFW.GLFW_KEY_RIGHT, CATEGORIES);
 
     /**
+     * 切换进度条显示按键
+     */
+    public static KeyMapping PROGRESS_KEY = new KeyMapping("key.aotake_sweep.progress",
+            GLFW.GLFW_KEY_TAB, CATEGORIES);
+
+    /**
      * 注册键绑定
      */
     public static void registerKeyBindings(RegisterKeyMappingsEvent event) {
@@ -43,6 +54,32 @@ public class ClientModEventHandler {
         event.register(DUSTBIN_KEY);
         event.register(DUSTBIN_PRE_KEY);
         event.register(DUSTBIN_NEXT_KEY);
+        event.register(PROGRESS_KEY);
+    }
+
+    public static void addGuiOverlayLayers(AddGuiOverlayLayersEvent event) {
+        LOGGER.debug("Adding GUI overlay layers");
+        ForgeLayeredDraw layered = event.getLayeredDraw();
+        ResourceLocation stack = ForgeLayeredDraw.PRE_SLEEP_STACK;
+
+        layered.addAbove(
+                stack,
+                AotakeSweep.createResource("progress_layer_above"),
+                ForgeLayeredDraw.EXPERIENCE,
+                (GuiGraphics graphics, float partialTicks) -> ProgressRender.renderProgress(graphics, false)
+        );
+        layered.addBelow(
+                stack,
+                AotakeSweep.createResource("progress_layer_below"),
+                ForgeLayeredDraw.EXPERIENCE,
+                (GuiGraphics graphics, float partialTicks) -> ProgressRender.renderProgress(graphics, true)
+        );
+        layered.addConditionTo(
+                stack,
+                ForgeLayeredDraw.EXPERIENCE,
+                ProgressRender.experienceSupplier
+        );
+
     }
 
 }
