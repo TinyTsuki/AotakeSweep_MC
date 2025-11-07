@@ -53,7 +53,7 @@ public class ClientGameEventHandler {
     /**
      * 重新打开垃圾箱页面前鼠标位置
      */
-    private static final KeyValue<Double, Double> mousePos = new KeyValue<>(0D, 0D);
+    private static final KeyValue<Double, Double> mousePos = new KeyValue<>(-1D, -1D);
     /**
      * 是否显示进度条
      */
