@@ -42,7 +42,7 @@
   "message.aotake_sweep.command_disabled": "§eThe command is disabled!",
   "message.aotake_sweep.server_config_status": "The server has %s the config: %s.",
   "message.aotake_sweep.player_virtual_op": "Virtual permission list of player '%s':\n%s",
-  "message.aotake_sweep.server_config_mode": "Server configuration has been reset to mode %s. Some settings will take effect only after restarting the server.",
+  "message.aotake_sweep.server_config_mode": "Server config has been reset to mode %s. Some settings will take effect only after restarting the server.",
   "message.aotake_sweep.notify_help": "Welcome to AotakeSweep! Use the command '%s' to view the help message.",
   "message.aotake_sweep.server_default_language": "The default language of the server is set to %s.",
   "message.aotake_sweep.player_default_language": "The default language of the player is set to %s.",
@@ -68,5 +68,9 @@
   "message.aotake_sweep.allow_catch_entity": "Allow players to catch entities with items is set to: %s.",
   "message.aotake_sweep.sweep_when_no_player": "Sweep when no player is online is set to: %s.",
   "message.aotake_sweep.dustbin_page_limit": "Dustbin page limit is set to: %s.",
-  "message.aotake_sweep.next_sweep_time_set": "§eNext sweep time was set by '%s§e' to occur in %s§e seconds."
+  "message.aotake_sweep.next_sweep_time_set": "§eNext sweep time was set by '%s§e' to occur in %s§e seconds.",
+  "message.aotake_sweep.config_key_absent": "§cConfig modification failed: '%s§c' does not exist.",
+  "message.aotake_sweep.config_value_parse_error": "§cConfig modification failed: Failed to parse '%s§c'.",
+  "message.aotake_sweep.config_value_set_error": "§cConfig modification failed: '%s§c' → '%s§c'.",
+  "message.aotake_sweep.config_value_set_success": "§2Config modification successful: '%s§2' → '%s§2'."
 }

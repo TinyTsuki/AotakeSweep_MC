@@ -2,11 +2,9 @@ package xin.vanilla.aotake.network.packet;
 
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.MenuProvider;
 import net.minecraftforge.fmllegacy.network.NetworkEvent;
 import xin.vanilla.aotake.AotakeSweep;
-import xin.vanilla.aotake.config.CommonConfig;
-import xin.vanilla.aotake.data.world.WorldTrashData;
+import xin.vanilla.aotake.command.AotakeCommand;
 import xin.vanilla.aotake.util.AotakeUtils;
 
 import java.util.function.Supplier;
@@ -33,14 +31,10 @@ public class OpenDustbinToServer {
                 String playerUUID = AotakeUtils.getPlayerUUIDString(player);
                 Integer page = AotakeSweep.getPlayerDustbinPage().getOrDefault(playerUUID, 1);
                 int i = page + packet.offset;
-                if (i > 0 && i <= CommonConfig.DUSTBIN_PAGE_LIMIT.get()) {
+                if (i > 0 && i <= AotakeCommand.getDustbinTotalPage()) {
                     player.closeContainer();
                 }
-                MenuProvider trashContainer = WorldTrashData.getTrashContainer(player, i);
-                if (trashContainer != null) {
-                    int result = player.openMenu(trashContainer).orElse(0);
-                    if (result > 0) AotakeSweep.getPlayerDustbinPage().put(playerUUID, i);
-                }
+                AotakeCommand.dustbin(player, i);
             }
         });
         ctx.get().setPacketHandled(true);
