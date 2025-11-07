@@ -22,7 +22,9 @@ import xin.vanilla.aotake.data.ConcurrentShuffleList;
 import xin.vanilla.aotake.data.DropStatistics;
 import xin.vanilla.aotake.data.KeyValue;
 import xin.vanilla.aotake.data.WorldCoordinate;
+import xin.vanilla.aotake.enums.EnumDustbinMode;
 import xin.vanilla.aotake.enums.EnumI18nType;
+import xin.vanilla.aotake.enums.EnumMCColor;
 import xin.vanilla.aotake.util.AotakeUtils;
 import xin.vanilla.aotake.util.Component;
 
@@ -176,10 +178,29 @@ public class WorldTrashData extends SavedData {
             @NonNull
             @Override
             public net.minecraft.network.chat.Component getDisplayName() {
-                return Component.translatable(EnumI18nType.KEY, "categories")
-                        .setColor(0x5DA530)
-                        .append(String.format("(%s/%s)", page, limit))
-                        .toTextComponent(AotakeUtils.getPlayerLanguage(player));
+                Component title = Component.translatable(EnumI18nType.KEY, "categories")
+                        .setColor(0x5DA530);
+                Component vComponent = Component.literal(String.format("(%s/%s)", page, limit))
+                        .setColor(0x5DA530);
+                Component bComponent = Component.literal(String.format("(%s)", ServerConfig.DUSTBIN_BLOCK_POSITIONS.get().size()))
+                        .setColor(EnumMCColor.RED.getColor());
+                Component plusComponent = Component.literal("+")
+                        .setColor(EnumMCColor.BLACK.getColor());
+                switch (EnumDustbinMode.valueOfOrDefault(ServerConfig.DUSTBIN_MODE.get())) {
+                    case VIRTUAL: {
+                        title.append(String.format("(%s/%s)", page, limit));
+                    }
+                    break;
+                    case VIRTUAL_BLOCK: {
+                        title.append(vComponent.append(plusComponent).append(bComponent));
+                    }
+                    break;
+                    case BLOCK_VIRTUAL: {
+                        title.append(bComponent.append(plusComponent).append(vComponent));
+                    }
+                    break;
+                }
+                return title.toTextComponent(AotakeUtils.getPlayerLanguage(player));
             }
 
             @Override
