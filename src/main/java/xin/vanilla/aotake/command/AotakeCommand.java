@@ -1,5 +1,6 @@
 package xin.vanilla.aotake.command;
 
+import com.electronwill.nightconfig.core.Config;
 import com.mojang.brigadier.Command;
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.BoolArgumentType;
@@ -31,6 +32,7 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.Vec3;
+import net.neoforged.neoforge.common.ModConfigSpec;
 import net.neoforged.neoforge.items.IItemHandler;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -49,6 +51,8 @@ import xin.vanilla.aotake.network.packet.CustomConfigSyncToClient;
 import xin.vanilla.aotake.network.packet.SweepTimeSyncToClient;
 import xin.vanilla.aotake.util.*;
 
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -223,12 +227,7 @@ public class AotakeCommand {
                     targetList.addAll(EntityArgument.getPlayers(context, "player"));
                 } catch (IllegalArgumentException ignored) {
                 }
-                String language;
-                if (source.getEntity() != null && source.getEntity() instanceof ServerPlayer) {
-                    language = AotakeUtils.getPlayerLanguage(source.getPlayerOrException());
-                } else {
-                    language = ServerConfig.DEFAULT_LANGUAGE.get();
-                }
+                String language = getLanguage(source);
                 for (ServerPlayer target : targetList) {
                     switch (type) {
                         case ADD:
@@ -812,11 +811,10 @@ public class AotakeCommand {
                     .then(delaySweep)
                     // 获取服务器配置 /aotake config
                     .then(Commands.literal("config")
-                            // region 服务器设置
                             // 设置配置模式
                             .then(Commands.literal("mode")
+                                    .requires(source -> AotakeUtils.hasCommandPermission(source, EnumCommandType.VIRTUAL_OP))
                                     .then(Commands.argument("mode", IntegerArgumentType.integer(0, 2))
-                                            .requires(source -> AotakeUtils.hasCommandPermission(source, EnumCommandType.VIRTUAL_OP))
                                             .suggests((context, builder) -> {
                                                 builder.suggest(0);
                                                 builder.suggest(1);
@@ -826,12 +824,7 @@ public class AotakeCommand {
                                             .executes(context -> {
                                                 int mode = IntegerArgumentType.getInteger(context, "mode");
                                                 CommandSourceStack source = context.getSource();
-                                                String lang;
-                                                if (source.getEntity() != null && source.getEntity() instanceof ServerPlayer) {
-                                                    lang = AotakeUtils.getPlayerLanguage(source.getPlayerOrException());
-                                                } else {
-                                                    lang = ServerConfig.DEFAULT_LANGUAGE.get();
-                                                }
+                                                String lang = getLanguage(source);
                                                 switch (mode) {
                                                     case 0:
                                                         ServerConfig.resetConfig();
@@ -862,254 +855,103 @@ public class AotakeCommand {
                                             })
                                     )
                             )
-                            // 设置服务器默认语言
-                            .then(Commands.literal("language")
+                            // region 修改server配置
+                            .then(Commands.literal("server")
                                     .requires(source -> AotakeUtils.hasCommandPermission(source, EnumCommandType.VIRTUAL_OP))
-                                    .then(Commands.argument("language", StringArgumentType.word())
+                                    .then(Commands.argument("configKey", StringArgumentType.word())
                                             .suggests((context, builder) -> {
-                                                I18nUtils.getI18nFiles().forEach(builder::suggest);
+                                                String input = getStringEmpty(context, "configKey");
+                                                configKeySuggestion(ServerConfig.class, builder, input);
                                                 return builder.buildFuture();
                                             })
-                                            .executes(context -> {
-                                                String code = StringArgumentType.getString(context, "language");
-                                                ServerConfig.DEFAULT_LANGUAGE.set(code);
-                                                ServerPlayer player = context.getSource().getPlayerOrException();
-                                                AotakeUtils.broadcastMessage(player, Component.translatable(player, EnumI18nType.MESSAGE, "server_default_language", ServerConfig.DEFAULT_LANGUAGE.get()));
-                                                return 1;
-                                            })
+                                            .then(Commands.argument("configValue", StringArgumentType.word())
+                                                    .suggests((context, builder) -> {
+                                                        String configKey = StringArgumentType.getString(context, "configKey");
+                                                        configValueSuggestion(ServerConfig.class, builder, configKey);
+                                                        return builder.buildFuture();
+                                                    })
+                                                    .executes(context -> executeModifyConfig(ServerConfig.class, context))
+                                            )
                                     )
-                            )
-                            // 设置MOD启用状态
-                            .then(Commands.literal("disable")
+                            )// endregion 修改server配置
+                            // region 修改common配置
+                            .then(Commands.literal("common")
                                     .requires(source -> AotakeUtils.hasCommandPermission(source, EnumCommandType.VIRTUAL_OP))
-                                    .then(Commands.argument("disable", BoolArgumentType.bool())
-                                            .executes(context -> {
-                                                AotakeSweep.setDisable(BoolArgumentType.getBool(context, "disable"));
-                                                AotakeUtils.broadcastMessage(context.getSource().getServer()
-                                                        , Component.translatable(EnumI18nType.MESSAGE
-                                                                , "mod_status"
-                                                                , Component.translatable(EnumI18nType.KEY, "categories")
-                                                                , I18nUtils.enabled(ServerConfig.DEFAULT_LANGUAGE.get(), !AotakeSweep.isDisable())
-                                                        )
-                                                );
-                                                return 1;
+                                    .then(Commands.argument("configKey", StringArgumentType.word())
+                                            .suggests((context, builder) -> {
+                                                String input = getStringEmpty(context, "configKey");
+                                                configKeySuggestion(CommonConfig.class, builder, input);
+                                                return builder.buildFuture();
                                             })
+                                            .then(Commands.argument("configValue", StringArgumentType.word())
+                                                    .suggests((context, builder) -> {
+                                                        String configKey = StringArgumentType.getString(context, "configKey");
+                                                        configValueSuggestion(CommonConfig.class, builder, configKey);
+                                                        return builder.buildFuture();
+                                                    })
+                                                    .executes(context -> executeModifyConfig(CommonConfig.class, context))
+                                            )
                                     )
-                            )
-                            // 设置清理间隔
-                            .then(Commands.literal("sweepInterval")
-                                    .executes(context -> {
-                                        AotakeUtils.sendMessage(context.getSource().getPlayerOrException()
-                                                , Component.translatable(EnumI18nType.MESSAGE
-                                                        , "sweep_interval"
-                                                        , ServerConfig.SWEEP_INTERVAL.get()
-                                                )
-                                        );
-                                        return 1;
-                                    })
-                                    .then(Commands.argument("ms", LongArgumentType.longArg(0, 7 * 24 * 60 * 60 * 1000))
-                                            .requires(source -> AotakeUtils.hasCommandPermission(source, EnumCommandType.VIRTUAL_OP))
-                                            .executes(context -> {
-                                                long interval = LongArgumentType.getLong(context, "ms");
-                                                ServerConfig.SWEEP_INTERVAL.set(interval);
-                                                AotakeUtils.sendMessageToAll(
-                                                        Component.translatable(EnumI18nType.MESSAGE
-                                                                , "sweep_interval"
-                                                                , interval
-                                                        )
-                                                );
-                                                return 1;
-                                            })
-                                    )
-                            )
-                            // 设置区块检查间隔
-                            .then(Commands.literal("chunkCheckInterval")
-                                    .executes(context -> {
-                                        AotakeUtils.sendMessage(context.getSource().getPlayerOrException()
-                                                , Component.translatable(EnumI18nType.MESSAGE
-                                                        , "chunk_check_interval"
-                                                        , ServerConfig.CHUNK_CHECK_INTERVAL.get()
-                                                )
-                                        );
-                                        return 1;
-                                    })
-                                    .then(Commands.argument("ms", LongArgumentType.longArg(0, 7 * 24 * 60 * 60 * 1000))
-                                            .requires(source -> AotakeUtils.hasCommandPermission(source, EnumCommandType.VIRTUAL_OP))
-                                            .executes(context -> {
-                                                long interval = LongArgumentType.getLong(context, "ms");
-                                                ServerConfig.CHUNK_CHECK_INTERVAL.set(interval);
-                                                AotakeUtils.sendMessageToAll(
-                                                        Component.translatable(EnumI18nType.MESSAGE
-                                                                , "chunk_check_interval"
-                                                                , interval
-                                                        )
-                                                );
-                                                return 1;
-                                            })
-                                    )
-                            )
-                            // 设置区块检查限制
-                            .then(Commands.literal("chunkCheckLimit")
-                                    .executes(context -> {
-                                        AotakeUtils.sendMessage(context.getSource().getPlayerOrException()
-                                                , Component.translatable(EnumI18nType.MESSAGE
-                                                        , "chunk_check_limit"
-                                                        , ServerConfig.CHUNK_CHECK_LIMIT.get()
-                                                )
-                                        );
-                                        return 1;
-                                    })
-                                    .then(Commands.argument("num", IntegerArgumentType.integer(1))
-                                            .requires(source -> AotakeUtils.hasCommandPermission(source, EnumCommandType.VIRTUAL_OP))
-                                            .executes(context -> {
-                                                int num = IntegerArgumentType.getInteger(context, "num");
-                                                ServerConfig.CHUNK_CHECK_LIMIT.set(num);
-                                                AotakeUtils.sendMessageToAll(
-                                                        Component.translatable(EnumI18nType.MESSAGE
-                                                                , "chunk_check_limit"
-                                                                , num
-                                                        )
-                                                );
-                                                return 1;
-                                            })
-                                    )
-                            )
-                            // 设置是否允许玩家捕捉实体
-                            .then(Commands.literal("allowCatchEntity")
-                                    .executes(context -> {
-                                        AotakeUtils.sendMessage(context.getSource().getPlayerOrException()
-                                                , Component.translatable(EnumI18nType.MESSAGE
-                                                        , "allow_catch_entity"
-                                                        , ServerConfig.ALLOW_CATCH_ENTITY.get()
-                                                )
-                                        );
-                                        return 1;
-                                    })
-                                    .then(Commands.argument("boolean", BoolArgumentType.bool())
-                                            .requires(source -> AotakeUtils.hasCommandPermission(source, EnumCommandType.VIRTUAL_OP))
-                                            .executes(context -> {
-                                                boolean bool = BoolArgumentType.getBool(context, "boolean");
-                                                ServerConfig.ALLOW_CATCH_ENTITY.set(bool);
-                                                AotakeUtils.sendMessageToAll(
-                                                        Component.translatable(EnumI18nType.MESSAGE
-                                                                , "allow_catch_entity"
-                                                                , bool
-                                                        )
-                                                );
-                                                return 1;
-                                            })
-                                    )
-                            )
-                            // 设置服务器无人时是否依旧打扫
-                            .then(Commands.literal("sweepWhenNoPlayer")
-                                    .executes(context -> {
-                                        AotakeUtils.sendMessage(context.getSource().getPlayerOrException()
-                                                , Component.translatable(EnumI18nType.MESSAGE
-                                                        , "sweep_when_no_player"
-                                                        , CommonConfig.SWEEP_WHEN_NO_PLAYER.get()
-                                                )
-                                        );
-                                        return 1;
-                                    })
-                                    .then(Commands.argument("boolean", BoolArgumentType.bool())
-                                            .requires(source -> AotakeUtils.hasCommandPermission(source, EnumCommandType.VIRTUAL_OP))
-                                            .executes(context -> {
-                                                boolean bool = BoolArgumentType.getBool(context, "boolean");
-                                                CommonConfig.SWEEP_WHEN_NO_PLAYER.set(bool);
-                                                AotakeUtils.sendMessageToAll(
-                                                        Component.translatable(EnumI18nType.MESSAGE
-                                                                , "sweep_when_no_player"
-                                                                , bool
-                                                        )
-                                                );
-                                                return 1;
-                                            })
-                                    )
-                            )
-                            // 设置垃圾箱页数限制
-                            .then(Commands.literal("dustbinPageLimit")
-                                    .executes(context -> {
-                                        AotakeUtils.sendMessage(context.getSource().getPlayerOrException()
-                                                , Component.translatable(EnumI18nType.MESSAGE
-                                                        , "dustbin_page_limit"
-                                                        , CommonConfig.DUSTBIN_PAGE_LIMIT.get()
-                                                )
-                                        );
-                                        return 1;
-                                    })
-                                    .then(Commands.argument("num", IntegerArgumentType.integer(1, 16 * 16 * 16 * 16))
-                                            .requires(source -> AotakeUtils.hasCommandPermission(source, EnumCommandType.VIRTUAL_OP))
-                                            .executes(context -> {
-                                                int num = IntegerArgumentType.getInteger(context, "num");
-                                                CommonConfig.DUSTBIN_PAGE_LIMIT.set(num);
-                                                AotakeUtils.sendMessageToAll(
-                                                        Component.translatable(EnumI18nType.MESSAGE
-                                                                , "dustbin_page_limit"
-                                                                , num
-                                                        )
-                                                );
-                                                return 1;
-                                            })
-                                    )
-                            )// endregion 服务器设置
-
+                            )// endregion 修改common配置
                             // region 玩家设置
                             // 显示打扫结果信息
-                            .then(Commands.literal("showSweepResult")
-                                    .then(Commands.argument("show", StringArgumentType.word())
-                                            .suggests((context, suggestion) -> {
-                                                String show = getStringDefault(context, "show", "");
-                                                addSuggestion(suggestion, show, "true");
-                                                addSuggestion(suggestion, show, "false");
-                                                addSuggestion(suggestion, show, "change");
-                                                return suggestion.buildFuture();
-                                            })
-                                            .executes(context -> {
-                                                if (checkModStatus(context)) return 0;
-                                                notifyHelp(context);
-                                                String show = getStringDefault(context, "show", "change");
-                                                ServerPlayer player = context.getSource().getPlayerOrException();
-                                                PlayerSweepData data = PlayerSweepData.getData(player);
-                                                boolean r = "change".equalsIgnoreCase(show) ? !data.isShowSweepResult() : Boolean.parseBoolean(show);
-                                                data.setShowSweepResult(r);
-                                                AotakeUtils.sendMessage(player
-                                                        , Component.translatable(EnumI18nType.MESSAGE
-                                                                , "show_sweep_result"
-                                                                , I18nUtils.enabled(AotakeUtils.getPlayerLanguage(player), r)
-                                                                , String.format("/%s config showSweepResult [<status>]", AotakeUtils.getCommandPrefix())
-                                                        )
-                                                );
-                                                return 1;
-                                            })
+                            .then(Commands.literal("player")
+                                    .then(Commands.literal("showSweepResult")
+                                            .then(Commands.argument("show", StringArgumentType.word())
+                                                    .suggests((context, suggestion) -> {
+                                                        String show = getStringDefault(context, "show", "");
+                                                        addSuggestion(suggestion, show, "true");
+                                                        addSuggestion(suggestion, show, "false");
+                                                        addSuggestion(suggestion, show, "change");
+                                                        return suggestion.buildFuture();
+                                                    })
+                                                    .executes(context -> {
+                                                        if (checkModStatus(context)) return 0;
+                                                        notifyHelp(context);
+                                                        String show = getStringDefault(context, "show", "change");
+                                                        ServerPlayer player = context.getSource().getPlayerOrException();
+                                                        PlayerSweepData data = PlayerSweepData.getData(player);
+                                                        boolean r = "change".equalsIgnoreCase(show) ? !data.isShowSweepResult() : Boolean.parseBoolean(show);
+                                                        data.setShowSweepResult(r);
+                                                        AotakeUtils.sendMessage(player
+                                                                , Component.translatable(EnumI18nType.MESSAGE
+                                                                        , "show_sweep_result"
+                                                                        , I18nUtils.enabled(AotakeUtils.getPlayerLanguage(player), r)
+                                                                        , String.format("/%s config player showSweepResult [<status>]", AotakeUtils.getCommandPrefix())
+                                                                )
+                                                        );
+                                                        return 1;
+                                                    })
+                                            )
                                     )
-                            )
-                            // 播放提示语音
-                            .then(Commands.literal("enableWarningVoice")
-                                    .then(Commands.argument("enable", StringArgumentType.word())
-                                            .suggests((context, suggestion) -> {
-                                                String enable = getStringDefault(context, "enable", "");
-                                                addSuggestion(suggestion, enable, "true");
-                                                addSuggestion(suggestion, enable, "false");
-                                                addSuggestion(suggestion, enable, "change");
-                                                return suggestion.buildFuture();
-                                            })
-                                            .executes(context -> {
-                                                if (checkModStatus(context)) return 0;
-                                                notifyHelp(context);
-                                                String enable = getStringDefault(context, "enable", "change");
-                                                ServerPlayer player = context.getSource().getPlayerOrException();
-                                                PlayerSweepData data = PlayerSweepData.getData(player);
-                                                boolean r = "change".equalsIgnoreCase(enable) ? !data.isEnableWarningVoice() : Boolean.parseBoolean(enable);
-                                                data.setEnableWarningVoice(r);
-                                                AotakeUtils.sendMessage(player
-                                                        , Component.translatable(EnumI18nType.MESSAGE
-                                                                , "warning_voice"
-                                                                , I18nUtils.enabled(AotakeUtils.getPlayerLanguage(player), r)
-                                                                , String.format("/%s config enableWarningVoice [<status>]", AotakeUtils.getCommandPrefix())
-                                                        )
-                                                );
-                                                return 1;
-                                            })
+                                    // 播放提示语音
+                                    .then(Commands.literal("enableWarningVoice")
+                                            .then(Commands.argument("enable", StringArgumentType.word())
+                                                    .suggests((context, suggestion) -> {
+                                                        String enable = getStringDefault(context, "enable", "");
+                                                        addSuggestion(suggestion, enable, "true");
+                                                        addSuggestion(suggestion, enable, "false");
+                                                        addSuggestion(suggestion, enable, "change");
+                                                        return suggestion.buildFuture();
+                                                    })
+                                                    .executes(context -> {
+                                                        if (checkModStatus(context)) return 0;
+                                                        notifyHelp(context);
+                                                        String enable = getStringDefault(context, "enable", "change");
+                                                        ServerPlayer player = context.getSource().getPlayerOrException();
+                                                        PlayerSweepData data = PlayerSweepData.getData(player);
+                                                        boolean r = "change".equalsIgnoreCase(enable) ? !data.isEnableWarningVoice() : Boolean.parseBoolean(enable);
+                                                        data.setEnableWarningVoice(r);
+                                                        AotakeUtils.sendMessage(player
+                                                                , Component.translatable(EnumI18nType.MESSAGE
+                                                                        , "warning_voice"
+                                                                        , I18nUtils.enabled(AotakeUtils.getPlayerLanguage(player), r)
+                                                                        , String.format("/%s config player enableWarningVoice [<status>]", AotakeUtils.getCommandPrefix())
+                                                                )
+                                                        );
+                                                        return 1;
+                                                    })
+                                            )
                                     )
                             )// endregion 玩家设置
                     )
@@ -1203,7 +1045,7 @@ public class AotakeCommand {
         return AotakeSweep.isDisable();
     }
 
-    private static int dustbin(@NonNull ServerPlayer player, int page) {
+    public static int dustbin(@NonNull ServerPlayer player, int page) {
         int result = 0;
         int vPage = CommonConfig.DUSTBIN_PAGE_LIMIT.get();
         int bPage = ServerConfig.DUSTBIN_BLOCK_POSITIONS.get().size();
@@ -1376,7 +1218,7 @@ public class AotakeCommand {
         }
     }
 
-    private static int getDustbinTotalPage() {
+    public static int getDustbinTotalPage() {
         int result = 0;
         switch (EnumDustbinMode.valueOfOrDefault(ServerConfig.DUSTBIN_MODE.get())) {
             case VIRTUAL: {
@@ -1398,4 +1240,346 @@ public class AotakeCommand {
         }
         return result;
     }
+
+    private static String getLanguage(CommandSourceStack source) {
+        String lang = ServerConfig.DEFAULT_LANGUAGE.get();
+        if (source.getEntity() != null && source.getEntity() instanceof ServerPlayer) {
+            try {
+                lang = AotakeUtils.getPlayerLanguage(source.getPlayerOrException());
+            } catch (Exception ignored) {
+            }
+        }
+        return lang;
+    }
+
+    // region config modifier
+
+    /**
+     * 硬编码补全提示
+     */
+    private static final Map<String, List<String>> suggestionCache = new LinkedHashMap<String, List<String>>() {{
+        put("base.batch.sweepBatchLimit", Arrays.asList("1", "2", "5", "10"));
+        put("base.batch.sweepEntityInterval", Arrays.asList("1", "2", "5", "10"));
+        put("base.batch.sweepEntityLimit", Arrays.asList("250", "500", "1000", "2000"));
+        put("base.chunk.chunkCheckEntityListMode", Arrays.stream(EnumListType.values()).map(Enum::name).collect(Collectors.toList()));
+        put("base.chunk.chunkCheckInterval", Arrays.asList(String.valueOf(1000 * 5), String.valueOf(1000 * 10), String.valueOf(1000 * 60)));
+        put("base.chunk.chunkCheckLimit", Arrays.asList("50", "100", "250", "500", "1000", "2000"));
+        put("base.chunk.chunkCheckMode", Arrays.stream(EnumChunkCheckMode.values()).map(Enum::name).collect(Collectors.toList()));
+        put("base.chunk.chunkCheckRetain", Arrays.asList("0.1", "0.25", "0.5", "0.75"));
+        put("base.common.defaultLanguage", I18nUtils.getI18nFiles());
+        put("base.dimension.dimensionListMode", Arrays.stream(EnumListType.values()).map(Enum::name).collect(Collectors.toList()));
+        put("base.dustbin.cacheLimit", Arrays.asList("2500", "5000", "10000", "50000"));
+        put("base.dustbin.dustbinBlockMode", Arrays.stream(EnumDustbinMode.values()).map(Enum::name).collect(Collectors.toList()));
+        put("base.dustbin.dustbinOverflowMode", Arrays.stream(EnumOverflowMode.values()).map(Enum::name).collect(Collectors.toList()));
+        put("base.dustbin.dustbinPageLimit", Arrays.asList("1", "2", "5", "10"));
+        put("base.dustbin.selfCleanInterval", Arrays.asList(String.valueOf(1000 * 60 * 30), String.valueOf(1000 * 60 * 60), String.valueOf(1000 * 60 * 120)));
+        put("base.dustbin.selfCleanMode", Arrays.stream(EnumSelfCleanMode.values()).map(Enum::name).collect(Collectors.toList()));
+        put("base.safe.safeBlocksEntityLimit", Arrays.asList("50", "100", "250", "500", "1000", "2000"));
+        put("base.sweep.entity.entityListMode", Arrays.stream(EnumListType.values()).map(Enum::name).collect(Collectors.toList()));
+        put("base.sweep.entity.nbtWhiteBlackListEntityLimit", Arrays.asList("0", "250", "500"));
+        put("base.sweep.item.itemListLimit", Arrays.asList("0", "250", "500"));
+        put("base.sweep.item.itemListMode", Arrays.stream(EnumListType.values()).map(Enum::name).collect(Collectors.toList()));
+        put("base.sweep.item.sweepItemDelay", Arrays.asList("0", "1", "2", "5", "10", "20"));
+        put("base.sweep.sweepInterval", Arrays.asList(String.valueOf(1000 * 60 * 5), String.valueOf(1000 * 60 * 10)));
+        put("base.sweep.sweepWarningVoiceVolume", Arrays.asList("10", "25", "33", "50", "75", "100"));
+        put("permission.permissionCacheClear", Arrays.asList("0", "1", "2", "3", "4"));
+        put("permission.permissionCacheDrop", Arrays.asList("0", "1", "2", "3", "4"));
+        put("permission.permissionClearDrop", Arrays.asList("0", "1", "2", "3", "4"));
+        put("permission.permissionDelaySweep", Arrays.asList("0", "1", "2", "3", "4"));
+        put("permission.permissionDustbinClear", Arrays.asList("0", "1", "2", "3", "4"));
+        put("permission.permissionDustbinDrop", Arrays.asList("0", "1", "2", "3", "4"));
+        put("permission.permissionDustbinOpen", Arrays.asList("0", "1", "2", "3", "4"));
+        put("permission.permissionDustbinOpenOther", Arrays.asList("0", "1", "2", "3", "4"));
+        put("permission.permissionSweep", Arrays.asList("0", "1", "2", "3", "4"));
+        put("permission.permissionVirtualOp", Arrays.asList("0", "1", "2", "3", "4"));
+    }};
+
+    private static void configKeySuggestion(Class<?> configClazz, SuggestionsBuilder builder, String configKey) {
+        if (configKey == null) configKey = "";
+        configKey = configKey.trim();
+        boolean isEmpty = configKey.isEmpty();
+
+        Map<String, ModConfigSpec.ConfigValue<?>> map = buildConfigKeyMap(configClazz);
+        if (CollectionUtils.isNullOrEmpty(map)) return;
+
+        String lowerInput = configKey.toLowerCase(Locale.ROOT);
+
+        if (isEmpty) {
+            for (String key : map.keySet()) {
+                builder.suggest(key);
+            }
+            return;
+        }
+
+        if (configKey.indexOf('.') >= 0) {
+            String[] inputParts = lowerInput.split("\\.");
+            int prefixSegments = inputParts.length - 1;
+            String lastInputPart = inputParts[inputParts.length - 1];
+
+            for (String key : map.keySet()) {
+                String lowerKey = key.toLowerCase(Locale.ROOT);
+                String[] keyParts = lowerKey.split("\\.");
+
+                if (keyParts.length < prefixSegments + 1) {
+                    continue;
+                }
+
+                boolean prefixMatches = true;
+                for (int i = 0; i < prefixSegments; i++) {
+                    if (!keyParts[i].equals(inputParts[i])) {
+                        prefixMatches = false;
+                        break;
+                    }
+                }
+                if (!prefixMatches) continue;
+
+                String lastKeyPart = keyParts[keyParts.length - 1];
+                if (lastKeyPart.contains(lastInputPart)) {
+                    builder.suggest(key);
+                }
+            }
+        } else {
+            for (String key : map.keySet()) {
+                if (key.toLowerCase(Locale.ROOT).contains(lowerInput)) {
+                    builder.suggest(key);
+                }
+            }
+        }
+
+    }
+
+    @SuppressWarnings("rawtypes")
+    private static void configValueSuggestion(Class<?> configClazz, SuggestionsBuilder builder, String configKey) {
+        ModConfigSpec.ConfigValue<?> cv = findConfigValueByKey(configClazz, configKey);
+        if (cv == null) return;
+        else builder.suggest(String.valueOf(cv.get()));
+
+        Class<?> type = getConfigValueType(cv);
+        if (type == Boolean.class || type == boolean.class) {
+            builder.suggest("true").suggest("false");
+            return;
+        }
+        if (Enum.class.isAssignableFrom(type)) {
+            @SuppressWarnings("unchecked")
+            Class<? extends Enum> enumClass = (Class<? extends Enum>) type;
+            for (Object c : enumClass.getEnumConstants()) {
+                builder.suggest(((Enum<?>) c).name());
+            }
+        }
+        String path = getConfigValuePath(cv);
+        if (suggestionCache.containsKey(path)) {
+            suggestionCache.get(path).forEach(builder::suggest);
+        }
+    }
+
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    private static int executeModifyConfig(Class<?> configClazz, CommandContext<CommandSourceStack> context) {
+        CommandSourceStack source = context.getSource();
+        String lang = getLanguage(source);
+        String configKey = StringArgumentType.getString(context, "configKey");
+        String configValue = StringArgumentType.getString(context, "configValue");
+
+        ModConfigSpec.ConfigValue<?> cv = findConfigValueByKey(configClazz, configKey);
+        if (cv == null) {
+            Component component = Component.translatable(EnumI18nType.MESSAGE, "config_key_absent", configKey);
+            source.sendFailure(component.toChatComponent(lang));
+            return 0;
+        }
+
+        Class<?> type = getConfigValueType(cv);
+        Object parsed;
+        try {
+            parsed = parseStringToType(configValue, type);
+        } catch (Exception e) {
+            LOGGER.error(e);
+            Component component = Component.translatable(EnumI18nType.MESSAGE, "config_value_parse_error", configValue, e.getMessage());
+            source.sendFailure(component.toChatComponent(lang));
+            return 0;
+        }
+
+        if (validateConfigValueWithSpec(cv, parsed)) {
+            ((ModConfigSpec.ConfigValue) cv).set(parsed);
+        } else {
+            Component component = Component.translatable(EnumI18nType.MESSAGE, "config_value_set_error", configKey, configValue);
+            source.sendFailure(component.toChatComponent(lang));
+            return 0;
+        }
+
+        tryApplyServerConfigBake(configClazz);
+
+        Component component = Component.translatable(EnumI18nType.MESSAGE, "config_value_set_success", configKey, parsed);
+        source.sendSuccess(() -> component.toChatComponent(lang), true);
+
+        return 1;
+    }
+
+
+    private static final Map<Class<?>, List<Field>> allConfigValueFieldsCache = new HashMap<>();
+
+    private static List<Field> getAllConfigValueFields(Class<?> configClazz) {
+        return allConfigValueFieldsCache.computeIfAbsent(configClazz, (k) -> {
+            List<Field> out = new ArrayList<>();
+            for (Field f : k.getDeclaredFields()) {
+                try {
+                    if (ModConfigSpec.ConfigValue.class.isAssignableFrom(f.getType())) {
+                        f.setAccessible(true);
+                        out.add(f);
+                    }
+                } catch (Throwable ignored) {
+                }
+            }
+            return out;
+        });
+    }
+
+    public static final Map<Class<?>, Map<String, ModConfigSpec.ConfigValue<?>>> configKeyMapCache = new HashMap<>();
+
+    private static Map<String, ModConfigSpec.ConfigValue<?>> buildConfigKeyMap(Class<?> configClazz) {
+        return configKeyMapCache.computeIfAbsent(configClazz, (k) -> {
+            Map<String, ModConfigSpec.ConfigValue<?>> map = new LinkedHashMap<>();
+            for (Field f : getAllConfigValueFields(k)) {
+                try {
+                    Object raw = f.get(null);
+                    if (raw instanceof ModConfigSpec.ConfigValue) {
+                        ModConfigSpec.ConfigValue<?> cv = (ModConfigSpec.ConfigValue<?>) raw;
+                        String path = getConfigValuePath(cv);
+                        if (path != null) {
+                            map.put(path, cv);
+                        }
+                    }
+                } catch (Throwable ignored) {
+                }
+            }
+            return map;
+        });
+    }
+
+    private static String getConfigValuePath(ModConfigSpec.ConfigValue<?> cv) {
+        return cv.getPath().stream().map(String::valueOf).collect(Collectors.joining("."));
+    }
+
+    private static ModConfigSpec.ConfigValue<?> findConfigValueByKey(Class<?> configClazz, String key) {
+        if (key == null) return null;
+        Map<String, ModConfigSpec.ConfigValue<?>> map = buildConfigKeyMap(configClazz);
+
+        if (map.containsKey(key)) return map.get(key);
+
+        List<String> matches = map.keySet().stream()
+                .filter(s -> s.toLowerCase(Locale.ROOT).contains(key.toLowerCase(Locale.ROOT)))
+                .collect(Collectors.toList());
+        if (matches.size() == 1) return map.get(matches.get(0));
+
+        return null;
+    }
+
+    private static Class<?> getConfigValueType(ModConfigSpec.ConfigValue<?> cv) {
+        try {
+            Object cur = cv.get();
+            if (cur != null) return cur.getClass();
+        } catch (Throwable ignored) {
+        }
+        return Object.class;
+    }
+
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    private static Object parseStringToType(String parsedStr, Class<?> targetType) throws IllegalArgumentException {
+        if (targetType == Boolean.class || targetType == boolean.class) {
+            return StringUtils.stringToBoolean(parsedStr);
+        }
+        if (targetType == Integer.class || targetType == int.class) {
+            return StringUtils.toInt(parsedStr);
+        }
+        if (targetType == Long.class || targetType == long.class) {
+            return StringUtils.toLong(parsedStr);
+        }
+        if (targetType == Double.class || targetType == double.class) {
+            return StringUtils.toDouble(parsedStr);
+        }
+        if (Enum.class.isAssignableFrom(targetType)) {
+            Class<? extends Enum> enumClass = (Class<? extends Enum>) targetType;
+            for (Object c : enumClass.getEnumConstants()) {
+                if (c.toString().equalsIgnoreCase(parsedStr) || ((Enum<?>) c).name().equalsIgnoreCase(parsedStr)) {
+                    return Enum.valueOf(enumClass, ((Enum<?>) c).name());
+                }
+            }
+            throw new IllegalArgumentException("Unknown enum constant: " + parsedStr);
+        }
+        if (targetType == String.class) {
+            return parsedStr;
+        }
+        if (List.class.isAssignableFrom(targetType)) {
+            String[] parts = parsedStr.split(",");
+            return Arrays.stream(parts).map(String::trim).collect(Collectors.toList());
+        }
+        return parsedStr;
+    }
+
+    @SuppressWarnings("all")
+    private static void tryApplyServerConfigBake(Class<?> configClazz) {
+        try {
+            Method m = configClazz.getDeclaredMethod("bake");
+            if (m != null) {
+                m.setAccessible(true);
+                m.invoke(null);
+                return;
+            }
+        } catch (Throwable ignored) {
+        }
+
+        String[] candidate = new String[]{"save", "sync", "write", "apply"};
+        for (String name : candidate) {
+            try {
+                Method m = configClazz.getDeclaredMethod(name);
+                if (m != null) {
+                    m.setAccessible(true);
+                    m.invoke(null);
+                    return;
+                }
+            } catch (Throwable ignored) {
+            }
+        }
+    }
+
+    private static final Map<String, ModConfigSpec.ValueSpec> validateCache = new HashMap<>();
+
+    public static boolean validateConfigValueWithSpec(ModConfigSpec.ConfigValue<?> cv, Object parsedValue) {
+        if (cv == null) return false;
+        String path = getConfigValuePath(cv);
+        ModConfigSpec.ValueSpec vs = validateCache.computeIfAbsent(path, (k) -> {
+            try {
+                ModConfigSpec spec = null;
+                for (String candidate : FieldUtils.getPrivateFieldNames(ModConfigSpec.ConfigValue.class, ModConfigSpec.class)) {
+                    Object value = FieldUtils.getPrivateFieldValue(ModConfigSpec.ConfigValue.class, cv, candidate);
+                    if (value != null) {
+                        spec = (ModConfigSpec) value;
+                        break;
+                    }
+                }
+                if (spec != null) {
+                    Map<String, Object> valueMap = spec.valueMap();
+                    String[] split = k.split("\\.");
+                    for (String s : Arrays.copyOfRange(split, 0, split.length - 1)) {
+                        Object o = valueMap.get(s);
+                        if (o instanceof Config) {
+                            valueMap = ((Config) o).valueMap();
+                        } else {
+                            return null;
+                        }
+                    }
+                    if (valueMap.containsKey(CollectionUtils.getLast(split))) {
+                        Object o = valueMap.get(CollectionUtils.getLast(split));
+                        if (o instanceof ModConfigSpec.ValueSpec) {
+                            return (ModConfigSpec.ValueSpec) o;
+                        }
+                    }
+                }
+            } catch (Throwable ignored) {
+            }
+            return null;
+        });
+        return vs != null && vs.test(parsedValue);
+    }
+
+    // endregion config modifier
+
 }

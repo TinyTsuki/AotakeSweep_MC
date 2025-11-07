@@ -224,7 +224,7 @@ public class EventHandlerProxy {
                                                         .toTextComponent(language))
                                                 )
                                                 .setClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND
-                                                        , "/" + AotakeUtils.getCommandPrefix() + " config showSweepResult change")
+                                                        , "/" + AotakeUtils.getCommandPrefix() + " config player showSweepResult change")
                                                 )
                                         )
                                 );
@@ -238,7 +238,7 @@ public class EventHandlerProxy {
                     overcrowdedChunks.forEach(entry -> {
                         List<Entity> entities = entry.getValue();
                         if (entities.isEmpty()) return;
-                        entities.subList(0, Math.min(ServerConfig.CHUNK_CHECK_RETAIN.get(), entities.size())).clear();
+                        entities.subList(0, (int) (ServerConfig.CHUNK_CHECK_RETAIN.get() * entities.size())).clear();
                     });
 
                     AotakeScheduler.schedule(server, 25, () -> {
