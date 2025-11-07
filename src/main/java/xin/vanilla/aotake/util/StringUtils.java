@@ -12,6 +12,7 @@ import java.math.RoundingMode;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
+import java.util.Locale;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -27,7 +28,7 @@ public class StringUtils {
      */
     public static boolean stringToBoolean(String s) {
         if (null == s) return false;
-        switch (s.toLowerCase().trim()) {
+        switch (s.toLowerCase(Locale.ROOT).trim()) {
             case "1":
             case "真":
             case "是":

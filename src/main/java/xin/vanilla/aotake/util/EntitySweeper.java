@@ -120,7 +120,7 @@ public class EntitySweeper {
                                             .toTextComponent(language))
                                     )
                                     .setClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND
-                                            , "/" + AotakeUtils.getCommandPrefix() + " config showSweepResult change")
+                                            , "/" + AotakeUtils.getCommandPrefix() + " config player showSweepResult change")
                                     )
                             )
                     );

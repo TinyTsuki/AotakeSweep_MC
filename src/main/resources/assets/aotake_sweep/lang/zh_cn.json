@@ -68,5 +68,9 @@
   "message.aotake_sweep.allow_catch_entity": "是否允许玩家使用物品捕获实体被设置为：%s。",
   "message.aotake_sweep.sweep_when_no_player": "服务器没人时是否启用自动打扫被设置为：%s。",
   "message.aotake_sweep.dustbin_page_limit": "垃圾箱页数被设置为：%s。",
-  "message.aotake_sweep.next_sweep_time_set": "§e下次清理时间被『%s§e』设置为了：%s§e秒后。"
+  "message.aotake_sweep.next_sweep_time_set": "§e下次清理时间被『%s§e』设置为了：%s§e秒后。",
+  "message.aotake_sweep.config_key_absent": "§c配置修改失败：『§f%s§c』不存在。",
+  "message.aotake_sweep.config_value_parse_error": "§c配置修改失败：『§f%s§c』解析失败。",
+  "message.aotake_sweep.config_value_set_error": "§c配置修改失败：『§f%s§c』->『§f%s§c』。",
+  "message.aotake_sweep.config_value_set_success": "§2配置修改成功：『§f%s§2』->『§f%s§2』。"
 }
