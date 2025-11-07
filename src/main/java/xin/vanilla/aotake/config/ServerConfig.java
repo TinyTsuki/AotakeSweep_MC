@@ -110,9 +110,9 @@ public class ServerConfig {
     public static final ForgeConfigSpec.IntValue CHUNK_CHECK_LIMIT;
 
     /**
-     * 区块实体清理时保留的实体数量
+     * 区块实体清理时保留的实体比例
      */
-    public static final ForgeConfigSpec.IntValue CHUNK_CHECK_RETAIN;
+    public static final ForgeConfigSpec.DoubleValue CHUNK_CHECK_RETAIN;
 
     /**
      * 区块实体过多提示
@@ -445,13 +445,13 @@ public class ServerConfig {
                                 , "区块实体过多检测阈值。")
                         .defineInRange("chunkCheckLimit", 250, 1, Integer.MAX_VALUE);
 
-                // 区块实体过多检测保留的实体数量
+                // 区块实体过多检测保留的实体比例
                 CHUNK_CHECK_RETAIN = SERVER_BUILDER
-                        .comment("Number of entities to retain during entity overload cleanup in a chunk. "
+                        .comment("The ratio of entities to retain during entity overload cleanup in a chunk. "
                                 , "By default, half of the detection threshold is retained to prevent excessive loss from clearing everything. "
                                 , "The retention behavior is affected by chunkCheckMode."
-                                , "区块实体过多检测清理时保留的实体数量，默认保留检测阈值的一半，避免全部清理而导致损失过大，保留方式受chunkCheckMode影响。")
-                        .defineInRange("chunkCheckRetain", 125, 1, Integer.MAX_VALUE);
+                                , "区块实体过多检测清理时保留的实体比例，默认保留检测阈值的一半，避免全部清理而导致损失过大，保留方式受chunkCheckMode影响。")
+                        .defineInRange("chunkCheckRetain", 0.5, 0, 1);
 
                 // 区块实体过多提示
                 CHUNK_CHECK_NOTICE = SERVER_BUILDER
@@ -760,7 +760,7 @@ public class ServerConfig {
 
         CHUNK_CHECK_INTERVAL.set(5 * 1000L);
         CHUNK_CHECK_LIMIT.set(250);
-        CHUNK_CHECK_RETAIN.set(125);
+        CHUNK_CHECK_RETAIN.set(0.5);
         CHUNK_CHECK_NOTICE.set(true);
         CHUNK_CHECK_MODE.set(EnumChunkCheckMode.DEFAULT.name());
         CHUNK_CHECK_ENTITY_LIST.set(new ArrayList<>());
