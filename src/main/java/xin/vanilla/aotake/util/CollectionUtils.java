@@ -29,6 +29,10 @@ public class CollectionUtils {
         return array == null || array.length == 0;
     }
 
+    public static boolean isNullOrEmpty(Map<?, ?> map) {
+        return map == null || map.isEmpty();
+    }
+
     /**
      * 从给定的集合中随机选取一个元素。
      *
