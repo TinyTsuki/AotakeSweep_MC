@@ -158,6 +158,7 @@ public class AotakeSweep {
         try {
             if (event.getConfig().getSpec() == ServerConfig.SERVER_CONFIG && serverInstance.val()) {
                 ServerConfig.bake();
+                AotakeCommand.configKeyMapCache.clear();
             }
         } catch (Exception ignored) {
         }
