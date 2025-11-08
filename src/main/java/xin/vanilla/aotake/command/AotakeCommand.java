@@ -302,7 +302,7 @@ public class AotakeCommand {
                 }
             }
             Entity entity = context.getSource().getEntity();
-            new Thread(() -> AotakeUtils.sweep(entity instanceof ServerPlayer ? (ServerPlayer) entity : null, entities, false)).start();
+            AotakeScheduler.schedule(context.getSource().getServer(), 1, () -> AotakeUtils.sweep(entity instanceof ServerPlayer ? (ServerPlayer) entity : null, entities, false));
             return 1;
         };
         Command<CommandSourceStack> clearDropCommand = context -> {
@@ -1257,7 +1257,7 @@ public class AotakeCommand {
     /**
      * 硬编码补全提示
      */
-    private static final Map<String, List<String>> suggestionCache = new LinkedHashMap<String, List<String>>() {{
+    private static final Map<String, List<String>> suggestionCache = new LinkedHashMap<>() {{
         put("base.batch.sweepBatchLimit", Arrays.asList("1", "2", "5", "10"));
         put("base.batch.sweepEntityInterval", Arrays.asList("1", "2", "5", "10"));
         put("base.batch.sweepEntityLimit", Arrays.asList("250", "500", "1000", "2000"));
@@ -1440,8 +1440,7 @@ public class AotakeCommand {
             for (Field f : getAllConfigValueFields(k)) {
                 try {
                     Object raw = f.get(null);
-                    if (raw instanceof ForgeConfigSpec.ConfigValue) {
-                        ForgeConfigSpec.ConfigValue<?> cv = (ForgeConfigSpec.ConfigValue<?>) raw;
+                    if (raw instanceof ForgeConfigSpec.ConfigValue<?> cv) {
                         String path = getConfigValuePath(cv);
                         if (path != null) {
                             map.put(path, cv);
@@ -1466,8 +1465,8 @@ public class AotakeCommand {
 
         List<String> matches = map.keySet().stream()
                 .filter(s -> s.toLowerCase(Locale.ROOT).contains(key.toLowerCase(Locale.ROOT)))
-                .collect(Collectors.toList());
-        if (matches.size() == 1) return map.get(matches.get(0));
+                .toList();
+        if (matches.size() == 1) return map.get(matches.getFirst());
 
         return null;
     }
