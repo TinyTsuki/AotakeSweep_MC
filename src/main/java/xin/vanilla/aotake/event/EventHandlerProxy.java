@@ -102,7 +102,7 @@ public class EventHandlerProxy {
         // 扫地
         if (countdown <= 0) {
             nextSweepTime = now + ServerConfig.SWEEP_INTERVAL.get();
-            new Thread(AotakeUtils::sweep).start();
+            AotakeScheduler.schedule(server, 1, AotakeUtils::sweep);
             // 给已安装mod玩家同步扫地倒计时
             for (String uuid : AotakeSweep.getCustomConfigStatus()) {
                 AotakeUtils.sendPacketToPlayer(new SweepTimeSyncToClient(), AotakeUtils.getPlayerByUUID(uuid));
