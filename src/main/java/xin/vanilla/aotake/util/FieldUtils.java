@@ -31,6 +31,11 @@ public class FieldUtils {
         }
     }
 
+    public static Class<?> getClass(Object o) {
+        return o.getClass();
+    }
+
+
     /**
      * 获取 类中声明的私有 target 字段名称
      *
@@ -39,11 +44,24 @@ public class FieldUtils {
      * @return 字段名称
      */
     public static List<String> getPrivateFieldNames(Class<?> clazz, Class<?> target) {
+        return getPrivateFieldNames(clazz, target, false, false);
+    }
+
+    /**
+     * 获取 类中声明的私有 target 字段名称
+     *
+     * @param clazz  类
+     * @param target 字段类型
+     * @return 字段名称
+     */
+    public static List<String> getPrivateFieldNames(Class<?> clazz, Class<?> target, boolean assignableFrom, boolean instance) {
         List<String> fieldNames = new ArrayList<>();
         try {
             Field[] fields = clazz.getDeclaredFields();
             for (Field field : fields) {
-                if ((Modifier.isPrivate(field.getModifiers()) || Modifier.isProtected(field.getModifiers())) && field.getType() == target) {
+                if ((Modifier.isPrivate(field.getModifiers()) || Modifier.isProtected(field.getModifiers()))
+                        && ((field.getType() == target) || (assignableFrom && target.isAssignableFrom(field.getType())) || (instance && target.isInstance(field.getType())))
+                ) {
                     fieldNames.add(field.getName());
                 }
             }
