@@ -7,32 +7,21 @@ import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.arguments.LongArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
-import com.mojang.brigadier.context.CommandContext;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import com.mojang.brigadier.suggestion.SuggestionProvider;
-import com.mojang.brigadier.suggestion.SuggestionsBuilder;
-import lombok.NonNull;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.commands.arguments.DimensionArgument;
 import net.minecraft.commands.arguments.EntityArgument;
-import net.minecraft.core.Direction;
 import net.minecraft.network.chat.ClickEvent;
 import net.minecraft.network.chat.HoverEvent;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.InteractionResult;
-import net.minecraft.world.MenuProvider;
 import net.minecraft.world.SimpleContainer;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.level.block.state.BlockState;
-import net.minecraft.world.phys.BlockHitResult;
-import net.minecraft.world.phys.Vec3;
-import net.neoforged.neoforge.common.ModConfigSpec;
-import net.neoforged.neoforge.items.IItemHandler;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import xin.vanilla.aotake.AotakeSweep;
@@ -50,12 +39,11 @@ import xin.vanilla.aotake.network.packet.CustomConfigSyncToClient;
 import xin.vanilla.aotake.network.packet.SweepTimeSyncToClient;
 import xin.vanilla.aotake.util.*;
 
-import java.lang.reflect.Field;
-import java.lang.reflect.Method;
 import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
+@SuppressWarnings("resource")
 public class AotakeCommand {
     private static final Logger LOGGER = LogManager.getLogger();
 
@@ -169,7 +157,7 @@ public class AotakeCommand {
             return 1;
         };
         SuggestionProvider<CommandSourceStack> helpSuggestions = (context, builder) -> {
-            String input = getStringEmpty(context, "command");
+            String input = CommandUtils.getStringEmpty(context, "command");
             boolean isInputEmpty = StringUtils.isNullOrEmpty(input);
             int totalPages = (int) Math.ceil((double) HELP_MESSAGE.size() / ServerConfig.HELP_INFO_NUM_PER_PAGE.get());
             for (int i = 0; i < totalPages && isInputEmpty; i++) {
@@ -189,8 +177,8 @@ public class AotakeCommand {
 
 
         Command<CommandSourceStack> languageCommand = context -> {
-            if (checkModStatus(context)) return 0;
-            notifyHelp(context);
+            if (CommandUtils.checkModStatus(context)) return 0;
+            CommandUtils.notifyHelp(context);
             ServerPlayer player = context.getSource().getPlayerOrException();
             String language = StringArgumentType.getString(context, "language");
             if (I18nUtils.getI18nFiles().contains(language)) {
@@ -205,8 +193,8 @@ public class AotakeCommand {
             return 1;
         };
         Command<CommandSourceStack> virtualOpCommand = context -> {
-            if (checkModStatus(context)) return 0;
-            notifyHelp(context);
+            if (CommandUtils.checkModStatus(context)) return 0;
+            CommandUtils.notifyHelp(context);
             CommandSourceStack source = context.getSource();
             // 如果命令来自玩家
             if (source.getEntity() == null || source.getEntity() instanceof ServerPlayer) {
@@ -226,7 +214,7 @@ public class AotakeCommand {
                     targetList.addAll(EntityArgument.getPlayers(context, "player"));
                 } catch (IllegalArgumentException ignored) {
                 }
-                String language = getLanguage(source);
+                String language = CommandUtils.getLanguage(source);
                 for (ServerPlayer target : targetList) {
                     switch (type) {
                         case ADD:
@@ -265,31 +253,31 @@ public class AotakeCommand {
             return 1;
         };
         Command<CommandSourceStack> openDustbinCommand = context -> {
-            if (checkModStatus(context)) return 0;
-            notifyHelp(context);
+            if (CommandUtils.checkModStatus(context)) return 0;
+            CommandUtils.notifyHelp(context);
             List<ServerPlayer> targetList = new ArrayList<>();
             try {
                 targetList.addAll(EntityArgument.getPlayers(context, "players"));
             } catch (IllegalArgumentException ignored) {
                 targetList.add(context.getSource().getPlayerOrException());
             }
-            int page = getIntDefault(context, "page", 1);
-            int totalPage = getDustbinTotalPage();
+            int page = CommandUtils.getIntDefault(context, "page", 1);
+            int totalPage = AotakeUtils.getDustbinTotalPage();
             if (page > totalPage)
                 throw CommandSyntaxException.BUILT_IN_EXCEPTIONS.integerTooHigh().create(page, totalPage);
             if (page < 1)
                 throw CommandSyntaxException.BUILT_IN_EXCEPTIONS.integerTooLow().create(page, 1);
 
             for (ServerPlayer player : targetList) {
-                dustbin(player, page);
+                AotakeUtils.dustbin(player, page);
             }
             return 1;
         };
         Command<CommandSourceStack> sweepCommand = context -> {
-            if (checkModStatus(context)) return 0;
-            notifyHelp(context);
-            int range = getIntDefault(context, "range", 0);
-            ServerLevel dimension = getDimensionDefault(context, "dimension", null);
+            if (CommandUtils.checkModStatus(context)) return 0;
+            CommandUtils.notifyHelp(context);
+            int range = CommandUtils.getIntDefault(context, "range", 0);
+            ServerLevel dimension = CommandUtils.getDimensionDefault(context, "dimension", null);
             List<Entity> entities;
             if (dimension == null) {
                 entities = AotakeUtils.getAllEntities();
@@ -305,13 +293,13 @@ public class AotakeCommand {
             return 1;
         };
         Command<CommandSourceStack> clearDropCommand = context -> {
-            if (checkModStatus(context)) return 0;
-            notifyHelp(context);
-            boolean withEntity = getBooleanDefault(context, "withEntity", false);
-            boolean greedyMode = getBooleanDefault(context, "greedyMode", false);
-            boolean allEntity = getBooleanDefault(context, "allEntity", false);
-            int range = getIntDefault(context, "range", 0);
-            ServerLevel dimension = getDimensionDefault(context, "dimension", null);
+            if (CommandUtils.checkModStatus(context)) return 0;
+            CommandUtils.notifyHelp(context);
+            boolean withEntity = CommandUtils.getBooleanDefault(context, "withEntity", false);
+            boolean greedyMode = CommandUtils.getBooleanDefault(context, "greedyMode", false);
+            boolean allEntity = CommandUtils.getBooleanDefault(context, "allEntity", false);
+            int range = CommandUtils.getIntDefault(context, "range", 0);
+            ServerLevel dimension = CommandUtils.getDimensionDefault(context, "dimension", null);
 
             List<Entity> entities = new ArrayList<>();
             if (dimension == null) {
@@ -347,43 +335,43 @@ public class AotakeCommand {
             return 1;
         };
         Command<CommandSourceStack> clearDustbinCommand = context -> {
-            if (checkModStatus(context)) return 0;
-            notifyHelp(context);
-            int page = getIntDefault(context, "page", 0);
+            if (CommandUtils.checkModStatus(context)) return 0;
+            CommandUtils.notifyHelp(context);
+            int page = CommandUtils.getIntDefault(context, "page", 0);
             int vPage = CommonConfig.DUSTBIN_PAGE_LIMIT.get();
             int bPage = ServerConfig.DUSTBIN_BLOCK_POSITIONS.get().size();
             switch (EnumDustbinMode.valueOfOrDefault(ServerConfig.DUSTBIN_MODE.get())) {
                 case VIRTUAL: {
-                    clearVirtualDustbin(page);
+                    AotakeUtils.clearVirtualDustbin(page);
                 }
                 break;
                 case BLOCK: {
-                    clearDustbinBlock(page);
+                    AotakeUtils.clearDustbinBlock(page);
                 }
                 break;
                 case VIRTUAL_BLOCK: {
                     if (page > 0 && page <= vPage + bPage) {
                         if (page <= vPage) {
-                            clearVirtualDustbin(page);
+                            AotakeUtils.clearVirtualDustbin(page);
                         } else {
-                            clearDustbinBlock(page - vPage);
+                            AotakeUtils.clearDustbinBlock(page - vPage);
                         }
                     } else if (page == 0) {
-                        clearVirtualDustbin(page);
-                        clearDustbinBlock(page);
+                        AotakeUtils.clearVirtualDustbin(page);
+                        AotakeUtils.clearDustbinBlock(page);
                     }
                 }
                 break;
                 case BLOCK_VIRTUAL: {
                     if (page > 0 && page <= vPage + bPage) {
                         if (page <= bPage) {
-                            clearDustbinBlock(page);
+                            AotakeUtils.clearDustbinBlock(page);
                         } else {
-                            clearVirtualDustbin(page - bPage);
+                            AotakeUtils.clearVirtualDustbin(page - bPage);
                         }
                     } else if (page == 0) {
-                        clearDustbinBlock(page);
-                        clearVirtualDustbin(page);
+                        AotakeUtils.clearDustbinBlock(page);
+                        AotakeUtils.clearVirtualDustbin(page);
                     }
                 }
                 break;
@@ -402,44 +390,44 @@ public class AotakeCommand {
             return 1;
         };
         Command<CommandSourceStack> dropDustbinCommand = context -> {
-            if (checkModStatus(context)) return 0;
-            notifyHelp(context);
+            if (CommandUtils.checkModStatus(context)) return 0;
+            CommandUtils.notifyHelp(context);
             ServerPlayer player = context.getSource().getPlayerOrException();
-            int page = getIntDefault(context, "page", 0);
+            int page = CommandUtils.getIntDefault(context, "page", 0);
             int vPage = CommonConfig.DUSTBIN_PAGE_LIMIT.get();
             int bPage = ServerConfig.DUSTBIN_BLOCK_POSITIONS.get().size();
             switch (EnumDustbinMode.valueOfOrDefault(ServerConfig.DUSTBIN_MODE.get())) {
                 case VIRTUAL: {
-                    dropVirtualDustbin(player, page);
+                    AotakeUtils.dropVirtualDustbin(player, page);
                 }
                 break;
                 case BLOCK: {
-                    dropDustbinBlock(player, page);
+                    AotakeUtils.dropDustbinBlock(player, page);
                 }
                 break;
                 case VIRTUAL_BLOCK: {
                     if (page > 0 && page <= vPage + bPage) {
                         if (page <= vPage) {
-                            dropVirtualDustbin(player, page);
+                            AotakeUtils.dropVirtualDustbin(player, page);
                         } else {
-                            dropDustbinBlock(player, page - vPage);
+                            AotakeUtils.dropDustbinBlock(player, page - vPage);
                         }
                     } else if (page == 0) {
-                        dropVirtualDustbin(player, page);
-                        dropDustbinBlock(player, page);
+                        AotakeUtils.dropVirtualDustbin(player, page);
+                        AotakeUtils.dropDustbinBlock(player, page);
                     }
                 }
                 break;
                 case BLOCK_VIRTUAL: {
                     if (page > 0 && page <= vPage + bPage) {
                         if (page <= bPage) {
-                            dropDustbinBlock(player, page);
+                            AotakeUtils.dropDustbinBlock(player, page);
                         } else {
-                            dropVirtualDustbin(player, page - bPage);
+                            AotakeUtils.dropVirtualDustbin(player, page - bPage);
                         }
                     } else if (page == 0) {
-                        dropDustbinBlock(player, page);
-                        dropVirtualDustbin(player, page);
+                        AotakeUtils.dropDustbinBlock(player, page);
+                        AotakeUtils.dropVirtualDustbin(player, page);
                     }
                 }
                 break;
@@ -458,8 +446,8 @@ public class AotakeCommand {
             return 1;
         };
         Command<CommandSourceStack> clearCacheCommand = context -> {
-            if (checkModStatus(context)) return 0;
-            notifyHelp(context);
+            if (CommandUtils.checkModStatus(context)) return 0;
+            CommandUtils.notifyHelp(context);
             WorldTrashData.get().getDropList().clear();
             WorldTrashData.get().setDirty();
             Component message = Component.translatable(EnumI18nType.MESSAGE
@@ -475,9 +463,9 @@ public class AotakeCommand {
             return 1;
         };
         Command<CommandSourceStack> dropCacheCommand = context -> {
-            if (checkModStatus(context)) return 0;
-            notifyHelp(context);
-            boolean originalPos = getBooleanDefault(context, "originalPos", false);
+            if (CommandUtils.checkModStatus(context)) return 0;
+            CommandUtils.notifyHelp(context);
+            boolean originalPos = CommandUtils.getBooleanDefault(context, "originalPos", false);
             ServerPlayer player = context.getSource().getPlayerOrException();
             List<KeyValue<WorldCoordinate, ItemStack>> items = WorldTrashData.get().getDropList().snapshot();
             WorldTrashData.get().getDropList().clear();
@@ -509,10 +497,10 @@ public class AotakeCommand {
             return 1;
         };
         Command<CommandSourceStack> delaySweepCommand = context -> {
-            if (checkModStatus(context)) return 0;
-            notifyHelp(context);
+            if (CommandUtils.checkModStatus(context)) return 0;
+            CommandUtils.notifyHelp(context);
             Date current = new Date();
-            long delay = getLongDefault(context, "seconds", ServerConfig.SWEEP_INTERVAL.get() / 1000);
+            long delay = CommandUtils.getLongDefault(context, "seconds", ServerConfig.SWEEP_INTERVAL.get() / 1000);
             if (delay > 0) {
                 EventHandlerProxy.setNextSweepTime(current.getTime() + delay * 1000);
             } else {
@@ -576,7 +564,7 @@ public class AotakeCommand {
                                                             || operation.equalsIgnoreCase(EnumOperationType.LIST.name().toLowerCase())) {
                                                         return builder.buildFuture();
                                                     }
-                                                    String input = getStringEmpty(context, "rules").replace(" ", ",");
+                                                    String input = CommandUtils.getStringEmpty(context, "rules").replace(" ", ",");
                                                     String[] split = input.split(",");
                                                     String current = input.endsWith(",") ? "" : split[split.length - 1];
                                                     for (EnumCommandType value : Arrays.stream(EnumCommandType.values())
@@ -603,7 +591,7 @@ public class AotakeCommand {
                         .executes(openDustbinCommand)
                         .then(Commands.argument("page", IntegerArgumentType.integer(1))
                                 .suggests((context, builder) -> {
-                                    int totalPage = getDustbinTotalPage();
+                                    int totalPage = AotakeUtils.getDustbinTotalPage();
                                     IntStream.range(1, totalPage + 1)
                                             .filter(i -> i == 1
                                                     || i % 5 == 0
@@ -665,7 +653,7 @@ public class AotakeCommand {
                         .executes(clearDustbinCommand)
                         .then(Commands.argument("page", IntegerArgumentType.integer(1))
                                 .suggests((context, builder) -> {
-                                    int totalPage = getDustbinTotalPage();
+                                    int totalPage = AotakeUtils.getDustbinTotalPage();
                                     List<SimpleContainer> inventories = WorldTrashData.get().getInventoryList();
                                     IntStream.range(1, totalPage + 1)
                                             .filter(i -> {
@@ -685,7 +673,7 @@ public class AotakeCommand {
                         .executes(dropDustbinCommand)
                         .then(Commands.argument("page", IntegerArgumentType.integer(1))
                                 .suggests((context, builder) -> {
-                                    int totalPage = getDustbinTotalPage();
+                                    int totalPage = AotakeUtils.getDustbinTotalPage();
                                     List<SimpleContainer> inventories = WorldTrashData.get().getInventoryList();
                                     IntStream.range(1, totalPage + 1)
                                             .filter(i -> {
@@ -823,7 +811,7 @@ public class AotakeCommand {
                                             .executes(context -> {
                                                 int mode = IntegerArgumentType.getInteger(context, "mode");
                                                 CommandSourceStack source = context.getSource();
-                                                String lang = getLanguage(source);
+                                                String lang = CommandUtils.getLanguage(source);
                                                 switch (mode) {
                                                     case 0:
                                                         ServerConfig.resetConfig();
@@ -859,17 +847,17 @@ public class AotakeCommand {
                                     .requires(source -> AotakeUtils.hasCommandPermission(source, EnumCommandType.VIRTUAL_OP))
                                     .then(Commands.argument("configKey", StringArgumentType.word())
                                             .suggests((context, builder) -> {
-                                                String input = getStringEmpty(context, "configKey");
-                                                configKeySuggestion(ServerConfig.class, builder, input);
+                                                String input = CommandUtils.getStringEmpty(context, "configKey");
+                                                CommandUtils.configKeySuggestion(ServerConfig.class, builder, input);
                                                 return builder.buildFuture();
                                             })
                                             .then(Commands.argument("configValue", StringArgumentType.word())
                                                     .suggests((context, builder) -> {
                                                         String configKey = StringArgumentType.getString(context, "configKey");
-                                                        configValueSuggestion(ServerConfig.class, builder, configKey);
+                                                        CommandUtils.configValueSuggestion(ServerConfig.class, builder, configKey);
                                                         return builder.buildFuture();
                                                     })
-                                                    .executes(context -> executeModifyConfig(ServerConfig.class, context))
+                                                    .executes(context -> CommandUtils.executeModifyConfig(ServerConfig.class, context))
                                             )
                                     )
                             )// endregion 修改server配置
@@ -878,17 +866,17 @@ public class AotakeCommand {
                                     .requires(source -> AotakeUtils.hasCommandPermission(source, EnumCommandType.VIRTUAL_OP))
                                     .then(Commands.argument("configKey", StringArgumentType.word())
                                             .suggests((context, builder) -> {
-                                                String input = getStringEmpty(context, "configKey");
-                                                configKeySuggestion(CommonConfig.class, builder, input);
+                                                String input = CommandUtils.getStringEmpty(context, "configKey");
+                                                CommandUtils.configKeySuggestion(CommonConfig.class, builder, input);
                                                 return builder.buildFuture();
                                             })
                                             .then(Commands.argument("configValue", StringArgumentType.word())
                                                     .suggests((context, builder) -> {
                                                         String configKey = StringArgumentType.getString(context, "configKey");
-                                                        configValueSuggestion(CommonConfig.class, builder, configKey);
+                                                        CommandUtils.configValueSuggestion(CommonConfig.class, builder, configKey);
                                                         return builder.buildFuture();
                                                     })
-                                                    .executes(context -> executeModifyConfig(CommonConfig.class, context))
+                                                    .executes(context -> CommandUtils.executeModifyConfig(CommonConfig.class, context))
                                             )
                                     )
                             )// endregion 修改common配置
@@ -898,16 +886,16 @@ public class AotakeCommand {
                                     .then(Commands.literal("showSweepResult")
                                             .then(Commands.argument("show", StringArgumentType.word())
                                                     .suggests((context, suggestion) -> {
-                                                        String show = getStringDefault(context, "show", "");
-                                                        addSuggestion(suggestion, show, "true");
-                                                        addSuggestion(suggestion, show, "false");
-                                                        addSuggestion(suggestion, show, "change");
+                                                        String show = CommandUtils.getStringDefault(context, "show", "");
+                                                        CommandUtils.addSuggestion(suggestion, show, "true");
+                                                        CommandUtils.addSuggestion(suggestion, show, "false");
+                                                        CommandUtils.addSuggestion(suggestion, show, "change");
                                                         return suggestion.buildFuture();
                                                     })
                                                     .executes(context -> {
-                                                        if (checkModStatus(context)) return 0;
-                                                        notifyHelp(context);
-                                                        String show = getStringDefault(context, "show", "change");
+                                                        if (CommandUtils.checkModStatus(context)) return 0;
+                                                        CommandUtils.notifyHelp(context);
+                                                        String show = CommandUtils.getStringDefault(context, "show", "change");
                                                         ServerPlayer player = context.getSource().getPlayerOrException();
                                                         PlayerSweepData data = PlayerSweepData.getData(player);
                                                         boolean r = "change".equalsIgnoreCase(show) ? !data.isShowSweepResult() : Boolean.parseBoolean(show);
@@ -927,16 +915,16 @@ public class AotakeCommand {
                                     .then(Commands.literal("enableWarningVoice")
                                             .then(Commands.argument("enable", StringArgumentType.word())
                                                     .suggests((context, suggestion) -> {
-                                                        String enable = getStringDefault(context, "enable", "");
-                                                        addSuggestion(suggestion, enable, "true");
-                                                        addSuggestion(suggestion, enable, "false");
-                                                        addSuggestion(suggestion, enable, "change");
+                                                        String enable = CommandUtils.getStringDefault(context, "enable", "");
+                                                        CommandUtils.addSuggestion(suggestion, enable, "true");
+                                                        CommandUtils.addSuggestion(suggestion, enable, "false");
+                                                        CommandUtils.addSuggestion(suggestion, enable, "change");
                                                         return suggestion.buildFuture();
                                                     })
                                                     .executes(context -> {
-                                                        if (checkModStatus(context)) return 0;
-                                                        notifyHelp(context);
-                                                        String enable = getStringDefault(context, "enable", "change");
+                                                        if (CommandUtils.checkModStatus(context)) return 0;
+                                                        CommandUtils.notifyHelp(context);
+                                                        String enable = CommandUtils.getStringDefault(context, "enable", "change");
                                                         ServerPlayer player = context.getSource().getPlayerOrException();
                                                         PlayerSweepData data = PlayerSweepData.getData(player);
                                                         boolean r = "change".equalsIgnoreCase(enable) ? !data.isEnableWarningVoice() : Boolean.parseBoolean(enable);
@@ -957,592 +945,5 @@ public class AotakeCommand {
             );
         }
     }
-
-    public static String getStringEmpty(CommandContext<?> context, String name) {
-        return getStringDefault(context, name, "");
-    }
-
-    public static String getStringDefault(CommandContext<?> context, String name, String defaultValue) {
-        String result;
-        try {
-            result = StringArgumentType.getString(context, name);
-        } catch (IllegalArgumentException ignored) {
-            result = defaultValue;
-        }
-        return result;
-    }
-
-    public static int getIntDefault(CommandContext<?> context, String name, int defaultValue) {
-        int result;
-        try {
-            result = IntegerArgumentType.getInteger(context, name);
-        } catch (IllegalArgumentException ignored) {
-            result = defaultValue;
-        }
-        return result;
-    }
-
-    public static long getLongDefault(CommandContext<?> context, String name, long defaultValue) {
-        long result;
-        try {
-            result = LongArgumentType.getLong(context, name);
-        } catch (IllegalArgumentException ignored) {
-            result = defaultValue;
-        }
-        return result;
-    }
-
-    public static boolean getBooleanDefault(CommandContext<?> context, String name, boolean defaultValue) {
-        boolean result;
-        try {
-            result = BoolArgumentType.getBool(context, name);
-        } catch (IllegalArgumentException ignored) {
-            result = defaultValue;
-        }
-        return result;
-    }
-
-    public static ServerLevel getDimensionDefault(CommandContext<CommandSourceStack> context, String name, ServerLevel defaultDimension) {
-        ServerLevel result;
-        try {
-            result = DimensionArgument.getDimension(context, name);
-        } catch (IllegalArgumentException | CommandSyntaxException e) {
-            result = defaultDimension;
-        }
-        return result;
-    }
-
-    /**
-     * 若为第一次使用指令则进行提示
-     */
-    public static void notifyHelp(CommandContext<CommandSourceStack> context) {
-        CommandSourceStack source = context.getSource();
-        Entity entity = source.getEntity();
-        if (entity instanceof ServerPlayer player) {
-            PlayerSweepData data = PlayerSweepData.getData(player);
-            if (!data.isNotified()) {
-                Component button = Component.literal("/" + AotakeUtils.getCommandPrefix())
-                        .setColor(EnumMCColor.AQUA.getColor())
-                        .setClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/" + AotakeUtils.getCommandPrefix()))
-                        .setHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT, Component.literal("/" + AotakeUtils.getCommandPrefix())
-                                .toTextComponent())
-                        );
-                AotakeUtils.sendMessage(player, Component.translatable(EnumI18nType.MESSAGE, "notify_help", button));
-                data.setNotified(true);
-            }
-        }
-    }
-
-    public static boolean checkModStatus(CommandContext<CommandSourceStack> context) {
-        if (AotakeSweep.isDisable()) {
-            CommandSourceStack source = context.getSource();
-            Entity entity = source.getEntity();
-            if (entity instanceof ServerPlayer) {
-                AotakeUtils.sendMessage((ServerPlayer) entity, Component.translatable(EnumI18nType.MESSAGE, "mod_disabled"));
-            }
-        }
-        return AotakeSweep.isDisable();
-    }
-
-    public static int dustbin(@NonNull ServerPlayer player, int page) {
-        int result = 0;
-        int vPage = CommonConfig.DUSTBIN_PAGE_LIMIT.get();
-        int bPage = ServerConfig.DUSTBIN_BLOCK_POSITIONS.get().size();
-        switch (EnumDustbinMode.valueOfOrDefault(ServerConfig.DUSTBIN_MODE.get())) {
-            case VIRTUAL: {
-                result = openVirtualDustbin(player, page);
-            }
-            break;
-            case BLOCK: {
-                result = openDustbinBlock(player, page);
-            }
-            break;
-            case VIRTUAL_BLOCK: {
-                if (page > 0 && page <= vPage + bPage) {
-                    if (page <= vPage) {
-                        result = openVirtualDustbin(player, page);
-                    } else {
-                        result = openDustbinBlock(player, page - vPage);
-                    }
-                }
-            }
-            break;
-            case BLOCK_VIRTUAL: {
-                if (page > 0 && page <= vPage + bPage) {
-                    if (page <= bPage) {
-                        result = openDustbinBlock(player, page);
-                    } else {
-                        result = openVirtualDustbin(player, page - bPage);
-                    }
-                }
-            }
-            break;
-        }
-
-        if (result > 0) AotakeSweep.getPlayerDustbinPage().put(AotakeUtils.getPlayerUUIDString(player), page);
-        return result;
-    }
-
-    private static int openVirtualDustbin(@NonNull ServerPlayer player, int page) {
-        MenuProvider trashContainer = WorldTrashData.getTrashContainer(player, page);
-        if (trashContainer == null) return 0;
-        int result = player.openMenu(trashContainer).orElse(0);
-
-        if (result > 0) AotakeSweep.getPlayerDustbinPage().put(AotakeUtils.getPlayerUUIDString(player), page);
-        return result;
-    }
-
-    private static int openDustbinBlock(@NonNull ServerPlayer player, int page) {
-        int result = 0;
-        List<? extends String> positions = ServerConfig.DUSTBIN_BLOCK_POSITIONS.get();
-        if (CollectionUtils.isNotNullOrEmpty(positions) && positions.size() >= page) {
-            WorldCoordinate coordinate = WorldCoordinate.fromSimpleString(positions.get(page - 1));
-
-            Direction direction = coordinate.getDirection();
-            if (direction == null) direction = Direction.UP;
-            // 命中点：方块中心或面上
-            Vec3 center = coordinate.toVec3().add(0.5, 0.5, 0.5);
-            Vec3 hitVec = center.add(direction.getStepX() * 0.500001, direction.getStepY() * 0.500001, direction.getStepZ() * 0.500001);
-
-            BlockHitResult ray = new BlockHitResult(hitVec, direction, coordinate.toBlockPos(), false);
-
-            BlockState state = player.serverLevel().getBlockState(coordinate.toBlockPos());
-            InteractionResult res = state.useWithoutItem(player.serverLevel(), player, ray);
-            if (res.consumesAction()) {
-                result = 1;
-            }
-        }
-
-        if (result > 0) AotakeSweep.getPlayerDustbinPage().put(AotakeUtils.getPlayerUUIDString(player), page);
-        return result;
-    }
-
-    private static void addSuggestion(SuggestionsBuilder suggestion, String input, String suggest) {
-        if (suggest.contains(input) || StringUtils.isNullOrEmpty(input)) {
-            suggestion.suggest(suggest);
-        }
-    }
-
-    private static void clearVirtualDustbin(int page) {
-        List<SimpleContainer> inventories = WorldTrashData.get().getInventoryList();
-        if (page == 0) {
-            inventories.forEach(SimpleContainer::clearContent);
-        } else {
-            SimpleContainer inventory = CollectionUtils.getOrDefault(inventories, page - 1, null);
-            if (inventory != null) inventory.clearContent();
-        }
-        WorldTrashData.get().setDirty();
-    }
-
-    private static void clearDustbinBlock(int page) {
-        if (page == 0) {
-            for (String pos : ServerConfig.DUSTBIN_BLOCK_POSITIONS.get()) {
-                WorldCoordinate coordinate = WorldCoordinate.fromSimpleString(pos);
-                if (coordinate != null) {
-                    IItemHandler handler = AotakeUtils.getBlockItemHandler(coordinate);
-                    if (handler != null) {
-                        for (int i = 0; i < handler.getSlots(); i++) {
-                            handler.extractItem(i, handler.getSlotLimit(i), false);
-                        }
-                    }
-                }
-            }
-        } else {
-            WorldCoordinate coordinate = WorldCoordinate.fromSimpleString(ServerConfig.DUSTBIN_BLOCK_POSITIONS.get().get(page - 1));
-            if (coordinate != null) {
-                IItemHandler handler = AotakeUtils.getBlockItemHandler(coordinate);
-                if (handler != null) {
-                    for (int i = 0; i < handler.getSlots(); i++) {
-                        handler.extractItem(i, handler.getSlotLimit(i), false);
-                    }
-                }
-            }
-        }
-    }
-
-    private static void dropVirtualDustbin(ServerPlayer player, int page) {
-        List<SimpleContainer> inventoryList = new ArrayList<>();
-        List<SimpleContainer> inventories = WorldTrashData.get().getInventoryList();
-        if (page == 0) {
-            if (CollectionUtils.isNotNullOrEmpty(inventories)) inventoryList.addAll(inventories);
-        } else {
-            SimpleContainer inventory = CollectionUtils.getOrDefault(inventories, page - 1, null);
-            if (inventory != null) inventoryList.add(inventory);
-        }
-        inventoryList.forEach(inventory -> inventory.removeAllItems()
-                .forEach(item -> {
-                    if (!item.isEmpty()) {
-                        Entity entity = AotakeUtils.getEntityFromItem(player.serverLevel(), item);
-                        entity.moveTo(player.getX(), player.getY(), player.getZ(), player.getYRot(), player.getXRot());
-                        player.serverLevel().addFreshEntity(entity);
-                    }
-                })
-        );
-        WorldTrashData.get().setDirty();
-    }
-
-    private static void dropDustbinBlock(ServerPlayer player, int page) {
-        if (page == 0) {
-            for (String pos : ServerConfig.DUSTBIN_BLOCK_POSITIONS.get()) {
-                WorldCoordinate coordinate = WorldCoordinate.fromSimpleString(pos);
-                if (coordinate != null) {
-                    IItemHandler handler = AotakeUtils.getBlockItemHandler(coordinate);
-                    if (handler != null) {
-                        for (int i = 0; i < handler.getSlots(); i++) {
-                            ItemStack stack = handler.extractItem(i, handler.getSlotLimit(i), false);
-                            if (!stack.isEmpty()) {
-                                Entity entity = AotakeUtils.getEntityFromItem(player.serverLevel(), stack);
-                                entity.moveTo(player.getX(), player.getY(), player.getZ(), player.getYRot(), player.getXRot());
-                                player.serverLevel().addFreshEntity(entity);
-                            }
-                        }
-                    }
-                }
-            }
-        } else {
-            WorldCoordinate coordinate = WorldCoordinate.fromSimpleString(ServerConfig.DUSTBIN_BLOCK_POSITIONS.get().get(page - 1));
-            if (coordinate != null) {
-                IItemHandler handler = AotakeUtils.getBlockItemHandler(coordinate);
-                if (handler != null) {
-                    for (int i = 0; i < handler.getSlots(); i++) {
-                        ItemStack stack = handler.extractItem(i, handler.getSlotLimit(i), false);
-                        if (!stack.isEmpty()) {
-                            Entity entity = AotakeUtils.getEntityFromItem(player.serverLevel(), stack);
-                            entity.moveTo(player.getX(), player.getY(), player.getZ(), player.getYRot(), player.getXRot());
-                            player.serverLevel().addFreshEntity(entity);
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    public static int getDustbinTotalPage() {
-        int result = 0;
-        switch (EnumDustbinMode.valueOfOrDefault(ServerConfig.DUSTBIN_MODE.get())) {
-            case VIRTUAL: {
-                result = CommonConfig.DUSTBIN_PAGE_LIMIT.get();
-            }
-            break;
-            case BLOCK: {
-                result = ServerConfig.DUSTBIN_BLOCK_POSITIONS.get().size();
-            }
-            break;
-            case VIRTUAL_BLOCK: {
-                result = CommonConfig.DUSTBIN_PAGE_LIMIT.get() + ServerConfig.DUSTBIN_BLOCK_POSITIONS.get().size();
-            }
-            break;
-            case BLOCK_VIRTUAL: {
-                result = ServerConfig.DUSTBIN_BLOCK_POSITIONS.get().size() + CommonConfig.DUSTBIN_PAGE_LIMIT.get();
-            }
-            break;
-        }
-        return result;
-    }
-
-    private static String getLanguage(CommandSourceStack source) {
-        String lang = ServerConfig.DEFAULT_LANGUAGE.get();
-        if (source.getEntity() != null && source.getEntity() instanceof ServerPlayer) {
-            try {
-                lang = AotakeUtils.getPlayerLanguage(source.getPlayerOrException());
-            } catch (Exception ignored) {
-            }
-        }
-        return lang;
-    }
-
-    // region config modifier
-
-    /**
-     * 硬编码补全提示
-     */
-    private static final Map<String, List<String>> suggestionCache = new LinkedHashMap<>() {{
-        put("base.batch.sweepBatchLimit", Arrays.asList("1", "2", "5", "10"));
-        put("base.batch.sweepEntityInterval", Arrays.asList("1", "2", "5", "10"));
-        put("base.batch.sweepEntityLimit", Arrays.asList("250", "500", "1000", "2000"));
-        put("base.chunk.chunkCheckEntityListMode", Arrays.stream(EnumListType.values()).map(Enum::name).collect(Collectors.toList()));
-        put("base.chunk.chunkCheckInterval", Arrays.asList(String.valueOf(1000 * 5), String.valueOf(1000 * 10), String.valueOf(1000 * 60)));
-        put("base.chunk.chunkCheckLimit", Arrays.asList("50", "100", "250", "500", "1000", "2000"));
-        put("base.chunk.chunkCheckMode", Arrays.stream(EnumChunkCheckMode.values()).map(Enum::name).collect(Collectors.toList()));
-        put("base.chunk.chunkCheckRetain", Arrays.asList("0.1", "0.25", "0.5", "0.75"));
-        put("base.common.defaultLanguage", I18nUtils.getI18nFiles());
-        put("base.dimension.dimensionListMode", Arrays.stream(EnumListType.values()).map(Enum::name).collect(Collectors.toList()));
-        put("base.dustbin.cacheLimit", Arrays.asList("2500", "5000", "10000", "50000"));
-        put("base.dustbin.dustbinBlockMode", Arrays.stream(EnumDustbinMode.values()).map(Enum::name).collect(Collectors.toList()));
-        put("base.dustbin.dustbinOverflowMode", Arrays.stream(EnumOverflowMode.values()).map(Enum::name).collect(Collectors.toList()));
-        put("base.dustbin.dustbinPageLimit", Arrays.asList("1", "2", "5", "10"));
-        put("base.dustbin.selfCleanInterval", Arrays.asList(String.valueOf(1000 * 60 * 30), String.valueOf(1000 * 60 * 60), String.valueOf(1000 * 60 * 120)));
-        put("base.dustbin.selfCleanMode", Arrays.stream(EnumSelfCleanMode.values()).map(Enum::name).collect(Collectors.toList()));
-        put("base.safe.safeBlocksEntityLimit", Arrays.asList("50", "100", "250", "500", "1000", "2000"));
-        put("base.sweep.entity.entityListMode", Arrays.stream(EnumListType.values()).map(Enum::name).collect(Collectors.toList()));
-        put("base.sweep.entity.nbtWhiteBlackListEntityLimit", Arrays.asList("0", "250", "500"));
-        put("base.sweep.item.itemListLimit", Arrays.asList("0", "250", "500"));
-        put("base.sweep.item.itemListMode", Arrays.stream(EnumListType.values()).map(Enum::name).collect(Collectors.toList()));
-        put("base.sweep.item.sweepItemDelay", Arrays.asList("0", "1", "2", "5", "10", "20"));
-        put("base.sweep.sweepInterval", Arrays.asList(String.valueOf(1000 * 60 * 5), String.valueOf(1000 * 60 * 10)));
-        put("base.sweep.sweepWarningVoiceVolume", Arrays.asList("10", "25", "33", "50", "75", "100"));
-        put("permission.permissionCacheClear", Arrays.asList("0", "1", "2", "3", "4"));
-        put("permission.permissionCacheDrop", Arrays.asList("0", "1", "2", "3", "4"));
-        put("permission.permissionClearDrop", Arrays.asList("0", "1", "2", "3", "4"));
-        put("permission.permissionDelaySweep", Arrays.asList("0", "1", "2", "3", "4"));
-        put("permission.permissionDustbinClear", Arrays.asList("0", "1", "2", "3", "4"));
-        put("permission.permissionDustbinDrop", Arrays.asList("0", "1", "2", "3", "4"));
-        put("permission.permissionDustbinOpen", Arrays.asList("0", "1", "2", "3", "4"));
-        put("permission.permissionDustbinOpenOther", Arrays.asList("0", "1", "2", "3", "4"));
-        put("permission.permissionSweep", Arrays.asList("0", "1", "2", "3", "4"));
-        put("permission.permissionVirtualOp", Arrays.asList("0", "1", "2", "3", "4"));
-    }};
-
-    private static void configKeySuggestion(Class<?> configClazz, SuggestionsBuilder builder, String configKey) {
-        if (configKey == null) configKey = "";
-        configKey = configKey.trim();
-        boolean isEmpty = configKey.isEmpty();
-
-        Map<String, ModConfigSpec.ConfigValue<?>> map = buildConfigKeyMap(configClazz);
-        if (CollectionUtils.isNullOrEmpty(map)) return;
-
-        String lowerInput = configKey.toLowerCase(Locale.ROOT);
-
-        if (isEmpty) {
-            for (String key : map.keySet()) {
-                builder.suggest(key);
-            }
-            return;
-        }
-
-        if (configKey.indexOf('.') >= 0) {
-            String[] inputParts = lowerInput.split("\\.");
-            int prefixSegments = inputParts.length - 1;
-            String lastInputPart = inputParts[inputParts.length - 1];
-
-            for (String key : map.keySet()) {
-                String lowerKey = key.toLowerCase(Locale.ROOT);
-                String[] keyParts = lowerKey.split("\\.");
-
-                if (keyParts.length < prefixSegments + 1) {
-                    continue;
-                }
-
-                boolean prefixMatches = true;
-                for (int i = 0; i < prefixSegments; i++) {
-                    if (!keyParts[i].equals(inputParts[i])) {
-                        prefixMatches = false;
-                        break;
-                    }
-                }
-                if (!prefixMatches) continue;
-
-                String lastKeyPart = keyParts[keyParts.length - 1];
-                if (lastKeyPart.contains(lastInputPart)) {
-                    builder.suggest(key);
-                }
-            }
-        } else {
-            for (String key : map.keySet()) {
-                if (key.toLowerCase(Locale.ROOT).contains(lowerInput)) {
-                    builder.suggest(key);
-                }
-            }
-        }
-
-    }
-
-    @SuppressWarnings("rawtypes")
-    private static void configValueSuggestion(Class<?> configClazz, SuggestionsBuilder builder, String configKey) {
-        ModConfigSpec.ConfigValue<?> cv = findConfigValueByKey(configClazz, configKey);
-        if (cv == null) return;
-        else builder.suggest(String.valueOf(cv.get()));
-
-        Class<?> type = getConfigValueType(cv);
-        if (type == Boolean.class || type == boolean.class) {
-            builder.suggest("true").suggest("false");
-            return;
-        }
-        if (Enum.class.isAssignableFrom(type)) {
-            @SuppressWarnings("unchecked")
-            Class<? extends Enum> enumClass = (Class<? extends Enum>) type;
-            for (Object c : enumClass.getEnumConstants()) {
-                builder.suggest(((Enum<?>) c).name());
-            }
-        }
-        String path = getConfigValuePath(cv);
-        if (suggestionCache.containsKey(path)) {
-            suggestionCache.get(path).forEach(builder::suggest);
-        }
-    }
-
-    @SuppressWarnings({"unchecked", "rawtypes"})
-    private static int executeModifyConfig(Class<?> configClazz, CommandContext<CommandSourceStack> context) {
-        CommandSourceStack source = context.getSource();
-        String lang = getLanguage(source);
-        String configKey = StringArgumentType.getString(context, "configKey");
-        String configValue = StringArgumentType.getString(context, "configValue");
-
-        ModConfigSpec.ConfigValue<?> cv = findConfigValueByKey(configClazz, configKey);
-        if (cv == null) {
-            Component component = Component.translatable(EnumI18nType.MESSAGE, "config_key_absent", configKey);
-            source.sendFailure(component.toChatComponent(lang));
-            return 0;
-        }
-
-        Class<?> type = getConfigValueType(cv);
-        Object parsed;
-        try {
-            parsed = parseStringToType(configValue, type);
-        } catch (Exception e) {
-            LOGGER.error(e);
-            Component component = Component.translatable(EnumI18nType.MESSAGE, "config_value_parse_error", configValue, e.getMessage());
-            source.sendFailure(component.toChatComponent(lang));
-            return 0;
-        }
-
-        if (validateConfigValueWithSpec(cv, parsed)) {
-            ((ModConfigSpec.ConfigValue) cv).set(parsed);
-        } else {
-            Component component = Component.translatable(EnumI18nType.MESSAGE, "config_value_set_error", configKey, configValue);
-            source.sendFailure(component.toChatComponent(lang));
-            return 0;
-        }
-
-        tryApplyServerConfigBake(configClazz);
-
-        Component component = Component.translatable(EnumI18nType.MESSAGE, "config_value_set_success", configKey, parsed);
-        source.sendSuccess(() -> component.toChatComponent(lang), true);
-
-        return 1;
-    }
-
-
-    private static final Map<Class<?>, List<Field>> allConfigValueFieldsCache = new HashMap<>();
-
-    private static List<Field> getAllConfigValueFields(Class<?> configClazz) {
-        return allConfigValueFieldsCache.computeIfAbsent(configClazz, (k) -> {
-            List<Field> out = new ArrayList<>();
-            for (Field f : k.getDeclaredFields()) {
-                try {
-                    if (ModConfigSpec.ConfigValue.class.isAssignableFrom(f.getType())) {
-                        f.setAccessible(true);
-                        out.add(f);
-                    }
-                } catch (Throwable ignored) {
-                }
-            }
-            return out;
-        });
-    }
-
-    public static final Map<Class<?>, Map<String, ModConfigSpec.ConfigValue<?>>> configKeyMapCache = new HashMap<>();
-
-    private static Map<String, ModConfigSpec.ConfigValue<?>> buildConfigKeyMap(Class<?> configClazz) {
-        return configKeyMapCache.computeIfAbsent(configClazz, (k) -> {
-            Map<String, ModConfigSpec.ConfigValue<?>> map = new LinkedHashMap<>();
-            for (Field f : getAllConfigValueFields(k)) {
-                try {
-                    Object raw = f.get(null);
-                    if (raw instanceof ModConfigSpec.ConfigValue<?> cv) {
-                        String path = getConfigValuePath(cv);
-                        if (path != null) {
-                            map.put(path, cv);
-                        }
-                    }
-                } catch (Throwable ignored) {
-                }
-            }
-            return map;
-        });
-    }
-
-    private static String getConfigValuePath(ModConfigSpec.ConfigValue<?> cv) {
-        return cv.getPath().stream().map(String::valueOf).collect(Collectors.joining("."));
-    }
-
-    private static ModConfigSpec.ConfigValue<?> findConfigValueByKey(Class<?> configClazz, String key) {
-        if (key == null) return null;
-        Map<String, ModConfigSpec.ConfigValue<?>> map = buildConfigKeyMap(configClazz);
-
-        if (map.containsKey(key)) return map.get(key);
-
-        List<String> matches = map.keySet().stream()
-                .filter(s -> s.toLowerCase(Locale.ROOT).contains(key.toLowerCase(Locale.ROOT)))
-                .toList();
-        if (matches.size() == 1) return map.get(matches.getFirst());
-
-        return null;
-    }
-
-    private static Class<?> getConfigValueType(ModConfigSpec.ConfigValue<?> cv) {
-        try {
-            Object cur = cv.get();
-            if (cur != null) return cur.getClass();
-        } catch (Throwable ignored) {
-        }
-        return Object.class;
-    }
-
-    @SuppressWarnings({"unchecked", "rawtypes"})
-    private static Object parseStringToType(String parsedStr, Class<?> targetType) throws IllegalArgumentException {
-        if (targetType == Boolean.class || targetType == boolean.class) {
-            return StringUtils.stringToBoolean(parsedStr);
-        }
-        if (targetType == Integer.class || targetType == int.class) {
-            return StringUtils.toInt(parsedStr);
-        }
-        if (targetType == Long.class || targetType == long.class) {
-            return StringUtils.toLong(parsedStr);
-        }
-        if (targetType == Double.class || targetType == double.class) {
-            return StringUtils.toDouble(parsedStr);
-        }
-        if (Enum.class.isAssignableFrom(targetType)) {
-            Class<? extends Enum> enumClass = (Class<? extends Enum>) targetType;
-            for (Object c : enumClass.getEnumConstants()) {
-                if (c.toString().equalsIgnoreCase(parsedStr) || ((Enum<?>) c).name().equalsIgnoreCase(parsedStr)) {
-                    return Enum.valueOf(enumClass, ((Enum<?>) c).name());
-                }
-            }
-            throw new IllegalArgumentException("Unknown enum constant: " + parsedStr);
-        }
-        if (targetType == String.class) {
-            return parsedStr;
-        }
-        if (List.class.isAssignableFrom(targetType)) {
-            String[] parts = parsedStr.split(",");
-            return Arrays.stream(parts).map(String::trim).collect(Collectors.toList());
-        }
-        return parsedStr;
-    }
-
-    @SuppressWarnings("all")
-    private static void tryApplyServerConfigBake(Class<?> configClazz) {
-        try {
-            Method m = configClazz.getDeclaredMethod("bake");
-            if (m != null) {
-                m.setAccessible(true);
-                m.invoke(null);
-                return;
-            }
-        } catch (Throwable ignored) {
-        }
-
-        String[] candidate = new String[]{"save", "sync", "write", "apply"};
-        for (String name : candidate) {
-            try {
-                Method m = configClazz.getDeclaredMethod(name);
-                if (m != null) {
-                    m.setAccessible(true);
-                    m.invoke(null);
-                    return;
-                }
-            } catch (Throwable ignored) {
-            }
-        }
-    }
-
-    public static boolean validateConfigValueWithSpec(ModConfigSpec.ConfigValue<?> cv, Object parsedValue) {
-        if (cv == null) return false;
-        return cv.getSpec().test(parsedValue);
-    }
-
-    // endregion config modifier
 
 }
