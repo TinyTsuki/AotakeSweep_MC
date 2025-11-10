@@ -8,7 +8,6 @@ import net.minecraft.server.level.ServerPlayer;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
 import org.jetbrains.annotations.NotNull;
 import xin.vanilla.aotake.AotakeSweep;
-import xin.vanilla.aotake.command.AotakeCommand;
 import xin.vanilla.aotake.util.AotakeUtils;
 
 public class OpenDustbinToServer implements CustomPacketPayload {
@@ -48,10 +47,10 @@ public class OpenDustbinToServer implements CustomPacketPayload {
                 String playerUUID = AotakeUtils.getPlayerUUIDString(player);
                 Integer page = AotakeSweep.getPlayerDustbinPage().getOrDefault(playerUUID, 1);
                 int i = page + packet.offset;
-                if (i > 0 && i <= AotakeCommand.getDustbinTotalPage()) {
+                if (i > 0 && i <= AotakeUtils.getDustbinTotalPage()) {
                     player.closeContainer();
                 }
-                AotakeCommand.dustbin(player, i);
+                AotakeUtils.dustbin(player, i);
             }
         });
     }
