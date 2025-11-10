@@ -30,6 +30,7 @@ import xin.vanilla.aotake.event.ClientModEventHandler;
 import xin.vanilla.aotake.network.ModNetworkHandler;
 import xin.vanilla.aotake.network.SplitPacket;
 import xin.vanilla.aotake.util.AotakeScheduler;
+import xin.vanilla.aotake.util.CommandUtils;
 import xin.vanilla.aotake.util.EntitySweeper;
 
 import java.util.*;
@@ -159,7 +160,7 @@ public class AotakeSweep {
         try {
             if (event.getConfig().getSpec() == ServerConfig.SERVER_CONFIG && serverInstance.val()) {
                 ServerConfig.bake();
-                AotakeCommand.configKeyMapCache.clear();
+                CommandUtils.configKeyMapCache.clear();
             }
         } catch (Exception ignored) {
         }
