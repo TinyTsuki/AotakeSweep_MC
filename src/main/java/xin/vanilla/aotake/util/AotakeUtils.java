@@ -8,6 +8,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.arguments.blocks.BlockStateParser;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.nbt.*;
 import net.minecraft.network.chat.ClickEvent;
@@ -18,6 +19,9 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.InteractionResult;
+import net.minecraft.world.MenuProvider;
 import net.minecraft.world.SimpleContainer;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
@@ -30,6 +34,8 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.phys.BlockHitResult;
+import net.minecraft.world.phys.Vec3;
 import net.minecraftforge.common.capabilities.ForgeCapabilities;
 import net.minecraftforge.common.util.LazyOptional;
 import net.minecraftforge.fml.ModList;
@@ -953,6 +959,201 @@ public class AotakeUtils {
     }
 
     // endregion 扫地
+
+
+    // region 垃圾箱相关
+
+    public static int dustbin(@NonNull ServerPlayer player, int page) {
+        int result = 0;
+        int vPage = CommonConfig.DUSTBIN_PAGE_LIMIT.get();
+        int bPage = ServerConfig.DUSTBIN_BLOCK_POSITIONS.get().size();
+        switch (EnumDustbinMode.valueOfOrDefault(ServerConfig.DUSTBIN_MODE.get())) {
+            case VIRTUAL: {
+                result = openVirtualDustbin(player, page);
+            }
+            break;
+            case BLOCK: {
+                result = openDustbinBlock(player, page);
+            }
+            break;
+            case VIRTUAL_BLOCK: {
+                if (page > 0 && page <= vPage + bPage) {
+                    if (page <= vPage) {
+                        result = openVirtualDustbin(player, page);
+                    } else {
+                        result = openDustbinBlock(player, page - vPage);
+                    }
+                }
+            }
+            break;
+            case BLOCK_VIRTUAL: {
+                if (page > 0 && page <= vPage + bPage) {
+                    if (page <= bPage) {
+                        result = openDustbinBlock(player, page);
+                    } else {
+                        result = openVirtualDustbin(player, page - bPage);
+                    }
+                }
+            }
+            break;
+        }
+
+        if (result > 0) AotakeSweep.getPlayerDustbinPage().put(AotakeUtils.getPlayerUUIDString(player), page);
+        return result;
+    }
+
+    private static int openVirtualDustbin(@NonNull ServerPlayer player, int page) {
+        MenuProvider trashContainer = WorldTrashData.getTrashContainer(player, page);
+        if (trashContainer == null) return 0;
+        int result = player.openMenu(trashContainer).orElse(0);
+
+        if (result > 0) AotakeSweep.getPlayerDustbinPage().put(AotakeUtils.getPlayerUUIDString(player), page);
+        return result;
+    }
+
+    private static int openDustbinBlock(@NonNull ServerPlayer player, int page) {
+        int result = 0;
+        List<? extends String> positions = ServerConfig.DUSTBIN_BLOCK_POSITIONS.get();
+        if (CollectionUtils.isNotNullOrEmpty(positions) && positions.size() >= page) {
+            WorldCoordinate coordinate = WorldCoordinate.fromSimpleString(positions.get(page - 1));
+
+            Direction direction = coordinate.getDirection();
+            if (direction == null) direction = Direction.UP;
+            // 命中点：方块中心或面上
+            Vec3 center = coordinate.toVec3().add(0.5, 0.5, 0.5);
+            Vec3 hitVec = center.add(direction.getStepX() * 0.500001, direction.getStepY() * 0.500001, direction.getStepZ() * 0.500001);
+
+            BlockHitResult ray = new BlockHitResult(hitVec, direction, coordinate.toBlockPos(), false);
+
+            BlockState state = player.getLevel().getBlockState(coordinate.toBlockPos());
+            InteractionResult res = state.use(player.getLevel(), player, InteractionHand.MAIN_HAND, ray);
+            if (res.consumesAction()) {
+                result = 1;
+            }
+        }
+
+        if (result > 0) AotakeSweep.getPlayerDustbinPage().put(AotakeUtils.getPlayerUUIDString(player), page);
+        return result;
+    }
+
+    public static void clearVirtualDustbin(int page) {
+        List<SimpleContainer> inventories = WorldTrashData.get().getInventoryList();
+        if (page == 0) {
+            inventories.forEach(SimpleContainer::clearContent);
+        } else {
+            SimpleContainer inventory = CollectionUtils.getOrDefault(inventories, page - 1, null);
+            if (inventory != null) inventory.clearContent();
+        }
+        WorldTrashData.get().setDirty();
+    }
+
+    public static void clearDustbinBlock(int page) {
+        if (page == 0) {
+            for (String pos : ServerConfig.DUSTBIN_BLOCK_POSITIONS.get()) {
+                WorldCoordinate coordinate = WorldCoordinate.fromSimpleString(pos);
+                if (coordinate != null) {
+                    IItemHandler handler = AotakeUtils.getBlockItemHandler(coordinate);
+                    if (handler != null) {
+                        for (int i = 0; i < handler.getSlots(); i++) {
+                            handler.extractItem(i, handler.getSlotLimit(i), false);
+                        }
+                    }
+                }
+            }
+        } else {
+            WorldCoordinate coordinate = WorldCoordinate.fromSimpleString(ServerConfig.DUSTBIN_BLOCK_POSITIONS.get().get(page - 1));
+            if (coordinate != null) {
+                IItemHandler handler = AotakeUtils.getBlockItemHandler(coordinate);
+                if (handler != null) {
+                    for (int i = 0; i < handler.getSlots(); i++) {
+                        handler.extractItem(i, handler.getSlotLimit(i), false);
+                    }
+                }
+            }
+        }
+    }
+
+    public static void dropVirtualDustbin(ServerPlayer player, int page) {
+        List<SimpleContainer> inventoryList = new ArrayList<>();
+        List<SimpleContainer> inventories = WorldTrashData.get().getInventoryList();
+        if (page == 0) {
+            if (CollectionUtils.isNotNullOrEmpty(inventories)) inventoryList.addAll(inventories);
+        } else {
+            SimpleContainer inventory = CollectionUtils.getOrDefault(inventories, page - 1, null);
+            if (inventory != null) inventoryList.add(inventory);
+        }
+        inventoryList.forEach(inventory -> inventory.removeAllItems()
+                .forEach(item -> {
+                    if (!item.isEmpty()) {
+                        Entity entity = AotakeUtils.getEntityFromItem(player.getLevel(), item);
+                        entity.moveTo(player.getX(), player.getY(), player.getZ(), player.getYRot(), player.getXRot());
+                        player.getLevel().addFreshEntity(entity);
+                    }
+                })
+        );
+        WorldTrashData.get().setDirty();
+    }
+
+    public static void dropDustbinBlock(ServerPlayer player, int page) {
+        if (page == 0) {
+            for (String pos : ServerConfig.DUSTBIN_BLOCK_POSITIONS.get()) {
+                WorldCoordinate coordinate = WorldCoordinate.fromSimpleString(pos);
+                if (coordinate != null) {
+                    IItemHandler handler = AotakeUtils.getBlockItemHandler(coordinate);
+                    if (handler != null) {
+                        for (int i = 0; i < handler.getSlots(); i++) {
+                            ItemStack stack = handler.extractItem(i, handler.getSlotLimit(i), false);
+                            if (!stack.isEmpty()) {
+                                Entity entity = AotakeUtils.getEntityFromItem(player.getLevel(), stack);
+                                entity.moveTo(player.getX(), player.getY(), player.getZ(), player.getYRot(), player.getXRot());
+                                player.getLevel().addFreshEntity(entity);
+                            }
+                        }
+                    }
+                }
+            }
+        } else {
+            WorldCoordinate coordinate = WorldCoordinate.fromSimpleString(ServerConfig.DUSTBIN_BLOCK_POSITIONS.get().get(page - 1));
+            if (coordinate != null) {
+                IItemHandler handler = AotakeUtils.getBlockItemHandler(coordinate);
+                if (handler != null) {
+                    for (int i = 0; i < handler.getSlots(); i++) {
+                        ItemStack stack = handler.extractItem(i, handler.getSlotLimit(i), false);
+                        if (!stack.isEmpty()) {
+                            Entity entity = AotakeUtils.getEntityFromItem(player.getLevel(), stack);
+                            entity.moveTo(player.getX(), player.getY(), player.getZ(), player.getYRot(), player.getXRot());
+                            player.getLevel().addFreshEntity(entity);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    public static int getDustbinTotalPage() {
+        int result = 0;
+        switch (EnumDustbinMode.valueOfOrDefault(ServerConfig.DUSTBIN_MODE.get())) {
+            case VIRTUAL: {
+                result = CommonConfig.DUSTBIN_PAGE_LIMIT.get();
+            }
+            break;
+            case BLOCK: {
+                result = ServerConfig.DUSTBIN_BLOCK_POSITIONS.get().size();
+            }
+            break;
+            case VIRTUAL_BLOCK: {
+                result = CommonConfig.DUSTBIN_PAGE_LIMIT.get() + ServerConfig.DUSTBIN_BLOCK_POSITIONS.get().size();
+            }
+            break;
+            case BLOCK_VIRTUAL: {
+                result = ServerConfig.DUSTBIN_BLOCK_POSITIONS.get().size() + CommonConfig.DUSTBIN_PAGE_LIMIT.get();
+            }
+            break;
+        }
+        return result;
+    }
+
+    // endregion 垃圾箱相关
 
 
     // region nbt文件读写
