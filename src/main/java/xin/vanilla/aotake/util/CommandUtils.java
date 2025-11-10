@@ -219,10 +219,8 @@ public class CommandUtils {
                 builder.suggest(((Enum<?>) c).name());
             }
         } else if (Comparable.class.isAssignableFrom(type) && vs != null && vs.getRange() != null) {
-            Class<?> rangeClass = FieldUtils.getClass(vs.getRange());
-            for (String fieldName : FieldUtils.getPrivateFieldNames(rangeClass, Comparable.class, false, true)) {
-                builder.suggest(String.valueOf(FieldUtils.getPrivateFieldValue(rangeClass, vs.getRange(), fieldName)));
-            }
+            builder.suggest(String.valueOf(vs.getRange().getMin()));
+            builder.suggest(String.valueOf(vs.getRange().getMax()));
         }
     }
 
