@@ -101,7 +101,7 @@
     1. [冰火传说](https://github.com/AlexModGuy/Ice_and_Fire) 中死亡的冰龙与火龙  
        `resource, dead = ModelDead -> dead == true && (resource == 'iceandfire:fire_dragon' || resource == 'iceandfire:ice_dragon')`
     2. [机械动力](https://github.com/Creators-of-Create/Create) 中正在被鼓风机处理的物品
-       `clazz, itemClazz = 'net.minecraft.entity.item.ItemEntity', createProcessing = CreateData.Processing.Time -> clazz :> itemClazz && (createProcessing <= 0 || createProcessing == null)`
+       `clazz, itemClazz = 'net.minecraft.entity.item.ItemEntity', createProcessing = CreateData.Processing.Time -> clazz :> itemClazz && createProcessing > 0`
 
 **说明**：
 
