@@ -25,7 +25,7 @@
   "command.aotake_sweep.cache_clear_detail": "清空缓存区的垃圾。",
   "command.aotake_sweep.cache_drop_detail": "以掉落物的形式清空缓存区的垃圾。\n参数列表：\n [<是否将掉落物返回原处>]",
   "command.aotake_sweep.sweep_detail": "手动触发扫地。\n参数列表：\n 1. [<维度>]\n 2. [<范围>]",
-  "command.aotake_sweep.clear_drop_detail": "清理掉落物。\n参数列表：\n 1. [<贪婪模式>] [<是否包括实体>] [<是否全部实体>]\n 2. [<贪婪模式>] [<维度>] [<是否包括实体>] [<是否全部实体>]\n 3. [<贪婪模式>] [<范围>] [<是否包括实体>] [是否全部实体]",
+  "command.aotake_sweep.clear_drop_detail": "清理掉落物。\n参数列表：\n 1. [<维度>] [<是否包括实体>] [<是否忽略实体过滤器>]\n 3. [<范围>] [<是否包括实体>] [是否忽略实体过滤器]",
   "command.aotake_sweep.delay_sweep_detail": "延后下次清理的触发时间。\n参数列表：\n [<延迟秒数>]",
   "command.aotake_sweep.concise": "详见%s",
   "word.aotake_sweep.enabled": "已启用",
