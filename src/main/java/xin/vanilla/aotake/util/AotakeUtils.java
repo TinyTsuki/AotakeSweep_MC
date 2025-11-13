@@ -30,7 +30,6 @@ import net.minecraft.world.MenuProvider;
 import net.minecraft.world.SimpleContainer;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
-import net.minecraft.world.entity.TamableAnimal;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
@@ -68,10 +67,8 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 @SuppressWarnings("resource")
 public class AotakeUtils {
@@ -492,104 +489,9 @@ public class AotakeUtils {
         return entities;
     }
 
-    private static final Map<String, SafeExpressionEvaluator> EXPRESSION_EVALUATOR_CACHE = new HashMap<>();
-
-    private static SafeExpressionEvaluator getSafeExpressionEvaluator(String expression) {
-        SafeExpressionEvaluator evaluator = EXPRESSION_EVALUATOR_CACHE.get(expression);
-        if (evaluator == null) {
-            evaluator = new SafeExpressionEvaluator(expression);
-            EXPRESSION_EVALUATOR_CACHE.put(expression, evaluator);
-        }
-        return evaluator;
-    }
-
-    private static boolean isNbtExpressionValid(Entity entity, KeyValue<String, String> kv) {
-        if (NBTPathUtils.has(entity.getPersistentData(), kv.getKey())) {
-            Tag tag = NBTPathUtils.getTagByPath(entity.getPersistentData(), kv.getKey());
-            SafeExpressionEvaluator evaluator = getSafeExpressionEvaluator(kv.getValue());
-            if (tag instanceof NumericTag numericTag) {
-                evaluator.setVar("value", numericTag.getAsDouble());
-            } else if (tag instanceof StringTag) {
-                evaluator.setVar("value", tag.getAsString());
-            } else {
-                return false;
-            }
-            try {
-                return evaluator.evaluate() > 0;
-            } catch (Exception e) {
-                LOGGER.error("Invalid unsafe nbt expression: {}", kv.getValue(), e);
-                return false;
-            }
-        }
-        return false;
-    }
-
-    public static boolean isItem(Entity entity) {
-        if (entity == null) {
-            return false;
-        }
-        if (CollectionUtils.isNullOrEmpty(ServerConfig.ITEM_TYPE_LIST.get())) {
-            return entity instanceof ItemEntity;
-        } else {
-            return entity.getType() == EntityType.ITEM || ServerConfig.ITEM_TYPE_LIST.get().contains(getEntityTypeRegistryName(entity));
-        }
-    }
-
-    public static boolean isJunkItem(Entity entity, boolean chuck) {
-        boolean result = false;
-        if (isItem(entity)) {
-            List<? extends String> dimensions = ServerConfig.DIMENSION_LIST.get();
-            boolean inDim;
-            // 空列表
-            if (CollectionUtils.isNullOrEmpty(dimensions)) {
-                inDim = EnumListType.WHITE.name().equals(ServerConfig.DIMENSION_LIST_MODE.get());
-            }
-            // 黑名单模式
-            else if (EnumListType.BLACK.name().equals(ServerConfig.DIMENSION_LIST_MODE.get())) {
-                inDim = dimensions.contains(getDimensionRegistryName(entity.level()));
-            }
-            // 白名单模式
-            else {
-                inDim = !dimensions.contains(getDimensionRegistryName(entity.level()));
-            }
-            if (!(inDim || chuck && ServerConfig.DIMENSION_LIST_IGNORE_CHUNK.get())) return false;
-            // else 在维度 或 (区块模式 且 开启忽略区块)
-
-            // 空列表
-            if (CollectionUtils.isNullOrEmpty(ServerConfig.ITEM_LIST.get())) {
-                result = EnumListType.WHITE.name().equals(ServerConfig.ITEM_LIST_MODE.get());
-            }
-            // 黑名单模式
-            else if (EnumListType.BLACK.name().equals(ServerConfig.ITEM_LIST_MODE.get())) {
-                result = ServerConfig.ITEM_LIST.get().contains(getItemRegistryName(((ItemEntity) entity).getItem()));
-            }
-            // 白名单模式
-            else {
-                result = !ServerConfig.ITEM_LIST.get().contains(getItemRegistryName(((ItemEntity) entity).getItem()));
-            }
-        }
-        return result;
-    }
-
     public static boolean isJunkEntity(Entity entity, boolean chuck) {
         boolean result = false;
-        if (entity != null && !(entity instanceof Player) && !entity.hasCustomName()) {
-            List<? extends String> dimensions = ServerConfig.DIMENSION_LIST.get();
-            boolean inDim;
-            // 空列表
-            if (CollectionUtils.isNullOrEmpty(dimensions)) {
-                inDim = EnumListType.WHITE.name().equals(ServerConfig.DIMENSION_LIST_MODE.get());
-            }
-            // 黑名单模式
-            else if (EnumListType.BLACK.name().equals(ServerConfig.DIMENSION_LIST_MODE.get())) {
-                inDim = dimensions.contains(getDimensionRegistryName(entity.level()));
-            }
-            // 白名单模式
-            else {
-                inDim = !dimensions.contains(getDimensionRegistryName(entity.level()));
-            }
-            if (!(inDim || (chuck && ServerConfig.DIMENSION_LIST_IGNORE_CHUNK.get()))) return false;
-            // else 在维度 或 (区块模式 且 开启忽略区块)
+        if (entity != null && !(entity instanceof Player)) {
             if (chuck) {
                 // 空列表
                 if (CollectionUtils.isNullOrEmpty(ServerConfig.CHUNK_CHECK_ENTITY_LIST.get())) {
@@ -597,11 +499,11 @@ public class AotakeUtils {
                 }
                 // 黑名单模式
                 else if (EnumListType.BLACK.name().equals(ServerConfig.CHUNK_CHECK_ENTITY_LIST_MODE.get())) {
-                    result = ServerConfig.CHUNK_CHECK_ENTITY_LIST.get().contains(getEntityTypeRegistryName(entity));
+                    result = AotakeSweep.getEntityFilter().validEntity(ServerConfig.CHUNK_CHECK_ENTITY_LIST.get(), entity);
                 }
                 // 白名单模式
                 else {
-                    result = !ServerConfig.CHUNK_CHECK_ENTITY_LIST.get().contains(getEntityTypeRegistryName(entity));
+                    result = !AotakeSweep.getEntityFilter().validEntity(ServerConfig.CHUNK_CHECK_ENTITY_LIST.get(), entity);
                 }
             } else {
                 // 空列表
@@ -610,15 +512,45 @@ public class AotakeUtils {
                 }
                 // 黑名单模式
                 else if (EnumListType.BLACK.name().equals(ServerConfig.ENTITY_LIST_MODE.get())) {
-                    result = ServerConfig.ENTITY_LIST.get().contains(getEntityTypeRegistryName(entity));
+                    result = AotakeSweep.getEntityFilter().validEntity(ServerConfig.ENTITY_LIST.get(), entity);
                 }
                 // 白名单模式
                 else {
-                    result = !ServerConfig.ENTITY_LIST.get().contains(getEntityTypeRegistryName(entity));
+                    result = !AotakeSweep.getEntityFilter().validEntity(ServerConfig.ENTITY_LIST.get(), entity);
                 }
             }
         }
         return result;
+    }
+
+    public static boolean isSafeEntity(Map<KeyValue<Level, BlockPos>, BlockState> blockStateCache, Entity entity) {
+        Level level = entity.level();
+
+        boolean stateFlag = false;
+        if (!SAFE_BLOCKS.isEmpty() || !SAFE_BLOCKS_STATE.isEmpty()) {
+            BlockState state = blockStateCache.computeIfAbsent(new KeyValue<>(level, entity.blockPosition())
+                    , pair -> pair.getKey().getBlockState(pair.getValue()));
+            stateFlag = SAFE_BLOCKS.contains(AotakeUtils.getBlockRegistryName(state))
+                    || SAFE_BLOCKS_STATE.contains(state);
+        }
+
+        boolean belowFlag = false;
+        if (!SAFE_BLOCKS_BELOW.isEmpty() || !SAFE_BLOCKS_BELOW_STATE.isEmpty()) {
+            BlockState below = blockStateCache.computeIfAbsent(new KeyValue<>(level, entity.blockPosition().below())
+                    , pair -> pair.getKey().getBlockState(pair.getValue()));
+            belowFlag = SAFE_BLOCKS_BELOW.contains(AotakeUtils.getBlockRegistryName(below))
+                    || SAFE_BLOCKS_BELOW_STATE.contains(below);
+        }
+
+        boolean aboveFlag = false;
+        if (!SAFE_BLOCKS_ABOVE.isEmpty() || !SAFE_BLOCKS_ABOVE_STATE.isEmpty()) {
+            BlockState above = blockStateCache.computeIfAbsent(new KeyValue<>(level, entity.blockPosition().above())
+                    , pair -> pair.getKey().getBlockState(pair.getValue()));
+            aboveFlag = SAFE_BLOCKS_ABOVE.contains(AotakeUtils.getBlockRegistryName(above))
+                    || SAFE_BLOCKS_ABOVE_STATE.contains(above);
+        }
+
+        return stateFlag || belowFlag || aboveFlag;
     }
 
     public static List<Entity> getAllEntitiesByFilter(List<Entity> entities, boolean chuck) {
@@ -626,57 +558,26 @@ public class AotakeUtils {
             entities = getAllEntities();
         }
         initSafeBlocks();
-        List<Entity> filtered = entities.stream()
-                // 物品实体 或 垃圾实体
-                .filter(entity -> isItem(entity) || isJunkEntity(entity, chuck))
-                // 非驯养实体
-                .filter(entity -> !(entity instanceof TamableAnimal) || ((TamableAnimal) entity).getOwnerUUID() == null)
+
+        Map<KeyValue<Level, BlockPos>, BlockState> blockStateCache = new HashMap<>();
+
+        List<Entity> filtered = entities.stream().filter(entity -> !(entity instanceof Player)).toList();
+
+        // 超限的非垃圾实体
+        List<Entity> exceededEntityList = entities.stream()
+                // 非垃圾实体
+                .filter(entity -> !isJunkEntity(entity, chuck))
+                .collect(Collectors.groupingBy(AotakeUtils::getEntityTypeRegistryName, Collectors.toList()))
+                .entrySet().stream()
+                // 超限
+                .filter(entry -> entry.getValue().size() > ServerConfig.ENTITY_LIST_LIMIT.get())
+                .flatMap(entry -> entry.getValue().stream())
                 .toList();
 
-        Map<KeyValue<Level, BlockPos>, BlockState> blockStateCache = filtered.stream()
-                .flatMap(entity -> Stream.of(
-                        new KeyValue<>(entity.level(), entity.blockPosition().above()),
-                        new KeyValue<>(entity.level(), entity.blockPosition()),
-                        new KeyValue<>(entity.level(), entity.blockPosition().below())
-                ))
-                .distinct()
-                .collect(Collectors.toMap(Function.identity()
-                        , pair -> pair.getKey().getBlockState(pair.getValue())
-                ));
-
-        // 超过阈值的黑白名单物品
-        List<Entity> exceededWhiteBlackList = filtered.stream()
-                // 物品
-                .filter(entity -> entity instanceof ItemEntity)
-                .map(entity -> (ItemEntity) entity)
-                // 白名单物品
-                .filter(item -> !isJunkItem(item, chuck))
-                .collect(Collectors.groupingBy(item -> getItemRegistryName(item.getItem()), Collectors.toList()))
-                .entrySet().stream()
-                .filter(entry -> entry.getValue().size() > ServerConfig.ITEM_LIST_LIMIT.get())
-                .flatMap(entry -> entry.getValue().stream())
-                .collect(Collectors.toList());
-
-        // 超过阈值的安全方块实体
-        List<Entity> exceededSafeList = filtered.stream()
-                .filter(entity -> {
-                    Level level = entity.level();
-                    BlockState state = blockStateCache.get(new KeyValue<>(level, entity.blockPosition()));
-                    BlockState below = blockStateCache.get(new KeyValue<>(level, entity.blockPosition().below()));
-                    BlockState above = blockStateCache.get(new KeyValue<>(level, entity.blockPosition().above()));
-
-                    boolean isUnsafe = state != null
-                            && !SAFE_BLOCKS.contains(AotakeUtils.getBlockRegistryName(state))
-                            && !SAFE_BLOCKS_STATE.contains(state)
-                            && below != null
-                            && !SAFE_BLOCKS_BELOW.contains(AotakeUtils.getBlockRegistryName(below))
-                            && !SAFE_BLOCKS_BELOW_STATE.contains(below)
-                            && above != null
-                            && !SAFE_BLOCKS_ABOVE.contains(AotakeUtils.getBlockRegistryName(above))
-                            && !SAFE_BLOCKS_ABOVE_STATE.contains(above);
-
-                    return !isUnsafe;
-                })
+        // 超限的安全实体
+        List<Entity> exceededBlockList = filtered.stream()
+                // 安全实体
+                .filter(entity -> isSafeEntity(blockStateCache, entity))
                 .collect(Collectors.groupingBy(entity -> {
                     String dimension = entity.level().dimension().location().toString();
                     int chunkX = entity.blockPosition().getX() / 16;
@@ -684,88 +585,21 @@ public class AotakeUtils {
                     return dimension + "," + chunkX + "," + chunkZ;
                 }, Collectors.toList()))
                 .entrySet().stream()
+                // 超限
                 .filter(entry -> entry.getValue().size() > CommonConfig.SAFE_BLOCKS_ENTITY_LIMIT.get())
-                .flatMap(entry -> entry.getValue().stream())
-                .toList();
-
-        // 超过阈值的NBT白名单实体
-        List<Entity> exceededNbtWhiteBlackList = filtered.stream()
-                .filter(entity -> !entity.getPersistentData().isEmpty())
-                .filter(entity -> (!ServerConfig.ENTITY_NBT_WHITELIST.isEmpty() &&
-                        ServerConfig.ENTITY_NBT_WHITELIST.stream()
-                                .anyMatch(keyValue ->
-                                        isNbtExpressionValid(entity, keyValue)
-                                ))
-                        || (!ServerConfig.ENTITY_NBT_BLACKLIST.isEmpty() &&
-                        ServerConfig.ENTITY_NBT_BLACKLIST.stream()
-                                .noneMatch(keyValue ->
-                                        isNbtExpressionValid(entity, keyValue)
-                                ))
-                )
-                .collect(Collectors.groupingBy(Entity::getType, Collectors.toList()))
-                .entrySet().stream()
-                .filter(entry -> entry.getValue().size() > ServerConfig.NBT_WHITE_BLACK_LIST_ENTITY_LIMIT.get())
                 .flatMap(entry -> entry.getValue().stream())
                 .toList();
 
         // 过滤
         Predicate<Entity> predicate = entity -> {
-            boolean isItem = entity instanceof ItemEntity;
+            boolean unsafe = !isSafeEntity(blockStateCache, entity);
 
-            // 掉落时间过滤
-            if (isItem && ServerConfig.SWEEP_ITEM_AGE.get() > 0) {
-                if (entity.level().isLoaded(entity.blockPosition())
-                        && entity.tickCount < ServerConfig.SWEEP_ITEM_AGE.get()
-                        && entity.tickCount > 0
-                ) {
-                    return false;
-                }
-            }
-
-            // 物品名单过滤
-            if (isItem && !isJunkItem(entity, chuck) && !exceededWhiteBlackList.contains(entity)) {
-                return false;
-            }
-
-            // NBT白名单过滤
-            if (!ServerConfig.ENTITY_NBT_WHITELIST.isEmpty()) {
-                if (ServerConfig.ENTITY_NBT_WHITELIST.stream()
-                        .anyMatch(keyValue ->
-                                isNbtExpressionValid(entity, keyValue)
-                        )
-                        && !exceededNbtWhiteBlackList.contains(entity)
-                ) {
-                    return false;
-                }
-            }
-
-            // NBT黑名单过滤
-            if (!ServerConfig.ENTITY_NBT_BLACKLIST.isEmpty()) {
-                if (ServerConfig.ENTITY_NBT_BLACKLIST.stream()
-                        .noneMatch(keyValue ->
-                                isNbtExpressionValid(entity, keyValue)
-                        )
-                        && !exceededNbtWhiteBlackList.contains(entity)
-                ) {
-                    return false;
-                }
-            }
-
-            // 安全方块过滤
-            Level level = entity.level();
-            BlockState state = blockStateCache.get(new KeyValue<>(level, entity.blockPosition()));
-            BlockState below = blockStateCache.get(new KeyValue<>(level, entity.blockPosition().below()));
-            BlockState above = blockStateCache.get(new KeyValue<>(level, entity.blockPosition().above()));
-
-            boolean unsafe =
-                    !SAFE_BLOCKS.contains(state == null ? null : AotakeUtils.getBlockRegistryName(state)) &&
-                            !SAFE_BLOCKS_STATE.contains(state) &&
-                            !SAFE_BLOCKS_BELOW.contains(below == null ? null : AotakeUtils.getBlockRegistryName(below)) &&
-                            !SAFE_BLOCKS_BELOW_STATE.contains(below) &&
-                            !SAFE_BLOCKS_ABOVE.contains(above == null ? null : AotakeUtils.getBlockRegistryName(above)) &&
-                            !SAFE_BLOCKS_ABOVE_STATE.contains(above);
-
-            return unsafe || exceededSafeList.contains(entity);
+            // 垃圾
+            return (unsafe && isJunkEntity(entity, chuck))
+                    // 超限的非垃圾
+                    || exceededEntityList.contains(entity)
+                    // 超限的安全实体
+                    || exceededBlockList.contains(entity);
         };
 
         return filtered.stream().filter(predicate).collect(Collectors.toList());
@@ -774,11 +608,17 @@ public class AotakeUtils {
     public static void sweep() {
         LOGGER.debug("Sweep started at {}", System.currentTimeMillis());
         List<Entity> entities = getAllEntities();
-        AotakeUtils.sweep(null, entities, false);
+        AotakeUtils.sweep(entities, false);
         LOGGER.debug("Sweep finished at {}", System.currentTimeMillis());
     }
 
-    public static void sweep(@Nullable ServerPlayer player, List<Entity> entities, boolean chuck) {
+    /**
+     * 执行清理
+     *
+     * @param entities 实体列表
+     * @param filtered 实体列表是否已过滤
+     */
+    public static void sweep(List<Entity> entities, boolean filtered) {
         KeyValue<MinecraftServer, Boolean> serverInstance = AotakeSweep.getServerInstance();
         // 服务器已关闭
         if (!serverInstance.val()) return;
@@ -789,7 +629,7 @@ public class AotakeUtils {
             // 若服务器没有玩家
             if (CollectionUtils.isNullOrEmpty(players) && !CommonConfig.SWEEP_WHEN_NO_PLAYER.get()) return;
 
-            List<Entity> list = getAllEntitiesByFilter(entities, chuck);
+            List<Entity> list = filtered ? entities : getAllEntitiesByFilter(entities, false);
 
             // if (CollectionUtils.isNotNullOrEmpty(list)) {
             // 清空旧的物品
@@ -1314,6 +1154,9 @@ public class AotakeUtils {
      */
     @NonNull
     public static String getEntityTypeRegistryName(@NonNull Entity entity) {
+        if (entity instanceof ItemEntity) {
+            return getItemRegistryName(((ItemEntity) entity).getItem());
+        }
         return getEntityTypeRegistryName(entity.getType());
     }
 

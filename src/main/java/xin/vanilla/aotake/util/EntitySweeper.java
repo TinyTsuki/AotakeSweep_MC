@@ -44,7 +44,6 @@ public class EntitySweeper {
 
     private final Set<Entity> entitiesToRemove = ConcurrentHashMap.newKeySet();
 
-
     private void init() {
         WorldTrashData worldTrashData = WorldTrashData.get();
         if (this.inventoryList == null) {
@@ -62,7 +61,7 @@ public class EntitySweeper {
         if (result.getTotalBatch() == 0) LOGGER.debug("AddDrops started at {}", System.currentTimeMillis());
         this.init();
 
-        if (CollectionUtils.isNotNullOrEmpty(entities) && entities.size() > ServerConfig.SWEEP_ENTITY_LIMIT.get()) {
+        if (result.getTotalBatch() == 0 && CollectionUtils.isNotNullOrEmpty(entities) && entities.size() > ServerConfig.SWEEP_ENTITY_LIMIT.get()) {
             List<List<Entity>> lists = CollectionUtils.splitToCollections(entities, ServerConfig.SWEEP_ENTITY_LIMIT.get(), ServerConfig.SWEEP_BATCH_LIMIT.get());
             result.setTotalBatch(lists.size());
             if (lists.size() > 1) {
@@ -73,9 +72,10 @@ public class EntitySweeper {
                             , () -> AotakeSweep.getEntitySweeper().addDrops(entityList, result)
                     );
                 }
-                entities = lists.get(0);
+                entities = lists.getFirst();
             }
-        } else if (result.getTotalBatch() == 0) {
+        }
+        if (result.getTotalBatch() == 0) {
             result.setTotalBatch(1);
         }
 
@@ -98,7 +98,7 @@ public class EntitySweeper {
 
         result.incrementBatch();
 
-        if (result.getBatch().get() == result.getTotalBatch()) {
+        if (result.getBatch().get() >= result.getTotalBatch()) {
             LOGGER.debug("AddDrops finished at {}", System.currentTimeMillis());
 
             List<ServerPlayer> players = AotakeSweep.getServerInstance().key().getPlayerList().getPlayers();
@@ -159,7 +159,7 @@ public class EntitySweeper {
         // 处理掉落物
         if (entity instanceof ItemEntity) {
             ItemStack item = ((ItemEntity) entity).getItem();
-            if (!ServerConfig.ITEM_REDLIST.get().contains(typeKey)) {
+            if (!AotakeSweep.getEntityFilter().validEntity(ServerConfig.ENTITY_REDLIST.get(), entity)) {
                 itemToRecycle = item.copy();
                 result.setItemCount(item.getCount());
             }
@@ -170,7 +170,7 @@ public class EntitySweeper {
         else {
             // 回收实体
             if (!ServerConfig.CATCH_ITEM.get().isEmpty()
-                    && ServerConfig.CATCH_ENTITY.get().contains(typeKey)
+                    && AotakeSweep.getEntityFilter().validEntity(ServerConfig.CATCH_ENTITY.get(), entity)
             ) {
                 String randomItem = CollectionUtils.getRandomElement(ServerConfig.CATCH_ITEM.get());
                 Item it = AotakeUtils.deserializeItem(randomItem);
@@ -449,4 +449,5 @@ public class EntitySweeper {
         base.setCount(totalCount);
         return base;
     }
+
 }
