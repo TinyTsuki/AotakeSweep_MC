@@ -89,7 +89,8 @@
 
 ## 实体过滤器
 
-实体过滤器表达式，为了方便说明，以下会将表达式称为`AotakeEL`。
+实体过滤器表达式，为了方便说明，以下会将表达式称为`AotakeEL`，  
+其中支持 AotakeEL 的配置项有：`entityList`、`entityRedlist`、`catchEntity`、`chunkCheckEntityList`。
 
 **例子**：
 
@@ -100,7 +101,7 @@
 - **AotakeEL**：
     1. [冰火传说](https://github.com/AlexModGuy/Ice_and_Fire) 中死亡的冰龙与火龙  
        `resource, dead = ModelDead -> dead == true && (resource == 'iceandfire:fire_dragon' || resource == 'iceandfire:ice_dragon')`
-    2. [机械动力](https://github.com/Creators-of-Create/Create) 中正在被鼓风机处理的物品
+    2. [机械动力](https://github.com/Creators-of-Create/Create) 中正在被鼓风机处理的物品  
        `clazz, itemClazz = 'net.minecraft.entity.item.ItemEntity', createProcessing = CreateData.Processing.Time -> clazz :> itemClazz && createProcessing > 0`
 
 **说明**：
@@ -116,27 +117,27 @@
         1. `内置变量名称`：如 实体ID `resource`
         2. `自定义变量名称 = '字符串常量'`：如 `modName = 'AotakeSweep'`
         3. `自定义变量名称 = 实体NBTPath`：如 [机械动力](https://github.com/Creators-of-Create/Create)
-           中鼓风机处理的物品剩余时间  
+           中被鼓风机处理的物品的剩余处理时间  
            `processTime = CreateData.Processing.Time`
     - **逻辑表达式** 支持的语法：
-        1. `(`、`)`：括号
-        2. `!`：逻辑非
-        3. `&&`：逻辑与
-        4. `||`：逻辑或
-        5. `=`、`==`：等于
-        6. `<>`、`!=`：不等于
-        7. `<`：小于
-        8. `<=`：小于等于
-        9. `>`：大于
-        10. `>=`：大于等于
-        11. `+`：加
-        12. `-`：减
-        13. `*`：乘
-        14. `/`：除
-        15. `^`：Math.pow()
-        16. `:>`：rightClass.isAssignableFrom(leftClass)
-        17. `<:`：rightClass.isInstance(leftClass)
-        18. `contains`：left.contains(right)
+        1. `(`、`)`： 括号
+        2. `!`： 逻辑非
+        3. `&&`： 逻辑与
+        4. `||`： 逻辑或
+        5. `=`、`==`： 等于
+        6. `<>`、`!=`： 不等于
+        7. `<`： 小于
+        8. `<=`： 小于等于
+        9. `>`： 大于
+        10. `>=`： 大于等于
+        11. `+`： 加
+        12. `-`： 减
+        13. `*`： 乘
+        14. `/`： 除
+        15. `^`： Math.pow()
+        16. `:>`： rightClass.isAssignableFrom(leftClass)
+        17. `<:`： rightClass.isInstance(leftClass)
+        18. `contains`： left.contains(right)
         19. `sqrt`： Math.sqrt()
         20. `pow`： Math.pow()
         21. `log`： Math.log()
@@ -144,6 +145,7 @@
         23. `cos`： Math.cos()
         24. `abs`： Math.abs()
         25. `random`： Math.random()
+        26. `声明的变量`： 如上面例子中的 `modName`、`processTime`
 4. AotakeEL内置变量：
     1. `namespace`：实体ID的`:`前半部分，一般为MOD ID
     2. `path`：实体ID的`:`后半部分
