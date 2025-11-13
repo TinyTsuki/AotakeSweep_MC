@@ -78,6 +78,21 @@ public class CommandUtils {
         return result;
     }
 
+    public static String getStringEx(CommandContext<?> context, String name, String defaultValue) {
+        String result;
+        try {
+            result = String.valueOf(context.getArgument(name, Object.class));
+        } catch (IllegalArgumentException ignored) {
+            result = defaultValue;
+        }
+        return result;
+    }
+
+    public static String replaceResourcePath(String s) {
+        if (StringUtils.isNullOrEmpty(s)) return "";
+        return s.substring(s.indexOf(":") + 1);
+    }
+
     public static int getIntDefault(CommandContext<?> context, String name, int defaultValue) {
         int result;
         try {

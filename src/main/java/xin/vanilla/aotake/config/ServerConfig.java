@@ -1,16 +1,14 @@
 package xin.vanilla.aotake.config;
 
 import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.item.Items;
 import net.minecraftforge.common.ForgeConfigSpec;
 import net.minecraftforge.registries.ForgeRegistries;
-import xin.vanilla.aotake.data.KeyValue;
 import xin.vanilla.aotake.enums.*;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
-import java.util.stream.Collectors;
 
 public class ServerConfig {
 
@@ -51,52 +49,14 @@ public class ServerConfig {
     public static final ForgeConfigSpec.ConfigValue<String> ENTITY_LIST_MODE;
 
     /**
-     * 实体清理NBT白名单
+     * 黑白名单实体超过指定数量也进行清理
      */
-    public static final ForgeConfigSpec.ConfigValue<List<? extends String>> ENTITY_NBT_WHITELIST_RAW;
-    public static List<KeyValue<String, String>> ENTITY_NBT_WHITELIST;
+    public static final ForgeConfigSpec.IntValue ENTITY_LIST_LIMIT;
 
     /**
-     * 实体清理NBT黑名单
+     * 仅清理不回收的实体
      */
-    public static final ForgeConfigSpec.ConfigValue<List<? extends String>> ENTITY_NBT_BLACKLIST_RAW;
-    public static List<KeyValue<String, String>> ENTITY_NBT_BLACKLIST;
-
-    /**
-     * 实体清理NBT黑白名单超过指定数量也进行清理
-     */
-    public static final ForgeConfigSpec.IntValue NBT_WHITE_BLACK_LIST_ENTITY_LIMIT;
-
-
-    /**
-     * 物品名单
-     */
-    public static final ForgeConfigSpec.ConfigValue<List<? extends String>> ITEM_LIST;
-
-    /**
-     * 物品名单应用模式
-     */
-    public static final ForgeConfigSpec.ConfigValue<String> ITEM_LIST_MODE;
-
-    /**
-     * 黑白名单物品超过指定数量也进行清理
-     */
-    public static final ForgeConfigSpec.IntValue ITEM_LIST_LIMIT;
-
-    /**
-     * 仅清理不回收的物品
-     */
-    public static final ForgeConfigSpec.ConfigValue<List<? extends String>> ITEM_REDLIST;
-
-    /**
-     * 仅清理掉落超过指定tick的物品
-     */
-    public static final ForgeConfigSpec.IntValue SWEEP_ITEM_AGE;
-
-    /**
-     * 将指定实体视为物品
-     */
-    public static final ForgeConfigSpec.ConfigValue<List<? extends String>> ITEM_TYPE_LIST;
+    public static final ForgeConfigSpec.ConfigValue<List<? extends String>> ENTITY_REDLIST;
 
 
     /**
@@ -203,22 +163,6 @@ public class ServerConfig {
     public static final ForgeConfigSpec.IntValue SWEEP_BATCH_LIMIT;
 
 
-    /**
-     * 维度名单
-     */
-    public static final ForgeConfigSpec.ConfigValue<List<? extends String>> DIMENSION_LIST;
-
-    /**
-     * 维度名单应用模式
-     */
-    public static final ForgeConfigSpec.ConfigValue<String> DIMENSION_LIST_MODE;
-
-    /**
-     * 区块清理是否忽略维度名单
-     */
-    public static final ForgeConfigSpec.BooleanValue DIMENSION_LIST_IGNORE_CHUNK;
-
-
     // endregion 基础设置
 
 
@@ -319,112 +263,43 @@ public class ServerConfig {
                                 , "扫地间隔(毫秒)。")
                         .defineInRange("sweepInterval", 10 * 60 * 1000, 0L, 7 * 24 * 60 * 60 * 1000);
 
-                // 实体
-                {
-                    SERVER_BUILDER.comment("Entity", "实体").push("entity");
+                // *:*
+                // namespace, path, resourceLocation, clazz, clazzString, name, displayName, customName, tick, num, dim, x, y, z, chunkX, chunkZ, hasOwner, ownerName, custom = CreateData.Processing.Time -> custom > 0
+                // 实体名单
+                ENTITY_LIST = SERVER_BUILDER
+                        .comment("The entity list, the following entities will be cleaned up according to the entityListMode."
+                                , "实体名单，与配置 entityListMode 共同决定列表中的实体是否清理。")
+                        .defineListAllowEmpty("entityList", new ArrayList<>() {{
+                                    add(ForgeRegistries.ENTITY_TYPES.getKey(EntityType.ARROW).toString());
+                                    add(ForgeRegistries.ENTITY_TYPES.getKey(EntityType.SPECTRAL_ARROW).toString());
+                                    add(String.format("tick, clazz, itemClazz = '%s', createProcessing = CreateData.Processing.Time", ItemEntity.class.getName()) +
+                                            " -> " +
+                                            "tick >= 5 && clazz :> itemClazz && (createProcessing <= 0 || createProcessing == null)");
+                                }}, o -> o instanceof String
+                        );
 
-                    // 实体名单
-                    ENTITY_LIST = SERVER_BUILDER
-                            .comment("The entity list, the following entities will be cleaned up according to the entityListMode."
-                                    , "实体名单，与配置 entityListMode 共同决定列表中的实体是否清理。")
-                            .defineListAllowEmpty("entityList", new ArrayList<>() {{
-                                        add(ForgeRegistries.ENTITY_TYPES.getKey(EntityType.ARROW).toString());
-                                        add(ForgeRegistries.ENTITY_TYPES.getKey(EntityType.SPECTRAL_ARROW).toString());
-                                    }}, o -> o instanceof String
-                            );
+                // 实体名单应用模式
+                ENTITY_LIST_MODE = SERVER_BUILDER
+                        .comment("The application mode of the entity list:"
+                                , "BLACK: Blacklist, only the entities listed will be cleaned up;"
+                                , "WHITE: Whitelist, all entities except those listed will be cleaned up."
+                                , "实体名单应用模式："
+                                , "BLACK：黑名单，仅会清理列表中列出的实体；"
+                                , "WHITE：白名单，将会清理列表中未列出的所有实体。")
+                        .define("entityListMode", EnumListType.BLACK.name(), EnumListType::isValid);
 
-                    // 实体名单应用模式
-                    ENTITY_LIST_MODE = SERVER_BUILDER
-                            .comment("The application mode of the entity list:"
-                                    , "BLACK: Blacklist, only the entities listed will be cleaned up;"
-                                    , "WHITE: Whitelist, all entities except those listed will be cleaned up."
-                                    , "实体名单应用模式："
-                                    , "BLACK：黑名单，仅会清理列表中列出的实体；"
-                                    , "WHITE：白名单，将会清理列表中未列出的所有实体。")
-                            .define("entityListMode", EnumListType.BLACK.name(), EnumListType::isValid);
+                // 实体名单超过指定数量也进行清理
+                ENTITY_LIST_LIMIT = SERVER_BUILDER
+                        .comment("Even if an entity is on the whitelist or not on the blacklist, it will still be removed if the total number of that entity type on the server exceeds the specified limit."
+                                , "即使是白名单内的实体，或不是黑名单中的实体，该实体类型只要在服务器中数量超过指定上限，也会被清理。")
+                        .defineInRange("entityListLimit", 250, 1, Integer.MAX_VALUE);
 
-                    // 实体清理NBT白名单
-                    ENTITY_NBT_WHITELIST_RAW = SERVER_BUILDER
-                            .comment("The NBT whitelist for cleaning up entities, entities with the following NBT values will not be cleaned or recycled."
-                                    , "'->' left side is an NBT path expression, similar to JsonPath; the right side of '->' is an NBT value expression used to check if the condition is met. The 'value' keyword represents the NBT value and cannot be omitted."
-                                    , "Examples of NBT value expressions: value == 'string', sqrt(value) == 123, log(value) <= 2.5, pow(value, 2) != cos(value), sin(value) > 5, abs(value) >= 10"
-                                    , "实体清理NBT白名单，包含以下NBT值的实体不会被清理。"
-                                    , "'->'左边为NBT路径表达式，类似于JsonPath；'->'右边为NBT值表达式，用于判断是否满足条件，其中'value'代表NBT值，不可省略。"
-                                    , "NBT值表达式例子： value == '字符串'、sqrt(value) == 123、log(value) <= 2.5、pow(value, 2) != cos(value)、sin(value) > 5、abs(value) >= 10")
-                            .defineListAllowEmpty("entityNbtWhitelist", new ArrayList<>() {{
-                                        add("CreateData.Processing.Time -> value > 0");
-                                    }}
-                                    , o -> o instanceof String);
-
-                    // 实体清理NBT黑名单
-                    ENTITY_NBT_BLACKLIST_RAW = SERVER_BUILDER
-                            .comment("The NBT blacklist for cleaning up entities, if this list is not empty, only the following NBT values will be cleaned and recycled, entities with NBT values outside the list will not be cleaned or recycled."
-                                    , "'->' left side is an NBT path expression, similar to JsonPath; the right side of '->' is an NBT value expression used to check if the condition is met. The 'value' keyword represents the NBT value and cannot be omitted."
-                                    , "Examples of NBT value expressions: value == 'string', sqrt(value) == 123, log(value) <= 2.5, pow(value, 2) != cos(value), sin(value) > 5, abs(value) >= 10"
-                                    , "实体清理NBT黑名单，若该名单不为空，则将只会清理并回收以下NBT值的实体，名单外的实体将不会被清理。"
-                                    , "'->'左边为NBT路径表达式，类似于JsonPath；'->'右边为NBT值表达式，用于判断是否满足条件，其中'value'代表NBT值，不可省略。"
-                                    , "NBT值表达式例子： value == '字符串'、sqrt(value) == 123、log(value) <= 2.5、pow(value, 2) != cos(value)、sin(value) > 5、abs(value) >= 10")
-                            .defineListAllowEmpty("entityNbtBlacklist", new ArrayList<>()
-                                    , o -> o instanceof String);
-
-                    // 实体NBT名单超过指定数量也进行清理
-                    NBT_WHITE_BLACK_LIST_ENTITY_LIMIT = SERVER_BUILDER
-                            .comment("Even entities on the whitelist or not included in the blacklist will be cleared if their quantity on the server exceeds the specified limit."
-                                    , "即使是NBT白名单内的实体，或不是NBT黑名单中的实体，只要在服务器中数量超过指定上限，也会被清理。")
-                            .defineInRange("nbtWhiteBlackListEntityLimit", 250, 1, Integer.MAX_VALUE);
-
-                    SERVER_BUILDER.pop();
-                }
-
-                // 物品
-                {
-                    SERVER_BUILDER.comment("Item", "物品").push("item");
-
-                    // 物品名单
-                    ITEM_LIST = SERVER_BUILDER
-                            .comment("The item list, the following entities will be cleaned up according to the itemListMode."
-                                    , "物品名单，与配置 itemListMode 共同决定列表中的实体是否清理。")
-                            .defineListAllowEmpty("itemList", new ArrayList<>()
-                                    , o -> o instanceof String);
-
-                    // 物品名单应用模式
-                    ITEM_LIST_MODE = SERVER_BUILDER
-                            .comment("The application mode of the item list:"
-                                    , "BLACK: Blacklist, only the items listed will be cleaned up;"
-                                    , "WHITE: Whitelist, all items except those listed will be cleaned up."
-                                    , "物品名单应用模式："
-                                    , "BLACK：黑名单，仅会清理列表中列出的物品；"
-                                    , "WHITE：白名单，将会清理列表中未列出的所有物品。")
-                            .define("itemListMode", EnumListType.WHITE.name(), EnumListType::isValid);
-
-                    // 名单物品超过指定数量也进行清理
-                    ITEM_LIST_LIMIT = SERVER_BUILDER
-                            .comment("Even items on the whitelist or not included in the blacklist will be cleared if their quantity on the server exceeds the specified limit."
-                                    , "即使是白名单内的物品，或不是黑名单中的物品，只要在服务器中数量超过指定上限，也会被清理。")
-                            .defineInRange("itemListLimit", 250, 1, Integer.MAX_VALUE);
-
-                    // 仅清理不回收的物品
-                    ITEM_REDLIST = SERVER_BUILDER
-                            .comment("The item redlist for cleaning up items, the following items will only be cleaned and not recycled."
-                                    , "物品清理红名单，以下物品将只会被清理而不会被回收。")
-                            .defineListAllowEmpty("itemRedlist", new ArrayList<>()
-                                    , o -> o instanceof String);
-
-                    // 仅清理掉落超过指定tick的物品
-                    SWEEP_ITEM_AGE = SERVER_BUILDER
-                            .comment("Only clean up items that have been dropped for more than the specified ticks. Note: If a chunk is not loaded, dropped items will not tick, which may cause items to accumulate continuously."
-                                    , "仅清理掉落超过指定tick的物品。注意：若区块未被加载，掉落物的tick不会增加，从而导致物品越堆越多。")
-                            .defineInRange("sweepItemDelay", 5, 0, 24 * 60 * 60 * 20);
-
-                    // 将指定实体视为物品
-                    ITEM_TYPE_LIST = SERVER_BUILDER
-                            .comment("The item type list, the following entities will be viewed as items when cleaning up. If the list is empty, all entities that inherit ItemEntity will be viewed as items, such as dropped SlashBlade, etc."
-                                    , "物品类型列表，以下实体在清理时会被视为掉落物。若列表为空则会将所有继承自ItemEntity的实体都视为物品，如丢在地上的拔刀剑等。")
-                            .defineListAllowEmpty("itemTypeList", new ArrayList<>()
-                                    , o -> o instanceof String);
-
-                    SERVER_BUILDER.pop();
-                }
+                // 仅清理不回收的实体
+                ENTITY_REDLIST = SERVER_BUILDER
+                        .comment("The entity redlist for cleaning up items, the following items will only be cleaned and not recycled."
+                                , "实体清理红名单，以下实体将只会被清理而不会被回收。")
+                        .defineList("entityRedlist", new ArrayList<>()
+                                , o -> o instanceof String);
 
                 SERVER_BUILDER.pop();
             }
@@ -469,11 +344,17 @@ public class ServerConfig {
                                 , "ADVANCED：区块内某个类型实体超过阈值触发清理。")
                         .define("chunkCheckMode", EnumChunkCheckMode.DEFAULT.name(), EnumChunkCheckMode::isValid);
 
+                // *:*
+                // namespace, path, resourceLocation, clazz, clazzString, name, displayName, customName, tick, num, dim, x, y, z, chunkX, chunkZ, hasOwner, ownerName, custom = CreateData.Processing.Time -> custom > 0
                 // 区块检测实体名单
                 CHUNK_CHECK_ENTITY_LIST = SERVER_BUILDER
                         .comment("The entity list of chunk check, the following entities will be cleaned up according to the chunkCheckEntityListMode."
                                 , "区块检测实体名单，与配置 chunkCheckEntityListMode 共同决定列表中的实体是否清理。")
-                        .defineListAllowEmpty("chunkCheckEntityList", new ArrayList<>(), o -> o instanceof String
+                        .defineListAllowEmpty("chunkCheckEntityList", new ArrayList<>() {{
+                                    add("customName, hasOwner, createProcessing = CreateData.Processing.Time" +
+                                            " -> " +
+                                            "customName != null || hasOwner || createProcessing > 0");
+                                }}, o -> o instanceof String
                         );
 
                 // 区块检测实体名单应用模式
@@ -632,36 +513,6 @@ public class ServerConfig {
                 SERVER_BUILDER.pop();
             }
 
-            // 维度
-            {
-                SERVER_BUILDER.comment("Dimension", "维度").push("dimension");
-
-                // 维度名单
-                DIMENSION_LIST = SERVER_BUILDER
-                        .comment("The dimension list, the following dimensions will be cleaned up according to the dimensionListMode."
-                                , "维度名单，与配置 dimensionListMode 共同决定列表中的维度是否清理。")
-                        .defineList("dimensionList", new ArrayList<>()
-                                , o -> o instanceof String);
-
-                // 维度名单应用模式
-                DIMENSION_LIST_MODE = SERVER_BUILDER
-                        .comment("The application mode of the dimension list:"
-                                , "BLACK: Blacklist, only the dimension listed will be cleaned up;"
-                                , "WHITE: Whitelist, all dimensions except those listed will be cleaned up."
-                                , "维度名单应用模式："
-                                , "BLACK：黑名单，仅会清理列表中列出的维度；"
-                                , "WHITE：白名单，将会清理列表中未列出的所有维度。")
-                        .define("dimensionListMode", EnumListType.WHITE.name(), EnumListType::isValid);
-
-                // 区块清理是否忽略维度名单
-                DIMENSION_LIST_IGNORE_CHUNK = SERVER_BUILDER
-                        .comment("Whether to ignore the dimension list when cleaning up chunks."
-                                , "是否在清理区块时忽略维度名单。")
-                        .define("dimensionListIgnoreChunk", false);
-
-                SERVER_BUILDER.pop();
-            }
-
             SERVER_BUILDER.pop();
         }
 
@@ -743,18 +594,8 @@ public class ServerConfig {
             add(ForgeRegistries.ENTITY_TYPES.getKey(EntityType.SPECTRAL_ARROW).toString());
         }});
         ENTITY_LIST_MODE.set(EnumListType.WHITE.name());
-        ENTITY_NBT_WHITELIST_RAW.set(new ArrayList<>() {{
-            add("CreateData.Processing.Time -> value > 0");
-        }});
-        ENTITY_NBT_BLACKLIST_RAW.set(new ArrayList<>());
-        NBT_WHITE_BLACK_LIST_ENTITY_LIMIT.set(250);
-
-        ITEM_LIST.set(new ArrayList<>());
-        ITEM_LIST_MODE.set(EnumListType.WHITE.name());
-        ITEM_LIST_LIMIT.set(250);
-        ITEM_REDLIST.set(new ArrayList<>());
-        SWEEP_ITEM_AGE.set(5);
-        ITEM_TYPE_LIST.set(new ArrayList<>());
+        ENTITY_LIST_LIMIT.set(250);
+        ENTITY_REDLIST.set(new ArrayList<>());
 
         CHUNK_CHECK_INTERVAL.set(5 * 1000L);
         CHUNK_CHECK_LIMIT.set(250);
@@ -796,9 +637,6 @@ public class ServerConfig {
         PERMISSION_CLEAR_DROP.set(1);
         PERMISSION_DELAY_SWEEP.set(1);
 
-        DIMENSION_LIST.set(new ArrayList<>());
-        DIMENSION_LIST_MODE.set(EnumListType.WHITE.name());
-
         SERVER_CONFIG.save();
     }
 
@@ -812,32 +650,6 @@ public class ServerConfig {
         resetConfig();
 
         SERVER_CONFIG.save();
-    }
-
-    public static void bake() {
-        ENTITY_NBT_WHITELIST = ENTITY_NBT_WHITELIST_RAW.get().stream()
-                .map(s -> {
-                    String[] parts = s.split("->", 2);
-                    if (parts.length == 2) {
-                        return new KeyValue<>(parts[0].trim(), parts[1].trim());
-                    } else {
-                        return null;
-                    }
-                })
-                .filter(Objects::nonNull)
-                .collect(Collectors.toList());
-
-        ENTITY_NBT_BLACKLIST = ENTITY_NBT_BLACKLIST_RAW.get().stream()
-                .map(s -> {
-                    String[] parts = s.split("->", 2);
-                    if (parts.length == 2) {
-                        return new KeyValue<>(parts[0].trim(), parts[1].trim());
-                    } else {
-                        return null;
-                    }
-                })
-                .filter(Objects::nonNull)
-                .collect(Collectors.toList());
     }
 
 }
