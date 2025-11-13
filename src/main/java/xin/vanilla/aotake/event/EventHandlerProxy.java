@@ -146,6 +146,7 @@ public class EventHandlerProxy {
             chunkSweepLock.set(true);
             lastChunkCheckTime = now;
             try {
+                long start = System.currentTimeMillis();
                 List<Map.Entry<String, List<Entity>>> overcrowdedChunks = AotakeUtils.getAllEntitiesByFilter(null, true).stream()
                         .collect(Collectors.groupingBy(entity -> {
                             // 获取区块维度和坐标
@@ -163,8 +164,11 @@ public class EventHandlerProxy {
                         .entrySet().stream()
                         .filter(entry -> entry.getValue().size() > ServerConfig.CHUNK_CHECK_LIMIT.get())
                         .toList();
+                long end = System.currentTimeMillis();
 
                 if (!overcrowdedChunks.isEmpty()) {
+                    LOGGER.debug("Chunk check started at {}", start);
+                    LOGGER.debug("Chunk check finished at {}", end);
                     LOGGER.debug("Chunk check info:\n{}", overcrowdedChunks.stream()
                             .map(entry -> String.format("%s, Entities: %s", entry.getKey(), entry.getValue().size()))
                             .collect(Collectors.joining("\n")));
@@ -242,10 +246,11 @@ public class EventHandlerProxy {
 
                     AotakeScheduler.schedule(server, 25, () -> {
                         try {
+                            LOGGER.debug("Chunk sweep started at {}", System.currentTimeMillis());
                             List<Entity> entities = overcrowdedChunks.stream()
                                     .flatMap(entry -> entry.getValue().stream())
                                     .collect(Collectors.toList());
-                            AotakeUtils.sweep(null, entities, true);
+                            AotakeUtils.sweep(entities, true);
                         } catch (Exception e) {
                             LOGGER.error("Failed to sweep entities", e);
                         } finally {
