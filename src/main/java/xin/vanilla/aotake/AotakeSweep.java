@@ -30,6 +30,7 @@ import xin.vanilla.aotake.network.ModNetworkHandler;
 import xin.vanilla.aotake.network.SplitPacket;
 import xin.vanilla.aotake.util.AotakeScheduler;
 import xin.vanilla.aotake.util.CommandUtils;
+import xin.vanilla.aotake.util.EntityFilter;
 import xin.vanilla.aotake.util.EntitySweeper;
 
 import java.util.*;
@@ -90,6 +91,8 @@ public class AotakeSweep {
 
     @Getter
     private static final EntitySweeper entitySweeper = new EntitySweeper();
+    @Getter
+    private static final EntityFilter entityFilter = new EntityFilter();
 
     // public static final Item JUNK_BALL = new JunkBall();
 
@@ -158,7 +161,7 @@ public class AotakeSweep {
     public void onConfigReload(ModConfig.ModConfigEvent event) {
         try {
             if (event.getConfig().getSpec() == ServerConfig.SERVER_CONFIG && serverInstance.val()) {
-                ServerConfig.bake();
+                entityFilter.clear();
                 CommandUtils.configKeyMapCache.clear();
             }
         } catch (Exception ignored) {
