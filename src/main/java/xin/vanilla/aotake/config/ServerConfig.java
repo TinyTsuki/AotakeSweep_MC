@@ -1,7 +1,6 @@
 package xin.vanilla.aotake.config;
 
 import net.minecraft.entity.EntityType;
-import net.minecraft.entity.item.ItemEntity;
 import net.minecraft.item.Items;
 import net.minecraftforge.common.ForgeConfigSpec;
 import xin.vanilla.aotake.enums.*;
@@ -262,8 +261,6 @@ public class ServerConfig {
                                 , "扫地间隔(毫秒)。")
                         .defineInRange("sweepInterval", 10 * 60 * 1000, 0L, 7 * 24 * 60 * 60 * 1000);
 
-                // *:*
-                // namespace, path, resourceLocation, clazz, clazzString, name, displayName, customName, tick, num, dim, x, y, z, chunkX, chunkZ, hasOwner, ownerName, custom = CreateData.Processing.Time -> custom > 0
                 // 实体名单
                 ENTITY_LIST = SERVER_BUILDER
                         .comment("The entity list, the following entities will be cleaned up according to the entityListMode."
@@ -271,7 +268,7 @@ public class ServerConfig {
                         .defineList("entityList", new ArrayList<String>() {{
                                     add(EntityType.ARROW.getRegistryName().toString());
                                     add(EntityType.SPECTRAL_ARROW.getRegistryName().toString());
-                                    add(String.format("tick, clazz, itemClazz = '%s', createProcessing = CreateData.Processing.Time", ItemEntity.class.getName()) +
+                                    add("tick, clazz, itemClazz, createProcessing = CreateData.Processing.Time" +
                                             " -> " +
                                             "tick >= 5 && clazz :> itemClazz && (createProcessing <= 0 || createProcessing == null)");
                                 }}, o -> o instanceof String
@@ -343,8 +340,6 @@ public class ServerConfig {
                                 , "ADVANCED：区块内某个类型实体超过阈值触发清理。")
                         .define("chunkCheckMode", EnumChunkCheckMode.DEFAULT.name(), EnumChunkCheckMode::isValid);
 
-                // *:*
-                // namespace, path, resourceLocation, clazz, clazzString, name, displayName, customName, tick, num, dim, x, y, z, chunkX, chunkZ, hasOwner, ownerName, custom = CreateData.Processing.Time -> custom > 0
                 // 区块检测实体名单
                 CHUNK_CHECK_ENTITY_LIST = SERVER_BUILDER
                         .comment("The entity list of chunk check, the following entities will be cleaned up according to the chunkCheckEntityListMode."
@@ -589,6 +584,9 @@ public class ServerConfig {
         ENTITY_LIST.set(new ArrayList<String>() {{
             add(EntityType.ARROW.getRegistryName().toString());
             add(EntityType.SPECTRAL_ARROW.getRegistryName().toString());
+            add("tick, clazz, itemClazz, createProcessing = CreateData.Processing.Time" +
+                    " -> " +
+                    "tick >= 5 && clazz :> itemClazz && (createProcessing <= 0 || createProcessing == null)");
         }});
         ENTITY_LIST_MODE.set(EnumListType.WHITE.name());
         ENTITY_LIST_LIMIT.set(250);
@@ -599,7 +597,11 @@ public class ServerConfig {
         CHUNK_CHECK_RETAIN.set(0.5);
         CHUNK_CHECK_NOTICE.set(true);
         CHUNK_CHECK_MODE.set(EnumChunkCheckMode.DEFAULT.name());
-        CHUNK_CHECK_ENTITY_LIST.set(new ArrayList<>());
+        CHUNK_CHECK_ENTITY_LIST.set(new ArrayList<String>() {{
+            add("customName, hasOwner, createProcessing = CreateData.Processing.Time" +
+                    " -> " +
+                    "customName != null || hasOwner || createProcessing > 0");
+        }});
         CHUNK_CHECK_ENTITY_LIST_MODE.set(EnumListType.WHITE.name());
         CHUNK_CHECK_ONLY_NOTICE.set(false);
 

@@ -132,6 +132,8 @@ public class EntityFilter {
         String resourceLocation = null;
         Class<?> clazz = null;
         String clazzString = null;
+        final Class<?> itemClazz = ItemEntity.class;
+        final String itemClazzString = itemClazz.getName();
         String name = null;
         String displayName = null;
         String customName = null;
@@ -198,6 +200,12 @@ public class EntityFilter {
                         case "clazzString":
                             if (clazzString == null) clazzString = entity.getClass().getName();
                             varsOut.put(key, clazzString);
+                            break;
+                        case "itemClazz":
+                            varsOut.put(key, itemClazz);
+                            break;
+                        case "itemClazzString":
+                            varsOut.put(key, itemClazzString);
                             break;
                         case "name":
                             if (name == null) name = entity.getName().getString();
