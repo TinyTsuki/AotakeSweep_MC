@@ -29,7 +29,6 @@ import xin.vanilla.aotake.config.CommonConfig;
 import xin.vanilla.aotake.config.CustomConfig;
 import xin.vanilla.aotake.config.ServerConfig;
 import xin.vanilla.aotake.data.KeyValue;
-import xin.vanilla.aotake.data.SweepResult;
 import xin.vanilla.aotake.data.WorldCoordinate;
 import xin.vanilla.aotake.data.player.PlayerSweepData;
 import xin.vanilla.aotake.data.world.WorldTrashData;
@@ -277,61 +276,51 @@ public class AotakeCommand {
             if (CommandUtils.checkModStatus(context)) return 0;
             CommandUtils.notifyHelp(context);
             int range = CommandUtils.getIntDefault(context, "range", 0);
+            if (range == 0)
+                range = StringUtils.toInt(CommandUtils.replaceResourcePath(CommandUtils.getStringEx(context, "dimension", "")));
             ServerLevel dimension = CommandUtils.getDimensionDefault(context, "dimension", null);
             List<Entity> entities;
-            if (dimension == null) {
-                entities = AotakeUtils.getAllEntities();
+            if (range > 0) {
+                ServerPlayer player = context.getSource().getPlayerOrException();
+                entities = new ArrayList<>(player.level().getEntitiesOfClass(Entity.class, player.getBoundingBox().inflate(range)));
+            } else if (dimension != null) {
+                entities = AotakeUtils.getAllEntities().stream()
+                        .filter(entity -> entity.level() == dimension)
+                        .collect(Collectors.toList());
             } else {
-                entities = new ArrayList<>();
-                if (range > 0) {
-                    ServerPlayer player = context.getSource().getPlayerOrException();
-                    entities.addAll(player.level().getEntitiesOfClass(Entity.class, player.getBoundingBox().inflate(range)));
-                }
+                entities = AotakeUtils.getAllEntities();
             }
-            Entity entity = context.getSource().getEntity();
-            AotakeScheduler.schedule(context.getSource().getServer(), 1, () -> AotakeUtils.sweep(entity instanceof ServerPlayer ? (ServerPlayer) entity : null, entities, false));
+
+            AotakeScheduler.schedule(context.getSource().getServer(), 1, () -> AotakeUtils.sweep(entities, false));
             return 1;
         };
         Command<CommandSourceStack> clearDropCommand = context -> {
             if (CommandUtils.checkModStatus(context)) return 0;
             CommandUtils.notifyHelp(context);
-            boolean withEntity = CommandUtils.getBooleanDefault(context, "withEntity", false);
-            boolean greedyMode = CommandUtils.getBooleanDefault(context, "greedyMode", false);
-            boolean allEntity = CommandUtils.getBooleanDefault(context, "allEntity", false);
             int range = CommandUtils.getIntDefault(context, "range", 0);
+            if (range == 0)
+                range = StringUtils.toInt(CommandUtils.replaceResourcePath(CommandUtils.getStringEx(context, "dimension", "")));
             ServerLevel dimension = CommandUtils.getDimensionDefault(context, "dimension", null);
+            boolean withEntity = CommandUtils.getBooleanDefault(context, "withEntity", false);
+            boolean ignoreFilter = CommandUtils.getBooleanDefault(context, "ignoreFilter", false);
 
-            List<Entity> entities = new ArrayList<>();
-            if (dimension == null) {
-                entities = AotakeUtils.getAllEntities();
-            } else if (range > 0) {
+            List<Entity> entities;
+            if (range > 0) {
                 ServerPlayer player = context.getSource().getPlayerOrException();
-                entities.addAll(player.level().getEntitiesOfClass(Entity.class, player.getBoundingBox().inflate(range)));
+                entities = new ArrayList<>(player.level().getEntitiesOfClass(Entity.class, player.getBoundingBox().inflate(range)));
+            } else if (dimension != null) {
+                entities = AotakeUtils.getAllEntities().stream()
+                        .filter(entity -> entity.level() == dimension)
+                        .collect(Collectors.toList());
+            } else {
+                entities = AotakeUtils.getAllEntities();
             }
-            SweepResult result = new SweepResult();
-            entities.stream()
+            entities = entities.stream()
                     .filter(Objects::nonNull)
-                    .filter(entity -> (greedyMode && entity instanceof ItemEntity)
-                            || (!greedyMode && AotakeUtils.isItem(entity))
-                            || (withEntity && AotakeUtils.isJunkEntity(entity, false))
-                            || (allEntity && !(entity instanceof Player))
-                    ).forEach(entity -> {
-                        if (entity instanceof ItemEntity) {
-                            result.plusItemCount(((ItemEntity) entity).getItem().getCount());
-                        } else {
-                            result.plusEntityCount();
-                        }
-                        AotakeUtils.removeEntity(entity, false);
-                    });
-            AotakeSweep.getServerInstance().key()
-                    .getPlayerList()
-                    .getPlayers()
-                    .forEach(player -> AotakeUtils.sendMessage(player
-                            , AotakeUtils.getWarningMessage(result.isEmpty() ? "fail" : "success"
-                                    , AotakeUtils.getPlayerLanguage(player)
-                                    , result
-                            )
-                    ));
+                    .filter(entity -> !(entity instanceof Player))
+                    .filter(entity -> withEntity || entity instanceof ItemEntity)
+                    .collect(Collectors.toList());
+            AotakeUtils.sweep(entities, ignoreFilter);
             return 1;
         };
         Command<CommandSourceStack> clearDustbinCommand = context -> {
@@ -616,37 +605,28 @@ public class AotakeCommand {
                         .then(Commands.argument("range", IntegerArgumentType.integer(0))
                                 .executes(sweepCommand)
                         ); // endregion sweep
-        LiteralArgumentBuilder<CommandSourceStack> clearDrop = // region clearDrop
+        LiteralArgumentBuilder<CommandSourceStack> clearDrop = // region killItems
                 Commands.literal(CommonConfig.COMMAND_CLEAR_DROP.get())
                         .requires(source -> AotakeUtils.hasCommandPermission(source, EnumCommandType.CLEAR_DROP))
                         .executes(clearDropCommand)
-                        .then(Commands.argument("greedyMode", BoolArgumentType.bool())
+                        .then(Commands.argument("dimension", DimensionArgument.dimension())
                                 .executes(clearDropCommand)
                                 .then(Commands.argument("withEntity", BoolArgumentType.bool())
                                         .executes(clearDropCommand)
-                                        .then(Commands.argument("allEntity", BoolArgumentType.bool())
+                                        .then(Commands.argument("ignoreFilter", BoolArgumentType.bool())
                                                 .executes(clearDropCommand)
                                         )
                                 )
-                                .then(Commands.argument("dimension", DimensionArgument.dimension())
+                        )
+                        .then(Commands.argument("range", IntegerArgumentType.integer(0))
+                                .executes(clearDropCommand)
+                                .then(Commands.argument("withEntity", BoolArgumentType.bool())
                                         .executes(clearDropCommand)
-                                        .then(Commands.argument("withEntity", BoolArgumentType.bool())
+                                        .then(Commands.argument("ignoreFilter", BoolArgumentType.bool())
                                                 .executes(clearDropCommand)
-                                                .then(Commands.argument("allEntity", BoolArgumentType.bool())
-                                                        .executes(clearDropCommand)
-                                                )
                                         )
                                 )
-                                .then(Commands.argument("range", IntegerArgumentType.integer(0))
-                                        .executes(clearDropCommand)
-                                        .then(Commands.argument("withEntity", BoolArgumentType.bool())
-                                                .executes(clearDropCommand)
-                                                .then(Commands.argument("allEntity", BoolArgumentType.bool())
-                                                        .executes(clearDropCommand)
-                                                )
-                                        )
-                                )
-                        ); // endregion clearDrop
+                        ); // endregion killItems
         LiteralArgumentBuilder<CommandSourceStack> clearDustbin = // region clearDustbin
                 Commands.literal(CommonConfig.COMMAND_DUSTBIN_CLEAR.get())
                         .requires(source -> AotakeUtils.hasCommandPermission(source, EnumCommandType.DUSTBIN_CLEAR))
