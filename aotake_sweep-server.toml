@@ -24,66 +24,23 @@
 		#扫地间隔(毫秒)。
 		#Range: 0 ~ 604800000
 		sweepInterval = 600000
-
-		#Entity
-		#实体
-		[base.sweep.entity]
-			#The entity list, the following entities will be cleaned up according to the entityListMode.
-			#实体名单，与配置 entityListMode 共同决定列表中的实体是否清理。
-			entityList = ["minecraft:arrow", "minecraft:spectral_arrow"]
-			#The application mode of the entity list:
-			#BLACK: Blacklist, only the entities listed will be cleaned up;
-			#WHITE: Whitelist, all entities except those listed will be cleaned up.
-			#实体名单应用模式：
-			#BLACK：黑名单，仅会清理列表中列出的实体；
-			#WHITE：白名单，将会清理列表中未列出的所有实体。
-			entityListMode = "BLACK"
-			#The NBT whitelist for cleaning up entities, entities with the following NBT values will not be cleaned or recycled.
-			#'->' left side is an NBT path expression, similar to JsonPath; the right side of '->' is an NBT value expression used to check if the condition is met. The 'value' keyword represents the NBT value and cannot be omitted.
-			#Examples of NBT value expressions: value == 'string', sqrt(value) == 123, log(value) <= 2.5, pow(value, 2) != cos(value), sin(value) > 5, abs(value) >= 10
-			#实体清理NBT白名单，包含以下NBT值的实体不会被清理。
-			#'->'左边为NBT路径表达式，类似于JsonPath；'->'右边为NBT值表达式，用于判断是否满足条件，其中'value'代表NBT值，不可省略。
-			#NBT值表达式例子： value == '字符串'、sqrt(value) == 123、log(value) <= 2.5、pow(value, 2) != cos(value)、sin(value) > 5、abs(value) >= 10
-			entityNbtWhitelist = ["CreateData.Processing.Time -> value > 0"]
-			#The NBT blacklist for cleaning up entities, if this list is not empty, only the following NBT values will be cleaned and recycled, entities with NBT values outside the list will not be cleaned or recycled.
-			#'->' left side is an NBT path expression, similar to JsonPath; the right side of '->' is an NBT value expression used to check if the condition is met. The 'value' keyword represents the NBT value and cannot be omitted.
-			#Examples of NBT value expressions: value == 'string', sqrt(value) == 123, log(value) <= 2.5, pow(value, 2) != cos(value), sin(value) > 5, abs(value) >= 10
-			#实体清理NBT黑名单，若该名单不为空，则将只会清理并回收以下NBT值的实体，名单外的实体将不会被清理。
-			#'->'左边为NBT路径表达式，类似于JsonPath；'->'右边为NBT值表达式，用于判断是否满足条件，其中'value'代表NBT值，不可省略。
-			#NBT值表达式例子： value == '字符串'、sqrt(value) == 123、log(value) <= 2.5、pow(value, 2) != cos(value)、sin(value) > 5、abs(value) >= 10
-			entityNbtBlacklist = []
-			#Even entities on the whitelist or not included in the blacklist will be cleared if their quantity on the server exceeds the specified limit.
-			#即使是NBT白名单内的实体，或不是NBT黑名单中的实体，只要在服务器中数量超过指定上限，也会被清理。
-			#Range: > 1
-			nbtWhiteBlackListEntityLimit = 250
-
-		#Item
-		#物品
-		[base.sweep.item]
-			#The item list, the following entities will be cleaned up according to the itemListMode.
-			#物品名单，与配置 itemListMode 共同决定列表中的实体是否清理。
-			itemList = []
-			#The application mode of the item list:
-			#BLACK: Blacklist, only the items listed will be cleaned up;
-			#WHITE: Whitelist, all items except those listed will be cleaned up.
-			#物品名单应用模式：
-			#BLACK：黑名单，仅会清理列表中列出的物品；
-			#WHITE：白名单，将会清理列表中未列出的所有物品。
-			itemListMode = "WHITE"
-			#Even items on the whitelist or not included in the blacklist will be cleared if their quantity on the server exceeds the specified limit.
-			#即使是白名单内的物品，或不是黑名单中的物品，只要在服务器中数量超过指定上限，也会被清理。
-			#Range: > 1
-			itemListLimit = 250
-			#The item redlist for cleaning up items, the following items will only be cleaned and not recycled.
-			#物品清理红名单，以下物品将只会被清理而不会被回收。
-			itemRedlist = []
-			#Only clean up items that have been dropped for more than the specified ticks. Note: If a chunk is not loaded, dropped items will not tick, which may cause items to accumulate continuously.
-			#仅清理掉落超过指定tick的物品。注意：若区块未被加载，掉落物的tick不会增加，从而导致物品越堆越多。
-			#Range: 0 ~ 1728000
-			sweepItemDelay = 5
-			#The item type list, the following entities will be viewed as items when cleaning up. If the list is empty, all entities that inherit ItemEntity will be viewed as items, such as dropped SlashBlade, etc.
-			#物品类型列表，以下实体在清理时会被视为掉落物。若列表为空则会将所有继承自ItemEntity的实体都视为物品，如丢在地上的拔刀剑等。
-			itemTypeList = []
+		#The entity list, the following entities will be cleaned up according to the entityListMode.
+		#实体名单，与配置 entityListMode 共同决定列表中的实体是否清理。
+		entityList = ["minecraft:arrow", "minecraft:spectral_arrow", "tick, clazz, itemClazz = 'net.minecraft.entity.item.ItemEntity', createProcessing = CreateData.Processing.Time -> tick >= 5 && clazz :> itemClazz && (createProcessing <= 0 || createProcessing == null)"]
+		#The application mode of the entity list:
+		#BLACK: Blacklist, only the entities listed will be cleaned up;
+		#WHITE: Whitelist, all entities except those listed will be cleaned up.
+		#实体名单应用模式：
+		#BLACK：黑名单，仅会清理列表中列出的实体；
+		#WHITE：白名单，将会清理列表中未列出的所有实体。
+		entityListMode = "BLACK"
+		#Even if an entity is on the whitelist or not on the blacklist, it will still be removed if the total number of that entity type on the server exceeds the specified limit.
+		#即使是白名单内的实体，或不是黑名单中的实体，该实体类型只要在服务器中数量超过指定上限，也会被清理。
+		#Range: > 1
+		entityListLimit = 250
+		#The entity redlist for cleaning up items, the following items will only be cleaned and not recycled.
+		#实体清理红名单，以下实体将只会被清理而不会被回收。
+		entityRedlist = []
 
 	#Chunk Check
 	#区块实体过多检测
@@ -96,12 +53,12 @@
 		#区块实体过多检测阈值。
 		#Range: > 1
 		chunkCheckLimit = 250
-		#Number of entities to retain during entity overload cleanup in a chunk. 
+		#The ratio of entities to retain during entity overload cleanup in a chunk. 
 		#By default, half of the detection threshold is retained to prevent excessive loss from clearing everything. 
 		#The retention behavior is affected by chunkCheckMode.
-		#区块实体过多检测清理时保留的实体数量，默认保留检测阈值的一半，避免全部清理而导致损失过大，保留方式受chunkCheckMode影响。
-		#Range: > 1
-		chunkCheckRetain = 125
+		#区块实体过多检测清理时保留的实体比例，默认保留检测阈值的一半，避免全部清理而导致损失过大，保留方式受chunkCheckMode影响。
+		#Range: 0.0 ~ 1.0
+		chunkCheckRetain = 0.5
 		#Show warning when too many entities in a chunk.
 		#区块内实体过多时的是否进行提示。
 		chunkCheckNotice = true
@@ -114,7 +71,7 @@
 		chunkCheckMode = "DEFAULT"
 		#The entity list of chunk check, the following entities will be cleaned up according to the chunkCheckEntityListMode.
 		#区块检测实体名单，与配置 chunkCheckEntityListMode 共同决定列表中的实体是否清理。
-		chunkCheckEntityList = []
+		chunkCheckEntityList = ["customName, hasOwner, createProcessing = CreateData.Processing.Time -> customName != null || hasOwner || createProcessing > 0"]
 		#The application mode of the entity list of chunk check:
 		#BLACK: Blacklist, only the entities listed will be cleaned up;
 		#WHITE: Whitelist, all entities except those listed will be cleaned up.
@@ -211,23 +168,6 @@
 		#每次清理的批次上限，避免单次清理分批次过多导致清理过慢，该配置项优先级大于sweepEntityLimit。
 		#Range: > 1
 		sweepBatchLimit = 10
-
-	#Dimension
-	#维度
-	[base.dimension]
-		#The dimension list, the following dimensions will be cleaned up according to the dimensionListMode.
-		#维度名单，与配置 dimensionListMode 共同决定列表中的维度是否清理。
-		dimensionList = []
-		#The application mode of the dimension list:
-		#BLACK: Blacklist, only the dimension listed will be cleaned up;
-		#WHITE: Whitelist, all dimensions except those listed will be cleaned up.
-		#维度名单应用模式：
-		#BLACK：黑名单，仅会清理列表中列出的维度；
-		#WHITE：白名单，将会清理列表中未列出的所有维度。
-		dimensionListMode = "WHITE"
-		#Whether to ignore the dimension list when cleaning up chunks.
-		#是否在清理区块时忽略维度名单。
-		dimensionListIgnoreChunk = false
 
 #Command Permission
 #指令权限
