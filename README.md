@@ -102,7 +102,7 @@
     1. [冰火传说](https://github.com/AlexModGuy/Ice_and_Fire) 中死亡的冰龙与火龙  
        `resource, dead = ModelDead -> dead == true && (resource == 'iceandfire:fire_dragon' || resource == 'iceandfire:ice_dragon')`
     2. [机械动力](https://github.com/Creators-of-Create/Create) 中正在被鼓风机处理的物品  
-       `clazz, itemClazz = 'net.minecraft.entity.item.ItemEntity', createProcessing = CreateData.Processing.Time -> clazz :> itemClazz && createProcessing > 0`
+       `clazz, itemClazz, createProcessing = CreateData.Processing.Time -> clazz :> itemClazz && createProcessing > 0`
 
 **说明**：
 
@@ -150,21 +150,23 @@
     1. `namespace`：实体ID的`:`前半部分，一般为MOD ID
     2. `path`：实体ID的`:`后半部分
     3. `resource`、`location`、`resourceLocation`：完整的实体ID
-    4. `clazz`：实体的 `java.lang.Class` 对象
-    5. `clazzString`：实体的 `java.lang.Class` 对象名称
-    6. `name`：实体的名称
-    7. `displayName`：实体的显示名称
-    8. `customName`：实体的自定义名称
-    9. `tick`：实体的tick计数
-    10. `num`：若为物品则为物品的数量，否则固定为1
-    11. `dim`、`dimension`：实体所在维度
-    12. `x`：实体所处x坐标
-    13. `y`：实体所处y坐标
-    14. `z`：实体所处z坐标
-    15. `chunkX`：实体所处区块x坐标
-    16. `chunkZ`：实体所处区块z坐标
-    17. `hasOwner`：实体是否被玩家驯服
-    18. `ownerName`：驯服该实体的玩家名称
+    4. `clazz`：当前实体的 `java.lang.Class` 对象
+    5. `clazzString`：当前实体的 `java.lang.Class` 对象名称
+    6. `itemClazz`：物品实体的 `java.lang.Class` 对象
+    7. `itemClazzString`：物品实体的 `java.lang.Class` 对象名称
+    8. `name`：实体的名称
+    9. `displayName`：实体的显示名称
+    10. `customName`：实体的自定义名称
+    11. `tick`：实体的tick计数
+    12. `num`：若为物品则为物品的数量，否则固定为1
+    13. `dim`、`dimension`：实体所在维度
+    14. `x`：实体所处x坐标
+    15. `y`：实体所处y坐标
+    16. `z`：实体所处z坐标
+    17. `chunkX`：实体所处区块x坐标
+    18. `chunkZ`：实体所处区块z坐标
+    19. `hasOwner`：实体是否被玩家驯服
+    20. `ownerName`：驯服该实体的玩家名称
 
 ## 注意事项
 
