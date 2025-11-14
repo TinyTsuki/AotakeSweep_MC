@@ -3,6 +3,7 @@ package xin.vanilla.aotake.util;
 import net.minecraft.nbt.CollectionTag;
 import net.minecraft.nbt.NumericTag;
 import net.minecraft.nbt.Tag;
+import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.TamableAnimal;
 import net.minecraft.world.entity.item.ItemEntity;
@@ -12,17 +13,19 @@ import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class EntityFilter {
-    // *:*
-    // namespace, path, resourceLocation, clazz, clazzString, name, displayName, customName, tick, num, dim, x, y, z, chunkX, chunkZ, hasOwner, ownerName, custom = CreateData.Processing.Time -> custom > 0
 
     // 缓存已解析的 filter spec（key 为 convertExpression 后的最终字符串）
     private final Map<String, FilterSpec> filterCache = new ConcurrentHashMap<>();
+    // 缓存已解析的 EntityDataAccessor
+    private static final Map<String, EntityDataAccessor<?>> accessorCache = new ConcurrentHashMap<>();
 
     public void clear() {
         filterCache.clear();
     }
 
     public boolean validEntity(List<? extends String> config, Entity entity) {
+        if (CollectionUtils.isNullOrEmpty(config)) return false;
+
         Map<String, Object> vars = new HashMap<>(16);
 
         for (String raw : config) {
@@ -79,7 +82,7 @@ public class EntityFilter {
         }
     }
 
-    private enum SourceType {PREDEFINED, LITERAL, NBT_PATH}
+    private enum SourceType {PREDEFINED, LITERAL, ACCESSOR_KEY, NBT_PATH}
 
     private List<VarDescriptor> parseLeftVariables(String left) {
         if (left == null || left.trim().isEmpty()) return Collections.emptyList();
@@ -100,8 +103,16 @@ public class EntityFilter {
                     String literal = rhs.substring(1, rhs.length() - 1);
                     out.add(new VarDescriptor(name, SourceType.LITERAL, literal));
                 }
+                // EntityDataAccessor 路径
+                else if (rhs.startsWith("<") && rhs.endsWith(">")) {
+                    String accessorPath = rhs.substring(1, rhs.length() - 1);
+                    out.add(new VarDescriptor(name, SourceType.ACCESSOR_KEY, accessorPath));
+                }
                 // NBT路径
                 else {
+                    if (rhs.startsWith("[") && rhs.endsWith("]")) {
+                        rhs = rhs.substring(1, rhs.length() - 1);
+                    }
                     out.add(new VarDescriptor(name, SourceType.NBT_PATH, rhs));
                 }
             }
@@ -142,6 +153,27 @@ public class EntityFilter {
             switch (d.type) {
                 case LITERAL:
                     varsOut.put(key, d.payload);
+                    break;
+                case ACCESSOR_KEY:
+                    EntityDataAccessor<?> accessor = accessorCache.computeIfAbsent(d.payload, k -> {
+                        String[] split = k.split(":", 2);
+                        EntityDataAccessor<?> result;
+                        if (split.length == 1) {
+                            result = (EntityDataAccessor<?>) FieldUtils.getPrivateFieldValue(FieldUtils.getClass(entity), entity, split[0], true);
+                        } else {
+                            result = (EntityDataAccessor<?>) FieldUtils.getPrivateFieldValue(FieldUtils.getClass(split[0]), entity, split[1]);
+                        }
+                        return result;
+                    });
+                    if (accessor != null && entity.getEntityData().hasItem(accessor)) {
+                        try {
+                            varsOut.put(key, entity.getEntityData().get(accessor));
+                        } catch (Throwable ignored) {
+                            varsOut.put(key, null);
+                        }
+                    } else {
+                        varsOut.put(key, null);
+                    }
                     break;
                 case NBT_PATH:
                     if (NBTPathUtils.has(entity.getPersistentData(), d.payload)) {
