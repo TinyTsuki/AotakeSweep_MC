@@ -80,12 +80,13 @@
 - **language**：设置玩家默认语言。  
   **参数列表**：
     1. `<语言>`
-- **config**：修改服务器/玩家设置，请勿用该指令修改格式较为复杂的`server`与`common`配置。  
+- **config**：修改配置，请勿用该指令修改格式较为复杂的`server`与`common`配置。  
   **参数列表**：
-    1. `player <配置项> <配置值>`
-    2. `mode <预置配置模式>`
-    3. `server <配置项> <配置值>`
-    4. `common <配置项> <配置值>`
+    1. `mode <模式>` 将配置文件重置为预置的模式
+    2. `disable <是否禁用MOD>` 临时禁用MOD功能
+    3. `player <配置项> <配置值>` 修改玩家配置
+    4. `server <配置项> <配置值>` 修改服务器配置
+    5. `common <配置项> <配置值>` 修改通用配置
 
 ## 实体过滤器
 
@@ -99,10 +100,10 @@
     2. 某个MOD下所有实体，如 [勤劳跟踪狂](https://github.com/Mafuyu404/DiligentStalker)`diligentstalker:*`
     3. 任意MOD下的某个实体，如 箭矢 `*:arrow`
 - **AotakeEL**：
-    1. [冰火传说](https://github.com/AlexModGuy/Ice_and_Fire) 中死亡的冰龙与火龙  
-       `resource, dead = ModelDead -> dead == true && (resource == 'iceandfire:fire_dragon' || resource == 'iceandfire:ice_dragon')`
-    2. [机械动力](https://github.com/Creators-of-Create/Create) 中正在被鼓风机处理的物品  
-       `clazz, itemClazz, createProcessing = CreateData.Processing.Time -> clazz :> itemClazz && createProcessing > 0`
+    1. [机械动力](https://github.com/Creators-of-Create/Create) 中正在被鼓风机处理的物品  
+       `clazz, itemClazz, createProcessing = [CreateData.Processing.Time] -> clazz :> itemClazz && createProcessing > 0`
+    2. [冰火传说](https://github.com/AlexModGuy/Ice_and_Fire) 中死亡的冰龙与火龙  
+       `resource, dead = <com.github.alexthe666.iceandfire.entity.EntityDragonBase:MODEL_DEAD> -> dead == true && (resource == 'iceandfire:fire_dragon' || resource == 'iceandfire:ice_dragon')`
 
 **说明**：
 
@@ -116,9 +117,13 @@
     - **变量声明** 有以下格式：
         1. `内置变量名称`：如 实体ID `resource`
         2. `自定义变量名称 = '字符串常量'`：如 `modName = 'AotakeSweep'`
-        3. `自定义变量名称 = 实体NBTPath`：如 [机械动力](https://github.com/Creators-of-Create/Create)
+        3. `自定义变量名称 = [实体NBTPath]`：如 [机械动力](https://github.com/Creators-of-Create/Create)
            中被鼓风机处理的物品的剩余处理时间  
-           `processTime = CreateData.Processing.Time`
+           `processTime = [CreateData.Processing.Time]`
+        4. `自定义变量名称 = <EntityDataKey>`：如 [冰火传说](https://github.com/AlexModGuy/Ice_and_Fire)
+           中冰龙与火龙的死亡状态  
+           `dead = <com.github.alexthe666.iceandfire.entity.EntityDragonBase:MODEL_DEAD>`  
+           或简写(不推荐) `dead = <MODEL_DEAD>`
     - **逻辑表达式** 支持的语法：
         1. `(`、`)`： 括号
         2. `!`： 逻辑非
