@@ -1,6 +1,8 @@
 # Aotake Sweep (竹叶清)
 
-一个 Minecraft Forge 定时扫地 Mod。
+![](src/main/resources/logo.png)
+
+**一个 Minecraft (Neo)Forge 定时扫地 MOD。**
 
 ## 目录
 
@@ -12,7 +14,6 @@
     - [配置说明](#配置说明)
     - [指令说明](#指令说明)
     - [实体过滤器](#实体过滤器)
-    - [注意事项](#注意事项)
     - [许可证](#许可证)
 
 ## 释义
@@ -23,30 +24,38 @@
 
 ## 介绍
 
-本项目适用于Minecraft Forge服务器，实现定时清理掉落物、箭矢等。
-该Mod服务器必装，客户端可选。
+本项目适用于Minecraft (Neo)Forge服务器，实现定时清理掉落物与实体。
+该MOD服务器必装，客户端可选。
 
 ## 特性
 
-- **回收策略**：可选择的垃圾回收时溢出处理等策略。
-- **定时清理**：每隔一段时间自动清理掉落物、箭矢等。
-- **手动清理**：允许用指令触发清理，并且可指定维度与范围。
-- **自动清理**：区块内实体(仅能被清扫的)过多时自动触发扫地。
-- **安全清理**：可配置清理白名单与黑名单，可配置忽略方块上的物品。
-- **多页垃圾箱**：垃圾箱页数可自定义，不再为容量不够而烦恼。
-- **自定义过滤器**：可根据需求使用[表达式](#实体过滤器)自定义实体过滤器。
-- **很烂的翻译**：文本描述可能存在歧义，或其表达方式不够清晰<del>（不仅仅是英文）</del>。
+- **回收策略**：可选择的垃圾回收时溢出处理等策略；
+- **定时清理**：每隔一段时间自动清理掉落物、箭矢等；
+- **手动清理**：允许用指令触发清理，并且可指定维度与范围；
+- **自动清理**：区块内实体(仅能被清扫的)过多时自动触发扫地；
+- **安全清理**：可配置清理白名单与黑名单，可配置忽略方块上的物品
+- **多页垃圾箱**：垃圾箱页数可自定义，不再为容量不够而烦恼；
+- **自定义过滤器**：可根据需求使用[表达式](#实体过滤器)自定义实体过滤器；
+- **很烂的翻译**：文本描述可能存在歧义，或其表达方式不够清晰<del>（不仅仅是英文）</del>；
 - **很烂的代码**：烂代码 + 疏忽的测试 = 一堆难闻的臭虫。
 
 ## TODO
 
 - **热力图**：根据区块、坐标、物品类型统计掉落物掉落频率并生成热力图
 
+---
+
 ## 配置说明
 
-本地配置文件路径 [`config/aotake_sweep-common.toml`](aotake_sweep-common.toml)、
-[`world/serverconfig/aotake_sweep-server.toml`](aotake_sweep-server.toml)
-，其他的信息不再赘述，请参考默认配置文件中的注释。
+您可以在以下路径找到MOD相关配置，详细的信息不再赘述，请参考默认配置文件中的注释
+
+- 双端通用配置 [`config/aotake_sweep-common.toml`](aotake_sweep-common.toml)
+- 客户端相关配置 [`config/aotake_sweep-client.toml`](aotake_sweep-client.toml)
+- 服务端相关配置 [`world/serverconfig/aotake_sweep-server.toml`](aotake_sweep-server.toml)
+- 香草芯系列MOD通用配置 `config/vanilla.xin/common_config.json`
+- 香草芯系列MOD玩家数据 `world/playerdata/vanilla.xin/*.nbt`
+
+---
 
 ## 指令说明
 
@@ -88,27 +97,29 @@
     4. `server <配置项> <配置值>` 修改服务器配置
     5. `common <配置项> <配置值>` 修改通用配置
 
+---
+
 ## 实体过滤器
 
 实体过滤器表达式，为了方便说明，以下会将表达式称为`AotakeEL`，  
 其中支持 AotakeEL 的配置项有：`entityList`、`entityRedlist`、`catchEntity`、`chunkCheckEntityList`。
 
-**例子**：
+### 例子：
 
-- **实体ID**：
+- #### 实体ID：
     1. 某个具体的实体，如 箭矢 `minecraft:arrow`
     2. 某个MOD下所有实体，如 [勤劳跟踪狂](https://github.com/Mafuyu404/DiligentStalker)`diligentstalker:*`
     3. 任意MOD下的某个实体，如 箭矢 `*:arrow`
-- **AotakeEL**：
+- #### AotakeEL：
     1. [机械动力](https://github.com/Creators-of-Create/Create) 中正在被鼓风机处理的物品  
        `clazz, itemClazz, createProcessing = [CreateData.Processing.Time] -> clazz :> itemClazz && createProcessing > 0`
     2. [冰火传说](https://github.com/AlexModGuy/Ice_and_Fire) 中死亡的冰龙与火龙  
-       `resource, dead = <com.github.alexthe666.iceandfire.entity.EntityDragonBase:MODEL_DEAD> -> dead == true && (resource == 'iceandfire:fire_dragon' || resource == 'iceandfire:ice_dragon')`
+       `resource, dead = <com.github.alexthe666.iceandfire.entity.EntityDragonBase:MODEL_DEAD> -> (resource == 'iceandfire:fire_dragon' || resource == 'iceandfire:ice_dragon') && dead == true`
 
-**说明**：
+### 说明：
 
-1. 可以仅由实体ID组成，如 例子 **实体ID**
-2. 实体ID会自动转换为AotakeEL，如：
+1. 可以仅由实体ID组成，如 例子 [实体ID](#实体ID)
+2. 实体ID 会自动转换为 AotakeEL，如：
     1. `minecraft:arrow` 等同于 `resource -> resource == 'minecraft:arrow'`   
        或 `namespace, path -> namespace == 'minecraft' && path == 'arrow'`
     2. `diligentstalker:*` 等同于 `namespace -> namespace == 'diligentstalker'`
@@ -150,7 +161,7 @@
         23. `cos`： Math.cos()
         24. `abs`： Math.abs()
         25. `random`： Math.random()
-        26. `声明的变量`： 如上面例子中的 `modName`、`processTime`
+        26. `声明的变量名称`： 如上面例子中的 `modName`、`processTime`
 4. AotakeEL内置变量：
     1. `namespace`：实体ID的`:`前半部分，一般为MOD ID
     2. `path`：实体ID的`:`后半部分
@@ -173,7 +184,7 @@
     19. `hasOwner`：实体是否被玩家驯服
     20. `ownerName`：驯服该实体的玩家名称
 
-## 注意事项
+---
 
 ## 许可证
 
