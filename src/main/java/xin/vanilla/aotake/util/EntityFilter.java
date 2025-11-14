@@ -6,23 +6,26 @@ import net.minecraft.entity.passive.TameableEntity;
 import net.minecraft.nbt.CollectionNBT;
 import net.minecraft.nbt.INBT;
 import net.minecraft.nbt.NumberNBT;
+import net.minecraft.network.datasync.DataParameter;
 import net.minecraftforge.common.UsernameCache;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class EntityFilter {
-    // *:*
-    // namespace, path, resourceLocation, clazz, clazzString, name, displayName, customName, tick, num, dim, x, y, z, chunkX, chunkZ, hasOwner, ownerName, custom = CreateData.Processing.Time -> custom > 0
 
     // 缓存已解析的 filter spec（key 为 convertExpression 后的最终字符串）
     private final Map<String, FilterSpec> filterCache = new ConcurrentHashMap<>();
+    // 缓存已解析的 EntityDataAccessor
+    private static final Map<String, DataParameter<?>> accessorCache = new ConcurrentHashMap<>();
 
     public void clear() {
         filterCache.clear();
     }
 
     public boolean validEntity(List<? extends String> config, Entity entity) {
+        if (CollectionUtils.isNullOrEmpty(config)) return false;
+
         Map<String, Object> vars = new HashMap<>(16);
 
         for (String raw : config) {
@@ -88,7 +91,7 @@ public class EntityFilter {
         }
     }
 
-    private enum SourceType {PREDEFINED, LITERAL, NBT_PATH}
+    private enum SourceType {PREDEFINED, LITERAL, ACCESSOR_KEY, NBT_PATH}
 
     private List<VarDescriptor> parseLeftVariables(String left) {
         if (left == null || left.trim().isEmpty()) return Collections.emptyList();
@@ -109,8 +112,16 @@ public class EntityFilter {
                     String literal = rhs.substring(1, rhs.length() - 1);
                     out.add(new VarDescriptor(name, SourceType.LITERAL, literal));
                 }
+                // EntityDataAccessor 路径
+                else if (rhs.startsWith("<") && rhs.endsWith(">")) {
+                    String accessorPath = rhs.substring(1, rhs.length() - 1);
+                    out.add(new VarDescriptor(name, SourceType.ACCESSOR_KEY, accessorPath));
+                }
                 // NBT路径
                 else {
+                    if (rhs.startsWith("[") && rhs.endsWith("]")) {
+                        rhs = rhs.substring(1, rhs.length() - 1);
+                    }
                     out.add(new VarDescriptor(name, SourceType.NBT_PATH, rhs));
                 }
             }
@@ -151,6 +162,27 @@ public class EntityFilter {
             switch (d.type) {
                 case LITERAL:
                     varsOut.put(key, d.payload);
+                    break;
+                case ACCESSOR_KEY:
+                    DataParameter<?> accessor = accessorCache.computeIfAbsent(d.payload, k -> {
+                        String[] split = k.split(":", 2);
+                        DataParameter<?> result;
+                        if (split.length == 1) {
+                            result = (DataParameter<?>) FieldUtils.getPrivateFieldValue(FieldUtils.getClass(entity), entity, split[0], true);
+                        } else {
+                            result = (DataParameter<?>) FieldUtils.getPrivateFieldValue(FieldUtils.getClass(split[0]), entity, split[1]);
+                        }
+                        return result;
+                    });
+                    if (accessor != null) {
+                        try {
+                            varsOut.put(key, entity.getEntityData().get(accessor));
+                        } catch (Throwable ignored) {
+                            varsOut.put(key, null);
+                        }
+                    } else {
+                        varsOut.put(key, null);
+                    }
                     break;
                 case NBT_PATH:
                     if (NBTPathUtils.has(entity.getPersistentData(), d.payload)) {
