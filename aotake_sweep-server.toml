@@ -26,7 +26,7 @@
 		sweepInterval = 600000
 		#The entity list, the following entities will be cleaned up according to the entityListMode.
 		#实体名单，与配置 entityListMode 共同决定列表中的实体是否清理。
-		entityList = ["minecraft:arrow", "minecraft:spectral_arrow", "tick, clazz, itemClazz, createProcessing = CreateData.Processing.Time -> tick >= 5 && clazz :> itemClazz && (createProcessing <= 0 || createProcessing == null)"]
+		entityList = ["minecraft:arrow", "minecraft:spectral_arrow", "tick, clazz, itemClazz, createProcessing = [CreateData.Processing.Time] -> tick >= 5 && clazz :> itemClazz && (createProcessing <= 0 || createProcessing == null)"]
 		#The application mode of the entity list:
 		#BLACK: Blacklist, only the entities listed will be cleaned up;
 		#WHITE: Whitelist, all entities except those listed will be cleaned up.
@@ -71,7 +71,7 @@
 		chunkCheckMode = "DEFAULT"
 		#The entity list of chunk check, the following entities will be cleaned up according to the chunkCheckEntityListMode.
 		#区块检测实体名单，与配置 chunkCheckEntityListMode 共同决定列表中的实体是否清理。
-		chunkCheckEntityList = ["customName, hasOwner, createProcessing = CreateData.Processing.Time -> customName != null || hasOwner || createProcessing > 0"]
+		chunkCheckEntityList = ["customName, hasOwner, createProcessing = [CreateData.Processing.Time] -> customName != null || hasOwner || createProcessing > 0"]
 		#The application mode of the entity list of chunk check:
 		#BLACK: Blacklist, only the entities listed will be cleaned up;
 		#WHITE: Whitelist, all entities except those listed will be cleaned up.
