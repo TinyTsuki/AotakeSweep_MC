@@ -235,7 +235,7 @@ public class CommandUtils {
             }
         } else if (Comparable.class.isAssignableFrom(type) && vs != null && vs.getRange() != null) {
             Class<?> rangeClass = FieldUtils.getClass(vs.getRange());
-            for (String fieldName : FieldUtils.getPrivateFieldNames(rangeClass, Comparable.class, false, true)) {
+            for (String fieldName : FieldUtils.getPrivateFieldNames(rangeClass, Comparable.class, false, false, true)) {
                 builder.suggest(String.valueOf(FieldUtils.getPrivateFieldValue(rangeClass, vs.getRange(), fieldName)));
             }
         }

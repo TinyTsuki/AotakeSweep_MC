@@ -547,6 +547,7 @@ public class AotakeUtils {
     }
 
     public static List<Entity> getAllEntitiesByFilter(List<Entity> entities, boolean chuck) {
+        LOGGER.debug("Entity filter started at {}", System.currentTimeMillis());
         if (CollectionUtils.isNullOrEmpty(entities)) {
             entities = getAllEntities();
         }
@@ -556,6 +557,7 @@ public class AotakeUtils {
 
         List<Entity> filtered = entities.stream().filter(entity -> !(entity instanceof Player)).toList();
 
+        LOGGER.debug("Entity exceeded filter started at {}", System.currentTimeMillis());
         // 超限的非垃圾实体
         List<Entity> exceededEntityList = entities.stream()
                 // 非垃圾实体
@@ -566,6 +568,8 @@ public class AotakeUtils {
                 .filter(entry -> entry.getValue().size() > ServerConfig.ENTITY_LIST_LIMIT.get())
                 .flatMap(entry -> entry.getValue().stream())
                 .toList();
+
+        LOGGER.debug("Entity safe filter started at {}", System.currentTimeMillis());
 
         // 超限的安全实体
         List<Entity> exceededBlockList = filtered.stream()
@@ -583,6 +587,8 @@ public class AotakeUtils {
                 .flatMap(entry -> entry.getValue().stream())
                 .toList();
 
+        LOGGER.debug("Entity junk filter started at {}", System.currentTimeMillis());
+
         // 过滤
         Predicate<Entity> predicate = entity -> {
             boolean unsafe = !isSafeEntity(blockStateCache, entity);
@@ -595,7 +601,9 @@ public class AotakeUtils {
                     || exceededBlockList.contains(entity);
         };
 
-        return filtered.stream().filter(predicate).collect(Collectors.toList());
+        List<Entity> entityList = filtered.stream().filter(predicate).collect(Collectors.toList());
+        LOGGER.debug("Entity filter finished at {}", System.currentTimeMillis());
+        return entityList;
     }
 
     public static void sweep() {
