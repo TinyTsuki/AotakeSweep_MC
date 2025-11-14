@@ -268,7 +268,7 @@ public class ServerConfig {
                         .defineList("entityList", new ArrayList<String>() {{
                                     add(EntityType.ARROW.getRegistryName().toString());
                                     add(EntityType.SPECTRAL_ARROW.getRegistryName().toString());
-                                    add("tick, clazz, itemClazz, createProcessing = CreateData.Processing.Time" +
+                                    add("tick, clazz, itemClazz, createProcessing = [CreateData.Processing.Time]" +
                                             " -> " +
                                             "tick >= 5 && clazz :> itemClazz && (createProcessing <= 0 || createProcessing == null)");
                                 }}, o -> o instanceof String
@@ -345,7 +345,7 @@ public class ServerConfig {
                         .comment("The entity list of chunk check, the following entities will be cleaned up according to the chunkCheckEntityListMode."
                                 , "区块检测实体名单，与配置 chunkCheckEntityListMode 共同决定列表中的实体是否清理。")
                         .defineList("chunkCheckEntityList", new ArrayList<String>() {{
-                                    add("customName, hasOwner, createProcessing = CreateData.Processing.Time" +
+                                    add("customName, hasOwner, createProcessing = [CreateData.Processing.Time]" +
                                             " -> " +
                                             "customName != null || hasOwner || createProcessing > 0");
                                 }}, o -> o instanceof String

@@ -821,6 +821,23 @@ public class AotakeCommand {
                                             })
                                     )
                             )
+                            // 临时禁用
+                            .then(Commands.literal("disable")
+                                    .requires(source -> AotakeUtils.hasCommandPermission(source, EnumCommandType.VIRTUAL_OP))
+                                    .then(Commands.argument("disable", BoolArgumentType.bool())
+                                            .executes(context -> {
+                                                AotakeSweep.setDisable(BoolArgumentType.getBool(context, "disable"));
+                                                AotakeUtils.broadcastMessage(context.getSource().getServer()
+                                                        , Component.translatable(EnumI18nType.MESSAGE
+                                                                , "mod_status"
+                                                                , Component.translatable(EnumI18nType.KEY, "categories")
+                                                                , I18nUtils.enabled(ServerConfig.DEFAULT_LANGUAGE.get(), !AotakeSweep.isDisable())
+                                                        )
+                                                );
+                                                return 1;
+                                            })
+                                    )
+                            )
                             // region 修改server配置
                             .then(Commands.literal("server")
                                     .requires(source -> AotakeUtils.hasCommandPermission(source, EnumCommandType.VIRTUAL_OP))
