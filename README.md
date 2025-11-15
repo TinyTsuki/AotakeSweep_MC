@@ -52,6 +52,7 @@
 - 双端通用配置 [`config/aotake_sweep-common.toml`](aotake_sweep-common.toml)
 - 客户端相关配置 [`config/aotake_sweep-client.toml`](aotake_sweep-client.toml)
 - 服务端相关配置 [`world/serverconfig/aotake_sweep-server.toml`](aotake_sweep-server.toml)
+- 服务器垃圾箱数据 `world/data/world_trash_data.dat`
 - 香草芯系列MOD通用配置 `config/vanilla.xin/common_config.json`
 - 香草芯系列MOD玩家数据 `world/playerdata/vanilla.xin/*.nbt`
 
@@ -108,7 +109,7 @@
 
 - #### 实体ID：
     1. 某个具体的实体，如 箭矢 `minecraft:arrow`
-    2. 某个MOD下所有实体，如 [勤劳跟踪狂](https://github.com/Mafuyu404/DiligentStalker)`diligentstalker:*`
+    2. 某个MOD下所有实体，如 [勤劳跟踪狂](https://github.com/Mafuyu404/DiligentStalker) `diligentstalker:*`
     3. 任意MOD下的某个实体，如 箭矢 `*:arrow`
 - #### AotakeEL：
     1. [机械动力](https://github.com/Creators-of-Create/Create) 中正在被鼓风机处理的物品  
