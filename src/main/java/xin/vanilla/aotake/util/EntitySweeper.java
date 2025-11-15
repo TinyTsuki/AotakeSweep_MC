@@ -57,6 +57,12 @@ public class EntitySweeper {
         }
     }
 
+    public void clear() {
+        this.inventoryList = null;
+        this.dropList = null;
+        this.dropCount = null;
+    }
+
     public SweepResult addDrops(@NonNull List<Entity> entities, SweepResult result) {
         if (result.getTotalBatch() == 0) LOGGER.debug("AddDrops started at {}", System.currentTimeMillis());
         this.init();
