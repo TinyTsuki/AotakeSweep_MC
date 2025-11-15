@@ -142,6 +142,7 @@ public class AotakeSweep {
     }
 
     private void onServerStarting(FMLServerStartingEvent event) {
+        entitySweeper.clear();
         AotakeSweep.serverInstance.setKey(event.getServer()).setValue(true);
     }
 
