@@ -145,6 +145,7 @@ public class AotakeSweep {
     }
 
     private void onServerStarting(ServerStartingEvent event) {
+        entitySweeper.clear();
         AotakeSweep.serverInstance.setKey(event.getServer()).setValue(true);
     }
 
