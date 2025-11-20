@@ -198,7 +198,7 @@ public class CommonConfig {
                 DUSTBIN_PAGE_LIMIT = COMMON_BUILDER
                         .comment("The maximum number of pages in the virtual dustbin."
                                 , "虚拟垃圾箱页数限制。")
-                        .defineInRange("dustbinPageLimit", 1, 1, 16 * 16 * 16 * 16);
+                        .defineInRange("dustbinPageLimit", 1, 0, 16 * 16 * 16 * 16);
 
                 // 缓存区物品限制
                 CACHE_LIMIT = COMMON_BUILDER
