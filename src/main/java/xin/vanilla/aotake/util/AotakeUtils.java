@@ -825,35 +825,40 @@ public class AotakeUtils {
         int result = 0;
         int vPage = CommonConfig.DUSTBIN_PAGE_LIMIT.get();
         int bPage = ServerConfig.DUSTBIN_BLOCK_POSITIONS.get().size();
-        switch (EnumDustbinMode.valueOfOrDefault(ServerConfig.DUSTBIN_MODE.get())) {
-            case VIRTUAL: {
-                result = openVirtualDustbin(player, page);
-            }
-            break;
-            case BLOCK: {
-                result = openDustbinBlock(player, page);
-            }
-            break;
-            case VIRTUAL_BLOCK: {
-                if (page > 0 && page <= vPage + bPage) {
-                    if (page <= vPage) {
-                        result = openVirtualDustbin(player, page);
-                    } else {
-                        result = openDustbinBlock(player, page - vPage);
+        int totalPage = getDustbinTotalPage();
+        if (totalPage <= 0) {
+            AotakeUtils.sendMessage(player, Component.translatable(EnumI18nType.MESSAGE, "dustbin_page_empty"));
+        } else {
+            switch (EnumDustbinMode.valueOfOrDefault(ServerConfig.DUSTBIN_MODE.get())) {
+                case VIRTUAL: {
+                    result = openVirtualDustbin(player, page);
+                }
+                break;
+                case BLOCK: {
+                    result = openDustbinBlock(player, page);
+                }
+                break;
+                case VIRTUAL_BLOCK: {
+                    if (page > 0 && page <= vPage + bPage) {
+                        if (page <= vPage) {
+                            result = openVirtualDustbin(player, page);
+                        } else {
+                            result = openDustbinBlock(player, page - vPage);
+                        }
                     }
                 }
-            }
-            break;
-            case BLOCK_VIRTUAL: {
-                if (page > 0 && page <= vPage + bPage) {
-                    if (page <= bPage) {
-                        result = openDustbinBlock(player, page);
-                    } else {
-                        result = openVirtualDustbin(player, page - bPage);
+                break;
+                case BLOCK_VIRTUAL: {
+                    if (page > 0 && page <= vPage + bPage) {
+                        if (page <= bPage) {
+                            result = openDustbinBlock(player, page);
+                        } else {
+                            result = openVirtualDustbin(player, page - bPage);
+                        }
                     }
                 }
+                break;
             }
-            break;
         }
 
         if (result > 0) AotakeSweep.getPlayerDustbinPage().put(AotakeUtils.getPlayerUUIDString(player), page);
