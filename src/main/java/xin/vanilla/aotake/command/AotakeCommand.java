@@ -253,6 +253,13 @@ public class AotakeCommand {
         Command<CommandSourceStack> openDustbinCommand = context -> {
             if (CommandUtils.checkModStatus(context)) return 0;
             CommandUtils.notifyHelp(context);
+
+            int totalPage = AotakeUtils.getDustbinTotalPage();
+            if (totalPage <= 0) {
+                AotakeUtils.sendTranslatableMessage(context.getSource(), false, I18nUtils.getKey(EnumI18nType.MESSAGE, "dustbin_page_empty"));
+                return 0;
+            }
+
             List<ServerPlayer> targetList = new ArrayList<>();
             try {
                 targetList.addAll(EntityArgument.getPlayers(context, "players"));
@@ -260,7 +267,6 @@ public class AotakeCommand {
                 targetList.add(context.getSource().getPlayerOrException());
             }
             int page = CommandUtils.getIntDefault(context, "page", 1);
-            int totalPage = AotakeUtils.getDustbinTotalPage();
             if (page > totalPage)
                 throw CommandSyntaxException.BUILT_IN_EXCEPTIONS.integerTooHigh().create(page, totalPage);
             if (page < 1)
@@ -325,6 +331,13 @@ public class AotakeCommand {
         Command<CommandSourceStack> clearDustbinCommand = context -> {
             if (CommandUtils.checkModStatus(context)) return 0;
             CommandUtils.notifyHelp(context);
+
+            int totalPage = AotakeUtils.getDustbinTotalPage();
+            if (totalPage <= 0) {
+                AotakeUtils.sendTranslatableMessage(context.getSource(), false, I18nUtils.getKey(EnumI18nType.MESSAGE, "dustbin_page_empty"));
+                return 0;
+            }
+
             int page = CommandUtils.getIntDefault(context, "page", 0);
             int vPage = CommonConfig.DUSTBIN_PAGE_LIMIT.get();
             int bPage = ServerConfig.DUSTBIN_BLOCK_POSITIONS.get().size();
@@ -380,7 +393,13 @@ public class AotakeCommand {
         Command<CommandSourceStack> dropDustbinCommand = context -> {
             if (CommandUtils.checkModStatus(context)) return 0;
             CommandUtils.notifyHelp(context);
+
             ServerPlayer player = context.getSource().getPlayerOrException();
+            int totalPage = AotakeUtils.getDustbinTotalPage();
+            if (totalPage <= 0) {
+                AotakeUtils.sendTranslatableMessage(player, I18nUtils.getKey(EnumI18nType.MESSAGE, "dustbin_page_empty"));
+                return 0;
+            }
             int page = CommandUtils.getIntDefault(context, "page", 0);
             int vPage = CommonConfig.DUSTBIN_PAGE_LIMIT.get();
             int bPage = ServerConfig.DUSTBIN_BLOCK_POSITIONS.get().size();
