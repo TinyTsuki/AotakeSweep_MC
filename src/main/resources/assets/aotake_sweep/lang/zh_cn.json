@@ -72,5 +72,6 @@
   "message.aotake_sweep.config_key_absent": "§c配置修改失败：『§f%s§c』不存在。",
   "message.aotake_sweep.config_value_parse_error": "§c配置修改失败：『§f%s§c』解析失败。",
   "message.aotake_sweep.config_value_set_error": "§c配置修改失败：『§f%s§c』->『§f%s§c』。",
-  "message.aotake_sweep.config_value_set_success": "§2配置修改成功：『§f%s§2』->『§f%s§2』。"
+  "message.aotake_sweep.config_value_set_success": "§2配置修改成功：『§f%s§2』->『§f%s§2』。",
+  "message.aotake_sweep.dustbin_page_empty": "§c服务器未启用垃圾箱。"
 }
