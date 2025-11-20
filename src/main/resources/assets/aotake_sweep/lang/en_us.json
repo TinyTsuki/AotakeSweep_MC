@@ -72,5 +72,6 @@
   "message.aotake_sweep.config_key_absent": "§cConfig modification failed: '%s§c' does not exist.",
   "message.aotake_sweep.config_value_parse_error": "§cConfig modification failed: Failed to parse '%s§c'.",
   "message.aotake_sweep.config_value_set_error": "§cConfig modification failed: '%s§c' → '%s§c'.",
-  "message.aotake_sweep.config_value_set_success": "§2Config modification successful: '%s§2' → '%s§2'."
+  "message.aotake_sweep.config_value_set_success": "§2Config modification successful: '%s§2' → '%s§2'.",
+  "message.aotake_sweep.dustbin_page_empty": "§cThe dustbin feature is not enabled on the server."
 }
