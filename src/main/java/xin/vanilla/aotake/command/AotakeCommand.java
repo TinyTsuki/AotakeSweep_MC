@@ -518,7 +518,10 @@ public class AotakeCommand {
             }
             // 给已安装mod玩家同步扫地倒计时
             for (String uuid : AotakeSweep.getCustomConfigStatus()) {
-                AotakeUtils.sendPacketToPlayer(new SweepTimeSyncToClient(), AotakeUtils.getPlayerByUUID(uuid));
+                ServerPlayer player = AotakeUtils.getPlayerByUUID(uuid);
+                if (player != null) {
+                    AotakeUtils.sendPacketToPlayer(new SweepTimeSyncToClient(), player);
+                }
             }
             long seconds = (EventHandlerProxy.getNextSweepTime() - current.getTime()) / 1000;
             Component message = Component.translatable(EnumI18nType.MESSAGE, "next_sweep_time_set"
