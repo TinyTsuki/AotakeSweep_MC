@@ -29,6 +29,7 @@ import xin.vanilla.aotake.config.CommonConfig;
 import xin.vanilla.aotake.config.CustomConfig;
 import xin.vanilla.aotake.config.ServerConfig;
 import xin.vanilla.aotake.data.KeyValue;
+import xin.vanilla.aotake.data.SweepResult;
 import xin.vanilla.aotake.data.WorldCoordinate;
 import xin.vanilla.aotake.data.player.PlayerSweepData;
 import xin.vanilla.aotake.data.world.WorldTrashData;
@@ -325,7 +326,28 @@ public class AotakeCommand {
                     .filter(entity -> !(entity instanceof PlayerEntity))
                     .filter(entity -> withEntity || entity instanceof ItemEntity)
                     .collect(Collectors.toList());
-            AotakeUtils.sweep(entities, ignoreFilter);
+            if (!ignoreFilter)
+                entities = AotakeUtils.getAllEntitiesByFilter(entities, false);
+
+            SweepResult result = new SweepResult();
+            entities.forEach(entity -> {
+                if (entity instanceof ItemEntity) {
+                    result.plusItemCount(((ItemEntity) entity).getItem().getCount());
+                } else {
+                    result.plusEntityCount();
+                }
+                AotakeUtils.removeEntity(entity, false);
+            });
+
+            AotakeSweep.getServerInstance().key()
+                    .getPlayerList()
+                    .getPlayers()
+                    .forEach(player -> AotakeUtils.sendMessage(player
+                            , AotakeUtils.getWarningMessage(result.isEmpty() ? "fail" : "success"
+                                    , AotakeUtils.getPlayerLanguage(player)
+                                    , result
+                            )
+                    ));
             return 1;
         };
         Command<CommandSource> clearDustbinCommand = context -> {
