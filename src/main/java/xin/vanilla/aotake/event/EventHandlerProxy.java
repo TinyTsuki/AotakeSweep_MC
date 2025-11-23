@@ -105,7 +105,10 @@ public class EventHandlerProxy {
             AotakeScheduler.schedule(server, 1, AotakeUtils::sweep);
             // 给已安装mod玩家同步扫地倒计时
             for (String uuid : AotakeSweep.getCustomConfigStatus()) {
-                AotakeUtils.sendPacketToPlayer(new SweepTimeSyncToClient(), AotakeUtils.getPlayerByUUID(uuid));
+                ServerPlayer player = AotakeUtils.getPlayerByUUID(uuid);
+                if (player != null) {
+                    AotakeUtils.sendPacketToPlayer(new SweepTimeSyncToClient(), player);
+                }
             }
         }
 
