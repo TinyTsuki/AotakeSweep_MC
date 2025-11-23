@@ -545,7 +545,7 @@ public class AotakeUtils {
         return stateFlag || belowFlag || aboveFlag;
     }
 
-    public static List<Entity> getAllEntitiesByFilter(List<Entity> entities, boolean chuck) {
+    public static List<Entity> getAllEntitiesByFilter(@Nullable List<Entity> entities, boolean chuck) {
         LOGGER.debug("Entity filter started at {}", System.currentTimeMillis());
         if (CollectionUtils.isNullOrEmpty(entities)) {
             entities = getAllEntities();
