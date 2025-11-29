@@ -209,11 +209,17 @@ public class AotakeUtils {
     /**
      * 执行指令
      */
-    public static boolean executeCommand(@NonNull ServerPlayer player, @NonNull String command) {
+    public static boolean executeCommand(@NonNull ServerPlayer player, @NonNull String command, int permission, boolean suppressedOutput) {
         boolean result = false;
         try {
             MinecraftServer server = player.getServer();
-            CommandSourceStack commandSourceStack = player.createCommandSourceStack().withPermission(2);
+            CommandSourceStack commandSourceStack = player.createCommandSourceStack();
+            if (permission > 0) {
+                commandSourceStack = commandSourceStack.withPermission(permission);
+            }
+            if (suppressedOutput) {
+                commandSourceStack = commandSourceStack.withSuppressedOutput();
+            }
             result = server.getCommands().performCommand(commandSourceStack, command) > 0;
         } catch (Exception e) {
             LOGGER.error("Failed to execute command: {}", command, e);
@@ -224,16 +230,22 @@ public class AotakeUtils {
     /**
      * 执行指令
      */
+    public static boolean executeCommand(@NonNull ServerPlayer player, @NonNull String command) {
+        return executeCommand(player, command, 0, false);
+    }
+
+    /**
+     * 执行指令
+     */
     public static boolean executeCommandNoOutput(@NonNull ServerPlayer player, @NonNull String command) {
-        boolean result = false;
-        try {
-            MinecraftServer server = player.getServer();
-            CommandSourceStack commandSourceStack = player.createCommandSourceStack().withSuppressedOutput().withPermission(2);
-            result = server.getCommands().performCommand(commandSourceStack, command) > 0;
-        } catch (Exception e) {
-            LOGGER.error("Failed to execute command: {}", command, e);
-        }
-        return result;
+        return executeCommandNoOutput(player, command, 0);
+    }
+
+    /**
+     * 执行指令
+     */
+    public static boolean executeCommandNoOutput(@NonNull ServerPlayer player, @NonNull String command, int permission) {
+        return executeCommand(player, command, permission, true);
     }
 
     // endregion 指令相关
