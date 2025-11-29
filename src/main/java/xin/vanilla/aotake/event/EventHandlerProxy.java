@@ -67,6 +67,7 @@ public class EventHandlerProxy {
 
         long now = System.currentTimeMillis();
         long countdown = nextSweepTime - now;
+        long sweepInterval = ServerConfig.SWEEP_INTERVAL.get();
 
         // 扫地前提示
         String warnKey = String.valueOf(countdown / 1000);
@@ -101,8 +102,8 @@ public class EventHandlerProxy {
         }
 
         // 扫地
-        if (countdown <= 0) {
-            nextSweepTime = now + ServerConfig.SWEEP_INTERVAL.get();
+        if (countdown <= 0 && sweepInterval > 0) {
+            nextSweepTime = now + sweepInterval;
             AotakeScheduler.schedule(server, 1, AotakeUtils::sweep);
             // 给已安装mod玩家同步扫地倒计时
             for (String uuid : AotakeSweep.getCustomConfigStatus()) {
