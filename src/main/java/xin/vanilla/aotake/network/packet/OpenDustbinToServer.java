@@ -4,6 +4,7 @@ import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraftforge.event.network.CustomPayloadEvent;
 import xin.vanilla.aotake.AotakeSweep;
+import xin.vanilla.aotake.enums.EnumCommandType;
 import xin.vanilla.aotake.util.AotakeUtils;
 
 public class OpenDustbinToServer {
@@ -31,7 +32,10 @@ public class OpenDustbinToServer {
                 if (i > 0 && i <= AotakeUtils.getDustbinTotalPage()) {
                     player.closeContainer();
                 }
-                AotakeUtils.dustbin(player, i);
+                AotakeUtils.executeCommand(player, String.format("/%s %s"
+                        , AotakeUtils.getCommand(EnumCommandType.DUSTBIN_OPEN)
+                        , i
+                ));
             }
         });
         ctx.setPacketHandled(true);

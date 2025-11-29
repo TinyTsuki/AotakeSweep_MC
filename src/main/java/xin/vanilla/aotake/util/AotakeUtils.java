@@ -210,13 +210,18 @@ public class AotakeUtils {
     /**
      * 执行指令
      */
-    public static boolean executeCommand(@NonNull ServerPlayer player, @NonNull String command) {
+    public static boolean executeCommand(@NonNull ServerPlayer player, @NonNull String command, int permission, boolean suppressedOutput) {
         AtomicBoolean result = new AtomicBoolean(false);
         try {
             MinecraftServer server = player.getServer();
             CommandSourceStack commandSourceStack = player.createCommandSourceStack()
-                    .withPermission(2)
                     .withCallback((r, count) -> result.set(r));
+            if (permission > 0) {
+                commandSourceStack = commandSourceStack.withPermission(permission);
+            }
+            if (suppressedOutput) {
+                commandSourceStack = commandSourceStack.withSuppressedOutput();
+            }
             server.getCommands().performPrefixedCommand(commandSourceStack, command);
         } catch (Exception e) {
             LOGGER.error("Failed to execute command: {}", command, e);
@@ -227,19 +232,22 @@ public class AotakeUtils {
     /**
      * 执行指令
      */
+    public static boolean executeCommand(@NonNull ServerPlayer player, @NonNull String command) {
+        return executeCommand(player, command, 0, false);
+    }
+
+    /**
+     * 执行指令
+     */
     public static boolean executeCommandNoOutput(@NonNull ServerPlayer player, @NonNull String command) {
-        AtomicBoolean result = new AtomicBoolean(false);
-        try {
-            MinecraftServer server = player.getServer();
-            CommandSourceStack commandSourceStack = player.createCommandSourceStack()
-                    .withSuppressedOutput()
-                    .withPermission(2)
-                    .withCallback((r, count) -> result.set(r));
-            server.getCommands().performPrefixedCommand(commandSourceStack, command);
-        } catch (Exception e) {
-            LOGGER.error("Failed to execute command: {}", command, e);
-        }
-        return result.get();
+        return executeCommandNoOutput(player, command, 0);
+    }
+
+    /**
+     * 执行指令
+     */
+    public static boolean executeCommandNoOutput(@NonNull ServerPlayer player, @NonNull String command, int permission) {
+        return executeCommand(player, command, permission, true);
     }
 
     // endregion 指令相关
