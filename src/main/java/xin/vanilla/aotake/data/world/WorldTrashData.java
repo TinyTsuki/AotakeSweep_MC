@@ -16,7 +16,6 @@ import net.minecraft.world.inventory.ChestMenu;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.saveddata.SavedData;
 import xin.vanilla.aotake.AotakeSweep;
-import xin.vanilla.aotake.config.CommonConfig;
 import xin.vanilla.aotake.config.ServerConfig;
 import xin.vanilla.aotake.data.ConcurrentShuffleList;
 import xin.vanilla.aotake.data.DropStatistics;
@@ -59,7 +58,7 @@ public class WorldTrashData extends SavedData {
         WorldTrashData data = new WorldTrashData();
         // 未开启持久化直接返回
         try {
-            if (Boolean.FALSE.equals(ServerConfig.DUSTBIN_PERSISTENT.get())) return data;
+            if (!ServerConfig.SERVER_CONFIG.dustbinPersistent()) return data;
         } catch (Throwable ignored) {
         }
 
@@ -101,7 +100,7 @@ public class WorldTrashData extends SavedData {
     public CompoundTag save(CompoundTag nbt) {
         // 未开启持久化直接返回
         try {
-            if (Boolean.FALSE.equals(ServerConfig.DUSTBIN_PERSISTENT.get())) return nbt;
+            if (!ServerConfig.SERVER_CONFIG.dustbinPersistent()) return nbt;
         } catch (Throwable ignored) {
         }
 
@@ -109,7 +108,7 @@ public class WorldTrashData extends SavedData {
         for (KeyValue<WorldCoordinate, ItemStack> drop : this.getDropList()) {
             if (drop == null || drop.getValue() == null) continue;
             CompoundTag dropTag = new CompoundTag();
-            dropTag.put("item", drop.getValue().serializeNBT());
+            dropTag.put("item", drop.getValue().save(new CompoundTag()));
             dropTag.put("coordinate", drop.getKey().writeToNBT());
             dropsNBT.add(dropTag);
         }
@@ -139,7 +138,7 @@ public class WorldTrashData extends SavedData {
     }
 
     public static WorldTrashData get() {
-        return get(AotakeSweep.getServerInstance().key().getAllLevels().iterator().next());
+        return get(AotakeSweep.serverInstance().key().getAllLevels().iterator().next());
     }
 
     public static WorldTrashData get(ServerPlayer player) {
@@ -151,7 +150,7 @@ public class WorldTrashData extends SavedData {
     }
 
     public static MenuProvider getTrashContainer(ServerPlayer player, int page) {
-        int limit = CommonConfig.DUSTBIN_PAGE_LIMIT.get();
+        int limit = ServerConfig.SERVER_CONFIG.dustbinPageLimit();
         List<SimpleContainer> inventories = get().getInventoryList();
         int size = inventories.size();
         if (inventories.isEmpty() || size < limit) {
@@ -182,11 +181,11 @@ public class WorldTrashData extends SavedData {
                         .setColor(0x5DA530);
                 Component vComponent = Component.literal(String.format("(%s/%s)", page, limit))
                         .setColor(0x5DA530);
-                Component bComponent = Component.literal(String.format("(%s)", ServerConfig.DUSTBIN_BLOCK_POSITIONS.get().size()))
+                Component bComponent = Component.literal(String.format("(%s)", ServerConfig.SERVER_CONFIG.dustbinBlockPositions().size()))
                         .setColor(EnumMCColor.RED.getColor());
                 Component plusComponent = Component.literal("+")
                         .setColor(EnumMCColor.BLACK.getColor());
-                switch (EnumDustbinMode.valueOfOrDefault(ServerConfig.DUSTBIN_MODE.get())) {
+                switch (EnumDustbinMode.valueOfOrDefault(ServerConfig.SERVER_CONFIG.dustbinMode())) {
                     case VIRTUAL: {
                         title.append(String.format("(%s/%s)", page, limit));
                     }

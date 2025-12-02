@@ -1,15 +1,17 @@
 package xin.vanilla.aotake.network.packet;
 
+import net.fabricmc.fabric.api.networking.v1.PacketByteBufs;
 import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraftforge.network.NetworkEvent;
 import xin.vanilla.aotake.AotakeSweep;
 import xin.vanilla.aotake.enums.EnumCommandType;
+import xin.vanilla.aotake.network.AotakePacket;
 import xin.vanilla.aotake.util.AotakeUtils;
 
-import java.util.function.Supplier;
+public class ClearDustbinToServer implements AotakePacket {
+    public static final ResourceLocation ID = AotakeSweep.createResource("clear_dustbin");
 
-public class ClearDustbinToServer {
     private final boolean all;
     private final boolean cache;
 
@@ -23,32 +25,35 @@ public class ClearDustbinToServer {
         this.cache = buf.readBoolean();
     }
 
-    public void toBytes(FriendlyByteBuf buf) {
-        buf.writeBoolean(this.all);
-        buf.writeBoolean(this.cache);
+    @Override
+    public ResourceLocation id() {
+        return ID;
     }
 
-    public static void handle(ClearDustbinToServer packet, Supplier<NetworkEvent.Context> ctx) {
-        ctx.get().enqueueWork(() -> {
-            ServerPlayer player = ctx.get().getSender();
-            if (player != null) {
-                String playerUUID = AotakeUtils.getPlayerUUIDString(player);
-                int page = AotakeSweep.getPlayerDustbinPage().getOrDefault(playerUUID, 1);
-                // 缓存区
-                if (packet.cache) {
-                    AotakeUtils.executeCommand(player, String.format("/%s"
-                            , AotakeUtils.getCommand(EnumCommandType.CACHE_CLEAR))
-                    );
-                }
-                // 垃圾箱
-                else {
-                    AotakeUtils.executeCommand(player, String.format("/%s%s"
-                            , AotakeUtils.getCommand(EnumCommandType.DUSTBIN_CLEAR)
-                            , packet.all ? "" : " " + page)
-                    );
-                }
+    public FriendlyByteBuf toBytes(FriendlyByteBuf buf) {
+        if (buf == null) buf = PacketByteBufs.create();
+        buf.writeBoolean(this.all);
+        buf.writeBoolean(this.cache);
+        return buf;
+    }
+
+    public static void handle(ClearDustbinToServer packet, ServerPlayer player) {
+        if (player != null) {
+            String playerUUID = AotakeUtils.getPlayerUUIDString(player);
+            int page = AotakeSweep.playerDustbinPage().getOrDefault(playerUUID, 1);
+            // 缓存区
+            if (packet.cache) {
+                AotakeUtils.executeCommand(player, String.format("/%s"
+                        , AotakeUtils.getCommand(EnumCommandType.CACHE_CLEAR))
+                );
             }
-        });
-        ctx.get().setPacketHandled(true);
+            // 垃圾箱
+            else {
+                AotakeUtils.executeCommand(player, String.format("/%s%s"
+                        , AotakeUtils.getCommand(EnumCommandType.DUSTBIN_CLEAR)
+                        , packet.all ? "" : " " + page)
+                );
+            }
+        }
     }
 }

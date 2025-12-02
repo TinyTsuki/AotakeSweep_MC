@@ -2,7 +2,6 @@ package xin.vanilla.aotake.network;
 
 import lombok.Data;
 import net.minecraft.network.FriendlyByteBuf;
-import xin.vanilla.aotake.AotakeSweep;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -34,7 +33,7 @@ public abstract class SplitPacket {
 
     public static <T extends SplitPacket> List<T> handle(T packet) {
         List<T> result = new ArrayList<>();
-        Map<String, List<? extends SplitPacket>> packetCache = AotakeSweep.getPacketCache();
+        Map<String, List<? extends SplitPacket>> packetCache = ModNetworkHandler.packetCache();
         // 确保键存在，并初始化为空列表
         @SuppressWarnings("unchecked")
         List<T> splitPackets = (List<T>) packetCache.computeIfAbsent(packet.getId(), k -> new ArrayList<>());
@@ -47,7 +46,7 @@ public abstract class SplitPacket {
             // 清理缓存
             packetCache.remove(packet.getId());
             //  清理过时缓存(超过5分钟)
-            AotakeSweep.getPacketCache().keySet().stream()
+            ModNetworkHandler.packetCache().keySet().stream()
                     .filter(key -> Math.abs(System.currentTimeMillis() - Long.parseLong(key.split("\\.")[0])) > 1000 * 60 * 5)
                     .forEach(packetCache::remove);
         }

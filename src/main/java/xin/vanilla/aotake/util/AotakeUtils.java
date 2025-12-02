@@ -4,15 +4,25 @@ import com.google.gson.reflect.TypeToken;
 import com.mojang.brigadier.StringReader;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import lombok.NonNull;
+import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
+import net.fabricmc.fabric.api.networking.v1.PacketByteBufs;
+import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
+import net.fabricmc.fabric.api.transfer.v1.item.ItemStorage;
+import net.fabricmc.fabric.api.transfer.v1.item.ItemVariant;
+import net.fabricmc.fabric.api.transfer.v1.storage.Storage;
+import net.fabricmc.fabric.api.transfer.v1.storage.StorageView;
+import net.fabricmc.fabric.api.transfer.v1.transaction.Transaction;
 import net.minecraft.client.Minecraft;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.arguments.blocks.BlockStateParser;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.NbtIo;
 import net.minecraft.nbt.TagParser;
+import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.chat.ClickEvent;
 import net.minecraft.network.chat.HoverEvent;
 import net.minecraft.network.protocol.Packet;
@@ -37,18 +47,9 @@ import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.Vec3;
-import net.minecraftforge.common.capabilities.ForgeCapabilities;
-import net.minecraftforge.common.util.LazyOptional;
-import net.minecraftforge.fml.ModList;
-import net.minecraftforge.items.IItemHandler;
-import net.minecraftforge.items.ItemHandlerHelper;
-import net.minecraftforge.items.ItemStackHandler;
-import net.minecraftforge.network.PacketDistributor;
-import net.minecraftforge.registries.ForgeRegistries;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import xin.vanilla.aotake.AotakeSweep;
-import xin.vanilla.aotake.config.CommonConfig;
 import xin.vanilla.aotake.config.CustomConfig;
 import xin.vanilla.aotake.config.ServerConfig;
 import xin.vanilla.aotake.data.KeyValue;
@@ -57,17 +58,18 @@ import xin.vanilla.aotake.data.WorldCoordinate;
 import xin.vanilla.aotake.data.player.PlayerSweepData;
 import xin.vanilla.aotake.data.world.WorldTrashData;
 import xin.vanilla.aotake.enums.*;
-import xin.vanilla.aotake.network.ModNetworkHandler;
+import xin.vanilla.aotake.network.AotakePacket;
 
 import javax.annotation.Nullable;
 import java.io.File;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.*;
+import java.util.function.Consumer;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
-@SuppressWarnings("resource")
+@SuppressWarnings({"resource", "UnstableApiUsage"})
 public class AotakeUtils {
     private static final Logger LOGGER = LogManager.getLogger();
 
@@ -77,11 +79,11 @@ public class AotakeUtils {
      * 获取指令前缀
      */
     public static String getCommandPrefix() {
-        String commandPrefix = CommonConfig.COMMAND_PREFIX.get();
+        String commandPrefix = ServerConfig.SERVER_CONFIG.commandPrefix();
         if (StringUtils.isNullOrEmptyEx(commandPrefix) || !commandPrefix.matches("^(\\w ?)+$")) {
-            CommonConfig.COMMAND_PREFIX.set(AotakeSweep.DEFAULT_COMMAND_PREFIX);
+            ServerConfig.SERVER_CONFIG.commandPrefix(AotakeSweep.DEFAULT_COMMAND_PREFIX);
         }
-        return CommonConfig.COMMAND_PREFIX.get().trim();
+        return ServerConfig.SERVER_CONFIG.commandPrefix().trim();
     }
 
     /**
@@ -91,27 +93,28 @@ public class AotakeUtils {
         String prefix = AotakeUtils.getCommandPrefix();
         return switch (type) {
             case HELP -> prefix + " help";
-            case LANGUAGE -> prefix + " " + CommonConfig.COMMAND_LANGUAGE.get();
-            case LANGUAGE_CONCISE -> isConciseEnabled(type) ? CommonConfig.COMMAND_LANGUAGE.get() : "";
-            case VIRTUAL_OP -> prefix + " " + CommonConfig.COMMAND_VIRTUAL_OP.get();
-            case VIRTUAL_OP_CONCISE -> isConciseEnabled(type) ? CommonConfig.COMMAND_VIRTUAL_OP.get() : "";
-            case DUSTBIN_OPEN, DUSTBIN_OPEN_OTHER -> prefix + " " + CommonConfig.COMMAND_DUSTBIN_OPEN.get();
+            case LANGUAGE -> prefix + " " + ServerConfig.SERVER_CONFIG.commandLanguage();
+            case LANGUAGE_CONCISE -> isConciseEnabled(type) ? ServerConfig.SERVER_CONFIG.commandLanguage() : "";
+            case VIRTUAL_OP -> prefix + " " + ServerConfig.SERVER_CONFIG.commandVirtualOp();
+            case VIRTUAL_OP_CONCISE -> isConciseEnabled(type) ? ServerConfig.SERVER_CONFIG.commandVirtualOp() : "";
+            case DUSTBIN_OPEN, DUSTBIN_OPEN_OTHER -> prefix + " " + ServerConfig.SERVER_CONFIG.commandDustbinOpen();
             case DUSTBIN_OPEN_CONCISE, DUSTBIN_OPEN_OTHER_CONCISE ->
-                    isConciseEnabled(type) ? CommonConfig.COMMAND_DUSTBIN_OPEN.get() : "";
-            case DUSTBIN_CLEAR -> prefix + " " + CommonConfig.COMMAND_DUSTBIN_CLEAR.get();
-            case DUSTBIN_CLEAR_CONCISE -> isConciseEnabled(type) ? CommonConfig.COMMAND_DUSTBIN_CLEAR.get() : "";
-            case DUSTBIN_DROP -> prefix + " " + CommonConfig.COMMAND_DUSTBIN_DROP.get();
-            case DUSTBIN_DROP_CONCISE -> isConciseEnabled(type) ? CommonConfig.COMMAND_DUSTBIN_DROP.get() : "";
-            case CACHE_CLEAR -> prefix + " " + CommonConfig.COMMAND_CACHE_CLEAR.get();
-            case CACHE_CLEAR_CONCISE -> isConciseEnabled(type) ? CommonConfig.COMMAND_CACHE_CLEAR.get() : "";
-            case CACHE_DROP -> prefix + " " + CommonConfig.COMMAND_CACHE_DROP.get();
-            case CACHE_DROP_CONCISE -> isConciseEnabled(type) ? CommonConfig.COMMAND_CACHE_DROP.get() : "";
-            case SWEEP -> prefix + " " + CommonConfig.COMMAND_SWEEP.get();
-            case SWEEP_CONCISE -> isConciseEnabled(type) ? CommonConfig.COMMAND_SWEEP.get() : "";
-            case CLEAR_DROP -> prefix + " " + CommonConfig.COMMAND_CLEAR_DROP.get();
-            case CLEAR_DROP_CONCISE -> isConciseEnabled(type) ? CommonConfig.COMMAND_CLEAR_DROP.get() : "";
-            case DELAY_SWEEP -> prefix + " " + CommonConfig.COMMAND_DELAY_SWEEP.get();
-            case DELAY_SWEEP_CONCISE -> isConciseEnabled(type) ? CommonConfig.COMMAND_DELAY_SWEEP.get() : "";
+                    isConciseEnabled(type) ? ServerConfig.SERVER_CONFIG.commandDustbinOpen() : "";
+            case DUSTBIN_CLEAR -> prefix + " " + ServerConfig.SERVER_CONFIG.commandDustbinClear();
+            case DUSTBIN_CLEAR_CONCISE ->
+                    isConciseEnabled(type) ? ServerConfig.SERVER_CONFIG.commandDustbinClear() : "";
+            case DUSTBIN_DROP -> prefix + " " + ServerConfig.SERVER_CONFIG.commandDustbinDrop();
+            case DUSTBIN_DROP_CONCISE -> isConciseEnabled(type) ? ServerConfig.SERVER_CONFIG.commandDustbinDrop() : "";
+            case CACHE_CLEAR -> prefix + " " + ServerConfig.SERVER_CONFIG.commandCacheClear();
+            case CACHE_CLEAR_CONCISE -> isConciseEnabled(type) ? ServerConfig.SERVER_CONFIG.commandCacheClear() : "";
+            case CACHE_DROP -> prefix + " " + ServerConfig.SERVER_CONFIG.commandCacheDrop();
+            case CACHE_DROP_CONCISE -> isConciseEnabled(type) ? ServerConfig.SERVER_CONFIG.commandCacheDrop() : "";
+            case SWEEP -> prefix + " " + ServerConfig.SERVER_CONFIG.commandSweep();
+            case SWEEP_CONCISE -> isConciseEnabled(type) ? ServerConfig.SERVER_CONFIG.commandSweep() : "";
+            case CLEAR_DROP -> prefix + " " + ServerConfig.SERVER_CONFIG.commandClearDrop();
+            case CLEAR_DROP_CONCISE -> isConciseEnabled(type) ? ServerConfig.SERVER_CONFIG.commandClearDrop() : "";
+            case DELAY_SWEEP -> prefix + " " + ServerConfig.SERVER_CONFIG.commandDelaySweep();
+            case DELAY_SWEEP_CONCISE -> isConciseEnabled(type) ? ServerConfig.SERVER_CONFIG.commandDelaySweep() : "";
             default -> "";
         };
     }
@@ -121,16 +124,17 @@ public class AotakeUtils {
      */
     public static int getCommandPermissionLevel(EnumCommandType type) {
         return switch (type) {
-            case VIRTUAL_OP, VIRTUAL_OP_CONCISE -> ServerConfig.PERMISSION_VIRTUAL_OP.get();
-            case DUSTBIN_OPEN, DUSTBIN_OPEN_CONCISE -> ServerConfig.PERMISSION_DUSTBIN_OPEN.get();
-            case DUSTBIN_OPEN_OTHER, DUSTBIN_OPEN_OTHER_CONCISE -> ServerConfig.PERMISSION_DUSTBIN_OPEN_OTHER.get();
-            case DUSTBIN_CLEAR, DUSTBIN_CLEAR_CONCISE -> ServerConfig.PERMISSION_DUSTBIN_CLEAR.get();
-            case DUSTBIN_DROP, DUSTBIN_DROP_CONCISE -> ServerConfig.PERMISSION_DUSTBIN_DROP.get();
-            case CACHE_CLEAR, CACHE_CLEAR_CONCISE -> ServerConfig.PERMISSION_CACHE_CLEAR.get();
-            case CACHE_DROP, CACHE_DROP_CONCISE -> ServerConfig.PERMISSION_CACHE_DROP.get();
-            case SWEEP, SWEEP_CONCISE -> ServerConfig.PERMISSION_SWEEP.get();
-            case CLEAR_DROP, CLEAR_DROP_CONCISE -> ServerConfig.PERMISSION_CLEAR_DROP.get();
-            case DELAY_SWEEP, DELAY_SWEEP_CONCISE -> ServerConfig.PERMISSION_DELAY_SWEEP.get();
+            case VIRTUAL_OP, VIRTUAL_OP_CONCISE -> ServerConfig.SERVER_CONFIG.permissionVirtualOp();
+            case DUSTBIN_OPEN, DUSTBIN_OPEN_CONCISE -> ServerConfig.SERVER_CONFIG.permissionDustbinOpen();
+            case DUSTBIN_OPEN_OTHER, DUSTBIN_OPEN_OTHER_CONCISE ->
+                    ServerConfig.SERVER_CONFIG.permissionDustbinOpenOther();
+            case DUSTBIN_CLEAR, DUSTBIN_CLEAR_CONCISE -> ServerConfig.SERVER_CONFIG.permissionDustbinClear();
+            case DUSTBIN_DROP, DUSTBIN_DROP_CONCISE -> ServerConfig.SERVER_CONFIG.permissionDustbinDrop();
+            case CACHE_CLEAR, CACHE_CLEAR_CONCISE -> ServerConfig.SERVER_CONFIG.permissionCacheClear();
+            case CACHE_DROP, CACHE_DROP_CONCISE -> ServerConfig.SERVER_CONFIG.permissionCacheDrop();
+            case SWEEP, SWEEP_CONCISE -> ServerConfig.SERVER_CONFIG.permissionSweep();
+            case CLEAR_DROP, CLEAR_DROP_CONCISE -> ServerConfig.SERVER_CONFIG.permissionClearDrop();
+            case DELAY_SWEEP, DELAY_SWEEP_CONCISE -> ServerConfig.SERVER_CONFIG.permissionDelaySweep();
             default -> 0;
         };
     }
@@ -140,17 +144,17 @@ public class AotakeUtils {
      */
     public static boolean isConciseEnabled(EnumCommandType type) {
         return switch (type) {
-            case LANGUAGE, LANGUAGE_CONCISE -> CommonConfig.CONCISE_LANGUAGE.get();
-            case VIRTUAL_OP, VIRTUAL_OP_CONCISE -> CommonConfig.CONCISE_VIRTUAL_OP.get();
+            case LANGUAGE, LANGUAGE_CONCISE -> ServerConfig.SERVER_CONFIG.conciseLanguage();
+            case VIRTUAL_OP, VIRTUAL_OP_CONCISE -> ServerConfig.SERVER_CONFIG.conciseVirtualOp();
             case DUSTBIN_OPEN, DUSTBIN_OPEN_CONCISE, DUSTBIN_OPEN_OTHER, DUSTBIN_OPEN_OTHER_CONCISE ->
-                    CommonConfig.CONCISE_DUSTBIN_OPEN.get();
-            case DUSTBIN_CLEAR, DUSTBIN_CLEAR_CONCISE -> CommonConfig.CONCISE_DUSTBIN_CLEAR.get();
-            case DUSTBIN_DROP, DUSTBIN_DROP_CONCISE -> CommonConfig.CONCISE_DUSTBIN_DROP.get();
-            case CACHE_CLEAR, CACHE_CLEAR_CONCISE -> CommonConfig.CONCISE_CACHE_CLEAR.get();
-            case CACHE_DROP, CACHE_DROP_CONCISE -> CommonConfig.CONCISE_CACHE_DROP.get();
-            case SWEEP, SWEEP_CONCISE -> CommonConfig.CONCISE_SWEEP.get();
-            case CLEAR_DROP, CLEAR_DROP_CONCISE -> CommonConfig.CONCISE_CLEAR_DROP.get();
-            case DELAY_SWEEP, DELAY_SWEEP_CONCISE -> CommonConfig.CONCISE_DELAY_SWEEP.get();
+                    ServerConfig.SERVER_CONFIG.conciseDustbinOpen();
+            case DUSTBIN_CLEAR, DUSTBIN_CLEAR_CONCISE -> ServerConfig.SERVER_CONFIG.conciseDustbinClear();
+            case DUSTBIN_DROP, DUSTBIN_DROP_CONCISE -> ServerConfig.SERVER_CONFIG.conciseDustbinDrop();
+            case CACHE_CLEAR, CACHE_CLEAR_CONCISE -> ServerConfig.SERVER_CONFIG.conciseCacheClear();
+            case CACHE_DROP, CACHE_DROP_CONCISE -> ServerConfig.SERVER_CONFIG.conciseCacheDrop();
+            case SWEEP, SWEEP_CONCISE -> ServerConfig.SERVER_CONFIG.conciseSweep();
+            case CLEAR_DROP, CLEAR_DROP_CONCISE -> ServerConfig.SERVER_CONFIG.conciseClearDrop();
+            case DELAY_SWEEP, DELAY_SWEEP_CONCISE -> ServerConfig.SERVER_CONFIG.conciseDelaySweep();
             default -> false;
         };
     }
@@ -187,22 +191,22 @@ public class AotakeUtils {
      * 获取传送指令
      */
     public static String genTeleportCommand(WorldCoordinate coordinate) {
-        if (ModList.get().isLoaded("narcissus_farewell")) {
-            return String.format("/%s %s %s %s safe %s"
-                    , CompatNarcissus.getTpCommand()
-                    , coordinate.getXInt()
-                    , coordinate.getYInt()
-                    , coordinate.getZInt()
-                    , coordinate.getDimensionResourceId()
-            );
-        } else {
-            return String.format("/execute in %s as @s run tp %s %s %s"
-                    , coordinate.getDimensionResourceId()
-                    , coordinate.getXInt()
-                    , coordinate.getYInt()
-                    , coordinate.getZInt()
-            );
-        }
+        // if (ModList.get().isLoaded("narcissus_farewell")) {
+        //     return String.format("/%s %s %s %s safe %s"
+        //             , CompatNarcissus.getTpCommand()
+        //             , coordinate.getXInt()
+        //             , coordinate.getYInt()
+        //             , coordinate.getZInt()
+        //             , coordinate.getDimensionResourceId()
+        //     );
+        // } else {
+        return String.format("/execute in %s as @s run tp %s %s %s"
+                , coordinate.getDimensionResourceId()
+                , coordinate.getXInt()
+                , coordinate.getYInt()
+                , coordinate.getZInt()
+        );
+        // }
     }
 
     /**
@@ -276,7 +280,7 @@ public class AotakeUtils {
      * 发送消息至所有玩家
      */
     public static void sendMessageToAll(Component message) {
-        for (ServerPlayer player : AotakeSweep.getServerInstance().key().getPlayerList().getPlayers()) {
+        for (ServerPlayer player : AotakeSweep.serverInstance().key().getPlayerList().getPlayers()) {
             sendMessage(player, message);
         }
     }
@@ -327,9 +331,9 @@ public class AotakeUtils {
             } catch (CommandSyntaxException ignored) {
             }
         } else if (success) {
-            source.sendSuccess(() -> Component.translatable(key, args).setLanguageCode(ServerConfig.DEFAULT_LANGUAGE.get()).toChatComponent(), false);
+            source.sendSuccess(() -> Component.translatable(key, args).setLanguageCode(ServerConfig.SERVER_CONFIG.defaultLanguage()).toChatComponent(), false);
         } else {
-            source.sendFailure(Component.translatable(key, args).setLanguageCode(ServerConfig.DEFAULT_LANGUAGE.get()).toChatComponent());
+            source.sendFailure(Component.translatable(key, args).setLanguageCode(ServerConfig.SERVER_CONFIG.defaultLanguage()).toChatComponent());
         }
     }
 
@@ -337,7 +341,7 @@ public class AotakeUtils {
      * 发送操作栏消息至所有玩家
      */
     public static void sendActionBarMessageToAll(Component message) {
-        for (ServerPlayer player : AotakeSweep.getServerInstance().key().getPlayerList().getPlayers()) {
+        for (ServerPlayer player : AotakeSweep.serverInstance().key().getPlayerList().getPlayers()) {
             sendActionBarMessage(player, message);
         }
     }
@@ -355,21 +359,63 @@ public class AotakeUtils {
      * @param packet 数据包
      */
     public static void broadcastPacket(Packet<?> packet) {
-        AotakeSweep.getServerInstance().key().getPlayerList().getPlayers().forEach(player -> player.connection.send(packet));
+        AotakeSweep.serverInstance().key().getPlayerList().getPlayers().forEach(player -> player.connection.send(packet));
     }
 
     /**
      * 发送数据包至服务器
      */
-    public static <MSG> void sendPacketToServer(MSG msg) {
-        ModNetworkHandler.INSTANCE.sendToServer(msg);
+    public static void sendPacketToServer(AotakePacket packet) {
+        sendPacketToServer(packet.id(), packet.toBytes(null));
+    }
+
+    /**
+     * 发送数据包至服务器
+     */
+    public static void sendPacketToServer(ResourceLocation id) {
+        sendPacketToServer(id, PacketByteBufs.create());
+    }
+
+    /**
+     * 发送数据包至服务器
+     */
+    public static void sendPacketToServer(ResourceLocation id, FriendlyByteBuf buf) {
+        ClientPlayNetworking.send(id, buf);
     }
 
     /**
      * 发送数据包至玩家
      */
-    public static <MSG> void sendPacketToPlayer(MSG msg, ServerPlayer player) {
-        ModNetworkHandler.INSTANCE.send(PacketDistributor.PLAYER.with(() -> player), msg);
+    public static void sendPacketToPlayer(ServerPlayer player, AotakePacket packet) {
+        sendPacketToPlayer(player, packet.id(), packet.toBytes(null));
+    }
+
+    /**
+     * 发送数据包至玩家
+     */
+    public static void sendPacketToPlayer(ResourceLocation id, ServerPlayer player) {
+        sendPacketToPlayer(player, id, PacketByteBufs.create());
+    }
+
+    /**
+     * 发送数据包至玩家
+     */
+    public static void sendPacketToPlayer(AotakePacket packet, ServerPlayer player) {
+        sendPacketToPlayer(player, packet.id(), packet.toBytes(null));
+    }
+
+    /**
+     * 发送数据包至玩家
+     */
+    public static void sendPacketToPlayer(ServerPlayer player, ResourceLocation id) {
+        sendPacketToPlayer(player, id, PacketByteBufs.create());
+    }
+
+    /**
+     * 发送数据包至玩家
+     */
+    public static void sendPacketToPlayer(ServerPlayer player, ResourceLocation id, FriendlyByteBuf buf) {
+        ServerPlayNetworking.send(player, id, buf);
     }
 
     // endregion 消息相关
@@ -387,7 +433,7 @@ public class AotakeUtils {
             }
             return AotakeUtils.getValidLanguage(player, language);
         } catch (IllegalArgumentException i) {
-            return ServerConfig.DEFAULT_LANGUAGE.get();
+            return ServerConfig.SERVER_CONFIG.defaultLanguage();
         }
     }
 
@@ -400,7 +446,7 @@ public class AotakeUtils {
                 result = AotakeUtils.getClientLanguage();
             }
         } else if ("server".equalsIgnoreCase(language)) {
-            result = ServerConfig.DEFAULT_LANGUAGE.get();
+            result = ServerConfig.SERVER_CONFIG.defaultLanguage();
         } else {
             result = language;
         }
@@ -408,18 +454,7 @@ public class AotakeUtils {
     }
 
     public static String getServerPlayerLanguage(ServerPlayer player) {
-        return player.getLanguage();
-    }
-
-    /**
-     * 复制玩家语言设置
-     *
-     * @param originalPlayer 原始玩家
-     * @param targetPlayer   目标玩家
-     */
-    public static void clonePlayerLanguage(ServerPlayer originalPlayer, ServerPlayer targetPlayer) {
-        FieldUtils.setPrivateFieldValue(ServerPlayer.class, targetPlayer, FieldUtils.getPlayerLanguageFieldName(originalPlayer), getServerPlayerLanguage(originalPlayer));
-        FieldUtils.setPrivateFieldValue(ServerPlayer.class, targetPlayer, "allowsListing", originalPlayer.allowsListing());
+        return ServerPlayerLanguageManager.get(player);
     }
 
     public static String getClientLanguage() {
@@ -440,44 +475,41 @@ public class AotakeUtils {
 
     private static void initSafeBlocks() {
         if (SAFE_BLOCKS_STATE == null) {
-            SAFE_BLOCKS_STATE = CommonConfig.SAFE_BLOCKS.get().stream()
+            SAFE_BLOCKS_STATE = ServerConfig.SERVER_CONFIG.safeBlocks().stream()
                     .map(AotakeUtils::deserializeBlockState)
                     .filter(Objects::nonNull)
                     .distinct()
                     .toList();
         }
         if (SAFE_BLOCKS == null) {
-            SAFE_BLOCKS = CommonConfig.SAFE_BLOCKS.get().stream()
+            SAFE_BLOCKS = ServerConfig.SERVER_CONFIG.safeBlocks().stream()
                     .filter(Objects::nonNull)
-                    .map(s -> (String) s)
                     .distinct()
                     .toList();
         }
         if (SAFE_BLOCKS_BELOW_STATE == null) {
-            SAFE_BLOCKS_BELOW_STATE = CommonConfig.SAFE_BLOCKS_BELOW.get().stream()
+            SAFE_BLOCKS_BELOW_STATE = ServerConfig.SERVER_CONFIG.safeBlocksBelow().stream()
                     .map(AotakeUtils::deserializeBlockState)
                     .filter(Objects::nonNull)
                     .distinct()
                     .toList();
         }
         if (SAFE_BLOCKS_BELOW == null) {
-            SAFE_BLOCKS_BELOW = CommonConfig.SAFE_BLOCKS_BELOW.get().stream()
+            SAFE_BLOCKS_BELOW = ServerConfig.SERVER_CONFIG.safeBlocksBelow().stream()
                     .filter(Objects::nonNull)
-                    .map(s -> (String) s)
                     .distinct()
                     .toList();
         }
         if (SAFE_BLOCKS_ABOVE_STATE == null) {
-            SAFE_BLOCKS_ABOVE_STATE = CommonConfig.SAFE_BLOCKS_ABOVE.get().stream()
+            SAFE_BLOCKS_ABOVE_STATE = ServerConfig.SERVER_CONFIG.safeBlocksAbove().stream()
                     .map(AotakeUtils::deserializeBlockState)
                     .filter(Objects::nonNull)
                     .distinct()
                     .toList();
         }
         if (SAFE_BLOCKS_ABOVE == null) {
-            SAFE_BLOCKS_ABOVE = CommonConfig.SAFE_BLOCKS_ABOVE.get().stream()
+            SAFE_BLOCKS_ABOVE = ServerConfig.SERVER_CONFIG.safeBlocksAbove().stream()
                     .filter(Objects::nonNull)
-                    .map(s -> (String) s)
                     .distinct()
                     .toList();
         }
@@ -485,10 +517,10 @@ public class AotakeUtils {
 
     public static List<Entity> getAllEntities() {
         List<Entity> entities = new ArrayList<>();
-        KeyValue<MinecraftServer, Boolean> serverInstance = AotakeSweep.getServerInstance();
+        KeyValue<MinecraftServer, Boolean> serverInstance = AotakeSweep.serverInstance();
         if (serverInstance.val()) {
             serverInstance.key().getAllLevels()
-                    .forEach(level -> level.getEntities().getAll().forEach(entities::add)
+                    .forEach(level -> level.getAllEntities().forEach(entities::add)
                     );
         }
         return entities;
@@ -499,29 +531,29 @@ public class AotakeUtils {
         if (entity != null && !(entity instanceof Player)) {
             if (chuck) {
                 // 空列表
-                if (CollectionUtils.isNullOrEmpty(ServerConfig.CHUNK_CHECK_ENTITY_LIST.get())) {
-                    result = EnumListType.WHITE.name().equals(ServerConfig.CHUNK_CHECK_ENTITY_LIST_MODE.get());
+                if (CollectionUtils.isNullOrEmpty(ServerConfig.SERVER_CONFIG.chunkCheckEntityList())) {
+                    result = EnumListType.WHITE == ServerConfig.SERVER_CONFIG.chunkCheckEntityListMode();
                 }
                 // 黑名单模式
-                else if (EnumListType.BLACK.name().equals(ServerConfig.CHUNK_CHECK_ENTITY_LIST_MODE.get())) {
-                    result = AotakeSweep.getEntityFilter().validEntity(ServerConfig.CHUNK_CHECK_ENTITY_LIST.get(), entity);
+                else if (EnumListType.BLACK == ServerConfig.SERVER_CONFIG.chunkCheckEntityListMode()) {
+                    result = AotakeSweep.entityFilter().validEntity(ServerConfig.SERVER_CONFIG.chunkCheckEntityList(), entity);
                 }
                 // 白名单模式
                 else {
-                    result = !AotakeSweep.getEntityFilter().validEntity(ServerConfig.CHUNK_CHECK_ENTITY_LIST.get(), entity);
+                    result = !AotakeSweep.entityFilter().validEntity(ServerConfig.SERVER_CONFIG.chunkCheckEntityList(), entity);
                 }
             } else {
                 // 空列表
-                if (CollectionUtils.isNullOrEmpty(ServerConfig.ENTITY_LIST.get())) {
-                    result = EnumListType.WHITE.name().equals(ServerConfig.ENTITY_LIST_MODE.get());
+                if (CollectionUtils.isNullOrEmpty(ServerConfig.SERVER_CONFIG.entityList())) {
+                    result = EnumListType.WHITE == ServerConfig.SERVER_CONFIG.entityListMode();
                 }
                 // 黑名单模式
-                else if (EnumListType.BLACK.name().equals(ServerConfig.ENTITY_LIST_MODE.get())) {
-                    result = AotakeSweep.getEntityFilter().validEntity(ServerConfig.ENTITY_LIST.get(), entity);
+                else if (EnumListType.BLACK == ServerConfig.SERVER_CONFIG.entityListMode()) {
+                    result = AotakeSweep.entityFilter().validEntity(ServerConfig.SERVER_CONFIG.entityList(), entity);
                 }
                 // 白名单模式
                 else {
-                    result = !AotakeSweep.getEntityFilter().validEntity(ServerConfig.ENTITY_LIST.get(), entity);
+                    result = !AotakeSweep.entityFilter().validEntity(ServerConfig.SERVER_CONFIG.entityList(), entity);
                 }
             }
         }
@@ -577,7 +609,7 @@ public class AotakeUtils {
                 .collect(Collectors.groupingBy(AotakeUtils::getEntityTypeRegistryName, Collectors.toList()))
                 .entrySet().stream()
                 // 超限
-                .filter(entry -> entry.getValue().size() > ServerConfig.ENTITY_LIST_LIMIT.get())
+                .filter(entry -> entry.getValue().size() > ServerConfig.SERVER_CONFIG.entityListLimit())
                 .flatMap(entry -> entry.getValue().stream())
                 .toList();
 
@@ -595,7 +627,7 @@ public class AotakeUtils {
                 }, Collectors.toList()))
                 .entrySet().stream()
                 // 超限
-                .filter(entry -> entry.getValue().size() > CommonConfig.SAFE_BLOCKS_ENTITY_LIMIT.get())
+                .filter(entry -> entry.getValue().size() > ServerConfig.SERVER_CONFIG.safeBlocksEntityLimit())
                 .flatMap(entry -> entry.getValue().stream())
                 .toList();
 
@@ -632,7 +664,7 @@ public class AotakeUtils {
      * @param filtered 实体列表是否已过滤
      */
     public static void sweep(List<Entity> entities, boolean filtered) {
-        KeyValue<MinecraftServer, Boolean> serverInstance = AotakeSweep.getServerInstance();
+        KeyValue<MinecraftServer, Boolean> serverInstance = AotakeSweep.serverInstance();
         // 服务器已关闭
         if (!serverInstance.val()) return;
 
@@ -640,7 +672,7 @@ public class AotakeUtils {
 
         try {
             // 若服务器没有玩家
-            if (CollectionUtils.isNullOrEmpty(players) && !CommonConfig.SWEEP_WHEN_NO_PLAYER.get()) {
+            if (CollectionUtils.isNullOrEmpty(players) && !ServerConfig.SERVER_CONFIG.sweepWhenNoPlayer()) {
                 LOGGER.debug("No player online, sweep canceled");
                 return;
             }
@@ -649,8 +681,8 @@ public class AotakeUtils {
 
             // if (CollectionUtils.isNotNullOrEmpty(list)) {
             // 清空旧的物品
-            if (ServerConfig.SELF_CLEAN_MODE.get().contains(EnumSelfCleanMode.SWEEP_CLEAR.name())) {
-                switch (EnumDustbinMode.valueOfOrDefault(ServerConfig.DUSTBIN_MODE.get())) {
+            if (ServerConfig.SERVER_CONFIG.selfCleanMode().contains(EnumSelfCleanMode.SWEEP_CLEAR.name())) {
+                switch (EnumDustbinMode.valueOfOrDefault(ServerConfig.SERVER_CONFIG.dustbinMode())) {
                     case VIRTUAL: {
                         clearVirtualDustbin();
                     }
@@ -665,7 +697,7 @@ public class AotakeUtils {
                     }
                 }
             }
-            AotakeSweep.getEntitySweeper().addDrops(list, new SweepResult());
+            AotakeSweep.entitySweeper().addDrops(list, new SweepResult());
             // }
 
         } catch (Exception e) {
@@ -693,7 +725,7 @@ public class AotakeUtils {
                 }
                 if (playerData.isEnableWarningVoice()) {
                     String voice = getWarningVoice("error");
-                    float volume = CommonConfig.SWEEP_WARNING_VOICE_VOLUME.get() / 100f;
+                    float volume = ServerConfig.SERVER_CONFIG.sweepWarningVoiceVolume() / 100f;
                     if (StringUtils.isNotNullOrEmpty(voice)) {
                         AotakeUtils.executeCommandNoOutput(p, String.format("playsound %s voice @s ~ ~ ~ %s", voice, volume));
                     }
@@ -710,15 +742,10 @@ public class AotakeUtils {
     }
 
     private static void clearDustbinBlock() {
-        for (String pos : ServerConfig.DUSTBIN_BLOCK_POSITIONS.get()) {
+        for (String pos : ServerConfig.SERVER_CONFIG.dustbinBlockPositions()) {
             WorldCoordinate coordinate = WorldCoordinate.fromSimpleString(pos);
             if (coordinate != null) {
-                IItemHandler handler = getBlockItemHandler(coordinate);
-                if (handler != null) {
-                    for (int i = 0; i < handler.getSlots(); i++) {
-                        handler.extractItem(i, handler.getSlotLimit(i), false);
-                    }
-                }
+                AotakeUtils.clearStorage(AotakeUtils.getBlockItemHandler(coordinate));
             }
         }
     }
@@ -759,14 +786,14 @@ public class AotakeUtils {
 
     private static void initWarns() {
         if (warns.isEmpty()) {
-            warns.putAll(JsonUtils.GSON.fromJson(CommonConfig.SWEEP_WARNING_CONTENT.get(), new TypeToken<Map<String, String>>() {
+            warns.putAll(JsonUtils.GSON.fromJson(ServerConfig.SERVER_CONFIG.sweepWarningContent(), new TypeToken<Map<String, String>>() {
             }.getType()));
             warns.putIfAbsent("error", "message.aotake_sweep.cleanup_error");
             warns.putIfAbsent("fail", "message.aotake_sweep.cleanup_started");
             warns.putIfAbsent("success", "message.aotake_sweep.cleanup_started");
         }
         if (voices.isEmpty()) {
-            voices.putAll(JsonUtils.GSON.fromJson(CommonConfig.SWEEP_WARNING_VOICE.get(), new TypeToken<Map<String, String>>() {
+            voices.putAll(JsonUtils.GSON.fromJson(ServerConfig.SERVER_CONFIG.sweepWarningVoice(), new TypeToken<Map<String, String>>() {
             }.getType()));
             voices.put("initialized", "initialized");
         }
@@ -829,13 +856,13 @@ public class AotakeUtils {
 
     public static int dustbin(@NonNull ServerPlayer player, int page) {
         int result = 0;
-        int vPage = CommonConfig.DUSTBIN_PAGE_LIMIT.get();
-        int bPage = ServerConfig.DUSTBIN_BLOCK_POSITIONS.get().size();
+        int vPage = ServerConfig.SERVER_CONFIG.dustbinPageLimit();
+        int bPage = ServerConfig.SERVER_CONFIG.dustbinBlockPositions().size();
         int totalPage = getDustbinTotalPage();
         if (totalPage <= 0) {
             AotakeUtils.sendMessage(player, Component.translatable(EnumI18nType.MESSAGE, "dustbin_page_empty"));
         } else {
-            switch (EnumDustbinMode.valueOfOrDefault(ServerConfig.DUSTBIN_MODE.get())) {
+            switch (EnumDustbinMode.valueOfOrDefault(ServerConfig.SERVER_CONFIG.dustbinMode())) {
                 case VIRTUAL: {
                     result = openVirtualDustbin(player, page);
                 }
@@ -867,7 +894,7 @@ public class AotakeUtils {
             }
         }
 
-        if (result > 0) AotakeSweep.getPlayerDustbinPage().put(AotakeUtils.getPlayerUUIDString(player), page);
+        if (result > 0) AotakeSweep.playerDustbinPage().put(AotakeUtils.getPlayerUUIDString(player), page);
         return result;
     }
 
@@ -876,13 +903,13 @@ public class AotakeUtils {
         if (trashContainer == null) return 0;
         int result = player.openMenu(trashContainer).orElse(0);
 
-        if (result > 0) AotakeSweep.getPlayerDustbinPage().put(AotakeUtils.getPlayerUUIDString(player), page);
+        if (result > 0) AotakeSweep.playerDustbinPage().put(AotakeUtils.getPlayerUUIDString(player), page);
         return result;
     }
 
     private static int openDustbinBlock(@NonNull ServerPlayer player, int page) {
         int result = 0;
-        List<? extends String> positions = ServerConfig.DUSTBIN_BLOCK_POSITIONS.get();
+        List<? extends String> positions = ServerConfig.SERVER_CONFIG.dustbinBlockPositions();
         if (CollectionUtils.isNotNullOrEmpty(positions) && positions.size() >= page) {
             WorldCoordinate coordinate = WorldCoordinate.fromSimpleString(positions.get(page - 1));
 
@@ -901,7 +928,7 @@ public class AotakeUtils {
             }
         }
 
-        if (result > 0) AotakeSweep.getPlayerDustbinPage().put(AotakeUtils.getPlayerUUIDString(player), page);
+        if (result > 0) AotakeSweep.playerDustbinPage().put(AotakeUtils.getPlayerUUIDString(player), page);
         return result;
     }
 
@@ -918,26 +945,16 @@ public class AotakeUtils {
 
     public static void clearDustbinBlock(int page) {
         if (page == 0) {
-            for (String pos : ServerConfig.DUSTBIN_BLOCK_POSITIONS.get()) {
+            for (String pos : ServerConfig.SERVER_CONFIG.dustbinBlockPositions()) {
                 WorldCoordinate coordinate = WorldCoordinate.fromSimpleString(pos);
                 if (coordinate != null) {
-                    IItemHandler handler = AotakeUtils.getBlockItemHandler(coordinate);
-                    if (handler != null) {
-                        for (int i = 0; i < handler.getSlots(); i++) {
-                            handler.extractItem(i, handler.getSlotLimit(i), false);
-                        }
-                    }
+                    AotakeUtils.clearStorage(AotakeUtils.getBlockItemHandler(coordinate));
                 }
             }
         } else {
-            WorldCoordinate coordinate = WorldCoordinate.fromSimpleString(ServerConfig.DUSTBIN_BLOCK_POSITIONS.get().get(page - 1));
+            WorldCoordinate coordinate = WorldCoordinate.fromSimpleString(ServerConfig.SERVER_CONFIG.dustbinBlockPositions().get(page - 1));
             if (coordinate != null) {
-                IItemHandler handler = AotakeUtils.getBlockItemHandler(coordinate);
-                if (handler != null) {
-                    for (int i = 0; i < handler.getSlots(); i++) {
-                        handler.extractItem(i, handler.getSlotLimit(i), false);
-                    }
-                }
+                AotakeUtils.clearStorage(AotakeUtils.getBlockItemHandler(coordinate));
             }
         }
     }
@@ -964,58 +981,68 @@ public class AotakeUtils {
     }
 
     public static void dropDustbinBlock(ServerPlayer player, int page) {
-        if (page == 0) {
-            for (String pos : ServerConfig.DUSTBIN_BLOCK_POSITIONS.get()) {
-                WorldCoordinate coordinate = WorldCoordinate.fromSimpleString(pos);
-                if (coordinate != null) {
-                    IItemHandler handler = AotakeUtils.getBlockItemHandler(coordinate);
-                    if (handler != null) {
-                        for (int i = 0; i < handler.getSlots(); i++) {
-                            ItemStack stack = handler.extractItem(i, handler.getSlotLimit(i), false);
+        Consumer<WorldCoordinate> processCoord = coordinate -> {
+            if (coordinate == null) return;
+            Storage<ItemVariant> storage = AotakeUtils.getBlockItemHandler(coordinate);
+            if (storage == null) return;
+
+            try {
+                for (StorageView<ItemVariant> view : storage) {
+                    if (view == null || view.isResourceBlank()) continue;
+                    ItemVariant variant = view.getResource();
+                    long amount = view.getAmount();
+                    if (amount <= 0) continue;
+
+                    try (Transaction tx = Transaction.openOuter()) {
+                        long extracted = storage.extract(variant, amount, tx);
+                        tx.commit();
+                        if (extracted > 0) {
+                            ItemStack stack = variant.toStack((int) extracted);
                             if (!stack.isEmpty()) {
                                 Entity entity = AotakeUtils.getEntityFromItem(player.serverLevel(), stack);
                                 entity.moveTo(player.getX(), player.getY(), player.getZ(), player.getYRot(), player.getXRot());
                                 player.serverLevel().addFreshEntity(entity);
                             }
                         }
+                    } catch (Throwable ignored) {
                     }
                 }
+            } catch (Throwable ignored) {
+            }
+        };
+
+        List<String> positions = ServerConfig.SERVER_CONFIG.dustbinBlockPositions();
+
+        if (page == 0) {
+            for (String pos : positions) {
+                WorldCoordinate coordinate = WorldCoordinate.fromSimpleString(pos);
+                processCoord.accept(coordinate);
             }
         } else {
-            WorldCoordinate coordinate = WorldCoordinate.fromSimpleString(ServerConfig.DUSTBIN_BLOCK_POSITIONS.get().get(page - 1));
-            if (coordinate != null) {
-                IItemHandler handler = AotakeUtils.getBlockItemHandler(coordinate);
-                if (handler != null) {
-                    for (int i = 0; i < handler.getSlots(); i++) {
-                        ItemStack stack = handler.extractItem(i, handler.getSlotLimit(i), false);
-                        if (!stack.isEmpty()) {
-                            Entity entity = AotakeUtils.getEntityFromItem(player.serverLevel(), stack);
-                            entity.moveTo(player.getX(), player.getY(), player.getZ(), player.getYRot(), player.getXRot());
-                            player.serverLevel().addFreshEntity(entity);
-                        }
-                    }
-                }
+            if (page - 1 >= 0 && page - 1 < positions.size()) {
+                WorldCoordinate coordinate = WorldCoordinate.fromSimpleString(positions.get(page - 1));
+                processCoord.accept(coordinate);
             }
         }
     }
 
     public static int getDustbinTotalPage() {
         int result = 0;
-        switch (EnumDustbinMode.valueOfOrDefault(ServerConfig.DUSTBIN_MODE.get())) {
+        switch (EnumDustbinMode.valueOfOrDefault(ServerConfig.SERVER_CONFIG.dustbinMode())) {
             case VIRTUAL: {
-                result = CommonConfig.DUSTBIN_PAGE_LIMIT.get();
+                result = ServerConfig.SERVER_CONFIG.dustbinPageLimit();
             }
             break;
             case BLOCK: {
-                result = ServerConfig.DUSTBIN_BLOCK_POSITIONS.get().size();
+                result = ServerConfig.SERVER_CONFIG.dustbinBlockPositions().size();
             }
             break;
             case VIRTUAL_BLOCK: {
-                result = CommonConfig.DUSTBIN_PAGE_LIMIT.get() + ServerConfig.DUSTBIN_BLOCK_POSITIONS.get().size();
+                result = ServerConfig.SERVER_CONFIG.dustbinPageLimit() + ServerConfig.SERVER_CONFIG.dustbinBlockPositions().size();
             }
             break;
             case BLOCK_VIRTUAL: {
-                result = ServerConfig.DUSTBIN_BLOCK_POSITIONS.get().size() + CommonConfig.DUSTBIN_PAGE_LIMIT.get();
+                result = ServerConfig.SERVER_CONFIG.dustbinBlockPositions().size() + ServerConfig.SERVER_CONFIG.dustbinPageLimit();
             }
             break;
         }
@@ -1076,7 +1103,7 @@ public class AotakeUtils {
      * 获取指定维度的世界实例
      */
     public static ServerLevel getWorld(ResourceKey<Level> dimension) {
-        return AotakeSweep.getServerInstance().key().getLevel(dimension);
+        return AotakeSweep.serverInstance().key().getLevel(dimension);
     }
 
     /**
@@ -1098,7 +1125,7 @@ public class AotakeUtils {
      */
     public static BlockState deserializeBlockState(String block) {
         try {
-            return BlockStateParser.parseForBlock(AotakeSweep.getServerInstance().key().getAllLevels().iterator().next().holderLookup(Registries.BLOCK)
+            return BlockStateParser.parseForBlock(AotakeSweep.serverInstance().key().getAllLevels().iterator().next().holderLookup(Registries.BLOCK)
                     , new StringReader(block), false).blockState();
         } catch (Exception e) {
             LOGGER.error("Invalid unsafe block: {}", block, e);
@@ -1162,7 +1189,7 @@ public class AotakeUtils {
      */
     @NonNull
     public static String getItemRegistryName(@NonNull Item item) {
-        ResourceLocation location = ForgeRegistries.ITEMS.getKey(item);
+        ResourceLocation location = BuiltInRegistries.ITEM.getKey(item);
         return location == null ? "" : location.toString();
     }
 
@@ -1182,7 +1209,7 @@ public class AotakeUtils {
      */
     @NonNull
     public static String getEntityTypeRegistryName(@NonNull EntityType<?> entityType) {
-        ResourceLocation location = ForgeRegistries.ENTITY_TYPES.getKey(entityType);
+        ResourceLocation location = BuiltInRegistries.ENTITY_TYPE.getKey(entityType);
         return location == null ? AotakeSweep.emptyResource().toString() : location.toString();
     }
 
@@ -1229,7 +1256,7 @@ public class AotakeUtils {
     }
 
     public static ServerPlayer getPlayerByUUID(String uuid) {
-        return AotakeSweep.getServerInstance().key().getPlayerList().getPlayer(UUID.fromString(uuid));
+        return AotakeSweep.serverInstance().key().getPlayerList().getPlayer(UUID.fromString(uuid));
     }
 
     /**
@@ -1237,7 +1264,8 @@ public class AotakeUtils {
      */
     public static ItemStack addItemToBlock(ItemStack stack, WorldCoordinate coordinate) {
         if (stack == null || stack.isEmpty()) return ItemStack.EMPTY;
-        ServerLevel level = AotakeSweep.getServerInstance().key().getLevel(coordinate.getDimension());
+
+        ServerLevel level = AotakeSweep.serverInstance().key().getLevel(coordinate.getDimension());
         if (level == null) return stack;
 
         BlockPos pos = coordinate.toBlockPos();
@@ -1247,13 +1275,27 @@ public class AotakeUtils {
         if (te == null) return stack;
 
         try {
-            LazyOptional<IItemHandler> capOpt = te.getCapability(ForgeCapabilities.ITEM_HANDLER, coordinate.getDirection());
-            if (capOpt.isPresent()) {
-                if (capOpt.isPresent()) {
-                    IItemHandler handler = capOpt.orElse(new ItemStackHandler());
-                    ItemStack remaining = ItemHandlerHelper.insertItem(handler, stack.copy(), false);
+            Direction side = coordinate.getDirection();
+            Storage<ItemVariant> storage = ItemStorage.SIDED.find(level, pos, side);
+
+            if (storage != null && storage.supportsInsertion()) {
+                ItemVariant variant = ItemVariant.of(stack);
+                long toInsert = stack.getCount();
+
+                try (Transaction tx = Transaction.openOuter()) {
+                    long inserted = storage.insert(variant, toInsert, tx);
+                    tx.commit();
+
+                    int remainingCount = (int) (toInsert - inserted);
                     te.setChanged();
-                    return remaining;
+
+                    if (remainingCount <= 0) {
+                        return ItemStack.EMPTY;
+                    } else {
+                        ItemStack remaining = stack.copy();
+                        remaining.setCount(remainingCount);
+                        return remaining;
+                    }
                 }
             }
         } catch (Throwable ignored) {
@@ -1265,8 +1307,9 @@ public class AotakeUtils {
     /**
      * 获取指定的方块容器
      */
-    public static IItemHandler getBlockItemHandler(WorldCoordinate coordinate) {
-        ServerLevel level = AotakeSweep.getServerInstance().key().getLevel(coordinate.getDimension());
+    @Nullable
+    public static Storage<ItemVariant> getBlockItemHandler(WorldCoordinate coordinate) {
+        ServerLevel level = AotakeSweep.serverInstance().key().getLevel(coordinate.getDimension());
         if (level == null) return null;
 
         BlockPos pos = coordinate.toBlockPos();
@@ -1276,16 +1319,31 @@ public class AotakeUtils {
         if (te == null) return null;
 
         try {
-            LazyOptional<IItemHandler> capOpt = te.getCapability(ForgeCapabilities.ITEM_HANDLER, coordinate.getDirection());
-            if (capOpt.isPresent()) {
-                if (capOpt.isPresent()) {
-                    return capOpt.orElse(new ItemStackHandler());
-                }
+            Direction side = coordinate.getDirection();
+            Storage<ItemVariant> storage = ItemStorage.SIDED.find(level, pos, side);
+            if (storage != null && storage.supportsInsertion()) {
+                return storage;
             }
         } catch (Throwable ignored) {
         }
-
         return null;
+    }
+
+    public static void clearStorage(Storage<ItemVariant> storage) {
+        if (storage == null) return;
+
+        try (Transaction tx = Transaction.openOuter()) {
+            for (StorageView<ItemVariant> view : storage) {
+                if (!view.isResourceBlank()) {
+                    long amount = view.getAmount();
+                    if (amount > 0) {
+                        storage.extract(view.getResource(), amount, tx);
+                    }
+                }
+            }
+            tx.commit();
+        } catch (Throwable ignored) {
+        }
     }
 
     public static String getDimensionRegistryName(Level world) {

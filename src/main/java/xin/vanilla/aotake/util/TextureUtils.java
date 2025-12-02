@@ -1,21 +1,20 @@
 package xin.vanilla.aotake.util;
 
 import com.mojang.blaze3d.platform.NativeImage;
+import net.fabricmc.fabric.api.resource.SimpleSynchronousResourceReloadListener;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.texture.AbstractTexture;
 import net.minecraft.client.renderer.texture.DynamicTexture;
 import net.minecraft.client.renderer.texture.MissingTextureAtlasSprite;
 import net.minecraft.client.renderer.texture.TextureManager;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.packs.resources.Resource;
+import net.minecraft.server.packs.resources.ResourceManager;
 import net.minecraft.world.effect.MobEffectInstance;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.client.event.TextureStitchEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
-import net.minecraftforge.registries.ForgeRegistries;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.jetbrains.annotations.NotNull;
 import xin.vanilla.aotake.AotakeSweep;
 import xin.vanilla.aotake.data.KeyValue;
 
@@ -26,8 +25,8 @@ import java.nio.file.Files;
 import java.util.HashMap;
 import java.util.Map;
 
-@Mod.EventBusSubscriber(modid = AotakeSweep.MODID, value = Dist.CLIENT, bus = Mod.EventBusSubscriber.Bus.MOD)
-public class TextureUtils {
+
+public class TextureUtils implements SimpleSynchronousResourceReloadListener {
     /**
      * 默认主题文件名
      */
@@ -94,7 +93,7 @@ public class TextureUtils {
      */
     public static ResourceLocation getEffectTexture(MobEffectInstance effectInstance) {
         ResourceLocation effectIcon;
-        ResourceLocation registryName = ForgeRegistries.MOB_EFFECTS.getKey(effectInstance.getEffect());
+        ResourceLocation registryName = BuiltInRegistries.MOB_EFFECT.getKey(effectInstance.getEffect());
         if (registryName != null) {
             effectIcon = AotakeSweep.createResource(registryName.getNamespace(), DEFAULT_EFFECT_DIR + registryName.getPath() + ".png");
         } else {
@@ -159,11 +158,15 @@ public class TextureUtils {
         return size;
     }
 
-    @SubscribeEvent
-    public static void resourceReloadEvent(TextureStitchEvent.Post event) {
-        if (AotakeSweep.MODID.equals(event.getAtlas().location().getNamespace())) {
-            clearAll();
-            LOGGER.debug("Cleared texture cache");
-        }
+    @Override
+    public ResourceLocation getFabricId() {
+        return AotakeSweep.createResource("texture_reload");
     }
+
+    @Override
+    public void onResourceManagerReload(@NotNull ResourceManager resourceManager) {
+        clearAll();
+        LOGGER.debug("Cleared texture cache");
+    }
+
 }

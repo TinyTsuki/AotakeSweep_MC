@@ -15,8 +15,6 @@ import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.api.distmarker.OnlyIn;
 import org.joml.Quaternionf;
 import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.GL11;
@@ -34,7 +32,6 @@ import java.util.stream.Collectors;
 /**
  * AbstractGui工具类
  */
-@OnlyIn(Dist.CLIENT)
 public class AbstractGuiUtils {
 
     public static final int ITEM_ICON_SIZE = 16;
@@ -683,7 +680,7 @@ public class AbstractGuiUtils {
                 if (!text.isBgColorEmpty()) {
                     AbstractGuiUtils.fill(graphics, (int) (x + xOffset), (int) (y + index * font.lineHeight), font.width(line), font.lineHeight, text.getBgColorArgb());
                 }
-                graphics.drawString(font, text.copyWithoutChildren().setText(line).toComponent().toTextComponent().getVisualOrderText(), (float) x + xOffset, (float) y + index * font.lineHeight, text.getColor(), text.isShadow());
+                graphics.drawString(font, text.copyWithoutChildren().setText(line).toComponent().toTextComponent().getVisualOrderText(), (int) ((float) x + xOffset), (int) ((float) y + index * font.lineHeight), text.getColor(), text.isShadow());
                 index++;
             }
         }

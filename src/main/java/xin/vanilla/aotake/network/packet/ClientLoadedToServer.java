@@ -1,33 +1,35 @@
 package xin.vanilla.aotake.network.packet;
 
+import net.fabricmc.fabric.api.networking.v1.PacketByteBufs;
 import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraftforge.network.NetworkEvent;
 import xin.vanilla.aotake.AotakeSweep;
+import xin.vanilla.aotake.network.AotakePacket;
 import xin.vanilla.aotake.util.AotakeUtils;
 
-import java.util.function.Supplier;
-
-public class ClientLoadedToServer {
+public class ClientLoadedToServer implements AotakePacket {
+    public static final ResourceLocation ID = AotakeSweep.createResource("client_loaded");
 
     public ClientLoadedToServer() {
     }
 
-    public ClientLoadedToServer(FriendlyByteBuf buf) {
+    @Override
+    public ResourceLocation id() {
+        return ID;
     }
 
-    public void toBytes(FriendlyByteBuf buf) {
+    @Override
+    public FriendlyByteBuf toBytes(FriendlyByteBuf buf) {
+        if (buf == null) buf = PacketByteBufs.create();
+        return buf;
     }
 
-    public static void handle(ClientLoadedToServer packet, Supplier<NetworkEvent.Context> ctx) {
-        ctx.get().enqueueWork(() -> {
-            ServerPlayer player = ctx.get().getSender();
-            if (player != null) {
-                AotakeSweep.getCustomConfigStatus().add(AotakeUtils.getPlayerUUIDString(player));
-                // 同步自定义配置到客户端
-                AotakeUtils.sendPacketToPlayer(new CustomConfigSyncToClient(), player);
-            }
-        });
-        ctx.get().setPacketHandled(true);
+    public static void handle(ServerPlayer player) {
+        if (player != null) {
+            AotakeSweep.customConfigStatus().add(AotakeUtils.getPlayerUUIDString(player));
+            // 同步自定义配置到客户端
+            AotakeUtils.sendPacketToPlayer(player, new CustomConfigSyncToClient());
+        }
     }
 }

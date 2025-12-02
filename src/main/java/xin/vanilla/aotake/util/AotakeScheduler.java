@@ -1,14 +1,12 @@
 package xin.vanilla.aotake.util;
 
+import net.fabricmc.api.EnvType;
+import net.fabricmc.api.Environment;
 import net.minecraft.server.MinecraftServer;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.api.distmarker.OnlyIn;
-import net.minecraftforge.event.TickEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.jetbrains.annotations.NotNull;
 
-import javax.annotation.Nonnull;
 import java.util.concurrent.PriorityBlockingQueue;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -25,32 +23,25 @@ public class AotakeScheduler {
     private static final AtomicLong clientExecutedCount = new AtomicLong(0);
     private static final AtomicLong clientTicks = new AtomicLong(0);
 
-    public static void schedule(@Nonnull MinecraftServer server, int delayTicks, @Nonnull Runnable action) {
+    public static void schedule(@NotNull MinecraftServer server, int delayTicks, @NotNull Runnable action) {
         long executeAt = server.getTickCount() + Math.max(0, delayTicks);
         serverTasks.add(ScheduledTask.server(executeAt, action));
     }
 
-    @OnlyIn(Dist.CLIENT)
-    public static void schedule(int delayTicks, @Nonnull Runnable action) {
+    @Environment(EnvType.CLIENT)
+    public static void schedule(int delayTicks, @NotNull Runnable action) {
         long executeAt = clientTicks.get() + Math.max(0, delayTicks);
         clientTasks.add(ScheduledTask.client(executeAt, action));
     }
 
-    @SubscribeEvent
-    public static void onServerTick(TickEvent.ServerTickEvent event) {
-        if (event.phase != TickEvent.Phase.END) return;
-
-        MinecraftServer server = event.getServer();
+    public static void onServerTick(MinecraftServer server) {
         if (server == null) return;
 
         runTask(server.getTickCount(), serverTasks, serverExecutedCount);
     }
 
-    @OnlyIn(Dist.CLIENT)
-    @SubscribeEvent
-    public static void onClientTick(TickEvent.ClientTickEvent event) {
-        if (event.phase != TickEvent.Phase.END) return;
-
+    @Environment(EnvType.CLIENT)
+    public static void onClientTick() {
         runTask(clientTicks.incrementAndGet(), clientTasks, clientExecutedCount);
     }
 

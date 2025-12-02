@@ -2,16 +2,19 @@ package xin.vanilla.aotake.network.packet;
 
 import com.google.gson.JsonObject;
 import lombok.Getter;
+import net.fabricmc.fabric.api.networking.v1.PacketByteBufs;
 import net.minecraft.network.FriendlyByteBuf;
-import net.minecraftforge.network.NetworkEvent;
+import net.minecraft.resources.ResourceLocation;
+import xin.vanilla.aotake.AotakeSweep;
 import xin.vanilla.aotake.config.CustomConfig;
+import xin.vanilla.aotake.network.AotakePacket;
 import xin.vanilla.aotake.util.JsonUtils;
 import xin.vanilla.aotake.util.VirtualPermissionManager;
 
-import java.util.function.Supplier;
-
 @Getter
-public class CustomConfigSyncToClient {
+public class CustomConfigSyncToClient implements AotakePacket {
+    public static final ResourceLocation ID = AotakeSweep.createResource("custom_config_sync");
+
     /**
      * 自定义配置
      */
@@ -25,15 +28,19 @@ public class CustomConfigSyncToClient {
         this.customConfig = JsonUtils.GSON.fromJson(buf.readUtf(), JsonObject.class);
     }
 
-    public void toBytes(FriendlyByteBuf buf) {
-        buf.writeUtf(this.customConfig.toString());
+    @Override
+    public ResourceLocation id() {
+        return ID;
     }
 
-    public static void handle(CustomConfigSyncToClient packet, Supplier<NetworkEvent.Context> ctx) {
-        ctx.get().enqueueWork(() -> {
-            CustomConfig.setClientConfig(packet.getCustomConfig());
-            VirtualPermissionManager.reloadClient();
-        });
-        ctx.get().setPacketHandled(true);
+    public FriendlyByteBuf toBytes(FriendlyByteBuf buf) {
+        if (buf == null) buf = PacketByteBufs.create();
+        buf.writeUtf(this.customConfig.toString());
+        return buf;
+    }
+
+    public static void handle(CustomConfigSyncToClient packet) {
+        CustomConfig.setClientConfig(packet.getCustomConfig());
+        VirtualPermissionManager.reloadClient();
     }
 }

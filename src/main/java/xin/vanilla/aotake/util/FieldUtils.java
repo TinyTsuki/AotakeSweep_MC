@@ -163,26 +163,4 @@ public class FieldUtils {
         return null;
     }
 
-    private static String LANGUAGE_FIELD_NAME;
-
-    /**
-     * 获取玩家语言字段名称
-     */
-    public static String getPlayerLanguageFieldName(ServerPlayer player) {
-        if (StringUtils.isNotNullOrEmpty(LANGUAGE_FIELD_NAME)) return LANGUAGE_FIELD_NAME;
-        try {
-            for (String field : FieldUtils.getPrivateFieldNames(ServerPlayer.class, String.class)) {
-                String lang = (String) FieldUtils.getPrivateFieldValue(ServerPlayer.class, player, field);
-                if (StringUtils.isNotNullOrEmpty(lang) && lang.matches("^[a-zA-Z]{2}_[a-zA-Z]{2}$")) {
-                    LANGUAGE_FIELD_NAME = field;
-                }
-            }
-        } catch (Exception e) {
-            LANGUAGE_FIELD_NAME = "language";
-            LOGGER.error("Failed to get player language field name", e);
-        }
-        LOGGER.debug("Player language field name: {}", LANGUAGE_FIELD_NAME);
-        return LANGUAGE_FIELD_NAME;
-    }
-
 }

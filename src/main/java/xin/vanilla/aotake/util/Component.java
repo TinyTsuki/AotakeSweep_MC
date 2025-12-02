@@ -164,7 +164,7 @@ public class Component implements Cloneable, Serializable {
      * 获取语言代码
      */
     public @NonNull String getLanguageCode() {
-        return this.languageCode == null ? ServerConfig.DEFAULT_LANGUAGE.get() : this.languageCode;
+        return this.languageCode == null ? ServerConfig.SERVER_CONFIG.defaultLanguage() : this.languageCode;
     }
 
     /**

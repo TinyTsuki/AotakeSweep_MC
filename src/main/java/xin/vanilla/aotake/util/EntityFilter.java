@@ -1,13 +1,12 @@
 package xin.vanilla.aotake.util;
 
-import net.minecraft.nbt.CollectionTag;
-import net.minecraft.nbt.NumericTag;
-import net.minecraft.nbt.Tag;
+import com.mojang.authlib.GameProfile;
 import net.minecraft.network.syncher.EntityDataAccessor;
+import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.players.GameProfileCache;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.TamableAnimal;
 import net.minecraft.world.entity.item.ItemEntity;
-import net.minecraftforge.common.UsernameCache;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -176,20 +175,20 @@ public class EntityFilter {
                     }
                     break;
                 case NBT_PATH:
-                    if (NBTPathUtils.has(entity.getPersistentData(), d.payload)) {
-                        Tag tag = NBTPathUtils.getTagByPath(entity.getPersistentData(), d.payload);
-                        if (tag instanceof NumericTag) {
-                            varsOut.put(key, ((NumericTag) tag).getAsNumber());
-                        } else if (tag instanceof CollectionTag) {
-                            varsOut.put(key, ((CollectionTag<?>) tag).toArray());
-                        } else if (tag != null) {
-                            varsOut.put(key, tag.getAsString());
-                        } else {
-                            varsOut.put(key, null);
-                        }
-                    } else {
-                        varsOut.put(key, null);
-                    }
+                    // if (NBTPathUtils.has(entity.getPersistentData(), d.payload)) {
+                    //     Tag tag = NBTPathUtils.getTagByPath(entity.getPersistentData(), d.payload);
+                    //     if (tag instanceof NumericTag) {
+                    //         varsOut.put(key, ((NumericTag) tag).getAsNumber());
+                    //     } else if (tag instanceof CollectionTag) {
+                    //         varsOut.put(key, ((CollectionTag<?>) tag).toArray());
+                    //     } else if (tag != null) {
+                    //         varsOut.put(key, tag.getAsString());
+                    //     } else {
+                    //         varsOut.put(key, null);
+                    //     }
+                    // } else {
+                    //     varsOut.put(key, null);
+                    // }
                     break;
                 case PREDEFINED:
                     switch (d.payload) {
@@ -290,7 +289,18 @@ public class EntityFilter {
                                 if (entity instanceof TamableAnimal) {
                                     ownerUUID = ((TamableAnimal) entity).getOwnerUUID();
                                 }
-                                if (ownerUUID != null) ownerName = UsernameCache.getLastKnownUsername(ownerUUID);
+                                if (ownerUUID != null) {
+                                    MinecraftServer server = entity.getServer();
+                                    if (server != null) {
+                                        GameProfileCache profileCache = server.getProfileCache();
+                                        if (profileCache != null) {
+                                            Optional<GameProfile> gameProfile = profileCache.get(ownerUUID);
+                                            if (gameProfile.isPresent()) {
+                                                ownerName = gameProfile.get().getName();
+                                            }
+                                        }
+                                    }
+                                }
                             }
                             varsOut.put(key, ownerName);
                             break;

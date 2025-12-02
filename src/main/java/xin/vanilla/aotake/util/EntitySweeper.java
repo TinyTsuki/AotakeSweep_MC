@@ -1,6 +1,12 @@
 package xin.vanilla.aotake.util;
 
 import lombok.NonNull;
+import net.fabricmc.fabric.api.transfer.v1.item.ItemVariant;
+import net.fabricmc.fabric.api.transfer.v1.storage.SlottedStorage;
+import net.fabricmc.fabric.api.transfer.v1.storage.Storage;
+import net.fabricmc.fabric.api.transfer.v1.storage.StorageView;
+import net.fabricmc.fabric.api.transfer.v1.storage.base.SingleSlotStorage;
+import net.fabricmc.fabric.api.transfer.v1.transaction.Transaction;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.ClickEvent;
 import net.minecraft.network.chat.HoverEvent;
@@ -12,12 +18,9 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
-import net.minecraftforge.entity.PartEntity;
-import net.minecraftforge.items.IItemHandler;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import xin.vanilla.aotake.AotakeSweep;
-import xin.vanilla.aotake.config.CommonConfig;
 import xin.vanilla.aotake.config.ServerConfig;
 import xin.vanilla.aotake.data.*;
 import xin.vanilla.aotake.data.player.PlayerSweepData;
@@ -30,6 +33,8 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
+
+@SuppressWarnings("UnstableApiUsage")
 public class EntitySweeper {
     private static final Logger LOGGER = LogManager.getLogger();
 
@@ -64,15 +69,15 @@ public class EntitySweeper {
         if (result.getTotalBatch() == 0) LOGGER.debug("AddDrops started at {}", System.currentTimeMillis());
         this.init();
 
-        if (result.getTotalBatch() == 0 && CollectionUtils.isNotNullOrEmpty(entities) && entities.size() > ServerConfig.SWEEP_ENTITY_LIMIT.get()) {
-            List<List<Entity>> lists = CollectionUtils.splitToCollections(entities, ServerConfig.SWEEP_ENTITY_LIMIT.get(), ServerConfig.SWEEP_BATCH_LIMIT.get());
+        if (result.getTotalBatch() == 0 && CollectionUtils.isNotNullOrEmpty(entities) && entities.size() > ServerConfig.SERVER_CONFIG.sweepEntityLimit()) {
+            List<List<Entity>> lists = CollectionUtils.splitToCollections(entities, ServerConfig.SERVER_CONFIG.sweepEntityLimit(), ServerConfig.SERVER_CONFIG.sweepBatchLimit());
             result.setTotalBatch(lists.size());
             if (lists.size() > 1) {
                 for (int i = 1; i < lists.size(); i++) {
                     List<Entity> entityList = lists.get(i);
-                    AotakeScheduler.schedule(AotakeSweep.getServerInstance().key()
-                            , ServerConfig.SWEEP_ENTITY_INTERVAL.get() * i
-                            , () -> AotakeSweep.getEntitySweeper().addDrops(entityList, result)
+                    AotakeScheduler.schedule(AotakeSweep.serverInstance().key()
+                            , ServerConfig.SERVER_CONFIG.sweepEntityInterval() * i
+                            , () -> AotakeSweep.entitySweeper().addDrops(entityList, result)
                     );
                 }
                 entities = lists.get(0);
@@ -104,7 +109,7 @@ public class EntitySweeper {
         if (result.getBatch().get() >= result.getTotalBatch()) {
             LOGGER.debug("AddDrops finished at {}", System.currentTimeMillis());
 
-            List<ServerPlayer> players = AotakeSweep.getServerInstance().key().getPlayerList().getPlayers();
+            List<ServerPlayer> players = AotakeSweep.serverInstance().key().getPlayerList().getPlayers();
             for (ServerPlayer p : players) {
                 String language = AotakeUtils.getPlayerLanguage(p);
                 Component msg = AotakeUtils.getWarningMessage(result.isEmpty() ? "fail" : "success"
@@ -135,7 +140,7 @@ public class EntitySweeper {
                 }
                 if (playerData.isEnableWarningVoice()) {
                     String voice = AotakeUtils.getWarningVoice(result.isEmpty() ? "fail" : "success");
-                    float volume = CommonConfig.SWEEP_WARNING_VOICE_VOLUME.get() / 100f;
+                    float volume = ServerConfig.SERVER_CONFIG.sweepWarningVoiceVolume() / 100f;
                     if (StringUtils.isNotNullOrEmpty(voice)) {
                         AotakeUtils.executeCommandNoOutput(p, String.format("playsound %s voice @s ~ ~ ~ %s", voice, volume));
                     }
@@ -151,7 +156,8 @@ public class EntitySweeper {
     private SweepResult processDrop(@NonNull Entity original) {
         SweepResult result = new SweepResult();
         WorldCoordinate coordinate = new WorldCoordinate(original);
-        Entity entity = (original instanceof PartEntity) ? ((PartEntity<?>) original).getParent() : original;
+        // Entity entity = (original instanceof PartEntity) ? ((PartEntity<?>) original).getParent() : original;
+        Entity entity = original;
 
         String typeKey = (entity instanceof ItemEntity)
                 ? AotakeUtils.getItemRegistryName(((ItemEntity) entity).getItem())
@@ -162,7 +168,7 @@ public class EntitySweeper {
         // 处理掉落物
         if (entity instanceof ItemEntity) {
             ItemStack item = ((ItemEntity) entity).getItem();
-            if (!AotakeSweep.getEntityFilter().validEntity(ServerConfig.ENTITY_REDLIST.get(), entity)) {
+            if (!AotakeSweep.entityFilter().validEntity(ServerConfig.SERVER_CONFIG.entityRedlist(), entity)) {
                 itemToRecycle = item.copy();
                 result.setItemCount(item.getCount());
             }
@@ -172,15 +178,17 @@ public class EntitySweeper {
         // 处理其他实体
         else {
             // 回收实体
-            if (!ServerConfig.CATCH_ITEM.get().isEmpty()
-                    && AotakeSweep.getEntityFilter().validEntity(ServerConfig.CATCH_ENTITY.get(), entity)
+            if (!ServerConfig.SERVER_CONFIG.catchItem().isEmpty()
+                    && AotakeSweep.entityFilter().validEntity(ServerConfig.SERVER_CONFIG.catchEntity(), entity)
             ) {
-                String randomItem = CollectionUtils.getRandomElement(ServerConfig.CATCH_ITEM.get());
+                String randomItem = CollectionUtils.getRandomElement(ServerConfig.SERVER_CONFIG.catchItem());
                 itemToRecycle = new ItemStack(AotakeUtils.deserializeItem(randomItem));
                 CompoundTag tag = itemToRecycle.getOrCreateTag();
                 CompoundTag aotake = new CompoundTag();
                 aotake.putBoolean("byPlayer", false);
-                aotake.put("entity", entity.serializeNBT());
+                CompoundTag entityTag = new CompoundTag();
+                entity.save(entityTag);
+                aotake.put("entity", entityTag);
                 tag.put(AotakeSweep.MODID, aotake);
 
                 result.setRecycledEntityCount(1);
@@ -207,8 +215,8 @@ public class EntitySweeper {
 
     private void handleItemRecycling(WorldCoordinate coordinate, ItemStack item, SweepResult result) {
         // 自清洁模式
-        if (ServerConfig.SELF_CLEAN_MODE.get().contains(EnumSelfCleanMode.SWEEP_DELETE.name())) {
-            switch (EnumDustbinMode.valueOfOrDefault(ServerConfig.DUSTBIN_MODE.get())) {
+        if (ServerConfig.SERVER_CONFIG.selfCleanMode().contains(EnumSelfCleanMode.SWEEP_DELETE.name())) {
+            switch (EnumDustbinMode.valueOfOrDefault(ServerConfig.SERVER_CONFIG.dustbinMode())) {
                 case VIRTUAL: {
                     selfCleanVirtualDustbin();
                 }
@@ -227,7 +235,7 @@ public class EntitySweeper {
         ItemStack remaining = item;
         int recycledCount = item.getCount();
 
-        switch (EnumDustbinMode.valueOfOrDefault(ServerConfig.DUSTBIN_MODE.get())) {
+        switch (EnumDustbinMode.valueOfOrDefault(ServerConfig.SERVER_CONFIG.dustbinMode())) {
             case VIRTUAL: {
                 remaining = addItemToVirtualDustbin(remaining);
             }
@@ -266,14 +274,24 @@ public class EntitySweeper {
     }
 
     private void selfCleanDustbinBlock() {
-        for (String pos : ServerConfig.DUSTBIN_BLOCK_POSITIONS.get()) {
+        for (String pos : ServerConfig.SERVER_CONFIG.dustbinBlockPositions()) {
             WorldCoordinate dustbinPos = WorldCoordinate.fromSimpleString(pos);
-            IItemHandler handler = AotakeUtils.getBlockItemHandler(dustbinPos);
-            if (handler != null) {
-                IntStream.range(0, handler.getSlots())
-                        .filter(i -> !handler.getStackInSlot(i).isEmpty())
-                        .findAny()
-                        .ifPresent(i -> handler.extractItem(i, handler.getSlotLimit(i), false));
+            Storage<ItemVariant> storage = AotakeUtils.getBlockItemHandler(dustbinPos);
+            if (storage != null) {
+                try {
+                    for (StorageView<ItemVariant> view : storage) {
+                        if (view == null || view.isResourceBlank()) continue;
+                        long amount = view.getAmount();
+                        if (amount <= 0) continue;
+                        try (Transaction tx = Transaction.openOuter()) {
+                            storage.extract(view.getResource(), amount, tx);
+                            tx.commit();
+                        } catch (Throwable ignored) {
+                        }
+                        break;
+                    }
+                } catch (Throwable ignored) {
+                }
             }
         }
     }
@@ -299,40 +317,65 @@ public class EntitySweeper {
 
     private ItemStack addItemToDustbinBlock(ItemStack item) {
         ItemStack remaining = item;
-        for (String pos : ServerConfig.DUSTBIN_BLOCK_POSITIONS.get()) {
+        for (String pos : ServerConfig.SERVER_CONFIG.dustbinBlockPositions()) {
             WorldCoordinate dustbinPos = WorldCoordinate.fromSimpleString(pos);
-            IItemHandler handler = AotakeUtils.getBlockItemHandler(dustbinPos);
-            if (handler != null) {
-                int invMax = IntStream.range(0, handler.getSlots())
-                        .map(handler::getSlotLimit)
-                        .filter(i -> i > 0)
-                        .min().orElse(64);
-                List<ItemStack> remainingList = new ArrayList<>();
-                List<ItemStack> itemStackList = splitItemStack(remaining, invMax);
-                int splits = itemStackList.size();
-                for (ItemStack itemStack : itemStackList) {
-                    ItemStack leftover = AotakeUtils.addItemToBlock(itemStack, dustbinPos);
-                    remainingList.add(leftover);
+            Storage<ItemVariant> storage = AotakeUtils.getBlockItemHandler(dustbinPos);
+            if (storage != null) {
+                int invMax = 64;
+                try {
+                    long minCap = Long.MAX_VALUE;
+                    if (storage instanceof SlottedStorage<?> slottedRaw) {
+                        @SuppressWarnings("unchecked")
+                        SlottedStorage<ItemVariant> slotted = (SlottedStorage<ItemVariant>) slottedRaw;
+                        int slotCount = slotted.getSlotCount();
+                        for (int i = 0; i < slotCount; i++) {
+                            try {
+                                SingleSlotStorage<ItemVariant> slot = slotted.getSlot(i);
+                                long cap = slot.getCapacity();
+                                if (cap > 0 && cap < minCap) minCap = cap;
+                            } catch (Throwable ignored) {
+                            }
+                        }
+                    } else {
+                        for (StorageView<ItemVariant> view : storage) {
+                            try {
+                                long cap = view.getCapacity();
+                                if (cap > 0 && cap < minCap) minCap = cap;
+                            } catch (Throwable ignored) {
+                            }
+                        }
+                    }
+                    if (minCap != Long.MAX_VALUE) {
+                        invMax = (int) Math.min(minCap, Integer.MAX_VALUE);
+                    }
+                    List<ItemStack> remainingList = new ArrayList<>();
+                    List<ItemStack> itemStackList = splitItemStack(remaining, invMax);
+                    int splits = itemStackList.size();
+                    for (ItemStack itemStack : itemStackList) {
+                        ItemStack leftover = AotakeUtils.addItemToBlock(itemStack, dustbinPos);
+                        remainingList.add(leftover);
+                    }
+                    if (splits > 0) remaining = mergeItemStack(remainingList);
+                } catch (Throwable ignored) {
                 }
-                if (splits > 0) remaining = mergeItemStack(remainingList);
             }
         }
         return remaining;
     }
 
     private void handleOverflow(WorldCoordinate coordinate, ItemStack item, SweepResult result) {
-        EnumOverflowMode mode = EnumOverflowMode.valueOf(ServerConfig.DUSTBIN_OVERFLOW_MODE.get());
+        EnumOverflowMode mode = EnumOverflowMode.valueOf(ServerConfig.SERVER_CONFIG.dustbinOverflowMode());
 
         switch (mode) {
             case KEEP: {
                 // 多余部分移除
-                if (dropList.size() < CommonConfig.CACHE_LIMIT.get()) {
+                if (dropList.size() < ServerConfig.SERVER_CONFIG.cacheLimit()) {
                     this.dropList.add(new KeyValue<>(coordinate, item.copy()));
                 }
             }
             break;
             case REPLACE: {
-                switch (EnumDustbinMode.valueOfOrDefault(ServerConfig.DUSTBIN_MODE.get())) {
+                switch (EnumDustbinMode.valueOfOrDefault(ServerConfig.SERVER_CONFIG.dustbinMode())) {
                     case VIRTUAL:
                     case VIRTUAL_BLOCK: {
                         SimpleContainer inv = this.inventoryList.get(AotakeSweep.RANDOM.nextInt(this.inventoryList.size()));
@@ -342,13 +385,30 @@ public class EntitySweeper {
                     break;
                     case BLOCK:
                     case BLOCK_VIRTUAL: {
-                        String pos = CollectionUtils.getRandomElement(ServerConfig.DUSTBIN_BLOCK_POSITIONS.get());
+                        String pos = CollectionUtils.getRandomElement(ServerConfig.SERVER_CONFIG.dustbinBlockPositions());
                         WorldCoordinate dustbinPos = WorldCoordinate.fromSimpleString(pos);
-                        IItemHandler handler = AotakeUtils.getBlockItemHandler(dustbinPos);
-                        if (handler != null) {
-                            int slot = AotakeSweep.RANDOM.nextInt(handler.getSlots());
-                            handler.extractItem(slot, handler.getSlotLimit(slot), false);
-                            handler.insertItem(slot, item.copy(), false);
+                        Storage<ItemVariant> storage = AotakeUtils.getBlockItemHandler(dustbinPos);
+
+                        if (storage != null) {
+                            try (Transaction transaction = Transaction.openOuter()) {
+                                List<SingleSlotStorage<ItemVariant>> slots = new ArrayList<>();
+                                for (StorageView<ItemVariant> view : storage) {
+                                    if (view instanceof SingleSlotStorage<ItemVariant> slotStorage) {
+                                        slots.add(slotStorage);
+                                    }
+                                }
+                                if (!slots.isEmpty()) {
+                                    int slotIndex = AotakeSweep.RANDOM.nextInt(slots.size());
+                                    SingleSlotStorage<ItemVariant> targetSlot = slots.get(slotIndex);
+                                    if (!targetSlot.isResourceBlank()) {
+                                        targetSlot.extract(targetSlot.getResource(), targetSlot.getAmount(), transaction);
+                                    }
+                                    ItemVariant newVariant = ItemVariant.of(item);
+                                    long amount = item.getCount();
+                                    targetSlot.insert(newVariant, amount, transaction);
+                                }
+                                transaction.commit();
+                            }
                         }
                     }
                     break;
@@ -368,24 +428,9 @@ public class EntitySweeper {
     public static void scheduleRemoveEntity(Entity entity, boolean keepData) {
         if (!(entity.level() instanceof ServerLevel)) return;
         ResourceKey<Level> dimensionKey = entity.level().dimension();
-
-        if (entity instanceof PartEntity) {
-            entity = ((PartEntity<?>) entity).getParent();
-        }
-        if (entity.isMultipartEntity()) {
-            PartEntity<?>[] parts = entity.getParts();
-            if (CollectionUtils.isNotNullOrEmpty(parts)) {
-                for (PartEntity<?> part : parts) {
-                    pendingRemovals
-                            .computeIfAbsent(dimensionKey, k -> new ConcurrentLinkedQueue<>())
-                            .add(new KeyValue<>(part, keepData));
-                }
-            }
-        } else {
-            pendingRemovals
-                    .computeIfAbsent(dimensionKey, k -> new ConcurrentLinkedQueue<>())
-                    .add(new KeyValue<>(entity, keepData));
-        }
+        pendingRemovals
+                .computeIfAbsent(dimensionKey, k -> new ConcurrentLinkedQueue<>())
+                .add(new KeyValue<>(entity, keepData));
     }
 
     public static void flushPendingRemovals(ServerLevel world) {

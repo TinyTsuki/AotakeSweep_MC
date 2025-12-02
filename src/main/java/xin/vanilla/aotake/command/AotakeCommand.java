@@ -25,7 +25,6 @@ import net.minecraft.world.item.ItemStack;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import xin.vanilla.aotake.AotakeSweep;
-import xin.vanilla.aotake.config.CommonConfig;
 import xin.vanilla.aotake.config.CustomConfig;
 import xin.vanilla.aotake.config.ServerConfig;
 import xin.vanilla.aotake.data.KeyValue;
@@ -34,7 +33,7 @@ import xin.vanilla.aotake.data.WorldCoordinate;
 import xin.vanilla.aotake.data.player.PlayerSweepData;
 import xin.vanilla.aotake.data.world.WorldTrashData;
 import xin.vanilla.aotake.enums.*;
-import xin.vanilla.aotake.event.EventHandlerProxy;
+import xin.vanilla.aotake.event.ServerEventHandler;
 import xin.vanilla.aotake.network.packet.CustomConfigSyncToClient;
 import xin.vanilla.aotake.network.packet.SweepTimeSyncToClient;
 import xin.vanilla.aotake.util.*;
@@ -86,10 +85,10 @@ public class AotakeCommand {
             }
             Component helpInfo;
             if (page > 0) {
-                int pages = (int) Math.ceil((double) HELP_MESSAGE.size() / ServerConfig.HELP_INFO_NUM_PER_PAGE.get());
-                helpInfo = Component.literal(StringUtils.format(ServerConfig.HELP_HEADER.get() + "\n", page, pages));
-                for (int i = 0; (page - 1) * ServerConfig.HELP_INFO_NUM_PER_PAGE.get() + i < HELP_MESSAGE.size() && i < ServerConfig.HELP_INFO_NUM_PER_PAGE.get(); i++) {
-                    KeyValue<String, EnumCommandType> keyValue = HELP_MESSAGE.get((page - 1) * ServerConfig.HELP_INFO_NUM_PER_PAGE.get() + i);
+                int pages = (int) Math.ceil((double) HELP_MESSAGE.size() / ServerConfig.SERVER_CONFIG.helpInfoNumPerPage());
+                helpInfo = Component.literal(StringUtils.format(ServerConfig.SERVER_CONFIG.helpHeader() + "\n", page, pages));
+                for (int i = 0; (page - 1) * ServerConfig.SERVER_CONFIG.helpInfoNumPerPage() + i < HELP_MESSAGE.size() && i < ServerConfig.SERVER_CONFIG.helpInfoNumPerPage(); i++) {
+                    KeyValue<String, EnumCommandType> keyValue = HELP_MESSAGE.get((page - 1) * ServerConfig.SERVER_CONFIG.helpInfoNumPerPage() + i);
                     Component commandTips;
                     if (keyValue.getValue().name().toLowerCase().contains("concise")) {
                         commandTips = Component.translatable(AotakeUtils.getPlayerLanguage(player), EnumI18nType.COMMAND, "concise", AotakeUtils.getCommand(keyValue.getValue().replaceConcise()));
@@ -159,7 +158,7 @@ public class AotakeCommand {
         SuggestionProvider<CommandSourceStack> helpSuggestions = (context, builder) -> {
             String input = CommandUtils.getStringEmpty(context, "command");
             boolean isInputEmpty = StringUtils.isNullOrEmpty(input);
-            int totalPages = (int) Math.ceil((double) HELP_MESSAGE.size() / ServerConfig.HELP_INFO_NUM_PER_PAGE.get());
+            int totalPages = (int) Math.ceil((double) HELP_MESSAGE.size() / ServerConfig.SERVER_CONFIG.helpInfoNumPerPage());
             for (int i = 0; i < totalPages && isInputEmpty; i++) {
                 builder.suggest(i + 1);
             }
@@ -244,7 +243,7 @@ public class AotakeCommand {
                     // 更新权限信息
                     source.getServer().getPlayerList().sendPlayerPermissionLevel(target);
                     for (ServerPlayer player : source.getServer().getPlayerList().getPlayers()) {
-                        if (AotakeSweep.getCustomConfigStatus().contains(AotakeUtils.getPlayerUUIDString(player))) {
+                        if (AotakeSweep.customConfigStatus().contains(AotakeUtils.getPlayerUUIDString(player))) {
                             AotakeUtils.sendPacketToPlayer(new CustomConfigSyncToClient(), player);
                         }
                     }
@@ -340,7 +339,7 @@ public class AotakeCommand {
                 AotakeUtils.removeEntity(entity, false);
             });
 
-            AotakeSweep.getServerInstance().key()
+            AotakeSweep.serverInstance().key()
                     .getPlayerList()
                     .getPlayers()
                     .forEach(player -> AotakeUtils.sendMessage(player
@@ -362,9 +361,9 @@ public class AotakeCommand {
             }
 
             int page = CommandUtils.getIntDefault(context, "page", 0);
-            int vPage = CommonConfig.DUSTBIN_PAGE_LIMIT.get();
-            int bPage = ServerConfig.DUSTBIN_BLOCK_POSITIONS.get().size();
-            switch (EnumDustbinMode.valueOfOrDefault(ServerConfig.DUSTBIN_MODE.get())) {
+            int vPage = ServerConfig.SERVER_CONFIG.dustbinPageLimit();
+            int bPage = ServerConfig.SERVER_CONFIG.dustbinBlockPositions().size();
+            switch (EnumDustbinMode.valueOfOrDefault(ServerConfig.SERVER_CONFIG.dustbinMode())) {
                 case VIRTUAL: {
                     AotakeUtils.clearVirtualDustbin(page);
                 }
@@ -407,7 +406,7 @@ public class AotakeCommand {
                             ? context.getSource().getPlayerOrException().getDisplayName().getString()
                             : "server"
             );
-            AotakeSweep.getServerInstance().key()
+            AotakeSweep.serverInstance().key()
                     .getPlayerList()
                     .getPlayers()
                     .forEach(p -> AotakeUtils.sendMessage(p, message));
@@ -424,9 +423,9 @@ public class AotakeCommand {
                 return 0;
             }
             int page = CommandUtils.getIntDefault(context, "page", 0);
-            int vPage = CommonConfig.DUSTBIN_PAGE_LIMIT.get();
-            int bPage = ServerConfig.DUSTBIN_BLOCK_POSITIONS.get().size();
-            switch (EnumDustbinMode.valueOfOrDefault(ServerConfig.DUSTBIN_MODE.get())) {
+            int vPage = ServerConfig.SERVER_CONFIG.dustbinPageLimit();
+            int bPage = ServerConfig.SERVER_CONFIG.dustbinBlockPositions().size();
+            switch (EnumDustbinMode.valueOfOrDefault(ServerConfig.SERVER_CONFIG.dustbinMode())) {
                 case VIRTUAL: {
                     AotakeUtils.dropVirtualDustbin(player, page);
                 }
@@ -469,7 +468,7 @@ public class AotakeCommand {
                             ? context.getSource().getPlayerOrException().getDisplayName().getString()
                             : "server"
             );
-            AotakeSweep.getServerInstance().key()
+            AotakeSweep.serverInstance().key()
                     .getPlayerList()
                     .getPlayers()
                     .forEach(p -> AotakeUtils.sendMessage(p, message));
@@ -486,7 +485,7 @@ public class AotakeCommand {
                             ? context.getSource().getPlayerOrException().getDisplayName().getString()
                             : "server"
             );
-            AotakeSweep.getServerInstance().key()
+            AotakeSweep.serverInstance().key()
                     .getPlayerList()
                     .getPlayers()
                     .forEach(p -> AotakeUtils.sendMessage(p, message));
@@ -520,7 +519,7 @@ public class AotakeCommand {
                             ? context.getSource().getPlayerOrException().getDisplayName().getString()
                             : "server"
             );
-            AotakeSweep.getServerInstance().key()
+            AotakeSweep.serverInstance().key()
                     .getPlayerList()
                     .getPlayers()
                     .forEach(p -> AotakeUtils.sendMessage(p, message));
@@ -530,32 +529,32 @@ public class AotakeCommand {
             if (CommandUtils.checkModStatus(context)) return 0;
             CommandUtils.notifyHelp(context);
             Date current = new Date();
-            long delay = CommandUtils.getLongDefault(context, "seconds", ServerConfig.SWEEP_INTERVAL.get() / 1000);
+            long delay = CommandUtils.getLongDefault(context, "seconds", ServerConfig.SERVER_CONFIG.sweepInterval() / 1000);
             if (delay > 0) {
-                EventHandlerProxy.setNextSweepTime(current.getTime() + delay * 1000);
+                ServerEventHandler.setNextSweepTime(current.getTime() + delay * 1000);
             } else {
-                long nextSweepTime = EventHandlerProxy.getNextSweepTime() + delay * 1000;
+                long nextSweepTime = ServerEventHandler.getNextSweepTime() + delay * 1000;
                 if (nextSweepTime < current.getTime())
-                    nextSweepTime = current.getTime() + ServerConfig.SWEEP_INTERVAL.get();
-                EventHandlerProxy.setNextSweepTime(nextSweepTime);
+                    nextSweepTime = current.getTime() + ServerConfig.SERVER_CONFIG.sweepInterval();
+                ServerEventHandler.setNextSweepTime(nextSweepTime);
             }
             // 给已安装mod玩家同步扫地倒计时
-            for (String uuid : AotakeSweep.getCustomConfigStatus()) {
+            for (String uuid : AotakeSweep.customConfigStatus()) {
                 ServerPlayer player = AotakeUtils.getPlayerByUUID(uuid);
                 if (player != null) {
                     AotakeUtils.sendPacketToPlayer(new SweepTimeSyncToClient(), player);
                 }
             }
-            long seconds = (EventHandlerProxy.getNextSweepTime() - current.getTime()) / 1000;
+            long seconds = (ServerEventHandler.getNextSweepTime() - current.getTime()) / 1000;
             Component message = Component.translatable(EnumI18nType.MESSAGE, "next_sweep_time_set"
                     , context.getSource().getEntity() instanceof ServerPlayer
                             ? context.getSource().getPlayerOrException().getDisplayName().getString()
                             : "server"
                     , Component.literal(String.valueOf(seconds)).setHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT
-                            , Component.literal(DateUtils.toDateTimeString(new Date(EventHandlerProxy.getNextSweepTime())) + " (Server Time)").toTextComponent())
+                            , Component.literal(DateUtils.toDateTimeString(new Date(ServerEventHandler.getNextSweepTime())) + " (Server Time)").toTextComponent())
                     )
             );
-            AotakeSweep.getServerInstance().key()
+            AotakeSweep.serverInstance().key()
                     .getPlayerList()
                     .getPlayers()
                     .forEach(p -> AotakeUtils.sendMessage(p, message));
@@ -565,7 +564,7 @@ public class AotakeCommand {
 
 
         LiteralArgumentBuilder<CommandSourceStack> language = // region language
-                Commands.literal(CommonConfig.COMMAND_LANGUAGE.get())
+                Commands.literal(ServerConfig.SERVER_CONFIG.commandLanguage())
                         .then(Commands.argument("language", StringArgumentType.word())
                                 .suggests((context, builder) -> {
                                     builder.suggest("client");
@@ -576,7 +575,7 @@ public class AotakeCommand {
                                 .executes(languageCommand)
                         ); // endregion language
         LiteralArgumentBuilder<CommandSourceStack> virtualOp = // region virtualOp
-                Commands.literal(CommonConfig.COMMAND_VIRTUAL_OP.get())
+                Commands.literal(ServerConfig.SERVER_CONFIG.commandVirtualOp())
                         .requires(source -> AotakeUtils.hasCommandPermission(source, EnumCommandType.VIRTUAL_OP))
                         .then(Commands.argument("operation", StringArgumentType.word())
                                 .suggests((context, builder) -> {
@@ -619,7 +618,7 @@ public class AotakeCommand {
                                 )
                         ); // endregion virtualOp
         LiteralArgumentBuilder<CommandSourceStack> openDustbin = // region openDustbin
-                Commands.literal(CommonConfig.COMMAND_DUSTBIN_OPEN.get())
+                Commands.literal(ServerConfig.SERVER_CONFIG.commandDustbinOpen())
                         .requires(source -> AotakeUtils.hasCommandPermission(source, EnumCommandType.DUSTBIN_OPEN))
                         .executes(openDustbinCommand)
                         .then(Commands.argument("page", IntegerArgumentType.integer(1))
@@ -640,7 +639,7 @@ public class AotakeCommand {
                                 )
                         ); // endregion openDustbin
         LiteralArgumentBuilder<CommandSourceStack> sweep = // region sweep
-                Commands.literal(CommonConfig.COMMAND_SWEEP.get())
+                Commands.literal(ServerConfig.SERVER_CONFIG.commandSweep())
                         .requires(source -> AotakeUtils.hasCommandPermission(source, EnumCommandType.SWEEP))
                         .executes(sweepCommand)
                         .then(Commands.argument("dimension", DimensionArgument.dimension())
@@ -650,7 +649,7 @@ public class AotakeCommand {
                                 .executes(sweepCommand)
                         ); // endregion sweep
         LiteralArgumentBuilder<CommandSourceStack> clearDrop = // region killItems
-                Commands.literal(CommonConfig.COMMAND_CLEAR_DROP.get())
+                Commands.literal(ServerConfig.SERVER_CONFIG.commandClearDrop())
                         .requires(source -> AotakeUtils.hasCommandPermission(source, EnumCommandType.CLEAR_DROP))
                         .executes(clearDropCommand)
                         .then(Commands.argument("dimension", DimensionArgument.dimension())
@@ -672,7 +671,7 @@ public class AotakeCommand {
                                 )
                         ); // endregion killItems
         LiteralArgumentBuilder<CommandSourceStack> clearDustbin = // region clearDustbin
-                Commands.literal(CommonConfig.COMMAND_DUSTBIN_CLEAR.get())
+                Commands.literal(ServerConfig.SERVER_CONFIG.commandDustbinClear())
                         .requires(source -> AotakeUtils.hasCommandPermission(source, EnumCommandType.DUSTBIN_CLEAR))
                         .executes(clearDustbinCommand)
                         .then(Commands.argument("page", IntegerArgumentType.integer(1))
@@ -692,7 +691,7 @@ public class AotakeCommand {
                                 .executes(clearDustbinCommand)
                         ); // endregion clearDustbin
         LiteralArgumentBuilder<CommandSourceStack> dropDustbin = // region dropDustbin
-                Commands.literal(CommonConfig.COMMAND_DUSTBIN_DROP.get())
+                Commands.literal(ServerConfig.SERVER_CONFIG.commandDustbinDrop())
                         .requires(source -> AotakeUtils.hasCommandPermission(source, EnumCommandType.DUSTBIN_DROP))
                         .executes(dropDustbinCommand)
                         .then(Commands.argument("page", IntegerArgumentType.integer(1))
@@ -712,23 +711,23 @@ public class AotakeCommand {
                                 .executes(dropDustbinCommand)
                         ); // endregion dropDustbin
         LiteralArgumentBuilder<CommandSourceStack> clearCache = // region clearCache
-                Commands.literal(CommonConfig.COMMAND_CACHE_CLEAR.get())
+                Commands.literal(ServerConfig.SERVER_CONFIG.commandCacheClear())
                         .requires(source -> AotakeUtils.hasCommandPermission(source, EnumCommandType.CACHE_CLEAR))
                         .executes(clearCacheCommand); // endregion clearCache
         LiteralArgumentBuilder<CommandSourceStack> dropCache = // region dropCache
-                Commands.literal(CommonConfig.COMMAND_CACHE_DROP.get())
+                Commands.literal(ServerConfig.SERVER_CONFIG.commandCacheDrop())
                         .requires(source -> AotakeUtils.hasCommandPermission(source, EnumCommandType.CACHE_DROP))
                         .executes(dropCacheCommand)
                         .then(Commands.argument("originalPos", BoolArgumentType.bool())
                                 .executes(dropCacheCommand)
                         ); // endregion dropCache
         LiteralArgumentBuilder<CommandSourceStack> delaySweep = // region delaySweep
-                Commands.literal(CommonConfig.COMMAND_DELAY_SWEEP.get())
+                Commands.literal(ServerConfig.SERVER_CONFIG.commandDelaySweep())
                         .requires(source -> AotakeUtils.hasCommandPermission(source, EnumCommandType.DELAY_SWEEP))
                         .executes(delaySweepCommand)
                         .then(Commands.argument("seconds", LongArgumentType.longArg())
                                 .suggests((context, builder) -> {
-                                    builder.suggest((int) (ServerConfig.SWEEP_INTERVAL.get() / 1000));
+                                    builder.suggest((int) (ServerConfig.SERVER_CONFIG.sweepInterval() / 1000));
                                     return builder.buildFuture();
                                 })
                                 .executes(delaySweepCommand)
@@ -738,52 +737,52 @@ public class AotakeCommand {
         // 注册简短的指令
         {
             // 设置语言 /language
-            if (CommonConfig.CONCISE_LANGUAGE.get()) {
+            if (ServerConfig.SERVER_CONFIG.conciseLanguage()) {
                 dispatcher.register(language);
             }
 
             // 设置虚拟权限 /opv
-            if (CommonConfig.CONCISE_VIRTUAL_OP.get()) {
+            if (ServerConfig.SERVER_CONFIG.conciseVirtualOp()) {
                 dispatcher.register(virtualOp);
             }
 
             // 打开垃圾箱 /dustbin
-            if (CommonConfig.CONCISE_DUSTBIN_OPEN.get()) {
+            if (ServerConfig.SERVER_CONFIG.conciseDustbinOpen()) {
                 dispatcher.register(openDustbin);
             }
 
             // 扫地 /sweep
-            if (CommonConfig.CONCISE_SWEEP.get()) {
+            if (ServerConfig.SERVER_CONFIG.conciseSweep()) {
                 dispatcher.register(sweep);
             }
 
             // 清除掉落物 /killitem
-            if (CommonConfig.CONCISE_CLEAR_DROP.get()) {
+            if (ServerConfig.SERVER_CONFIG.conciseClearDrop()) {
                 dispatcher.register(clearDrop);
             }
 
             // 清空垃圾箱 /cleardustbin
-            if (CommonConfig.CONCISE_DUSTBIN_CLEAR.get()) {
+            if (ServerConfig.SERVER_CONFIG.conciseDustbinClear()) {
                 dispatcher.register(clearDustbin);
             }
 
             // 将垃圾箱物品掉落到世界 /dropdustbin
-            if (CommonConfig.CONCISE_DUSTBIN_DROP.get()) {
+            if (ServerConfig.SERVER_CONFIG.conciseDustbinDrop()) {
                 dispatcher.register(dropDustbin);
             }
 
             // 清空缓存 /clearcache
-            if (CommonConfig.CONCISE_CACHE_CLEAR.get()) {
+            if (ServerConfig.SERVER_CONFIG.conciseCacheClear()) {
                 dispatcher.register(clearCache);
             }
 
             // 将缓存内物品掉落至世界 /dropcache
-            if (CommonConfig.CONCISE_CACHE_DROP.get()) {
+            if (ServerConfig.SERVER_CONFIG.conciseCacheDrop()) {
                 dispatcher.register(dropCache);
             }
 
             // 延迟扫地 /delay
-            if (CommonConfig.CONCISE_DELAY_SWEEP.get()) {
+            if (ServerConfig.SERVER_CONFIG.conciseDelaySweep()) {
                 dispatcher.register(delaySweep);
             }
 
@@ -839,15 +838,12 @@ public class AotakeCommand {
                                                 switch (mode) {
                                                     case 0:
                                                         ServerConfig.resetConfig();
-                                                        CommonConfig.resetConfig();
                                                         break;
                                                     case 1:
                                                         ServerConfig.resetConfigWithMode1();
-                                                        CommonConfig.resetConfigWithMode1();
                                                         break;
                                                     case 2:
                                                         ServerConfig.resetConfigWithMode2();
-                                                        CommonConfig.resetConfigWithMode2();
                                                         break;
                                                     default: {
                                                         throw new IllegalArgumentException("Mode " + mode + " does not exist");
@@ -871,56 +867,18 @@ public class AotakeCommand {
                                     .requires(source -> AotakeUtils.hasCommandPermission(source, EnumCommandType.VIRTUAL_OP))
                                     .then(Commands.argument("disable", BoolArgumentType.bool())
                                             .executes(context -> {
-                                                AotakeSweep.setDisable(BoolArgumentType.getBool(context, "disable"));
+                                                AotakeSweep.disable(BoolArgumentType.getBool(context, "disable"));
                                                 AotakeUtils.broadcastMessage(context.getSource().getServer()
                                                         , Component.translatable(EnumI18nType.MESSAGE
                                                                 , "mod_status"
                                                                 , Component.translatable(EnumI18nType.KEY, "categories")
-                                                                , I18nUtils.enabled(ServerConfig.DEFAULT_LANGUAGE.get(), !AotakeSweep.isDisable())
+                                                                , I18nUtils.enabled(ServerConfig.SERVER_CONFIG.defaultLanguage(), !AotakeSweep.disable())
                                                         )
                                                 );
                                                 return 1;
                                             })
                                     )
                             )
-                            // region 修改server配置
-                            .then(Commands.literal("server")
-                                    .requires(source -> AotakeUtils.hasCommandPermission(source, EnumCommandType.VIRTUAL_OP))
-                                    .then(Commands.argument("configKey", StringArgumentType.word())
-                                            .suggests((context, builder) -> {
-                                                String input = CommandUtils.getStringEmpty(context, "configKey");
-                                                CommandUtils.configKeySuggestion(ServerConfig.class, builder, input);
-                                                return builder.buildFuture();
-                                            })
-                                            .then(Commands.argument("configValue", StringArgumentType.word())
-                                                    .suggests((context, builder) -> {
-                                                        String configKey = StringArgumentType.getString(context, "configKey");
-                                                        CommandUtils.configValueSuggestion(ServerConfig.class, builder, configKey);
-                                                        return builder.buildFuture();
-                                                    })
-                                                    .executes(context -> CommandUtils.executeModifyConfig(ServerConfig.class, context))
-                                            )
-                                    )
-                            )// endregion 修改server配置
-                            // region 修改common配置
-                            .then(Commands.literal("common")
-                                    .requires(source -> AotakeUtils.hasCommandPermission(source, EnumCommandType.VIRTUAL_OP))
-                                    .then(Commands.argument("configKey", StringArgumentType.word())
-                                            .suggests((context, builder) -> {
-                                                String input = CommandUtils.getStringEmpty(context, "configKey");
-                                                CommandUtils.configKeySuggestion(CommonConfig.class, builder, input);
-                                                return builder.buildFuture();
-                                            })
-                                            .then(Commands.argument("configValue", StringArgumentType.word())
-                                                    .suggests((context, builder) -> {
-                                                        String configKey = StringArgumentType.getString(context, "configKey");
-                                                        CommandUtils.configValueSuggestion(CommonConfig.class, builder, configKey);
-                                                        return builder.buildFuture();
-                                                    })
-                                                    .executes(context -> CommandUtils.executeModifyConfig(CommonConfig.class, context))
-                                            )
-                                    )
-                            )// endregion 修改common配置
                             // region 玩家设置
                             // 显示打扫结果信息
                             .then(Commands.literal("player")

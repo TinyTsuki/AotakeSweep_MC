@@ -1,29 +1,43 @@
 package xin.vanilla.aotake.network;
 
-import net.minecraftforge.network.NetworkRegistry;
-import net.minecraftforge.network.simple.SimpleChannel;
-import xin.vanilla.aotake.AotakeSweep;
+import lombok.Getter;
+import lombok.experimental.Accessors;
+import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
+import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import xin.vanilla.aotake.network.packet.*;
 
-public class ModNetworkHandler {
-    private static final String PROTOCOL_VERSION = "1";
-    private static int ID = 0;
-    public static final SimpleChannel INSTANCE = NetworkRegistry.newSimpleChannel(
-            AotakeSweep.createResource("main_network")
-            , () -> PROTOCOL_VERSION
-            , clientVersion -> true      // 客户端版本始终有效
-            , serverVersion -> true       // 服务端版本始终有效
-    );
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
-    public static int nextID() {
-        return ID++;
+@Accessors(fluent = true)
+public final class ModNetworkHandler {
+    /**
+     * 分片网络包缓存
+     */
+    @Getter
+    private static final Map<String, List<? extends SplitPacket>> packetCache = new ConcurrentHashMap<>();
+
+
+    public static void registerServerPackets() {
+        ServerPlayNetworking.registerGlobalReceiver(OpenDustbinToServer.ID, (server, player, handler, buf, responseSender) ->
+                server.execute(() -> OpenDustbinToServer.handle(new OpenDustbinToServer(buf), player))
+        );
+        ServerPlayNetworking.registerGlobalReceiver(ClearDustbinToServer.ID, (server, player, handler, buf, responseSender) ->
+                server.execute(() -> ClearDustbinToServer.handle(new ClearDustbinToServer(buf), player))
+        );
+        ServerPlayNetworking.registerGlobalReceiver(ClientLoadedToServer.ID, (server, player, handler, buf, responseSender) ->
+                server.execute(() -> ClientLoadedToServer.handle(player))
+        );
     }
 
-    public static void registerPackets() {
-        INSTANCE.registerMessage(nextID(), OpenDustbinToServer.class, OpenDustbinToServer::toBytes, OpenDustbinToServer::new, OpenDustbinToServer::handle);
-        INSTANCE.registerMessage(nextID(), ClearDustbinToServer.class, ClearDustbinToServer::toBytes, ClearDustbinToServer::new, ClearDustbinToServer::handle);
-        INSTANCE.registerMessage(nextID(), ClientLoadedToServer.class, ClientLoadedToServer::toBytes, ClientLoadedToServer::new, ClientLoadedToServer::handle);
-        INSTANCE.registerMessage(nextID(), CustomConfigSyncToClient.class, CustomConfigSyncToClient::toBytes, CustomConfigSyncToClient::new, CustomConfigSyncToClient::handle);
-        INSTANCE.registerMessage(nextID(), SweepTimeSyncToClient.class, SweepTimeSyncToClient::toBytes, SweepTimeSyncToClient::new, SweepTimeSyncToClient::handle);
+    public static void registerClientPackets() {
+        ClientPlayNetworking.registerGlobalReceiver(CustomConfigSyncToClient.ID, (client, handler, buf, responseSender) -> {
+            client.execute(() -> CustomConfigSyncToClient.handle(new CustomConfigSyncToClient(buf)));
+        });
+        ClientPlayNetworking.registerGlobalReceiver(SweepTimeSyncToClient.ID, (client, handler, buf, responseSender) -> {
+            client.execute(() -> SweepTimeSyncToClient.handle(new SweepTimeSyncToClient(buf)));
+        });
     }
+
 }

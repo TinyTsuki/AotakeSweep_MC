@@ -1,14 +1,12 @@
 package xin.vanilla.aotake.data.player;
 
+import net.fabricmc.fabric.api.event.lifecycle.v1.ServerWorldEvents;
+import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerLevel;
-import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.server.network.ServerGamePacketListenerImpl;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.storage.LevelResource;
-import net.minecraftforge.event.entity.player.PlayerEvent;
-import net.minecraftforge.event.level.LevelEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import xin.vanilla.aotake.AotakeSweep;
@@ -28,7 +26,6 @@ import java.util.stream.Collectors;
 /**
  * 玩家数据管理
  */
-@Mod.EventBusSubscriber(modid = AotakeSweep.MODID, bus = Mod.EventBusSubscriber.Bus.FORGE)
 public class PlayerDataManager {
     private static final Logger LOGGER = LogManager.getLogger();
 
@@ -39,6 +36,18 @@ public class PlayerDataManager {
     private final Map<UUID, CompoundTag> cache = new ConcurrentHashMap<>();
 
     private PlayerDataManager() {
+    }
+
+    public static void register() {
+        ServerPlayConnectionEvents.JOIN.register((handler, sender, server) ->
+                onPlayerLogin(handler)
+        );
+        ServerPlayConnectionEvents.DISCONNECT.register((handler, server) ->
+                onPlayerLogout(handler)
+        );
+        ServerWorldEvents.UNLOAD.register((server, world) ->
+                onWorldUnload(world)
+        );
     }
 
     public static PlayerDataManager instance() {
@@ -169,39 +178,27 @@ public class PlayerDataManager {
      * 获取玩家数据文件
      */
     private File getPlayerDataFile(UUID uuid) {
-        Path playerDataDir = AotakeSweep.getServerInstance().key().getWorldPath(LevelResource.PLAYER_DATA_DIR);
+        Path playerDataDir = AotakeSweep.serverInstance().key().getWorldPath(LevelResource.PLAYER_DATA_DIR);
         return new File(playerDataDir.resolve(SUFFIX).toFile(), uuid + ".nbt");
     }
 
 
     // region events
 
-    @SubscribeEvent
-    public static void onPlayerLogin(PlayerEvent.PlayerLoggedInEvent event) {
-        if (!(event.getEntity() instanceof ServerPlayer)) return;
-        UUID uuid = event.getEntity().getUUID();
+    private static void onPlayerLogin(ServerGamePacketListenerImpl handler) {
+        UUID uuid = handler.player.getUUID();
         LOGGER.debug("Loading mod player data for {}", uuid);
         instance().loadFromDisk(uuid);
     }
 
-    @SubscribeEvent
-    public static void onPlayerLogout(PlayerEvent.PlayerLoggedOutEvent event) {
-        if (!(event.getEntity() instanceof ServerPlayer)) return;
-        UUID uuid = event.getEntity().getUUID();
+    private static void onPlayerLogout(ServerGamePacketListenerImpl handler) {
+        UUID uuid = handler.player.getUUID();
         LOGGER.debug("Saving mod player data for {} on logout", uuid);
         instance().saveToDisk(uuid);
         instance().remove(uuid);
     }
 
-    @SubscribeEvent
-    public static void onWorldSave(LevelEvent.Save event) {
-        if (!(event.getLevel() instanceof ServerLevel)) return;
-        instance().saveAllForWorld();
-    }
-
-    @SubscribeEvent
-    public static void onWorldUnload(LevelEvent.Unload event) {
-        if (!(event.getLevel() instanceof ServerLevel)) return;
+    private static void onWorldUnload(ServerLevel level) {
         instance().saveAllForWorld();
     }
 

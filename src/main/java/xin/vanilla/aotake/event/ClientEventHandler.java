@@ -1,0 +1,781 @@
+package xin.vanilla.aotake.event;
+
+import lombok.Getter;
+import lombok.experimental.Accessors;
+import net.fabricmc.api.ClientModInitializer;
+import net.fabricmc.api.EnvType;
+import net.fabricmc.api.Environment;
+import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
+import net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper;
+import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
+import net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback;
+import net.fabricmc.fabric.api.client.screen.v1.ScreenEvents;
+import net.fabricmc.fabric.api.resource.ResourceManagerHelper;
+import net.minecraft.client.KeyMapping;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.gui.screens.inventory.ContainerScreen;
+import net.minecraft.client.player.LocalPlayer;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.packs.PackType;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+import org.lwjgl.glfw.GLFW;
+import xin.vanilla.aotake.AotakeSweep;
+import xin.vanilla.aotake.config.ClientConfig;
+import xin.vanilla.aotake.config.CustomConfig;
+import xin.vanilla.aotake.data.Color;
+import xin.vanilla.aotake.data.KeyValue;
+import xin.vanilla.aotake.enums.EnumCommandType;
+import xin.vanilla.aotake.enums.EnumI18nType;
+import xin.vanilla.aotake.enums.EnumProgressBarType;
+import xin.vanilla.aotake.enums.EnumRotationCenter;
+import xin.vanilla.aotake.network.ModNetworkHandler;
+import xin.vanilla.aotake.network.packet.ClearDustbinToServer;
+import xin.vanilla.aotake.network.packet.ClientLoadedToServer;
+import xin.vanilla.aotake.network.packet.OpenDustbinToServer;
+import xin.vanilla.aotake.screen.component.Text;
+import xin.vanilla.aotake.util.*;
+
+import java.util.*;
+
+
+/**
+ * 客户端事件处理器
+ */
+@Accessors(fluent = true)
+@Environment(EnvType.CLIENT)
+public class ClientEventHandler implements ClientModInitializer {
+    private static final Logger LOGGER = LogManager.getLogger();
+
+
+    private static final String CATEGORIES = "key.aotake_sweep.categories";
+
+    /**
+     * 垃圾箱快捷键
+     */
+    public static KeyMapping DUSTBIN_KEY;
+    /**
+     * 垃圾箱上页快捷键
+     */
+    public static KeyMapping DUSTBIN_PRE_KEY;
+    /**
+     * 垃圾箱下页快捷键
+     */
+    public static KeyMapping DUSTBIN_NEXT_KEY;
+
+    /**
+     * 切换进度条显示按键
+     */
+    public static KeyMapping PROGRESS_KEY;
+
+
+    private static long lastTime = 0;
+
+    /**
+     * 重新打开垃圾箱页面前鼠标位置
+     */
+    private static final KeyValue<Double, Double> mousePos = new KeyValue<>(-1D, -1D);
+    /**
+     * 是否显示进度条
+     */
+    private static boolean showProgress = false;
+    /**
+     * 隐藏经验条
+     */
+    @Getter
+    private static boolean hideExpBar = false;
+
+    private static final Component MOD_NAME = Component.translatable(EnumI18nType.KEY, "categories");
+
+    private static final MouseHelper mouseHelper = new MouseHelper();
+    private static final Set<Screen> REGISTERED_SCREEN = Collections.newSetFromMap(new WeakHashMap<>());
+
+
+    @Override
+    public void onInitializeClient() {
+        // 注册调度器
+        ClientTickEvents.END_CLIENT_TICK.register(client -> AotakeScheduler.onClientTick());
+        // 注册配置
+        ClientConfig.register();
+        CustomConfig.loadCustomConfig(false);
+        // 注册网络包
+        ModNetworkHandler.registerClientPackets();
+        // 注册玩家登录事件
+        onPlayerLoggedIn();
+        // 注册玩家登出事件
+        onPlayerLoggedOut();
+        // 注册键绑定
+        onKeyBindings();
+        // 注册客户端Tick事件
+        onClientTickEvent();
+        // 注册屏幕事件
+        onScreenEvent();
+        // 注册HUD渲染事件
+        onHudRender();
+
+        ResourceManagerHelper.get(PackType.CLIENT_RESOURCES).registerReloadListener(new TextureUtils());
+    }
+
+    private static void onPlayerLoggedIn() {
+        ClientPlayConnectionEvents.JOIN.register((handler, sender, client) -> {
+            LOGGER.debug("Client: Player logged in.");
+            // 通知服务器客户端已加载mod
+            AotakeUtils.sendPacketToServer(new ClientLoadedToServer());
+        });
+    }
+
+    private static void onPlayerLoggedOut() {
+        ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> {
+            AotakeSweep.clientServerTime().setKey(0L).setValue(0L);
+            AotakeSweep.sweepTime().setKey(0L).setValue(0L);
+        });
+    }
+
+    /**
+     * 注册键绑定
+     */
+    private static void onKeyBindings() {
+        // 注册键绑定
+        LOGGER.debug("Registering key bindings");
+        DUSTBIN_KEY = KeyBindingHelper.registerKeyBinding(
+                new KeyMapping("key.aotake_sweep.open_dustbin", GLFW.GLFW_KEY_UNKNOWN, CATEGORIES)
+        );
+        DUSTBIN_PRE_KEY = KeyBindingHelper.registerKeyBinding(
+                new KeyMapping("key.aotake_sweep.open_dustbin_pre",
+                        GLFW.GLFW_KEY_LEFT, CATEGORIES)
+        );
+        DUSTBIN_NEXT_KEY = KeyBindingHelper.registerKeyBinding(
+                new KeyMapping("key.aotake_sweep.open_dustbin_next", GLFW.GLFW_KEY_RIGHT, CATEGORIES)
+        );
+        PROGRESS_KEY = KeyBindingHelper.registerKeyBinding(
+                new KeyMapping("key.aotake_sweep.progress", GLFW.GLFW_KEY_TAB, CATEGORIES)
+        );
+    }
+
+    private static void onClientTickEvent() {
+        ClientTickEvents.END_CLIENT_TICK.register(client -> {
+            if (Minecraft.getInstance().screen == null) {
+                if (DUSTBIN_KEY.isDown() && System.currentTimeMillis() - lastTime > 100) {
+                    lastTime = System.currentTimeMillis();
+                    AotakeUtils.sendPacketToServer(new OpenDustbinToServer(0));
+                }
+                if (ClientConfig.CLIENT_CONFIG.progressBarKeyApplyMode()) {
+                    if (PROGRESS_KEY.isDown() && System.currentTimeMillis() - lastTime > 100) {
+                        lastTime = System.currentTimeMillis();
+                        showProgress = !showProgress;
+                    }
+                } else {
+                    showProgress = PROGRESS_KEY.isDown();
+                }
+            }
+        });
+    }
+
+    private static void onScreenEvent() {
+        ScreenEvents.AFTER_INIT.register((client, screen, scaledWidth, scaledHeight) -> {
+            if (isAotakeContainerScreen(client, screen)) {
+                if (!REGISTERED_SCREEN.add(screen)) return;
+
+                screenAfterInit();
+
+                ScreenEvents.afterRender(screen).register((screenRendered, graphics, mouseX, mouseY, tickDelta) ->
+                        screenAfterRender(client, screenRendered, graphics, mouseX, mouseY)
+                );
+
+                ScreenEvents.afterTick(screen).register(screenTicked ->
+                        screenAfterTick(client)
+                );
+
+                ScreenEvents.remove(screen).register(REGISTERED_SCREEN::remove);
+            }
+        });
+    }
+
+    private static boolean isAotakeContainerScreen(Minecraft client, Screen screen) {
+        return screen instanceof ContainerScreen
+                && client.player != null
+                && screen.getTitle().getString()
+                .startsWith(MOD_NAME.toTextComponent(AotakeUtils.getPlayerLanguage(client.player)).getString()
+                );
+    }
+
+    private static void screenAfterInit() {
+        for (int i = 0; i < 20; i++) {
+            AotakeScheduler.schedule(i, () -> {
+                if (mousePos.key() > -1 && mousePos.val() > -1) {
+                    KeyValue<Double, Double> pos = MouseHelper.getRawCursorPos();
+                    if (Math.abs(pos.key() - mousePos.key()) < 1 && Math.abs(pos.val() - mousePos.val()) < 1) {
+                        mousePos.setKey(-1D).setValue(-1D);
+                    }
+                    if (mousePos.key() > -1 && mousePos.val() > -1) {
+                        MouseHelper.setMouseRawPos(mousePos);
+                    }
+                }
+            });
+        }
+    }
+
+    private static void screenAfterRender(Minecraft client, Screen screen, GuiGraphics graphics, int mouseX, int mouseY) {
+        LocalPlayer player = client.player;
+        mouseHelper.tick(mouseX, mouseY);
+
+        int baseW = 16;
+        int baseH = 16;
+        int baseX = screen.width / 2 - 88;
+        int baseY = screen.height / 2 - 110;
+        int yOffset = 0;
+        // 清空缓存区
+        if (AotakeUtils.hasCommandPermission(player, EnumCommandType.CACHE_CLEAR)) {
+            int w = baseW;
+            int h = baseH;
+            int x = baseX - w - 1;
+            int y = baseY + (h + 1) * (yOffset++);
+            boolean hover = mouseHelper.isHoverInRect(x, y, w, h);
+
+            if (mouseHelper.isLeftPressing() && hover) {
+                x--;
+                y--;
+                w += 2;
+                h += 2;
+            }
+
+            ResourceLocation texture = TextureUtils.loadCustomTexture(TextureUtils.INTERNAL_THEME_DIR + "clear_cache.png");
+            AbstractGuiUtils.blitBlend(graphics, texture, x, y, 0, 0, w, h, w, h);
+
+            if (hover) {
+                AbstractGuiUtils.drawPopupMessage(Text.empty()
+                                .setText(Component.translatable(EnumI18nType.MESSAGE, "clear_cache"))
+                                .setGraphics(graphics)
+                        , mouseX
+                        , mouseY
+                        , screen.width
+                        , screen.height
+                );
+            }
+
+            if (mouseHelper.isLeftPressedInRect(x, y, w, h)) {
+                AotakeUtils.sendPacketToServer(new ClearDustbinToServer(true, true));
+            }
+        }
+        if (AotakeUtils.hasCommandPermission(player, EnumCommandType.DUSTBIN_CLEAR)) {
+            // 清空所有页
+            {
+                int w = baseW;
+                int h = baseH;
+                int x = baseX - w - 1;
+                int y = baseY + (h + 1) * (yOffset++);
+                boolean hover = mouseHelper.isHoverInRect(x, y, w, h);
+
+                if (mouseHelper.isLeftPressing() && hover) {
+                    x--;
+                    y--;
+                    w += 2;
+                    h += 2;
+                }
+
+                ResourceLocation texture = TextureUtils.loadCustomTexture(TextureUtils.INTERNAL_THEME_DIR + "clear_all.png");
+                AbstractGuiUtils.blitBlend(graphics, texture, x, y, 0, 0, w, h, w, h);
+
+                if (hover) {
+                    AbstractGuiUtils.drawPopupMessage(Text.empty()
+                                    .setText(Component.translatable(EnumI18nType.MESSAGE, "clear_all_dustbin"))
+                                    .setGraphics(graphics)
+                            , mouseX
+                            , mouseY
+                            , screen.width
+                            , screen.height
+                    );
+                }
+
+                if (mouseHelper.isLeftPressedInRect(x, y, w, h)) {
+                    AotakeUtils.sendPacketToServer(new ClearDustbinToServer(true, false));
+                }
+            }
+
+            // 清空当前页
+            {
+                int w = baseW;
+                int h = baseH;
+                int x = baseX - w - 1;
+                int y = baseY + (h + 1) * (yOffset++);
+                boolean hover = mouseHelper.isHoverInRect(x, y, w, h);
+
+                if (mouseHelper.isLeftPressing() && hover) {
+                    x--;
+                    y--;
+                    w += 2;
+                    h += 2;
+                }
+
+                ResourceLocation texture = TextureUtils.loadCustomTexture(TextureUtils.INTERNAL_THEME_DIR + "clear_page.png");
+                AbstractGuiUtils.blitBlend(graphics, texture, x, y, 0, 0, w, h, w, h);
+
+                if (hover) {
+                    AbstractGuiUtils.drawPopupMessage(Text.empty()
+                                    .setText(Component.translatable(EnumI18nType.MESSAGE, "clear_cur_dustbin"))
+                                    .setGraphics(graphics)
+                            , mouseX
+                            , mouseY
+                            , screen.width
+                            , screen.height
+                    );
+                }
+
+                if (mouseHelper.isLeftPressedInRect(x, y, w, h)) {
+                    AotakeUtils.sendPacketToServer(new ClearDustbinToServer(false, false));
+                }
+            }
+        }
+        // 刷新当前页
+        {
+            int w = baseW;
+            int h = baseH;
+            int x = baseX - w - 1;
+            int y = baseY + (h + 1) * (yOffset++);
+            boolean hover = mouseHelper.isHoverInRect(x, y, w, h);
+
+            if (mouseHelper.isLeftPressing() && hover) {
+                x--;
+                y--;
+                w += 2;
+                h += 2;
+            }
+
+            ResourceLocation texture = TextureUtils.loadCustomTexture(TextureUtils.INTERNAL_THEME_DIR + "refresh.png");
+            AbstractGuiUtils.blitBlend(graphics, texture, x, y, 0, 0, w, h, w, h);
+
+            if (hover) {
+                AbstractGuiUtils.drawPopupMessage(Text.empty()
+                                .setText(Component.translatable(EnumI18nType.MESSAGE, "refresh_page"))
+                                .setGraphics(graphics)
+                        , mouseX
+                        , mouseY
+                        , screen.width
+                        , screen.height
+                );
+            }
+
+            if (mouseHelper.isLeftPressedInRect(x, y, w, h)) {
+                KeyValue<Double, Double> cursorPos = MouseHelper.getRawCursorPos();
+                mousePos.setKey(cursorPos.getKey()).setValue(cursorPos.getValue());
+                AotakeUtils.sendPacketToServer(new OpenDustbinToServer(0));
+            }
+        }
+        // 上一页
+        {
+            int w = baseW;
+            int h = baseH;
+            int x = baseX - w - 1;
+            int y = baseY + (h + 1) * (yOffset++);
+            boolean hover = mouseHelper.isHoverInRect(x, y, w, h);
+
+            if (mouseHelper.isLeftPressing() && hover) {
+                x--;
+                y--;
+                w += 2;
+                h += 2;
+            }
+
+            ResourceLocation texture = TextureUtils.loadCustomTexture(TextureUtils.INTERNAL_THEME_DIR + "up.png");
+            AbstractGuiUtils.blitBlend(graphics, texture, x, y, 0, 0, w, h, w, h);
+
+            if (hover) {
+                AbstractGuiUtils.drawPopupMessage(Text.empty()
+                                .setText(Component.translatable(EnumI18nType.MESSAGE, "previous_page"))
+                                .setGraphics(graphics)
+                        , mouseX
+                        , mouseY
+                        , screen.width
+                        , screen.height
+                );
+            }
+
+            if (mouseHelper.isLeftPressedInRect(x, y, w, h)) {
+                KeyValue<Double, Double> cursorPos = MouseHelper.getRawCursorPos();
+                mousePos.setKey(cursorPos.getKey()).setValue(cursorPos.getValue());
+                AotakeUtils.sendPacketToServer(new OpenDustbinToServer(-1));
+            }
+        }
+        // 下一页
+        {
+            int w = baseW;
+            int h = baseH;
+            int x = baseX - w - 1;
+            int y = baseY + (h + 1) * (yOffset++);
+            boolean hover = mouseHelper.isHoverInRect(x, y, w, h);
+
+            if (mouseHelper.isLeftPressing() && hover) {
+                x--;
+                y--;
+                w += 2;
+                h += 2;
+            }
+
+            ResourceLocation texture = TextureUtils.loadCustomTexture(TextureUtils.INTERNAL_THEME_DIR + "down.png");
+            AbstractGuiUtils.blitBlend(graphics, texture, x, y, 0, 0, w, h, w, h);
+
+            if (hover) {
+                AbstractGuiUtils.drawPopupMessage(Text.empty()
+                                .setText(Component.translatable(EnumI18nType.MESSAGE, "next_page"))
+                                .setGraphics(graphics)
+                        , mouseX
+                        , mouseY
+                        , screen.width
+                        , screen.height
+                );
+            }
+
+            if (mouseHelper.isLeftPressedInRect(x, y, w, h)) {
+                KeyValue<Double, Double> cursorPos = MouseHelper.getRawCursorPos();
+                mousePos.setKey(cursorPos.getKey()).setValue(cursorPos.getValue());
+                AotakeUtils.sendPacketToServer(new OpenDustbinToServer(1));
+            }
+        }
+    }
+
+    private static void screenAfterTick(Minecraft client) {
+        if (DUSTBIN_KEY.isDown()) {
+            if (System.currentTimeMillis() - lastTime > 200) {
+                lastTime = System.currentTimeMillis();
+                client.setScreen(null);
+            }
+        } else if (DUSTBIN_PRE_KEY.isDown()) {
+            if (System.currentTimeMillis() - lastTime > 200) {
+                lastTime = System.currentTimeMillis();
+                KeyValue<Double, Double> cursorPos = MouseHelper.getRawCursorPos();
+                mousePos.setKey(cursorPos.getKey()).setValue(cursorPos.getValue());
+                AotakeUtils.sendPacketToServer(new OpenDustbinToServer(-1));
+            }
+        } else if (DUSTBIN_NEXT_KEY.isDown()) {
+            if (System.currentTimeMillis() - lastTime > 200) {
+                lastTime = System.currentTimeMillis();
+                KeyValue<Double, Double> cursorPos = MouseHelper.getRawCursorPos();
+                mousePos.setKey(cursorPos.getKey()).setValue(cursorPos.getValue());
+                AotakeUtils.sendPacketToServer(new OpenDustbinToServer(1));
+            }
+        }
+    }
+
+    private static void onHudRender() {
+        HudRenderCallback.EVENT.register(ClientEventHandler::renderProgress);
+    }
+
+    private static void renderProgress(GuiGraphics graphics, float tickDelta) {
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.options.hideGui) return;
+        if (mc.player == null) return;
+
+        boolean hold = showProgress && mc.screen == null;
+
+        List<String> displayList = hold ? ClientConfig.CLIENT_CONFIG.progressBarDisplayHold() : ClientConfig.CLIENT_CONFIG.progressBarDisplayNormal();
+
+        double scale = ClientConfig.CLIENT_CONFIG.progressBarTextSize() / 16.0;
+
+        if (displayList.contains(EnumProgressBarType.POLE.name())) {
+            hideExpBar = ClientConfig.CLIENT_CONFIG.hideExperienceBarPole();
+            int width = ClientConfig.CLIENT_CONFIG.progressBarPoleWidth();
+            int height = ClientConfig.CLIENT_CONFIG.progressBarPoleHeight();
+            int drawX = getPoleX();
+            int drawY = getPoleY();
+
+            AbstractGuiUtils.TransformArgs transformArgs = new AbstractGuiUtils.TransformArgs(graphics);
+            transformArgs.setAngle(ClientConfig.CLIENT_CONFIG.progressBarPoleAngle())
+                    .setCenter(EnumRotationCenter.CENTER)
+                    .setX(drawX)
+                    .setY(drawY)
+                    .setWidth(width)
+                    .setHeight(height);
+            AbstractGuiUtils.renderByTransform(transformArgs, (arg) -> {
+                ResourceLocation texture = TextureUtils.loadCustomTexture(TextureUtils.INTERNAL_THEME_DIR + "pole.png");
+                AbstractGuiUtils.blitBlend(graphics, texture, (int) arg.getX(), (int) arg.getY(), 0, 0, (int) arg.getWidth(), (int) arg.getHeight(), (int) arg.getWidth(), (int) arg.getHeight());
+            });
+        }
+
+        if (displayList.contains(EnumProgressBarType.TEXT.name())) {
+            hideExpBar = ClientConfig.CLIENT_CONFIG.hideExperienceBarText();
+            Text time = Text.literal(getText())
+                    .setGraphics(graphics)
+                    .setColor(getTextColor())
+                    .setShadow(true)
+                    .setFont(Minecraft.getInstance().font);
+            AbstractGuiUtils.TransformArgs textTransformArgs = new AbstractGuiUtils.TransformArgs(graphics);
+            textTransformArgs.setScale(scale)
+                    .setAngle(ClientConfig.CLIENT_CONFIG.progressBarTextAngle())
+                    .setCenter(EnumRotationCenter.CENTER)
+                    .setX(getTextX())
+                    .setY(getTextY())
+                    .setWidth(getTextWidth())
+                    .setHeight(getTextHeight());
+            AbstractGuiUtils.renderByTransform(textTransformArgs, (arg) -> AbstractGuiUtils.drawString(time
+                    , arg.getX()
+                    , arg.getY()
+            ));
+        }
+
+        if (displayList.contains(EnumProgressBarType.LEAF.name())) {
+            hideExpBar = ClientConfig.CLIENT_CONFIG.hideExperienceBarLeaf();
+            int poleW = ClientConfig.CLIENT_CONFIG.progressBarPoleWidth();
+
+            int width = ClientConfig.CLIENT_CONFIG.progressBarLeafWidth();
+            int height = ClientConfig.CLIENT_CONFIG.progressBarLeafHeight();
+            int rangeWidth = poleW - width;
+            int startX = getLeafX();
+
+            int drawX = (int) (startX + rangeWidth * getProgress());
+            int drawY = getLeafY();
+
+            AbstractGuiUtils.TransformArgs transformArgs = new AbstractGuiUtils.TransformArgs(graphics);
+            transformArgs.setAngle(ClientConfig.CLIENT_CONFIG.progressBarLeafAngle())
+                    .setCenter(EnumRotationCenter.CENTER)
+                    .setX(drawX)
+                    .setY(drawY)
+                    .setWidth(width)
+                    .setHeight(height);
+            AbstractGuiUtils.renderByTransform(transformArgs, (arg) -> {
+                ResourceLocation texture = TextureUtils.loadCustomTexture(TextureUtils.INTERNAL_THEME_DIR + "leaf.png");
+                AbstractGuiUtils.blitBlend(graphics, texture, (int) arg.getX(), (int) arg.getY(), 0, 0, (int) arg.getWidth(), (int) arg.getHeight(), (int) arg.getWidth(), (int) arg.getHeight());
+            });
+        }
+    }
+
+    private static int getLeafX() {
+        int baseX = getPoleX();
+        int width = ClientConfig.CLIENT_CONFIG.progressBarPoleWidth();
+        double x;
+        String xString = ClientConfig.CLIENT_CONFIG.progressBarLeafPosition().split(",")[0];
+        if (xString.endsWith("%")) {
+            x = StringUtils.toDouble(xString.replace("%", "")) * 0.01d * width;
+        } else {
+            x = StringUtils.toInt(xString);
+        }
+        int quadrant = ClientConfig.CLIENT_CONFIG.progressBarLeafScreenQuadrant();
+        if (quadrant == 2 || quadrant == 3) {
+            x = baseX - x;
+        } else {
+            x = baseX + x;
+        }
+        switch (EnumRotationCenter.valueOf(ClientConfig.CLIENT_CONFIG.progressBarLeafBase())) {
+            case CENTER:
+            case TOP_CENTER:
+            case BOTTOM_CENTER: {
+                x -= ClientConfig.CLIENT_CONFIG.progressBarLeafWidth() / 2.0;
+            }
+            break;
+            case TOP_RIGHT:
+            case BOTTOM_RIGHT: {
+                x -= ClientConfig.CLIENT_CONFIG.progressBarLeafWidth();
+            }
+            break;
+        }
+        return (int) x;
+    }
+
+    private static int getLeafY() {
+        int baseY = getPoleY();
+        int height = ClientConfig.CLIENT_CONFIG.progressBarPoleHeight();
+        double y;
+        String yString = ClientConfig.CLIENT_CONFIG.progressBarLeafPosition().split(",")[1];
+        if (yString.endsWith("%")) {
+            y = StringUtils.toDouble(yString.replace("%", "")) * 0.01d * height;
+        } else {
+            y = StringUtils.toInt(yString);
+        }
+        int quadrant = ClientConfig.CLIENT_CONFIG.progressBarLeafScreenQuadrant();
+        if (quadrant == 1 || quadrant == 2) {
+            y = baseY - y;
+        } else {
+            y = baseY + y;
+        }
+        switch (EnumRotationCenter.valueOf(ClientConfig.CLIENT_CONFIG.progressBarLeafBase())) {
+            case CENTER: {
+                y -= ClientConfig.CLIENT_CONFIG.progressBarLeafHeight() / 2.0;
+            }
+            break;
+            case BOTTOM_LEFT:
+            case BOTTOM_RIGHT: {
+                y -= ClientConfig.CLIENT_CONFIG.progressBarLeafHeight();
+            }
+            break;
+        }
+        return (int) y;
+    }
+
+    private static int getPoleX() {
+        int width = Minecraft.getInstance().getWindow().getGuiScaledWidth();
+        double x;
+        String xString = ClientConfig.CLIENT_CONFIG.progressBarPolePosition().split(",")[0];
+        if (xString.endsWith("%")) {
+            x = StringUtils.toDouble(xString.replace("%", "")) * 0.01d * width;
+        } else {
+            x = StringUtils.toInt(xString);
+        }
+        int quadrant = ClientConfig.CLIENT_CONFIG.progressBarPoleScreenQuadrant();
+        if (quadrant == 2 || quadrant == 3) {
+            x = width - x;
+        }
+        switch (EnumRotationCenter.valueOf(ClientConfig.CLIENT_CONFIG.progressBarPoleBase())) {
+            case CENTER:
+            case TOP_CENTER:
+            case BOTTOM_CENTER: {
+                x -= ClientConfig.CLIENT_CONFIG.progressBarPoleWidth() / 2.0;
+            }
+            break;
+            case TOP_RIGHT:
+            case BOTTOM_RIGHT: {
+                x -= ClientConfig.CLIENT_CONFIG.progressBarPoleWidth();
+            }
+            break;
+        }
+        return (int) x;
+    }
+
+    private static int getPoleY() {
+        int height = Minecraft.getInstance().getWindow().getGuiScaledHeight();
+        double y;
+        String yString = ClientConfig.CLIENT_CONFIG.progressBarPolePosition().split(",")[1];
+        if (yString.endsWith("%")) {
+            y = StringUtils.toDouble(yString.replace("%", "")) * 0.01d * height;
+        } else {
+            y = StringUtils.toInt(yString);
+        }
+        int quadrant = ClientConfig.CLIENT_CONFIG.progressBarPoleScreenQuadrant();
+        if (quadrant == 1 || quadrant == 2) {
+            y = height - y;
+        }
+        switch (EnumRotationCenter.valueOf(ClientConfig.CLIENT_CONFIG.progressBarPoleBase())) {
+            case CENTER: {
+                y -= ClientConfig.CLIENT_CONFIG.progressBarPoleHeight() / 2.0;
+            }
+            break;
+            case BOTTOM_LEFT:
+            case BOTTOM_RIGHT: {
+                y -= ClientConfig.CLIENT_CONFIG.progressBarPoleHeight();
+            }
+            break;
+        }
+        return (int) y;
+    }
+
+    private static int getTextX() {
+        int baseX = getPoleX();
+        int width = ClientConfig.CLIENT_CONFIG.progressBarPoleWidth();
+        double x;
+        String xString = ClientConfig.CLIENT_CONFIG.progressBarTextPosition().split(",")[0];
+        if (xString.endsWith("%")) {
+            x = StringUtils.toDouble(xString.replace("%", "")) * 0.01d * width;
+        } else {
+            x = StringUtils.toInt(xString);
+        }
+        int quadrant = ClientConfig.CLIENT_CONFIG.progressBarTextScreenQuadrant();
+        if (quadrant == 2 || quadrant == 3) {
+            x = baseX - x;
+        } else {
+            x = baseX + x;
+        }
+        switch (EnumRotationCenter.valueOf(ClientConfig.CLIENT_CONFIG.progressBarTextBase())) {
+            case CENTER:
+            case TOP_CENTER:
+            case BOTTOM_CENTER: {
+                x -= ClientConfig.CLIENT_CONFIG.progressBarTextSize() / 16.0 * getTextWidth() / 2.0;
+            }
+            break;
+            case TOP_RIGHT:
+            case BOTTOM_RIGHT: {
+                x -= ClientConfig.CLIENT_CONFIG.progressBarTextSize() / 16.0 * getTextWidth();
+            }
+            break;
+        }
+        return (int) x;
+    }
+
+    private static int getTextY() {
+        int baseY = getPoleY();
+        int height = ClientConfig.CLIENT_CONFIG.progressBarPoleHeight();
+        double y;
+        String yString = ClientConfig.CLIENT_CONFIG.progressBarTextPosition().split(",")[1];
+        if (yString.endsWith("%")) {
+            y = StringUtils.toDouble(yString.replace("%", "")) * 0.01d * height;
+        } else {
+            y = StringUtils.toInt(yString);
+        }
+        int quadrant = ClientConfig.CLIENT_CONFIG.progressBarTextScreenQuadrant();
+        if (quadrant == 1 || quadrant == 2) {
+            y = baseY - y;
+        } else {
+            y = baseY + y;
+        }
+        switch (EnumRotationCenter.valueOf(ClientConfig.CLIENT_CONFIG.progressBarTextBase())) {
+            case CENTER: {
+                y -= ClientConfig.CLIENT_CONFIG.progressBarTextSize() / 16.0 * getTextHeight() / 2.0;
+            }
+            break;
+            case BOTTOM_LEFT:
+            case BOTTOM_RIGHT: {
+                y -= ClientConfig.CLIENT_CONFIG.progressBarTextSize() / 16.0 * getTextHeight();
+            }
+            break;
+        }
+        return (int) y;
+    }
+
+    private static String getText() {
+        Date now = new Date();
+        Date nextSweepTime = getNextSweepTime(now);
+        if (nextSweepTime.after(now)) {
+            long seconds = DateUtils.secondsOfTwo(now, nextSweepTime);
+            if (seconds / 60 >= 100) {
+                long hours = seconds / 3600;
+                long minutes = (seconds % 3600) / 60;
+                long secs = seconds % 60;
+                return String.format("%02d:%02d:%02d", hours, minutes, secs);
+            } else {
+                long minutes = seconds / 60;
+                long secs = seconds % 60;
+                return String.format("%02d:%02d", minutes, secs);
+            }
+        } else {
+            return "∞";
+        }
+    }
+
+    private static double getProgress() {
+        Date now = new Date();
+        Date nextSweepTime = getNextSweepTime(now);
+        if (nextSweepTime.after(now)) {
+            Date lastSweepTime = DateUtils.addMilliSecond(nextSweepTime, -AotakeSweep.sweepTime().key().intValue());
+            return (double) (now.getTime() - lastSweepTime.getTime()) / (double) (nextSweepTime.getTime() - lastSweepTime.getTime());
+        } else {
+            return 0;
+        }
+    }
+
+    private static Date getNextSweepTime(Date now) {
+        int difference = (int) ((AotakeSweep.clientServerTime().key() - AotakeSweep.clientServerTime().val()) / 1000L);
+        Date nextSweepTime = DateUtils.addSecond(new Date(AotakeSweep.sweepTime().val()), difference);
+        if (nextSweepTime.before(now)) {
+            for (int i = 0; i < 5; i++) {
+                if (nextSweepTime.before(now)) {
+                    nextSweepTime = DateUtils.addMilliSecond(nextSweepTime, AotakeSweep.sweepTime().key().intValue());
+                } else {
+                    break;
+                }
+            }
+        }
+        return nextSweepTime;
+    }
+
+    private static int getTextWidth() {
+        return AbstractGuiUtils.getStringWidth(Minecraft.getInstance().font, getText());
+    }
+
+    private static int getTextHeight() {
+        return AbstractGuiUtils.getStringHeight(Minecraft.getInstance().font, getText());
+    }
+
+    private static Color getTextColor() {
+        return Color.parse(ClientConfig.CLIENT_CONFIG.progressBarTextColor(), Color.white());
+    }
+
+}

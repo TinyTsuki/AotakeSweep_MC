@@ -2,44 +2,32 @@ package xin.vanilla.aotake;
 
 import lombok.Getter;
 import lombok.Setter;
+import lombok.experimental.Accessors;
+import net.fabricmc.api.ModInitializer;
+import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
+import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
+import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.common.MinecraftForge;
-import net.minecraftforge.event.RegisterCommandsEvent;
-import net.minecraftforge.event.server.ServerStartedEvent;
-import net.minecraftforge.event.server.ServerStartingEvent;
-import net.minecraftforge.event.server.ServerStoppingEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
-import net.minecraftforge.fml.config.ModConfig;
-import net.minecraftforge.fml.event.config.ModConfigEvent;
-import net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent;
-import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent;
-import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
-import net.minecraftforge.fml.loading.FMLEnvironment;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import xin.vanilla.aotake.command.AotakeCommand;
-import xin.vanilla.aotake.config.ClientConfig;
-import xin.vanilla.aotake.config.CommonConfig;
 import xin.vanilla.aotake.config.CustomConfig;
 import xin.vanilla.aotake.config.ServerConfig;
 import xin.vanilla.aotake.data.KeyValue;
+import xin.vanilla.aotake.data.player.PlayerDataManager;
 import xin.vanilla.aotake.data.player.PlayerSweepData;
-import xin.vanilla.aotake.event.ClientModEventHandler;
 import xin.vanilla.aotake.network.ModNetworkHandler;
-import xin.vanilla.aotake.network.SplitPacket;
 import xin.vanilla.aotake.util.AotakeScheduler;
-import xin.vanilla.aotake.util.CommandUtils;
 import xin.vanilla.aotake.util.EntityFilter;
 import xin.vanilla.aotake.util.EntitySweeper;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
-@Mod(AotakeSweep.MODID)
-public class AotakeSweep {
+
+@Accessors(fluent = true)
+public class AotakeSweep implements ModInitializer {
 
     public final static String DEFAULT_COMMAND_PREFIX = "aotake";
 
@@ -60,11 +48,6 @@ public class AotakeSweep {
     @Getter
     private static final Set<String> customConfigStatus = new HashSet<>();
 
-    /**
-     * 分片网络包缓存
-     */
-    @Getter
-    private static final Map<String, List<? extends SplitPacket>> packetCache = new ConcurrentHashMap<>();
 
     /**
      * 玩家当前浏览的垃圾箱页数
@@ -96,80 +79,40 @@ public class AotakeSweep {
     @Getter
     private static final EntityFilter entityFilter = new EntityFilter();
 
-    // public static final Item JUNK_BALL = new JunkBall();
 
-    public AotakeSweep(FMLJavaModLoadingContext context) {
+    @Override
+    public void onInitialize() {
 
         // 注册网络通道
-        ModNetworkHandler.registerPackets();
+        ModNetworkHandler.registerServerPackets();
 
         // 注册服务器启动和关闭事件
-        MinecraftForge.EVENT_BUS.addListener(this::onServerStarting);
-        MinecraftForge.EVENT_BUS.addListener(this::onServerStarted);
-        MinecraftForge.EVENT_BUS.addListener(this::onServerStopping);
+        ServerLifecycleEvents.SERVER_STARTING.register(server -> {
+            entitySweeper.clear();
+            AotakeSweep.serverInstance.setKey(server).setValue(true);
+        });
+        ServerLifecycleEvents.SERVER_STOPPING.register(server -> {
+            AotakeSweep.serverInstance.setValue(false);
+            PlayerSweepData.clear();
+        });
 
-        // 注册当前实例到事件总线
-        MinecraftForge.EVENT_BUS.register(this);
         // 注册调度器
-        MinecraftForge.EVENT_BUS.register(AotakeScheduler.class);
+        ServerTickEvents.END_SERVER_TICK.register(AotakeScheduler::onServerTick);
 
         // 注册配置
-        context.registerConfig(ModConfig.Type.COMMON, CommonConfig.COMMON_CONFIG);
-        context.registerConfig(ModConfig.Type.SERVER, ServerConfig.SERVER_CONFIG);
-        context.registerConfig(ModConfig.Type.CLIENT, ClientConfig.CLIENT_CONFIG);
-
-        // 注册客户端设置事件
-        context.getModEventBus().addListener(this::onClientSetup);
-        // 注册公共设置事件
-        context.getModEventBus().addListener(this::onCommonSetup);
-        // 注册配置文件重载事件
-        context.getModEventBus().addListener(this::onConfigReload);
-
-        if (FMLEnvironment.dist == Dist.CLIENT) {
-            context.getModEventBus().addListener(ClientModEventHandler::registerKeyBindings);
-        }
-    }
-
-    /**
-     * 客户端设置阶段事件
-     */
-    public void onClientSetup(final FMLClientSetupEvent event) {
-    }
-
-    /**
-     * 公共设置阶段事件
-     */
-    public void onCommonSetup(final FMLCommonSetupEvent event) {
+        ServerConfig.register();
         CustomConfig.loadCustomConfig(false);
+        PlayerDataManager.register();
+
+        // 注册指令
+        registerCommands();
+
     }
 
-    private void onServerStarting(ServerStartingEvent event) {
-        entitySweeper.clear();
-        AotakeSweep.serverInstance.setKey(event.getServer()).setValue(true);
-    }
 
-    private void onServerStarted(ServerStartedEvent event) {
-    }
-
-    private void onServerStopping(ServerStoppingEvent event) {
-        AotakeSweep.serverInstance.setValue(false);
-        PlayerSweepData.clear();
-    }
-
-    @SubscribeEvent
-    public void onRegisterCommands(RegisterCommandsEvent event) {
+    public void registerCommands() {
         LOGGER.debug("Registering commands");
-        AotakeCommand.register(event.getDispatcher());
-    }
-
-    public void onConfigReload(ModConfigEvent event) {
-        try {
-            if (event.getConfig().getSpec() == ServerConfig.SERVER_CONFIG && serverInstance.val()) {
-                entityFilter.clear();
-                CommandUtils.configKeyMapCache.clear();
-            }
-        } catch (Exception ignored) {
-        }
+        CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) -> AotakeCommand.register(dispatcher));
     }
 
     // region 资源ID
@@ -194,7 +137,7 @@ public class AotakeSweep {
 
 
     // region 外部方法
-    public void reloadCustomConfig() {
+    public static void reloadCustomConfig() {
         CustomConfig.loadCustomConfig(false);
     }
     // endregion 外部方法

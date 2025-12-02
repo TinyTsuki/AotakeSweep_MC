@@ -3,11 +3,11 @@ package xin.vanilla.aotake.screen.component;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.experimental.Accessors;
+import net.fabricmc.api.EnvType;
+import net.fabricmc.api.Environment;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.api.distmarker.OnlyIn;
 import xin.vanilla.aotake.data.Color;
 import xin.vanilla.aotake.enums.EnumI18nType;
 import xin.vanilla.aotake.util.AotakeUtils;
@@ -15,7 +15,7 @@ import xin.vanilla.aotake.util.Component;
 
 @Setter
 @Accessors(chain = true)
-@OnlyIn(Dist.CLIENT)
+@Environment(EnvType.CLIENT)
 public class Text {
     /**
      * 矩阵栈

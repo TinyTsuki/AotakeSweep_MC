@@ -3,8 +3,7 @@ package xin.vanilla.aotake.config;
 import com.google.gson.JsonObject;
 import lombok.Getter;
 import lombok.Setter;
-import net.minecraftforge.fml.ModList;
-import net.minecraftforge.fml.loading.FMLPaths;
+import net.fabricmc.loader.api.FabricLoader;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import xin.vanilla.aotake.AotakeSweep;
@@ -13,8 +12,6 @@ import xin.vanilla.aotake.util.JsonUtils;
 import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
 import java.nio.channels.FileChannel;
 import java.nio.channels.FileLock;
 import java.nio.charset.StandardCharsets;
@@ -22,8 +19,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Arrays;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
@@ -39,16 +35,17 @@ public class CustomConfig {
     @Setter
     private static JsonObject clientConfig = new JsonObject();
 
-    private static Map<Object, Method> vanillaModMap;
-
     @Getter
     @Setter
     private static boolean dirty = false;
 
     public static Path getConfigDirectory() {
-        return FMLPaths.CONFIGDIR.get()
-                .resolve(Arrays.stream(AotakeSweep.ARTIFACT_ID.split("\\."))
-                        .sorted().collect(Collectors.joining("."))
+        return FabricLoader.getInstance()
+                .getConfigDir()
+                .resolve(
+                        Arrays.stream(AotakeSweep.ARTIFACT_ID.split("\\."))
+                                .sorted()
+                                .collect(Collectors.joining("."))
                 );
     }
 
@@ -153,34 +150,15 @@ public class CustomConfig {
     }
 
     public static void noticeReloadConfig() {
-        if (vanillaModMap == null) {
-            vanillaModMap = new HashMap<>();
-            ModList.get().getMods().forEach(info -> ModList.get()
-                    .getModContainerById(info.getModId())
-                    .ifPresent(container -> {
-                                Object mod = container.getMod();
-                                Class<?> modClass = mod.getClass();
-                                if (!info.getModId().equalsIgnoreCase(AotakeSweep.MODID)
-                                        && modClass.getCanonicalName().contains(AotakeSweep.ARTIFACT_ID)
-                                ) {
-                                    try {
-                                        Method method = modClass.getDeclaredMethod("reloadCustomConfig");
-                                        vanillaModMap.put(mod, method);
-                                    } catch (NoSuchMethodException e) {
-                                        LOGGER.error("Failed to get method 'reloadCustomConfig'", e);
-                                    }
-                                }
-                            }
-                    )
-            );
-        }
-        vanillaModMap.forEach((mod, method) -> {
+        List<Runnable> listeners = FabricLoader.getInstance().getEntrypoints("vanilla_xin_common_config_reload", Runnable.class);
+
+        for (Runnable listener : listeners) {
             try {
-                method.invoke(mod);
-            } catch (InvocationTargetException | IllegalAccessException e) {
-                LOGGER.error("Failed to invoke {}.reloadCustomConfig", mod.getClass().getCanonicalName(), e);
+                listener.run();
+            } catch (Throwable t) {
+                LOGGER.error("Failed to invoke reload via runnable listener {}", listener.getClass().getName(), t);
             }
-        });
+        }
     }
 
     public static String getPlayerLanguage(String uuid) {
