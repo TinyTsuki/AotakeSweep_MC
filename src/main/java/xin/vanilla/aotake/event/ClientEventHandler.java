@@ -33,7 +33,7 @@ import xin.vanilla.aotake.enums.EnumProgressBarType;
 import xin.vanilla.aotake.enums.EnumRotationCenter;
 import xin.vanilla.aotake.network.ModNetworkHandler;
 import xin.vanilla.aotake.network.packet.ClearDustbinToServer;
-import xin.vanilla.aotake.network.packet.ClientLoadedToServer;
+import xin.vanilla.aotake.network.packet.ModLoadedToBoth;
 import xin.vanilla.aotake.network.packet.OpenDustbinToServer;
 import xin.vanilla.aotake.screen.component.Text;
 import xin.vanilla.aotake.util.*;
@@ -121,8 +121,10 @@ public class ClientEventHandler implements ClientModInitializer {
     private static void onPlayerLoggedIn() {
         ClientPlayConnectionEvents.JOIN.register((handler, sender, client) -> {
             LOGGER.debug("Client: Player logged in.");
-            // 通知服务器客户端已加载mod
-            AotakeUtils.sendPacketToServer(new ClientLoadedToServer());
+            if (ModNetworkHandler.hasAotakeServer()) {
+                // 通知服务器客户端已加载mod
+                AotakeUtils.sendPacketToServer(new ModLoadedToBoth());
+            }
         });
     }
 

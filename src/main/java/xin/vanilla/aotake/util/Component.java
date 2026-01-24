@@ -8,6 +8,8 @@ import lombok.NoArgsConstructor;
 import lombok.NonNull;
 import lombok.Setter;
 import lombok.experimental.Accessors;
+import net.fabricmc.api.EnvType;
+import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.network.chat.*;
 import net.minecraft.server.level.ServerPlayer;
 import xin.vanilla.aotake.config.ServerConfig;
@@ -164,7 +166,19 @@ public class Component implements Cloneable, Serializable {
      * 获取语言代码
      */
     public @NonNull String getLanguageCode() {
-        return this.languageCode == null ? ServerConfig.SERVER_CONFIG.defaultLanguage() : this.languageCode;
+        String language = this.languageCode;
+        if (StringUtils.isNullOrEmpty(language)) {
+            try {
+                language = ServerConfig.SERVER_CONFIG.defaultLanguage();
+            } catch (Exception e) {
+                if (FabricLoader.getInstance().getEnvironmentType() == EnvType.CLIENT) {
+                    language = AotakeUtils.getClientLanguage();
+                } else {
+                    language = "en_us";
+                }
+            }
+        }
+        return language;
     }
 
     /**

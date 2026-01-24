@@ -2,6 +2,8 @@ package xin.vanilla.aotake.network;
 
 import lombok.Getter;
 import lombok.experimental.Accessors;
+import net.fabricmc.api.EnvType;
+import net.fabricmc.api.Environment;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import xin.vanilla.aotake.network.packet.*;
@@ -20,24 +22,36 @@ public final class ModNetworkHandler {
 
 
     public static void registerServerPackets() {
-        ServerPlayNetworking.registerGlobalReceiver(OpenDustbinToServer.ID, (server, player, handler, buf, responseSender) ->
-                server.execute(() -> OpenDustbinToServer.handle(new OpenDustbinToServer(buf), player))
-        );
-        ServerPlayNetworking.registerGlobalReceiver(ClearDustbinToServer.ID, (server, player, handler, buf, responseSender) ->
-                server.execute(() -> ClearDustbinToServer.handle(new ClearDustbinToServer(buf), player))
-        );
-        ServerPlayNetworking.registerGlobalReceiver(ClientLoadedToServer.ID, (server, player, handler, buf, responseSender) ->
-                server.execute(() -> ClientLoadedToServer.handle(player))
+        ServerPlayNetworking.registerGlobalReceiver(OpenDustbinToServer.ID, (server, player, handler, buf, responseSender) -> {
+            OpenDustbinToServer packet = new OpenDustbinToServer(buf);
+            server.execute(() -> OpenDustbinToServer.handle(packet, player));
+        });
+        ServerPlayNetworking.registerGlobalReceiver(ClearDustbinToServer.ID, (server, player, handler, buf, responseSender) -> {
+            ClearDustbinToServer packet = new ClearDustbinToServer(buf);
+            server.execute(() -> ClearDustbinToServer.handle(packet, player));
+        });
+        ServerPlayNetworking.registerGlobalReceiver(ModLoadedToBoth.ID, (server, player, handler, buf, responseSender) ->
+                server.execute(() -> ModLoadedToBoth.handle(player))
         );
     }
 
     public static void registerClientPackets() {
         ClientPlayNetworking.registerGlobalReceiver(CustomConfigSyncToClient.ID, (client, handler, buf, responseSender) -> {
-            client.execute(() -> CustomConfigSyncToClient.handle(new CustomConfigSyncToClient(buf)));
+            CustomConfigSyncToClient packet = new CustomConfigSyncToClient(buf);
+            client.execute(() -> CustomConfigSyncToClient.handle(packet));
         });
         ClientPlayNetworking.registerGlobalReceiver(SweepTimeSyncToClient.ID, (client, handler, buf, responseSender) -> {
-            client.execute(() -> SweepTimeSyncToClient.handle(new SweepTimeSyncToClient(buf)));
+            SweepTimeSyncToClient packet = new SweepTimeSyncToClient(buf);
+            client.execute(() -> SweepTimeSyncToClient.handle(packet));
         });
+        ClientPlayNetworking.registerGlobalReceiver(ModLoadedToBoth.ID, (client, handler, buf, responseSender) ->
+                client.execute(() -> ModLoadedToBoth.handle(null))
+        );
+    }
+
+    @Environment(EnvType.CLIENT)
+    public static boolean hasAotakeServer() {
+        return ClientPlayNetworking.getSendable().contains(ModLoadedToBoth.ID);
     }
 
 }

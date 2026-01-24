@@ -442,7 +442,9 @@ public class ServerEventHandler {
      * 玩家登录事件
      */
     public static void onPlayerLoggedIn(ServerGamePacketListenerImpl handler, PacketSender sender, MinecraftServer server) {
-        AotakeUtils.sendPacketToPlayer(new SweepTimeSyncToClient(), handler.getPlayer());
+        if (AotakeSweep.customConfigStatus().contains(AotakeUtils.getPlayerUUIDString(handler.getPlayer()))) {
+            AotakeUtils.sendPacketToPlayer(new SweepTimeSyncToClient(), handler.getPlayer());
+        }
     }
 
     /**

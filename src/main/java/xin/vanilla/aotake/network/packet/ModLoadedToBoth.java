@@ -8,10 +8,10 @@ import xin.vanilla.aotake.AotakeSweep;
 import xin.vanilla.aotake.network.AotakePacket;
 import xin.vanilla.aotake.util.AotakeUtils;
 
-public class ClientLoadedToServer implements AotakePacket {
+public class ModLoadedToBoth implements AotakePacket {
     public static final ResourceLocation ID = AotakeSweep.createResource("client_loaded");
 
-    public ClientLoadedToServer() {
+    public ModLoadedToBoth() {
     }
 
     @Override
@@ -30,6 +30,8 @@ public class ClientLoadedToServer implements AotakePacket {
             AotakeSweep.customConfigStatus().add(AotakeUtils.getPlayerUUIDString(player));
             // 同步自定义配置到客户端
             AotakeUtils.sendPacketToPlayer(player, new CustomConfigSyncToClient());
+            // 同步清理时间到客户端
+            AotakeUtils.sendPacketToPlayer(new SweepTimeSyncToClient(), player);
         }
     }
 }
