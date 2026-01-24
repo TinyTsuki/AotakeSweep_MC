@@ -24,8 +24,9 @@ import xin.vanilla.aotake.config.ClientConfig;
 import xin.vanilla.aotake.data.KeyValue;
 import xin.vanilla.aotake.enums.EnumCommandType;
 import xin.vanilla.aotake.enums.EnumI18nType;
+import xin.vanilla.aotake.network.ModNetworkHandler;
 import xin.vanilla.aotake.network.packet.ClearDustbinToServer;
-import xin.vanilla.aotake.network.packet.ClientLoadedToServer;
+import xin.vanilla.aotake.network.packet.ModLoadedToBoth;
 import xin.vanilla.aotake.network.packet.OpenDustbinToServer;
 import xin.vanilla.aotake.screen.ProgressRender;
 import xin.vanilla.aotake.screen.component.Text;
@@ -476,6 +477,8 @@ public class ClientGameEventHandler {
     public static void onPlayerLoggedIn(ClientPlayerNetworkEvent.LoggingIn event) {
         LOGGER.debug("Client: Player logged in.");
         // 通知服务器客户端已加载mod
-        AotakeUtils.sendPacketToServer(new ClientLoadedToServer());
+        if (ModNetworkHandler.hasAotakeServer()) {
+            AotakeUtils.sendPacketToServer(new ModLoadedToBoth());
+        }
     }
 }
