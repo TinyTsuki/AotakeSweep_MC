@@ -10,22 +10,22 @@ import org.jetbrains.annotations.NotNull;
 import xin.vanilla.aotake.AotakeSweep;
 import xin.vanilla.aotake.util.AotakeUtils;
 
-public class ClientLoadedToServer implements CustomPacketPayload {
-    public final static CustomPacketPayload.Type<ClientLoadedToServer> TYPE = new CustomPacketPayload.Type<>(AotakeSweep.createResource("client_loaded"));
-    public final static StreamCodec<ByteBuf, ClientLoadedToServer> STREAM_CODEC = new StreamCodec<>() {
-        public @NotNull ClientLoadedToServer decode(@NotNull ByteBuf byteBuf) {
-            return new ClientLoadedToServer((new FriendlyByteBuf(byteBuf)));
+public class ModLoadedToBoth implements CustomPacketPayload {
+    public final static CustomPacketPayload.Type<ModLoadedToBoth> TYPE = new CustomPacketPayload.Type<>(AotakeSweep.createResource("client_loaded"));
+    public final static StreamCodec<ByteBuf, ModLoadedToBoth> STREAM_CODEC = new StreamCodec<>() {
+        public @NotNull ModLoadedToBoth decode(@NotNull ByteBuf byteBuf) {
+            return new ModLoadedToBoth((new FriendlyByteBuf(byteBuf)));
         }
 
-        public void encode(@NotNull ByteBuf byteBuf, @NotNull ClientLoadedToServer packet) {
+        public void encode(@NotNull ByteBuf byteBuf, @NotNull ModLoadedToBoth packet) {
             packet.toBytes(new FriendlyByteBuf(byteBuf));
         }
     };
 
-    public ClientLoadedToServer() {
+    public ModLoadedToBoth() {
     }
 
-    public ClientLoadedToServer(FriendlyByteBuf buf) {
+    public ModLoadedToBoth(FriendlyByteBuf buf) {
     }
 
     public void toBytes(FriendlyByteBuf buf) {
@@ -36,12 +36,14 @@ public class ClientLoadedToServer implements CustomPacketPayload {
         return TYPE;
     }
 
-    public static void handle(ClientLoadedToServer packet, IPayloadContext ctx) {
+    public static void handle(ModLoadedToBoth packet, IPayloadContext ctx) {
         ctx.enqueueWork(() -> {
             if (ctx.player() instanceof ServerPlayer player) {
                 AotakeSweep.getCustomConfigStatus().add(AotakeUtils.getPlayerUUIDString(player));
                 // 同步自定义配置到客户端
                 AotakeUtils.sendPacketToPlayer(new CustomConfigSyncToClient(), player);
+                // 同步清理时间到客户端
+                AotakeUtils.sendPacketToPlayer(new SweepTimeSyncToClient(), player);
             }
         });
     }
