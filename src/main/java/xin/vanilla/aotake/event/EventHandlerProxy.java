@@ -481,7 +481,9 @@ public class EventHandlerProxy {
      */
     public static void onPlayerLoggedIn(PlayerEvent.PlayerLoggedInEvent event) {
         if (event.getEntity() instanceof ServerPlayer player) {
-            AotakeUtils.sendPacketToPlayer(new SweepTimeSyncToClient(), player);
+            if (AotakeSweep.getCustomConfigStatus().contains(AotakeUtils.getPlayerUUIDString(player))) {
+                AotakeUtils.sendPacketToPlayer(new SweepTimeSyncToClient(), player);
+            }
         }
     }
 
