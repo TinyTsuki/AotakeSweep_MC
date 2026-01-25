@@ -57,6 +57,7 @@ dependencies {
         modImplementation("com.terraformersmc:modmenu:${project.modmenu_version}")
     }
 
+    testImplementation 'junit:junit:4.13.2'
     compileOnly 'org.projectlombok:lombok:1.18.34'
     annotationProcessor 'org.projectlombok:lombok:1.18.34'
     testCompileOnly 'org.projectlombok:lombok:1.18.34'
@@ -108,10 +109,28 @@ java {
     withSourcesJar()
 }
 
-jar {
+tasks.named('jar', Jar).configure {
     from("LICENSE") {
         rename { "${it}_${project.mod_id}" }
     }
+
+    manifest {
+        attributes([
+            "Specification-Title"     : mod_id,
+            "Specification-Vendor"    : mod_authors,
+            "Specification-Version"   : "1",
+            "Implementation-Title"    : project.name,
+            "Implementation-Version"  : project.version,
+            "Implementation-Vendor"   : mod_authors,
+            "Implementation-Timestamp": new Date().format("yyyy-MM-dd'T'HH:mm:ssZ")
+        ])
+    }
+}
+
+tasks.named('remapJar') {
+    archiveBaseName.set(mod_id)
+    archiveVersion.set("fabric-${project.mod_version}")
+    destinationDirectory.set(file("${projectDir}/builds/${project.mod_version.split('-')[1]}"))
 }
 
 // configure the maven publication
