@@ -1,6 +1,6 @@
 package xin.vanilla.aotake.mixin;
 
-import net.minecraft.network.protocol.game.ServerboundClientInformationPacket;
+import net.minecraft.server.level.ClientInformation;
 import net.minecraft.server.level.ServerPlayer;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
@@ -14,8 +14,8 @@ public abstract class ServerPlayerMixin {
             method = "updateOptions",
             at = @At("TAIL")
     )
-    private void aotake$afterUpdateOptions(ServerboundClientInformationPacket packet, CallbackInfo ci) {
+    private void aotake$afterUpdateOptions(ClientInformation clientInformation, CallbackInfo ci) {
         ServerPlayer player = (ServerPlayer) (Object) this;
-        ServerPlayerLanguageManager.set(player, packet.language());
+        ServerPlayerLanguageManager.set(player, clientInformation.language());
     }
 }

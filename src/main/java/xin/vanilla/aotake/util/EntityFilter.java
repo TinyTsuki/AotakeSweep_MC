@@ -164,7 +164,7 @@ public class EntityFilter {
                         }
                         return result;
                     });
-                    if (accessor != null && entity.getEntityData().hasItem(accessor)) {
+                    if (accessor != null) {
                         try {
                             varsOut.put(key, entity.getEntityData().get(accessor));
                         } catch (Throwable ignored) {

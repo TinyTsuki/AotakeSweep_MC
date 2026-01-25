@@ -85,6 +85,7 @@ public class AotakeSweep implements ModInitializer {
     public void onInitialize() {
 
         // 注册网络通道
+        ModNetworkHandler.registerCommonPackets();
         ModNetworkHandler.registerServerPackets();
 
         // 注册服务器启动和关闭事件

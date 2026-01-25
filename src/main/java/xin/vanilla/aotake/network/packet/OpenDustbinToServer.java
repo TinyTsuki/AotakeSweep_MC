@@ -1,36 +1,24 @@
 package xin.vanilla.aotake.network.packet;
 
-import net.fabricmc.fabric.api.networking.v1.PacketByteBufs;
 import net.minecraft.network.FriendlyByteBuf;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.server.level.ServerPlayer;
+import org.jetbrains.annotations.NotNull;
 import xin.vanilla.aotake.AotakeSweep;
 import xin.vanilla.aotake.enums.EnumCommandType;
-import xin.vanilla.aotake.network.AotakePacket;
 import xin.vanilla.aotake.util.AotakeUtils;
 
-public class OpenDustbinToServer implements AotakePacket {
-    public static final ResourceLocation ID = AotakeSweep.createResource("open_dustbin");
-
-    private final int offset;
-
-    public OpenDustbinToServer(int offset) {
-        this.offset = offset;
-    }
-
-    public OpenDustbinToServer(FriendlyByteBuf buf) {
-        this.offset = buf.readInt();
-    }
+public record OpenDustbinToServer(int offset) implements CustomPacketPayload {
+    public static final CustomPacketPayload.Type<OpenDustbinToServer> ID = new CustomPacketPayload.Type<>(AotakeSweep.createResource("open_dustbin"));
+    public static final StreamCodec<FriendlyByteBuf, OpenDustbinToServer> CODEC = StreamCodec.of(
+            (buf, packet) -> buf.writeInt(packet.offset),
+            buf -> new OpenDustbinToServer(buf.readInt())
+    );
 
     @Override
-    public ResourceLocation id() {
+    public @NotNull Type<? extends CustomPacketPayload> type() {
         return ID;
-    }
-
-    public FriendlyByteBuf toBytes(FriendlyByteBuf buf) {
-        if (buf == null) buf = PacketByteBufs.create();
-        buf.writeInt(this.offset);
-        return buf;
     }
 
     public static void handle(OpenDustbinToServer packet, ServerPlayer player) {

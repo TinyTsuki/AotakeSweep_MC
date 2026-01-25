@@ -3,9 +3,9 @@ package xin.vanilla.aotake.util;
 import com.google.gson.reflect.TypeToken;
 import com.mojang.brigadier.StringReader;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
+import com.mojang.datafixers.util.Pair;
 import lombok.NonNull;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
-import net.fabricmc.fabric.api.networking.v1.PacketByteBufs;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import net.fabricmc.fabric.api.transfer.v1.item.ItemStorage;
 import net.fabricmc.fabric.api.transfer.v1.item.ItemVariant;
@@ -17,21 +17,20 @@ import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.arguments.blocks.BlockStateParser;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.core.component.DataComponentMap;
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
-import net.minecraft.nbt.CompoundTag;
-import net.minecraft.nbt.NbtIo;
-import net.minecraft.nbt.TagParser;
-import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.nbt.*;
 import net.minecraft.network.chat.ClickEvent;
 import net.minecraft.network.chat.HoverEvent;
 import net.minecraft.network.protocol.Packet;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.MenuProvider;
 import net.minecraft.world.SimpleContainer;
@@ -41,6 +40,7 @@ import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.component.CustomData;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.entity.BlockEntity;
@@ -58,18 +58,18 @@ import xin.vanilla.aotake.data.WorldCoordinate;
 import xin.vanilla.aotake.data.player.PlayerSweepData;
 import xin.vanilla.aotake.data.world.WorldTrashData;
 import xin.vanilla.aotake.enums.*;
-import xin.vanilla.aotake.network.AotakePacket;
 
 import javax.annotation.Nullable;
 import java.io.File;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
-@SuppressWarnings({"resource", "UnstableApiUsage"})
+@SuppressWarnings({"resource"})
 public class AotakeUtils {
     private static final Logger LOGGER = LogManager.getLogger();
 
@@ -220,21 +220,22 @@ public class AotakeUtils {
      * 执行指令
      */
     public static boolean executeCommand(@NonNull ServerPlayer player, @NonNull String command, int permission, boolean suppressedOutput) {
-        boolean result = false;
+        AtomicBoolean result = new AtomicBoolean(false);
         try {
             MinecraftServer server = player.getServer();
-            CommandSourceStack commandSourceStack = player.createCommandSourceStack();
+            CommandSourceStack commandSourceStack = player.createCommandSourceStack()
+                    .withCallback((r, count) -> result.set(r));
             if (permission > 0) {
                 commandSourceStack = commandSourceStack.withPermission(permission);
             }
             if (suppressedOutput) {
                 commandSourceStack = commandSourceStack.withSuppressedOutput();
             }
-            result = server.getCommands().performPrefixedCommand(commandSourceStack, command) > 0;
+            server.getCommands().performPrefixedCommand(commandSourceStack, command);
         } catch (Exception e) {
             LOGGER.error("Failed to execute command: {}", command, e);
         }
-        return result;
+        return result.get();
     }
 
     /**
@@ -372,57 +373,22 @@ public class AotakeUtils {
     /**
      * 发送数据包至服务器
      */
-    public static void sendPacketToServer(AotakePacket packet) {
-        sendPacketToServer(packet.id(), packet.toBytes(null));
-    }
-
-    /**
-     * 发送数据包至服务器
-     */
-    public static void sendPacketToServer(ResourceLocation id) {
-        sendPacketToServer(id, PacketByteBufs.create());
-    }
-
-    /**
-     * 发送数据包至服务器
-     */
-    public static void sendPacketToServer(ResourceLocation id, FriendlyByteBuf buf) {
-        ClientPlayNetworking.send(id, buf);
+    public static void sendPacketToServer(CustomPacketPayload packet) {
+        ClientPlayNetworking.send(packet);
     }
 
     /**
      * 发送数据包至玩家
      */
-    public static void sendPacketToPlayer(ServerPlayer player, AotakePacket packet) {
-        sendPacketToPlayer(player, packet.id(), packet.toBytes(null));
+    public static void sendPacketToPlayer(ServerPlayer player, CustomPacketPayload packet) {
+        ServerPlayNetworking.send(player, packet);
     }
 
     /**
      * 发送数据包至玩家
      */
-    public static void sendPacketToPlayer(ResourceLocation id, ServerPlayer player) {
-        sendPacketToPlayer(player, id, PacketByteBufs.create());
-    }
-
-    /**
-     * 发送数据包至玩家
-     */
-    public static void sendPacketToPlayer(AotakePacket packet, ServerPlayer player) {
-        sendPacketToPlayer(player, packet.id(), packet.toBytes(null));
-    }
-
-    /**
-     * 发送数据包至玩家
-     */
-    public static void sendPacketToPlayer(ServerPlayer player, ResourceLocation id) {
-        sendPacketToPlayer(player, id, PacketByteBufs.create());
-    }
-
-    /**
-     * 发送数据包至玩家
-     */
-    public static void sendPacketToPlayer(ServerPlayer player, ResourceLocation id, FriendlyByteBuf buf) {
-        ServerPlayNetworking.send(player, id, buf);
+    public static void sendPacketToPlayer(CustomPacketPayload packet, ServerPlayer player) {
+        sendPacketToPlayer(player, packet);
     }
 
     // endregion 消息相关
@@ -770,14 +736,17 @@ public class AotakeUtils {
     public static Entity getEntityFromItem(ServerLevel level, ItemStack itemStack) {
         Entity result = null;
 
-        CompoundTag tag = itemStack.getTag();
-        if (tag != null && tag.contains(AotakeSweep.MODID)) {
-            CompoundTag aotake = tag.getCompound(AotakeSweep.MODID);
-            if (aotake.contains("entity")) {
-                try {
-                    result = EntityType.loadEntityRecursive(aotake.getCompound("entity"), level, e -> e);
-                } catch (Exception e) {
-                    LOGGER.error("Failed to load entity from item stack: {}", itemStack, e);
+        DataComponentMap tag = itemStack.getComponents();
+        if (!tag.isEmpty() && tag.has(DataComponents.CUSTOM_DATA)) {
+            CompoundTag customData = tag.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag();
+            if (customData.contains(AotakeSweep.MODID)) {
+                CompoundTag aotake = customData.getCompound(AotakeSweep.MODID);
+                if (aotake.contains("entity")) {
+                    try {
+                        result = EntityType.loadEntityRecursive(aotake.getCompound("entity"), level, e -> e);
+                    } catch (Exception e) {
+                        LOGGER.error("Failed to load entity from item stack: {}", itemStack, e);
+                    }
                 }
             }
         }
@@ -934,7 +903,7 @@ public class AotakeUtils {
             BlockHitResult ray = new BlockHitResult(hitVec, direction, coordinate.toBlockPos(), false);
 
             BlockState state = player.serverLevel().getBlockState(coordinate.toBlockPos());
-            InteractionResult res = state.use(player.serverLevel(), player, InteractionHand.MAIN_HAND, ray);
+            InteractionResult res = state.useWithoutItem(player.serverLevel(), player, ray);
             if (res.consumesAction()) {
                 result = 1;
             }
@@ -1068,7 +1037,7 @@ public class AotakeUtils {
 
     public static CompoundTag readCompressed(InputStream stream) {
         try {
-            return NbtIo.readCompressed(stream);
+            return NbtIo.readCompressed(stream, NbtAccounter.unlimitedHeap());
         } catch (Exception e) {
             LOGGER.error("Failed to read compressed stream", e);
             return new CompoundTag();
@@ -1077,7 +1046,7 @@ public class AotakeUtils {
 
     public static CompoundTag readCompressed(File file) {
         try {
-            return NbtIo.readCompressed(file);
+            return NbtIo.readCompressed(file.toPath(), NbtAccounter.unlimitedHeap());
         } catch (Exception e) {
             LOGGER.error("Failed to read compressed file: {}", file.getAbsolutePath(), e);
             return new CompoundTag();
@@ -1087,7 +1056,7 @@ public class AotakeUtils {
     public static boolean writeCompressed(CompoundTag tag, File file) {
         boolean result = false;
         try {
-            NbtIo.writeCompressed(tag, file);
+            NbtIo.writeCompressed(tag, file.toPath());
             result = true;
         } catch (Exception e) {
             LOGGER.error("Failed to write compressed file: {}", file.getAbsolutePath(), e);
@@ -1168,7 +1137,8 @@ public class AotakeUtils {
     public static ItemStack deserializeItemStack(@NonNull String item) {
         ItemStack itemStack;
         try {
-            itemStack = ItemStack.of(TagParser.parseTag(item));
+            itemStack = ItemStack.CODEC.decode(NbtOps.INSTANCE, TagParser.parseTag(item)).result()
+                    .orElse(new Pair<>(null, null)).getFirst();
         } catch (Exception e) {
             itemStack = null;
             LOGGER.error("Invalid unsafe item: {}", item, e);
@@ -1227,31 +1197,24 @@ public class AotakeUtils {
 
     public static String getItemCustomNameJson(@NonNull ItemStack itemStack) {
         String result = "";
-        CompoundTag CompoundTag = itemStack.getTagElement("display");
-        if (CompoundTag != null && CompoundTag.contains("Name", 8)) {
-            result = CompoundTag.getString("Name");
+        net.minecraft.network.chat.Component name = getItemCustomName(itemStack);
+        if (name != null) {
+            result = net.minecraft.network.chat.Component.Serializer.toJson(name
+                    , AotakeSweep.serverInstance().key().getAllLevels().iterator().next().registryAccess());
         }
         return result;
     }
 
     public static net.minecraft.network.chat.Component getItemCustomName(@NonNull ItemStack itemStack) {
-        net.minecraft.network.chat.Component result = null;
-        String nameJson = getItemCustomNameJson(itemStack);
-        if (StringUtils.isNotNullOrEmpty(nameJson)) {
-            try {
-                result = net.minecraft.network.chat.Component.Serializer.fromJson(nameJson);
-            } catch (Exception e) {
-                LOGGER.error("Invalid unsafe item name: {}", nameJson, e);
-            }
-        }
-        return result;
+        return itemStack.getComponents().get(DataComponents.CUSTOM_NAME);
     }
 
     public static net.minecraft.network.chat.Component textComponentFromJson(String json) {
         net.minecraft.network.chat.Component result = null;
         if (StringUtils.isNotNullOrEmpty(json)) {
             try {
-                result = net.minecraft.network.chat.Component.Serializer.fromJson(json);
+                result = net.minecraft.network.chat.Component.Serializer.fromJson(json
+                        , AotakeSweep.serverInstance().key().getAllLevels().iterator().next().registryAccess());
             } catch (Exception e) {
                 LOGGER.error("Invalid unsafe item name: {}", json, e);
             }

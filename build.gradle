@@ -4,7 +4,7 @@ plugins {
     // 若以上行报错则大概率为网络问题, 请切换网络并刷新Gradle
 }
 
-def javaVer = 17
+def javaVer = 21
 
 version = project.mod_version
 mod_id = project.mod_id

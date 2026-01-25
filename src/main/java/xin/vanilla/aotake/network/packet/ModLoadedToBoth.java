@@ -1,28 +1,20 @@
 package xin.vanilla.aotake.network.packet;
 
-import net.fabricmc.fabric.api.networking.v1.PacketByteBufs;
 import net.minecraft.network.FriendlyByteBuf;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.server.level.ServerPlayer;
+import org.jetbrains.annotations.NotNull;
 import xin.vanilla.aotake.AotakeSweep;
-import xin.vanilla.aotake.network.AotakePacket;
 import xin.vanilla.aotake.util.AotakeUtils;
 
-public class ModLoadedToBoth implements AotakePacket {
-    public static final ResourceLocation ID = AotakeSweep.createResource("client_loaded");
-
-    public ModLoadedToBoth() {
-    }
+public record ModLoadedToBoth() implements CustomPacketPayload {
+    public static final CustomPacketPayload.Type<ModLoadedToBoth> ID = new CustomPacketPayload.Type<>(AotakeSweep.createResource("client_loaded"));
+    public static final StreamCodec<FriendlyByteBuf, ModLoadedToBoth> CODEC = StreamCodec.unit(new ModLoadedToBoth());
 
     @Override
-    public ResourceLocation id() {
+    public @NotNull Type<? extends CustomPacketPayload> type() {
         return ID;
-    }
-
-    @Override
-    public FriendlyByteBuf toBytes(FriendlyByteBuf buf) {
-        if (buf == null) buf = PacketByteBufs.create();
-        return buf;
     }
 
     public static void handle(ServerPlayer player) {

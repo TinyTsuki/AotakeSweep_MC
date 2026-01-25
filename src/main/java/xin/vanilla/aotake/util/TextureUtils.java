@@ -93,7 +93,7 @@ public class TextureUtils implements SimpleSynchronousResourceReloadListener {
      */
     public static ResourceLocation getEffectTexture(MobEffectInstance effectInstance) {
         ResourceLocation effectIcon;
-        ResourceLocation registryName = BuiltInRegistries.MOB_EFFECT.getKey(effectInstance.getEffect());
+        ResourceLocation registryName = BuiltInRegistries.MOB_EFFECT.getKey(effectInstance.getEffect().value());
         if (registryName != null) {
             effectIcon = AotakeSweep.createResource(registryName.getNamespace(), DEFAULT_EFFECT_DIR + registryName.getPath() + ".png");
         } else {

@@ -1,12 +1,16 @@
 package xin.vanilla.aotake.data.world;
 
+import com.mojang.datafixers.util.Pair;
 import lombok.Getter;
 import lombok.NonNull;
+import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
+import net.minecraft.nbt.NbtOps;
 import net.minecraft.nbt.Tag;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.util.datafix.DataFixTypes;
 import net.minecraft.world.MenuProvider;
 import net.minecraft.world.SimpleContainer;
 import net.minecraft.world.entity.player.Inventory;
@@ -54,7 +58,7 @@ public class WorldTrashData extends SavedData {
     public WorldTrashData() {
     }
 
-    public static WorldTrashData load(CompoundTag nbt) {
+    public static WorldTrashData load(CompoundTag nbt, HolderLookup.Provider provider) {
         WorldTrashData data = new WorldTrashData();
         // 未开启持久化直接返回
         try {
@@ -67,7 +71,7 @@ public class WorldTrashData extends SavedData {
         ConcurrentShuffleList<KeyValue<WorldCoordinate, ItemStack>> drops = new ConcurrentShuffleList<>();
         for (int i = 0; i < dropListTag.size(); i++) {
             CompoundTag drop = dropListTag.getCompound(i);
-            ItemStack item = ItemStack.of(drop.getCompound("item"));
+            ItemStack item = ItemStack.CODEC.decode(NbtOps.INSTANCE, drop.getCompound("item")).result().orElse(new Pair<>(null, null)).getFirst();
             drops.add(new KeyValue<>(
                     WorldCoordinate.readFromNBT(drop.getCompound("coordinate"))
                     , item
@@ -88,7 +92,7 @@ public class WorldTrashData extends SavedData {
         ListTag inventoryListTag = nbt.getList("inventoryList", 9);
         for (Tag inbt : inventoryListTag) {
             SimpleContainer inventory = new SimpleContainer(6 * 9);
-            inventory.fromTag((ListTag) inbt);
+            inventory.fromTag((ListTag) inbt, provider);
             data.inventoryList.add(inventory);
         }
         return data;
@@ -97,18 +101,17 @@ public class WorldTrashData extends SavedData {
     @NonNull
     @Override
     @ParametersAreNonnullByDefault
-    public CompoundTag save(CompoundTag nbt) {
+    public CompoundTag save(CompoundTag nbt, HolderLookup.Provider provider) {
         // 未开启持久化直接返回
         try {
             if (!ServerConfig.get().dustbinConfig().dustbinPersistent()) return nbt;
         } catch (Throwable ignored) {
         }
-
         ListTag dropsNBT = new ListTag();
         for (KeyValue<WorldCoordinate, ItemStack> drop : this.getDropList()) {
             if (drop == null || drop.getValue() == null) continue;
             CompoundTag dropTag = new CompoundTag();
-            dropTag.put("item", drop.getValue().save(new CompoundTag()));
+            dropTag.put("item", ItemStack.CODEC.encodeStart(NbtOps.INSTANCE, drop.getValue()).result().orElse(new CompoundTag()));
             dropTag.put("coordinate", drop.getKey().writeToNBT());
             dropsNBT.add(dropTag);
         }
@@ -120,7 +123,7 @@ public class WorldTrashData extends SavedData {
 
         ListTag inventoryNBT = new ListTag();
         for (SimpleContainer inventory : this.getInventoryList()) {
-            inventoryNBT.add(inventory.createTag());
+            inventoryNBT.add(inventory.createTag(provider));
         }
         nbt.put("inventoryList", inventoryNBT);
 
@@ -146,7 +149,7 @@ public class WorldTrashData extends SavedData {
     }
 
     public static WorldTrashData get(ServerLevel world) {
-        return world.getDataStorage().computeIfAbsent(WorldTrashData::load, WorldTrashData::new, DATA_NAME);
+        return world.getDataStorage().computeIfAbsent(new Factory<>(WorldTrashData::new, WorldTrashData::load, DataFixTypes.SAVED_DATA_MAP_DATA), DATA_NAME);
     }
 
     public static MenuProvider getTrashContainer(ServerPlayer player, int page) {
@@ -159,7 +162,7 @@ public class WorldTrashData extends SavedData {
             }
         } else if (size > limit) {
             for (int i = size - limit; i > 0; i--) {
-                inventories.remove(inventories.size() - 1);
+                inventories.removeLast();
             }
         }
 
@@ -233,7 +236,7 @@ public class WorldTrashData extends SavedData {
         // 合并到已有的相同物品槽
         for (int i = 0; i < inventory.getContainerSize(); i++) {
             ItemStack slot = inventory.getItem(i);
-            if (ItemStack.isSameItemSameTags(slot, stack) && slot.getCount() < slot.getMaxStackSize()) {
+            if (ItemStack.isSameItemSameComponents(slot, stack) && slot.getCount() < slot.getMaxStackSize()) {
                 int transferable = Math.min(stack.getCount(), slot.getMaxStackSize() - slot.getCount());
                 slot.grow(transferable);
                 stack.shrink(transferable);

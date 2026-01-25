@@ -8,6 +8,8 @@ import net.fabricmc.fabric.api.event.player.UseEntityCallback;
 import net.fabricmc.fabric.api.event.player.UseItemCallback;
 import net.fabricmc.fabric.api.networking.v1.PacketSender;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
+import net.minecraft.core.component.DataComponentMap;
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.ClickEvent;
 import net.minecraft.network.chat.HoverEvent;
@@ -24,6 +26,7 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.component.CustomData;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.EntityHitResult;
@@ -314,38 +317,44 @@ public class ServerEventHandler {
         ItemStack copy = original.copy();
         copy.setCount(1);
 
-        CompoundTag tag = copy.getTag();
-        if (tag != null && tag.contains(AotakeSweep.MODID)) {
-            CompoundTag aotake = tag.getCompound(AotakeSweep.MODID);
-            if (aotake.isEmpty()) {
-                tag.remove(AotakeSweep.MODID);
-            } else {
-                original.shrink(1);
+        DataComponentMap tag = copy.getComponents();
+        if (!tag.isEmpty() && tag.has(DataComponents.CUSTOM_DATA)) {
+            CompoundTag customData = tag.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag();
+            if (customData.contains(AotakeSweep.MODID)) {
+                CompoundTag aotake = customData.getCompound(AotakeSweep.MODID);
+                if (aotake.isEmpty()) {
+                    customData.remove(AotakeSweep.MODID);
+                    copy.set(DataComponents.CUSTOM_DATA, CustomData.of(customData));
+                }
+                //
+                else {
+                    original.shrink(1);
+                    CompoundTag entityData = aotake.getCompound("entity");
+                    ServerLevel level = player.serverLevel();
+                    Entity entity = EntityType.loadEntityRecursive(entityData, level, e -> e);
+                    if (entity != null) {
+                        // 将实体放置到指定位置并加入世界
+                        entity.moveTo(coordinate.getX(), coordinate.getY(), coordinate.getZ(), (float) coordinate.getYaw(), (float) coordinate.getPitch());
+                        level.addFreshEntity(entity);
+                        // 恢复物品原来的名称
+                        net.minecraft.network.chat.Component name = AotakeUtils.textComponentFromJson(aotake.getString("name"));
+                        if (name != null) copy.set(DataComponents.CUSTOM_NAME, name);
+                        else copy.remove(DataComponents.CUSTOM_NAME);
+                        // 清空节点下nbt
+                        customData.put(AotakeSweep.MODID, new CompoundTag());
+                        copy.set(DataComponents.CUSTOM_DATA, CustomData.of(customData));
+                        if (!aotake.getBoolean("byPlayer")) {
+                            copy.shrink(1);
+                        }
+                        player.addItem(copy);
 
-                CompoundTag entityData = aotake.getCompound("entity");
-                ServerLevel level = player.serverLevel();
-                Entity entity = EntityType.loadEntityRecursive(entityData, level, (e) -> e);
-                if (entity != null) {
-                    // 将实体放置到指定位置并加入世界
-                    entity.moveTo(coordinate.getX(), coordinate.getY(), coordinate.getZ(), (float) coordinate.getYaw(), (float) coordinate.getPitch());
-                    level.addFreshEntity(entity);
-                    // 恢复物品原来的名称
-                    net.minecraft.network.chat.Component name = AotakeUtils.textComponentFromJson(aotake.getString("name"));
-                    if (name != null) copy.setHoverName(name);
-                    else copy.resetHoverName();
-                    // 清空节点下nbt
-                    tag.put(AotakeSweep.MODID, new CompoundTag());
-                    if (!aotake.getBoolean("byPlayer")) {
-                        copy.shrink(1);
+                        AotakeUtils.sendActionBarMessage(player, Component.translatable(EnumI18nType.MESSAGE, "entity_released", entity.getDisplayName()));
+
+                        return entity;
                     }
-                    player.addItem(copy);
-                    AotakeUtils.sendActionBarMessage(player, Component.translatable(EnumI18nType.MESSAGE, "entity_released", entity.getDisplayName()));
-
-                    return entity;
                 }
             }
         }
-
         return null;
     }
 
@@ -355,11 +364,15 @@ public class ServerEventHandler {
         if (!(player instanceof ServerPlayer)) return InteractionResultHolder.pass(player.getItemInHand(hand));
 
         ItemStack stack = player.getItemInHand(hand);
-        CompoundTag tag = stack.getTag();
-        if (tag != null && tag.contains(AotakeSweep.MODID)) {
-            CompoundTag aotake = tag.getCompound(AotakeSweep.MODID);
-            if (aotake.isEmpty()) tag.remove(AotakeSweep.MODID);
-            return InteractionResultHolder.fail(stack);
+        DataComponentMap tag = stack.getComponents();
+        if (!tag.isEmpty() && tag.has(DataComponents.CUSTOM_DATA)) {
+            CompoundTag customData = tag.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag();
+            if (customData.contains(AotakeSweep.MODID)) {
+                if (customData.getCompound(AotakeSweep.MODID).isEmpty()) {
+                    customData.remove(AotakeSweep.MODID);
+                }
+                return InteractionResultHolder.fail(stack);
+            }
         }
 
         return InteractionResultHolder.pass(stack);
@@ -389,18 +402,20 @@ public class ServerEventHandler {
         ItemStack copy = original.copy();
         copy.setCount(1);
 
-        CompoundTag tag = copy.getTag();
-
-        if (tag != null && tag.contains(AotakeSweep.MODID)) {
-            CompoundTag aotake = tag.getCompound(AotakeSweep.MODID);
-            if (!aotake.isEmpty()) {
-                WorldCoordinate coordinate = new WorldCoordinate(entity.getX(), entity.getY(), entity.getZ());
-                Entity back = releaseEntity(serverPlayer, original, coordinate);
-                if (back != null) {
-                    back.startRiding(entity, true);
-                    // 同步客户端乘客信息
-                    AotakeUtils.broadcastPacket(new ClientboundSetPassengersPacket(entity));
-                    return InteractionResult.SUCCESS;
+        DataComponentMap tag = copy.getComponents();
+        if (!tag.isEmpty() && tag.has(DataComponents.CUSTOM_DATA)) {
+            CompoundTag customData = tag.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag();
+            if (customData.contains(AotakeSweep.MODID)) {
+                CompoundTag aotake = customData.getCompound(AotakeSweep.MODID);
+                if (!aotake.isEmpty()) {
+                    WorldCoordinate coordinate = new WorldCoordinate(entity.getX(), entity.getY(), entity.getZ());
+                    Entity back = releaseEntity(serverPlayer, original, coordinate);
+                    if (back != null) {
+                        back.startRiding(entity, true);
+                        // 同步客户端乘客信息
+                        AotakeUtils.broadcastPacket(new ClientboundSetPassengersPacket(entity));
+                        return InteractionResult.SUCCESS;
+                    }
                 }
             }
         }
@@ -409,23 +424,25 @@ public class ServerEventHandler {
         List<String> catchItems = ServerConfig.get().catchConfig().catchItem();
         boolean isCatchItem = catchItems.stream().anyMatch(s -> s.equals(AotakeUtils.getItemRegistryName(original)));
 
-        boolean hasEntityInTag = tag != null && tag.contains(AotakeSweep.MODID)
-                && tag.getCompound(AotakeSweep.MODID).contains("entity");
+        boolean hasEntityInTag = (!tag.isEmpty()
+                && tag.has(DataComponents.CUSTOM_DATA)
+                && tag.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag().contains(AotakeSweep.MODID)
+                && tag.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag().getCompound(AotakeSweep.MODID).contains("entity"));
 
         if (allowCatch && isCatchItem && serverPlayer.isCrouching() && !hasEntityInTag) {
             original.shrink(1);
 
-            tag = copy.getOrCreateTag();
+            CompoundTag customData = new CompoundTag();
             CompoundTag aotake = new CompoundTag();
             aotake.putBoolean("byPlayer", true);
             CompoundTag entityTag = new CompoundTag();
             entity.save(entityTag);
             aotake.put("entity", entityTag);
             aotake.putString("name", AotakeUtils.getItemCustomNameJson(copy));
-            tag.put(AotakeSweep.MODID, aotake);
+            customData.put(AotakeSweep.MODID, aotake);
 
-            Component combined = Component.literal(entity.getDisplayName().getString() + copy.getHoverName().getString());
-            copy.setHoverName(combined.toTextComponent());
+            copy.set(DataComponents.CUSTOM_DATA, CustomData.of(customData));
+            copy.set(DataComponents.CUSTOM_NAME, Component.literal(String.format("%s%s", entity.getDisplayName().getString(), copy.getHoverName().getString())).toChatComponent());
             serverPlayer.addItem(copy);
             // 移除被捕实体
             AotakeUtils.removeEntity(entity, true);

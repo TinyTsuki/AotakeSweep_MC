@@ -7,6 +7,7 @@ import net.fabricmc.fabric.api.transfer.v1.storage.Storage;
 import net.fabricmc.fabric.api.transfer.v1.storage.StorageView;
 import net.fabricmc.fabric.api.transfer.v1.storage.base.SingleSlotStorage;
 import net.fabricmc.fabric.api.transfer.v1.transaction.Transaction;
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.ClickEvent;
 import net.minecraft.network.chat.HoverEvent;
@@ -16,7 +17,9 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.SimpleContainer;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.item.ItemEntity;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.component.CustomData;
 import net.minecraft.world.level.Level;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -182,16 +185,20 @@ public class EntitySweeper {
                     && AotakeSweep.entityFilter().validEntity(ServerConfig.get().catchConfig().catchEntity(), entity)
             ) {
                 String randomItem = CollectionUtils.getRandomElement(ServerConfig.get().catchConfig().catchItem());
-                itemToRecycle = new ItemStack(AotakeUtils.deserializeItem(randomItem));
-                CompoundTag tag = itemToRecycle.getOrCreateTag();
-                CompoundTag aotake = new CompoundTag();
-                aotake.putBoolean("byPlayer", false);
-                CompoundTag entityTag = new CompoundTag();
-                entity.save(entityTag);
-                aotake.put("entity", entityTag);
-                tag.put(AotakeSweep.MODID, aotake);
+                Item it = AotakeUtils.deserializeItem(randomItem);
+                if (it != null) {
+                    itemToRecycle = new ItemStack(it);
+                    CompoundTag customData = new CompoundTag();
+                    CompoundTag aotake = new CompoundTag();
+                    aotake.putBoolean("byPlayer", false);
+                    CompoundTag entityTag = new CompoundTag();
+                    entity.save(entityTag);
+                    aotake.put("entity", entityTag);
+                    customData.put(AotakeSweep.MODID, aotake);
+                    itemToRecycle.set(DataComponents.CUSTOM_DATA, CustomData.of(customData));
 
-                result.setRecycledEntityCount(1);
+                    result.setRecycledEntityCount(1);
+                }
             }
             result.setEntityCount(1);
             entitiesToRemove.add(entity);

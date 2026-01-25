@@ -1,40 +1,27 @@
 package xin.vanilla.aotake.network.packet;
 
-import net.fabricmc.fabric.api.networking.v1.PacketByteBufs;
 import net.minecraft.network.FriendlyByteBuf;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.server.level.ServerPlayer;
+import org.jetbrains.annotations.NotNull;
 import xin.vanilla.aotake.AotakeSweep;
 import xin.vanilla.aotake.enums.EnumCommandType;
-import xin.vanilla.aotake.network.AotakePacket;
 import xin.vanilla.aotake.util.AotakeUtils;
 
-public class ClearDustbinToServer implements AotakePacket {
-    public static final ResourceLocation ID = AotakeSweep.createResource("clear_dustbin");
-
-    private final boolean all;
-    private final boolean cache;
-
-    public ClearDustbinToServer(boolean all, boolean cache) {
-        this.all = all;
-        this.cache = cache;
-    }
-
-    public ClearDustbinToServer(FriendlyByteBuf buf) {
-        this.all = buf.readBoolean();
-        this.cache = buf.readBoolean();
-    }
+public record ClearDustbinToServer(boolean all, boolean cache) implements CustomPacketPayload {
+    public static final CustomPacketPayload.Type<ClearDustbinToServer> ID = new CustomPacketPayload.Type<>(AotakeSweep.createResource("clear_dustbin"));
+    public static final StreamCodec<FriendlyByteBuf, ClearDustbinToServer> CODEC = StreamCodec.of(
+            (buf, packet) -> {
+                buf.writeBoolean(packet.all);
+                buf.writeBoolean(packet.cache);
+            },
+            buf -> new ClearDustbinToServer(buf.readBoolean(), buf.readBoolean())
+    );
 
     @Override
-    public ResourceLocation id() {
+    public @NotNull Type<? extends CustomPacketPayload> type() {
         return ID;
-    }
-
-    public FriendlyByteBuf toBytes(FriendlyByteBuf buf) {
-        if (buf == null) buf = PacketByteBufs.create();
-        buf.writeBoolean(this.all);
-        buf.writeBoolean(this.cache);
-        return buf;
     }
 
     public static void handle(ClearDustbinToServer packet, ServerPlayer player) {
