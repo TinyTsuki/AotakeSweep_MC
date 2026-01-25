@@ -22,11 +22,6 @@ import xin.vanilla.aotake.data.player.PlayerSweepData;
 import xin.vanilla.aotake.enums.EnumI18nType;
 import xin.vanilla.aotake.enums.EnumMCColor;
 
-import java.lang.reflect.Field;
-import java.lang.reflect.Method;
-import java.util.*;
-import java.util.stream.Collectors;
-
 public class CommandUtils {
 
     private static final Logger LOGGER = LogManager.getLogger();
@@ -44,7 +39,7 @@ public class CommandUtils {
     }
 
     public static String getLanguage(CommandSourceStack source) {
-        String lang = ServerConfig.SERVER_CONFIG.defaultLanguage();
+        String lang = ServerConfig.get().defaultLanguage();
         if (source.getEntity() != null && source.getEntity() instanceof ServerPlayer) {
             try {
                 lang = AotakeUtils.getPlayerLanguage(source.getPlayerOrException());

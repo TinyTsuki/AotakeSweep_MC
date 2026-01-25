@@ -17,6 +17,7 @@ import xin.vanilla.aotake.config.ServerConfig;
 import xin.vanilla.aotake.data.KeyValue;
 import xin.vanilla.aotake.data.player.PlayerDataManager;
 import xin.vanilla.aotake.data.player.PlayerSweepData;
+import xin.vanilla.aotake.event.ServerEventHandler;
 import xin.vanilla.aotake.network.ModNetworkHandler;
 import xin.vanilla.aotake.util.AotakeScheduler;
 import xin.vanilla.aotake.util.EntityFilter;
@@ -95,6 +96,9 @@ public class AotakeSweep implements ModInitializer {
             AotakeSweep.serverInstance.setValue(false);
             PlayerSweepData.clear();
         });
+
+        // 注册事件
+        ServerEventHandler.register();
 
         // 注册调度器
         ServerTickEvents.END_SERVER_TICK.register(AotakeScheduler::onServerTick);

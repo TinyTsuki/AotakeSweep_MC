@@ -58,7 +58,7 @@ public class WorldTrashData extends SavedData {
         WorldTrashData data = new WorldTrashData();
         // 未开启持久化直接返回
         try {
-            if (!ServerConfig.SERVER_CONFIG.dustbinPersistent()) return data;
+            if (!ServerConfig.get().dustbinConfig().dustbinPersistent()) return data;
         } catch (Throwable ignored) {
         }
 
@@ -100,7 +100,7 @@ public class WorldTrashData extends SavedData {
     public CompoundTag save(CompoundTag nbt) {
         // 未开启持久化直接返回
         try {
-            if (!ServerConfig.SERVER_CONFIG.dustbinPersistent()) return nbt;
+            if (!ServerConfig.get().dustbinConfig().dustbinPersistent()) return nbt;
         } catch (Throwable ignored) {
         }
 
@@ -150,7 +150,7 @@ public class WorldTrashData extends SavedData {
     }
 
     public static MenuProvider getTrashContainer(ServerPlayer player, int page) {
-        int limit = ServerConfig.SERVER_CONFIG.dustbinPageLimit();
+        int limit = ServerConfig.get().dustbinConfig().dustbinPageLimit();
         List<SimpleContainer> inventories = get().getInventoryList();
         int size = inventories.size();
         if (inventories.isEmpty() || size < limit) {
@@ -181,11 +181,11 @@ public class WorldTrashData extends SavedData {
                         .setColor(0x5DA530);
                 Component vComponent = Component.literal(String.format("(%s/%s)", page, limit))
                         .setColor(0x5DA530);
-                Component bComponent = Component.literal(String.format("(%s)", ServerConfig.SERVER_CONFIG.dustbinBlockPositions().size()))
+                Component bComponent = Component.literal(String.format("(%s)", ServerConfig.get().dustbinConfig().dustbinBlockPositions().size()))
                         .setColor(EnumMCColor.RED.getColor());
                 Component plusComponent = Component.literal("+")
                         .setColor(EnumMCColor.BLACK.getColor());
-                switch (EnumDustbinMode.valueOfOrDefault(ServerConfig.SERVER_CONFIG.dustbinMode())) {
+                switch (EnumDustbinMode.valueOfOrDefault(ServerConfig.get().dustbinConfig().dustbinMode())) {
                     case VIRTUAL: {
                         title.append(String.format("(%s/%s)", page, limit));
                     }

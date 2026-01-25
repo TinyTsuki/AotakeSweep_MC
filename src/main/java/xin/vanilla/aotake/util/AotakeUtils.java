@@ -79,11 +79,11 @@ public class AotakeUtils {
      * 获取指令前缀
      */
     public static String getCommandPrefix() {
-        String commandPrefix = ServerConfig.SERVER_CONFIG.commandPrefix();
+        String commandPrefix = ServerConfig.get().commandPrefix();
         if (StringUtils.isNullOrEmptyEx(commandPrefix) || !commandPrefix.matches("^(\\w ?)+$")) {
-            ServerConfig.SERVER_CONFIG.commandPrefix(AotakeSweep.DEFAULT_COMMAND_PREFIX);
+            ServerConfig.get().commandPrefix(AotakeSweep.DEFAULT_COMMAND_PREFIX);
         }
-        return ServerConfig.SERVER_CONFIG.commandPrefix().trim();
+        return ServerConfig.get().commandPrefix().trim();
     }
 
     /**
@@ -93,28 +93,35 @@ public class AotakeUtils {
         String prefix = AotakeUtils.getCommandPrefix();
         return switch (type) {
             case HELP -> prefix + " help";
-            case LANGUAGE -> prefix + " " + ServerConfig.SERVER_CONFIG.commandLanguage();
-            case LANGUAGE_CONCISE -> isConciseEnabled(type) ? ServerConfig.SERVER_CONFIG.commandLanguage() : "";
-            case VIRTUAL_OP -> prefix + " " + ServerConfig.SERVER_CONFIG.commandVirtualOp();
-            case VIRTUAL_OP_CONCISE -> isConciseEnabled(type) ? ServerConfig.SERVER_CONFIG.commandVirtualOp() : "";
-            case DUSTBIN_OPEN, DUSTBIN_OPEN_OTHER -> prefix + " " + ServerConfig.SERVER_CONFIG.commandDustbinOpen();
+            case LANGUAGE -> prefix + " " + ServerConfig.get().commandConfig().commandLanguage();
+            case LANGUAGE_CONCISE -> isConciseEnabled(type) ? ServerConfig.get().commandConfig().commandLanguage() : "";
+            case VIRTUAL_OP -> prefix + " " + ServerConfig.get().commandConfig().commandVirtualOp();
+            case VIRTUAL_OP_CONCISE ->
+                    isConciseEnabled(type) ? ServerConfig.get().commandConfig().commandVirtualOp() : "";
+            case DUSTBIN_OPEN, DUSTBIN_OPEN_OTHER ->
+                    prefix + " " + ServerConfig.get().commandConfig().commandDustbinOpen();
             case DUSTBIN_OPEN_CONCISE, DUSTBIN_OPEN_OTHER_CONCISE ->
-                    isConciseEnabled(type) ? ServerConfig.SERVER_CONFIG.commandDustbinOpen() : "";
-            case DUSTBIN_CLEAR -> prefix + " " + ServerConfig.SERVER_CONFIG.commandDustbinClear();
+                    isConciseEnabled(type) ? ServerConfig.get().commandConfig().commandDustbinOpen() : "";
+            case DUSTBIN_CLEAR -> prefix + " " + ServerConfig.get().commandConfig().commandDustbinClear();
             case DUSTBIN_CLEAR_CONCISE ->
-                    isConciseEnabled(type) ? ServerConfig.SERVER_CONFIG.commandDustbinClear() : "";
-            case DUSTBIN_DROP -> prefix + " " + ServerConfig.SERVER_CONFIG.commandDustbinDrop();
-            case DUSTBIN_DROP_CONCISE -> isConciseEnabled(type) ? ServerConfig.SERVER_CONFIG.commandDustbinDrop() : "";
-            case CACHE_CLEAR -> prefix + " " + ServerConfig.SERVER_CONFIG.commandCacheClear();
-            case CACHE_CLEAR_CONCISE -> isConciseEnabled(type) ? ServerConfig.SERVER_CONFIG.commandCacheClear() : "";
-            case CACHE_DROP -> prefix + " " + ServerConfig.SERVER_CONFIG.commandCacheDrop();
-            case CACHE_DROP_CONCISE -> isConciseEnabled(type) ? ServerConfig.SERVER_CONFIG.commandCacheDrop() : "";
-            case SWEEP -> prefix + " " + ServerConfig.SERVER_CONFIG.commandSweep();
-            case SWEEP_CONCISE -> isConciseEnabled(type) ? ServerConfig.SERVER_CONFIG.commandSweep() : "";
-            case CLEAR_DROP -> prefix + " " + ServerConfig.SERVER_CONFIG.commandClearDrop();
-            case CLEAR_DROP_CONCISE -> isConciseEnabled(type) ? ServerConfig.SERVER_CONFIG.commandClearDrop() : "";
-            case DELAY_SWEEP -> prefix + " " + ServerConfig.SERVER_CONFIG.commandDelaySweep();
-            case DELAY_SWEEP_CONCISE -> isConciseEnabled(type) ? ServerConfig.SERVER_CONFIG.commandDelaySweep() : "";
+                    isConciseEnabled(type) ? ServerConfig.get().commandConfig().commandDustbinClear() : "";
+            case DUSTBIN_DROP -> prefix + " " + ServerConfig.get().commandConfig().commandDustbinDrop();
+            case DUSTBIN_DROP_CONCISE ->
+                    isConciseEnabled(type) ? ServerConfig.get().commandConfig().commandDustbinDrop() : "";
+            case CACHE_CLEAR -> prefix + " " + ServerConfig.get().commandConfig().commandCacheClear();
+            case CACHE_CLEAR_CONCISE ->
+                    isConciseEnabled(type) ? ServerConfig.get().commandConfig().commandCacheClear() : "";
+            case CACHE_DROP -> prefix + " " + ServerConfig.get().commandConfig().commandCacheDrop();
+            case CACHE_DROP_CONCISE ->
+                    isConciseEnabled(type) ? ServerConfig.get().commandConfig().commandCacheDrop() : "";
+            case SWEEP -> prefix + " " + ServerConfig.get().commandConfig().commandSweep();
+            case SWEEP_CONCISE -> isConciseEnabled(type) ? ServerConfig.get().commandConfig().commandSweep() : "";
+            case CLEAR_DROP -> prefix + " " + ServerConfig.get().commandConfig().commandClearDrop();
+            case CLEAR_DROP_CONCISE ->
+                    isConciseEnabled(type) ? ServerConfig.get().commandConfig().commandClearDrop() : "";
+            case DELAY_SWEEP -> prefix + " " + ServerConfig.get().commandConfig().commandDelaySweep();
+            case DELAY_SWEEP_CONCISE ->
+                    isConciseEnabled(type) ? ServerConfig.get().commandConfig().commandDelaySweep() : "";
             default -> "";
         };
     }
@@ -124,17 +131,17 @@ public class AotakeUtils {
      */
     public static int getCommandPermissionLevel(EnumCommandType type) {
         return switch (type) {
-            case VIRTUAL_OP, VIRTUAL_OP_CONCISE -> ServerConfig.SERVER_CONFIG.permissionVirtualOp();
-            case DUSTBIN_OPEN, DUSTBIN_OPEN_CONCISE -> ServerConfig.SERVER_CONFIG.permissionDustbinOpen();
+            case VIRTUAL_OP, VIRTUAL_OP_CONCISE -> ServerConfig.get().permissionConfig().permissionVirtualOp();
+            case DUSTBIN_OPEN, DUSTBIN_OPEN_CONCISE -> ServerConfig.get().permissionConfig().permissionDustbinOpen();
             case DUSTBIN_OPEN_OTHER, DUSTBIN_OPEN_OTHER_CONCISE ->
-                    ServerConfig.SERVER_CONFIG.permissionDustbinOpenOther();
-            case DUSTBIN_CLEAR, DUSTBIN_CLEAR_CONCISE -> ServerConfig.SERVER_CONFIG.permissionDustbinClear();
-            case DUSTBIN_DROP, DUSTBIN_DROP_CONCISE -> ServerConfig.SERVER_CONFIG.permissionDustbinDrop();
-            case CACHE_CLEAR, CACHE_CLEAR_CONCISE -> ServerConfig.SERVER_CONFIG.permissionCacheClear();
-            case CACHE_DROP, CACHE_DROP_CONCISE -> ServerConfig.SERVER_CONFIG.permissionCacheDrop();
-            case SWEEP, SWEEP_CONCISE -> ServerConfig.SERVER_CONFIG.permissionSweep();
-            case CLEAR_DROP, CLEAR_DROP_CONCISE -> ServerConfig.SERVER_CONFIG.permissionClearDrop();
-            case DELAY_SWEEP, DELAY_SWEEP_CONCISE -> ServerConfig.SERVER_CONFIG.permissionDelaySweep();
+                    ServerConfig.get().permissionConfig().permissionDustbinOpenOther();
+            case DUSTBIN_CLEAR, DUSTBIN_CLEAR_CONCISE -> ServerConfig.get().permissionConfig().permissionDustbinClear();
+            case DUSTBIN_DROP, DUSTBIN_DROP_CONCISE -> ServerConfig.get().permissionConfig().permissionDustbinDrop();
+            case CACHE_CLEAR, CACHE_CLEAR_CONCISE -> ServerConfig.get().permissionConfig().permissionCacheClear();
+            case CACHE_DROP, CACHE_DROP_CONCISE -> ServerConfig.get().permissionConfig().permissionCacheDrop();
+            case SWEEP, SWEEP_CONCISE -> ServerConfig.get().permissionConfig().permissionSweep();
+            case CLEAR_DROP, CLEAR_DROP_CONCISE -> ServerConfig.get().permissionConfig().permissionClearDrop();
+            case DELAY_SWEEP, DELAY_SWEEP_CONCISE -> ServerConfig.get().permissionConfig().permissionDelaySweep();
             default -> 0;
         };
     }
@@ -144,17 +151,17 @@ public class AotakeUtils {
      */
     public static boolean isConciseEnabled(EnumCommandType type) {
         return switch (type) {
-            case LANGUAGE, LANGUAGE_CONCISE -> ServerConfig.SERVER_CONFIG.conciseLanguage();
-            case VIRTUAL_OP, VIRTUAL_OP_CONCISE -> ServerConfig.SERVER_CONFIG.conciseVirtualOp();
+            case LANGUAGE, LANGUAGE_CONCISE -> ServerConfig.get().conciseConfig().conciseLanguage();
+            case VIRTUAL_OP, VIRTUAL_OP_CONCISE -> ServerConfig.get().conciseConfig().conciseVirtualOp();
             case DUSTBIN_OPEN, DUSTBIN_OPEN_CONCISE, DUSTBIN_OPEN_OTHER, DUSTBIN_OPEN_OTHER_CONCISE ->
-                    ServerConfig.SERVER_CONFIG.conciseDustbinOpen();
-            case DUSTBIN_CLEAR, DUSTBIN_CLEAR_CONCISE -> ServerConfig.SERVER_CONFIG.conciseDustbinClear();
-            case DUSTBIN_DROP, DUSTBIN_DROP_CONCISE -> ServerConfig.SERVER_CONFIG.conciseDustbinDrop();
-            case CACHE_CLEAR, CACHE_CLEAR_CONCISE -> ServerConfig.SERVER_CONFIG.conciseCacheClear();
-            case CACHE_DROP, CACHE_DROP_CONCISE -> ServerConfig.SERVER_CONFIG.conciseCacheDrop();
-            case SWEEP, SWEEP_CONCISE -> ServerConfig.SERVER_CONFIG.conciseSweep();
-            case CLEAR_DROP, CLEAR_DROP_CONCISE -> ServerConfig.SERVER_CONFIG.conciseClearDrop();
-            case DELAY_SWEEP, DELAY_SWEEP_CONCISE -> ServerConfig.SERVER_CONFIG.conciseDelaySweep();
+                    ServerConfig.get().conciseConfig().conciseDustbinOpen();
+            case DUSTBIN_CLEAR, DUSTBIN_CLEAR_CONCISE -> ServerConfig.get().conciseConfig().conciseDustbinClear();
+            case DUSTBIN_DROP, DUSTBIN_DROP_CONCISE -> ServerConfig.get().conciseConfig().conciseDustbinDrop();
+            case CACHE_CLEAR, CACHE_CLEAR_CONCISE -> ServerConfig.get().conciseConfig().conciseCacheClear();
+            case CACHE_DROP, CACHE_DROP_CONCISE -> ServerConfig.get().conciseConfig().conciseCacheDrop();
+            case SWEEP, SWEEP_CONCISE -> ServerConfig.get().conciseConfig().conciseSweep();
+            case CLEAR_DROP, CLEAR_DROP_CONCISE -> ServerConfig.get().conciseConfig().conciseClearDrop();
+            case DELAY_SWEEP, DELAY_SWEEP_CONCISE -> ServerConfig.get().conciseConfig().conciseDelaySweep();
             default -> false;
         };
     }
@@ -331,9 +338,9 @@ public class AotakeUtils {
             } catch (CommandSyntaxException ignored) {
             }
         } else if (success) {
-            source.sendSuccess(() -> Component.translatable(key, args).setLanguageCode(ServerConfig.SERVER_CONFIG.defaultLanguage()).toChatComponent(), false);
+            source.sendSuccess(() -> Component.translatable(key, args).setLanguageCode(ServerConfig.get().defaultLanguage()).toChatComponent(), false);
         } else {
-            source.sendFailure(Component.translatable(key, args).setLanguageCode(ServerConfig.SERVER_CONFIG.defaultLanguage()).toChatComponent());
+            source.sendFailure(Component.translatable(key, args).setLanguageCode(ServerConfig.get().defaultLanguage()).toChatComponent());
         }
     }
 
@@ -433,7 +440,7 @@ public class AotakeUtils {
             }
             return AotakeUtils.getValidLanguage(player, language);
         } catch (IllegalArgumentException i) {
-            return ServerConfig.SERVER_CONFIG.defaultLanguage();
+            return ServerConfig.get().defaultLanguage();
         }
     }
 
@@ -446,7 +453,7 @@ public class AotakeUtils {
                 result = AotakeUtils.getClientLanguage();
             }
         } else if ("server".equalsIgnoreCase(language)) {
-            result = ServerConfig.SERVER_CONFIG.defaultLanguage();
+            result = ServerConfig.get().defaultLanguage();
         } else {
             result = language;
         }
@@ -475,40 +482,40 @@ public class AotakeUtils {
 
     private static void initSafeBlocks() {
         if (SAFE_BLOCKS_STATE == null) {
-            SAFE_BLOCKS_STATE = ServerConfig.SERVER_CONFIG.safeBlocks().stream()
+            SAFE_BLOCKS_STATE = ServerConfig.get().safeConfig().safeBlocks().stream()
                     .map(AotakeUtils::deserializeBlockState)
                     .filter(Objects::nonNull)
                     .distinct()
                     .toList();
         }
         if (SAFE_BLOCKS == null) {
-            SAFE_BLOCKS = ServerConfig.SERVER_CONFIG.safeBlocks().stream()
+            SAFE_BLOCKS = ServerConfig.get().safeConfig().safeBlocks().stream()
                     .filter(Objects::nonNull)
                     .distinct()
                     .toList();
         }
         if (SAFE_BLOCKS_BELOW_STATE == null) {
-            SAFE_BLOCKS_BELOW_STATE = ServerConfig.SERVER_CONFIG.safeBlocksBelow().stream()
+            SAFE_BLOCKS_BELOW_STATE = ServerConfig.get().safeConfig().safeBlocksBelow().stream()
                     .map(AotakeUtils::deserializeBlockState)
                     .filter(Objects::nonNull)
                     .distinct()
                     .toList();
         }
         if (SAFE_BLOCKS_BELOW == null) {
-            SAFE_BLOCKS_BELOW = ServerConfig.SERVER_CONFIG.safeBlocksBelow().stream()
+            SAFE_BLOCKS_BELOW = ServerConfig.get().safeConfig().safeBlocksBelow().stream()
                     .filter(Objects::nonNull)
                     .distinct()
                     .toList();
         }
         if (SAFE_BLOCKS_ABOVE_STATE == null) {
-            SAFE_BLOCKS_ABOVE_STATE = ServerConfig.SERVER_CONFIG.safeBlocksAbove().stream()
+            SAFE_BLOCKS_ABOVE_STATE = ServerConfig.get().safeConfig().safeBlocksAbove().stream()
                     .map(AotakeUtils::deserializeBlockState)
                     .filter(Objects::nonNull)
                     .distinct()
                     .toList();
         }
         if (SAFE_BLOCKS_ABOVE == null) {
-            SAFE_BLOCKS_ABOVE = ServerConfig.SERVER_CONFIG.safeBlocksAbove().stream()
+            SAFE_BLOCKS_ABOVE = ServerConfig.get().safeConfig().safeBlocksAbove().stream()
                     .filter(Objects::nonNull)
                     .distinct()
                     .toList();
@@ -531,29 +538,29 @@ public class AotakeUtils {
         if (entity != null && !(entity instanceof Player)) {
             if (chuck) {
                 // 空列表
-                if (CollectionUtils.isNullOrEmpty(ServerConfig.SERVER_CONFIG.chunkCheckEntityList())) {
-                    result = EnumListType.WHITE == ServerConfig.SERVER_CONFIG.chunkCheckEntityListMode();
+                if (CollectionUtils.isNullOrEmpty(ServerConfig.get().chunkCheckConfig().chunkCheckEntityList())) {
+                    result = EnumListType.WHITE == ServerConfig.get().chunkCheckConfig().chunkCheckEntityListMode();
                 }
                 // 黑名单模式
-                else if (EnumListType.BLACK == ServerConfig.SERVER_CONFIG.chunkCheckEntityListMode()) {
-                    result = AotakeSweep.entityFilter().validEntity(ServerConfig.SERVER_CONFIG.chunkCheckEntityList(), entity);
+                else if (EnumListType.BLACK == ServerConfig.get().chunkCheckConfig().chunkCheckEntityListMode()) {
+                    result = AotakeSweep.entityFilter().validEntity(ServerConfig.get().chunkCheckConfig().chunkCheckEntityList(), entity);
                 }
                 // 白名单模式
                 else {
-                    result = !AotakeSweep.entityFilter().validEntity(ServerConfig.SERVER_CONFIG.chunkCheckEntityList(), entity);
+                    result = !AotakeSweep.entityFilter().validEntity(ServerConfig.get().chunkCheckConfig().chunkCheckEntityList(), entity);
                 }
             } else {
                 // 空列表
-                if (CollectionUtils.isNullOrEmpty(ServerConfig.SERVER_CONFIG.entityList())) {
-                    result = EnumListType.WHITE == ServerConfig.SERVER_CONFIG.entityListMode();
+                if (CollectionUtils.isNullOrEmpty(ServerConfig.get().sweepConfig().entityList())) {
+                    result = EnumListType.WHITE == ServerConfig.get().sweepConfig().entityListMode();
                 }
                 // 黑名单模式
-                else if (EnumListType.BLACK == ServerConfig.SERVER_CONFIG.entityListMode()) {
-                    result = AotakeSweep.entityFilter().validEntity(ServerConfig.SERVER_CONFIG.entityList(), entity);
+                else if (EnumListType.BLACK == ServerConfig.get().sweepConfig().entityListMode()) {
+                    result = AotakeSweep.entityFilter().validEntity(ServerConfig.get().sweepConfig().entityList(), entity);
                 }
                 // 白名单模式
                 else {
-                    result = !AotakeSweep.entityFilter().validEntity(ServerConfig.SERVER_CONFIG.entityList(), entity);
+                    result = !AotakeSweep.entityFilter().validEntity(ServerConfig.get().sweepConfig().entityList(), entity);
                 }
             }
         }
@@ -609,7 +616,7 @@ public class AotakeUtils {
                 .collect(Collectors.groupingBy(AotakeUtils::getEntityTypeRegistryName, Collectors.toList()))
                 .entrySet().stream()
                 // 超限
-                .filter(entry -> entry.getValue().size() > ServerConfig.SERVER_CONFIG.entityListLimit())
+                .filter(entry -> entry.getValue().size() > ServerConfig.get().sweepConfig().entityListLimit())
                 .flatMap(entry -> entry.getValue().stream())
                 .toList();
 
@@ -627,7 +634,7 @@ public class AotakeUtils {
                 }, Collectors.toList()))
                 .entrySet().stream()
                 // 超限
-                .filter(entry -> entry.getValue().size() > ServerConfig.SERVER_CONFIG.safeBlocksEntityLimit())
+                .filter(entry -> entry.getValue().size() > ServerConfig.get().safeConfig().safeBlocksEntityLimit())
                 .flatMap(entry -> entry.getValue().stream())
                 .toList();
 
@@ -672,7 +679,7 @@ public class AotakeUtils {
 
         try {
             // 若服务器没有玩家
-            if (CollectionUtils.isNullOrEmpty(players) && !ServerConfig.SERVER_CONFIG.sweepWhenNoPlayer()) {
+            if (CollectionUtils.isNullOrEmpty(players) && !ServerConfig.get().sweepConfig().sweepWhenNoPlayer()) {
                 LOGGER.debug("No player online, sweep canceled");
                 return;
             }
@@ -681,8 +688,8 @@ public class AotakeUtils {
 
             // if (CollectionUtils.isNotNullOrEmpty(list)) {
             // 清空旧的物品
-            if (ServerConfig.SERVER_CONFIG.selfCleanMode().contains(EnumSelfCleanMode.SWEEP_CLEAR.name())) {
-                switch (EnumDustbinMode.valueOfOrDefault(ServerConfig.SERVER_CONFIG.dustbinMode())) {
+            if (ServerConfig.get().dustbinConfig().selfCleanMode().contains(EnumSelfCleanMode.SWEEP_CLEAR.name())) {
+                switch (EnumDustbinMode.valueOfOrDefault(ServerConfig.get().dustbinConfig().dustbinMode())) {
                     case VIRTUAL: {
                         clearVirtualDustbin();
                     }
@@ -725,7 +732,7 @@ public class AotakeUtils {
                 }
                 if (playerData.isEnableWarningVoice()) {
                     String voice = getWarningVoice("error");
-                    float volume = ServerConfig.SERVER_CONFIG.sweepWarningVoiceVolume() / 100f;
+                    float volume = ServerConfig.get().sweepConfig().sweepWarningVoiceVolume() / 100f;
                     if (StringUtils.isNotNullOrEmpty(voice)) {
                         AotakeUtils.executeCommandNoOutput(p, String.format("playsound %s voice @s ~ ~ ~ %s", voice, volume));
                     }
@@ -742,7 +749,7 @@ public class AotakeUtils {
     }
 
     private static void clearDustbinBlock() {
-        for (String pos : ServerConfig.SERVER_CONFIG.dustbinBlockPositions()) {
+        for (String pos : ServerConfig.get().dustbinConfig().dustbinBlockPositions()) {
             WorldCoordinate coordinate = WorldCoordinate.fromSimpleString(pos);
             if (coordinate != null) {
                 AotakeUtils.clearStorage(AotakeUtils.getBlockItemHandler(coordinate));
@@ -786,17 +793,22 @@ public class AotakeUtils {
 
     private static void initWarns() {
         if (warns.isEmpty()) {
-            warns.putAll(JsonUtils.GSON.fromJson(ServerConfig.SERVER_CONFIG.sweepWarningContent(), new TypeToken<Map<String, String>>() {
+            warns.putAll(JsonUtils.GSON.fromJson(ServerConfig.get().sweepConfig().sweepWarningContent(), new TypeToken<Map<String, String>>() {
             }.getType()));
             warns.putIfAbsent("error", "message.aotake_sweep.cleanup_error");
             warns.putIfAbsent("fail", "message.aotake_sweep.cleanup_started");
             warns.putIfAbsent("success", "message.aotake_sweep.cleanup_started");
         }
         if (voices.isEmpty()) {
-            voices.putAll(JsonUtils.GSON.fromJson(ServerConfig.SERVER_CONFIG.sweepWarningVoice(), new TypeToken<Map<String, String>>() {
+            voices.putAll(JsonUtils.GSON.fromJson(ServerConfig.get().sweepConfig().sweepWarningVoice(), new TypeToken<Map<String, String>>() {
             }.getType()));
             voices.put("initialized", "initialized");
         }
+    }
+
+    public static void clearWarns() {
+        warns.clear();
+        voices.clear();
     }
 
     public static boolean hasWarning(String key) {
@@ -856,13 +868,13 @@ public class AotakeUtils {
 
     public static int dustbin(@NonNull ServerPlayer player, int page) {
         int result = 0;
-        int vPage = ServerConfig.SERVER_CONFIG.dustbinPageLimit();
-        int bPage = ServerConfig.SERVER_CONFIG.dustbinBlockPositions().size();
+        int vPage = ServerConfig.get().dustbinConfig().dustbinPageLimit();
+        int bPage = ServerConfig.get().dustbinConfig().dustbinBlockPositions().size();
         int totalPage = getDustbinTotalPage();
         if (totalPage <= 0) {
             AotakeUtils.sendMessage(player, Component.translatable(EnumI18nType.MESSAGE, "dustbin_page_empty"));
         } else {
-            switch (EnumDustbinMode.valueOfOrDefault(ServerConfig.SERVER_CONFIG.dustbinMode())) {
+            switch (EnumDustbinMode.valueOfOrDefault(ServerConfig.get().dustbinConfig().dustbinMode())) {
                 case VIRTUAL: {
                     result = openVirtualDustbin(player, page);
                 }
@@ -909,7 +921,7 @@ public class AotakeUtils {
 
     private static int openDustbinBlock(@NonNull ServerPlayer player, int page) {
         int result = 0;
-        List<? extends String> positions = ServerConfig.SERVER_CONFIG.dustbinBlockPositions();
+        List<? extends String> positions = ServerConfig.get().dustbinConfig().dustbinBlockPositions();
         if (CollectionUtils.isNotNullOrEmpty(positions) && positions.size() >= page) {
             WorldCoordinate coordinate = WorldCoordinate.fromSimpleString(positions.get(page - 1));
 
@@ -945,14 +957,14 @@ public class AotakeUtils {
 
     public static void clearDustbinBlock(int page) {
         if (page == 0) {
-            for (String pos : ServerConfig.SERVER_CONFIG.dustbinBlockPositions()) {
+            for (String pos : ServerConfig.get().dustbinConfig().dustbinBlockPositions()) {
                 WorldCoordinate coordinate = WorldCoordinate.fromSimpleString(pos);
                 if (coordinate != null) {
                     AotakeUtils.clearStorage(AotakeUtils.getBlockItemHandler(coordinate));
                 }
             }
         } else {
-            WorldCoordinate coordinate = WorldCoordinate.fromSimpleString(ServerConfig.SERVER_CONFIG.dustbinBlockPositions().get(page - 1));
+            WorldCoordinate coordinate = WorldCoordinate.fromSimpleString(ServerConfig.get().dustbinConfig().dustbinBlockPositions().get(page - 1));
             if (coordinate != null) {
                 AotakeUtils.clearStorage(AotakeUtils.getBlockItemHandler(coordinate));
             }
@@ -1011,7 +1023,7 @@ public class AotakeUtils {
             }
         };
 
-        List<String> positions = ServerConfig.SERVER_CONFIG.dustbinBlockPositions();
+        List<String> positions = ServerConfig.get().dustbinConfig().dustbinBlockPositions();
 
         if (page == 0) {
             for (String pos : positions) {
@@ -1028,21 +1040,21 @@ public class AotakeUtils {
 
     public static int getDustbinTotalPage() {
         int result = 0;
-        switch (EnumDustbinMode.valueOfOrDefault(ServerConfig.SERVER_CONFIG.dustbinMode())) {
+        switch (EnumDustbinMode.valueOfOrDefault(ServerConfig.get().dustbinConfig().dustbinMode())) {
             case VIRTUAL: {
-                result = ServerConfig.SERVER_CONFIG.dustbinPageLimit();
+                result = ServerConfig.get().dustbinConfig().dustbinPageLimit();
             }
             break;
             case BLOCK: {
-                result = ServerConfig.SERVER_CONFIG.dustbinBlockPositions().size();
+                result = ServerConfig.get().dustbinConfig().dustbinBlockPositions().size();
             }
             break;
             case VIRTUAL_BLOCK: {
-                result = ServerConfig.SERVER_CONFIG.dustbinPageLimit() + ServerConfig.SERVER_CONFIG.dustbinBlockPositions().size();
+                result = ServerConfig.get().dustbinConfig().dustbinPageLimit() + ServerConfig.get().dustbinConfig().dustbinBlockPositions().size();
             }
             break;
             case BLOCK_VIRTUAL: {
-                result = ServerConfig.SERVER_CONFIG.dustbinBlockPositions().size() + ServerConfig.SERVER_CONFIG.dustbinPageLimit();
+                result = ServerConfig.get().dustbinConfig().dustbinBlockPositions().size() + ServerConfig.get().dustbinConfig().dustbinPageLimit();
             }
             break;
         }
@@ -1260,6 +1272,38 @@ public class AotakeUtils {
     }
 
     /**
+     * 将物品添加到指定的容器
+     */
+    public static ItemStack addItemToStorage(ItemStack stack, Storage<ItemVariant> storage) {
+        if (stack == null || stack.isEmpty() || storage == null || !storage.supportsInsertion()) {
+            return stack;
+        }
+
+        try {
+            ItemVariant variant = ItemVariant.of(stack);
+            long toInsert = stack.getCount();
+
+            try (Transaction tx = Transaction.openOuter()) {
+                long inserted = storage.insert(variant, toInsert, tx);
+                tx.commit();
+
+                int remainingCount = (int) (toInsert - inserted);
+
+                if (remainingCount <= 0) {
+                    return ItemStack.EMPTY;
+                } else {
+                    ItemStack remaining = stack.copy();
+                    remaining.setCount(remainingCount);
+                    return remaining;
+                }
+            }
+        } catch (Throwable t) {
+            LOGGER.warn("Failed to add item to storage", t);
+        }
+        return stack;
+    }
+
+    /**
      * 将物品添加到指定的方块容器
      */
     public static ItemStack addItemToBlock(ItemStack stack, WorldCoordinate coordinate) {
@@ -1278,27 +1322,13 @@ public class AotakeUtils {
             Direction side = coordinate.getDirection();
             Storage<ItemVariant> storage = ItemStorage.SIDED.find(level, pos, side);
 
-            if (storage != null && storage.supportsInsertion()) {
-                ItemVariant variant = ItemVariant.of(stack);
-                long toInsert = stack.getCount();
-
-                try (Transaction tx = Transaction.openOuter()) {
-                    long inserted = storage.insert(variant, toInsert, tx);
-                    tx.commit();
-
-                    int remainingCount = (int) (toInsert - inserted);
-                    te.setChanged();
-
-                    if (remainingCount <= 0) {
-                        return ItemStack.EMPTY;
-                    } else {
-                        ItemStack remaining = stack.copy();
-                        remaining.setCount(remainingCount);
-                        return remaining;
-                    }
-                }
+            ItemStack remaining = addItemToStorage(stack, storage);
+            if (remaining.getCount() != stack.getCount()) {
+                te.setChanged();
             }
-        } catch (Throwable ignored) {
+            return remaining;
+        } catch (Throwable t) {
+            LOGGER.warn("Failed to insert item into block at {}", coordinate, t);
         }
 
         return stack;

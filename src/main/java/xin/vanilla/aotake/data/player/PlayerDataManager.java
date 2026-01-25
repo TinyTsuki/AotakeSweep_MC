@@ -59,7 +59,11 @@ public class PlayerDataManager {
     }
 
     public CompoundTag getOrCreate(UUID playerUuid) {
-        return cache.computeIfAbsent(playerUuid, k -> new CompoundTag());
+        CompoundTag tag = cache.get(playerUuid);
+        if (tag != null) {
+            return tag;
+        }
+        return loadFromDisk(playerUuid);
     }
 
     public void put(Player player, CompoundTag tag) {

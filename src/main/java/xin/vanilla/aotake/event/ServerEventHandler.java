@@ -90,7 +90,7 @@ public class ServerEventHandler {
 
         long now = System.currentTimeMillis();
         long countdown = nextSweepTime - now;
-        long sweepInterval = ServerConfig.SERVER_CONFIG.sweepInterval();
+        long sweepInterval = ServerConfig.get().sweepConfig().sweepInterval();
 
         // 扫地前提示
         String warnKey = String.valueOf(countdown / 1000);
@@ -110,7 +110,7 @@ public class ServerEventHandler {
             for (ServerPlayer player : server.getPlayerList().getPlayers()) {
                 if (PlayerSweepData.getData(player).isEnableWarningVoice()) {
                     String voice = AotakeUtils.getWarningVoice(warnKey);
-                    float volume = ServerConfig.SERVER_CONFIG.sweepWarningVoiceVolume() / 100f;
+                    float volume = ServerConfig.get().sweepConfig().sweepWarningVoiceVolume() / 100f;
                     if (StringUtils.isNotNullOrEmpty(voice)) {
                         AotakeUtils.executeCommandNoOutput(player, String.format("playsound %s voice @s ~ ~ ~ %s", voice, volume));
                     }
@@ -133,18 +133,18 @@ public class ServerEventHandler {
         }
 
         // 自清洁
-        if (ServerConfig.SERVER_CONFIG.selfCleanInterval() <= now - lastSelfCleanTime) {
+        if (ServerConfig.get().dustbinConfig().selfCleanInterval() <= now - lastSelfCleanTime) {
             lastSelfCleanTime = now;
             WorldTrashData worldTrashData = WorldTrashData.get();
             List<SimpleContainer> inventories = worldTrashData.getInventoryList();
             // 清空
-            if (ServerConfig.SERVER_CONFIG.selfCleanMode().contains(EnumSelfCleanMode.SCHEDULED_CLEAR.name())) {
+            if (ServerConfig.get().dustbinConfig().selfCleanMode().contains(EnumSelfCleanMode.SCHEDULED_CLEAR.name())) {
                 worldTrashData.getDropList().clear();
                 if (CollectionUtils.isNotNullOrEmpty(inventories)) inventories.forEach(SimpleContainer::clearContent);
                 WorldTrashData.get().setDirty();
             }
             // 随机删除
-            else if (ServerConfig.SERVER_CONFIG.selfCleanMode().contains(EnumSelfCleanMode.SCHEDULED_DELETE.name())) {
+            else if (ServerConfig.get().dustbinConfig().selfCleanMode().contains(EnumSelfCleanMode.SCHEDULED_DELETE.name())) {
                 if (AotakeSweep.RANDOM.nextBoolean()) {
                     ConcurrentShuffleList<KeyValue<WorldCoordinate, ItemStack>> dropList = worldTrashData.getDropList();
                     dropList.removeRandom();
@@ -162,9 +162,9 @@ public class ServerEventHandler {
         }
 
         // 检查区块实体数量
-        if (ServerConfig.SERVER_CONFIG.chunkCheckInterval() > 0
+        if (ServerConfig.get().chunkCheckConfig().chunkCheckInterval() > 0
                 && !chunkSweepLock.get()
-                && ServerConfig.SERVER_CONFIG.chunkCheckInterval() <= now - lastChunkCheckTime
+                && ServerConfig.get().chunkCheckConfig().chunkCheckInterval() <= now - lastChunkCheckTime
         ) {
             chunkSweepLock.set(true);
             lastChunkCheckTime = now;
@@ -178,14 +178,14 @@ public class ServerEventHandler {
                                     : "unknown";
                             int chunkX = entity.blockPosition().getX() >> 4;
                             int chunkZ = entity.blockPosition().getZ() >> 4;
-                            if (EnumChunkCheckMode.DEFAULT == ServerConfig.SERVER_CONFIG.chunkCheckMode()) {
+                            if (EnumChunkCheckMode.DEFAULT == ServerConfig.get().chunkCheckConfig().chunkCheckMode()) {
                                 return String.format("Dimension: %s, Chunk: %s %s", dimension, chunkX, chunkZ);
                             } else {
                                 return String.format("Dimension: %s, Chunk: %s %s, EntityType: %s", dimension, chunkX, chunkZ, AotakeUtils.getEntityTypeRegistryName(entity));
                             }
                         }))
                         .entrySet().stream()
-                        .filter(entry -> entry.getValue().size() > ServerConfig.SERVER_CONFIG.chunkCheckLimit())
+                        .filter(entry -> entry.getValue().size() > ServerConfig.get().chunkCheckConfig().chunkCheckLimit())
                         .toList();
                 long end = System.currentTimeMillis();
 
@@ -196,7 +196,7 @@ public class ServerEventHandler {
                             .map(entry -> String.format("%s, Entities: %s", entry.getKey(), entry.getValue().size()))
                             .collect(Collectors.joining("\n")));
 
-                    if (ServerConfig.SERVER_CONFIG.chunkCheckNotice()) {
+                    if (ServerConfig.get().chunkCheckConfig().chunkCheckNotice()) {
                         Map.Entry<String, List<Entity>> entityEntryList = overcrowdedChunks.get(0);
                         Entity entity = entityEntryList.getValue().get(0);
                         WorldCoordinate entityCoordinate = new WorldCoordinate(entity);
@@ -204,7 +204,7 @@ public class ServerEventHandler {
                             String language = AotakeUtils.getPlayerLanguage(player);
 
                             Component message = Component.translatable(EnumI18nType.MESSAGE,
-                                    ServerConfig.SERVER_CONFIG.chunkCheckOnlyNotice()
+                                    ServerConfig.get().chunkCheckConfig().chunkCheckOnlyNotice()
                                             ? "chunk_check_msg_no"
                                             : "chunk_check_msg_yes"
                                     , Component.literal(entityCoordinate.toChunkXZString())
@@ -264,7 +264,7 @@ public class ServerEventHandler {
                     overcrowdedChunks.forEach(entry -> {
                         List<Entity> entities = entry.getValue();
                         if (entities.isEmpty()) return;
-                        entities.subList(0, (int) (ServerConfig.SERVER_CONFIG.chunkCheckRetain() * entities.size())).clear();
+                        entities.subList(0, (int) (ServerConfig.get().chunkCheckConfig().chunkCheckRetain() * entities.size())).clear();
                     });
 
                     AotakeScheduler.schedule(server, 25, () -> {
@@ -405,8 +405,8 @@ public class ServerEventHandler {
             }
         }
 
-        boolean allowCatch = ServerConfig.SERVER_CONFIG.allowCatchEntity();
-        List<String> catchItems = ServerConfig.SERVER_CONFIG.catchItem();
+        boolean allowCatch = ServerConfig.get().catchConfig().allowCatchEntity();
+        List<String> catchItems = ServerConfig.get().catchConfig().catchItem();
         boolean isCatchItem = catchItems.stream().anyMatch(s -> s.equals(AotakeUtils.getItemRegistryName(original)));
 
         boolean hasEntityInTag = tag != null && tag.contains(AotakeSweep.MODID)

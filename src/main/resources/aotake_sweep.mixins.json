@@ -4,7 +4,8 @@
   "package": "xin.vanilla.aotake.mixin",
   "compatibilityLevel": "JAVA_17",
   "mixins": [
-    "ServerPlayerMixin"
+    "ServerPlayerMixin",
+    "MinecraftServerSaveMixin"
   ],
   "injectors": {
     "defaultRequire": 1

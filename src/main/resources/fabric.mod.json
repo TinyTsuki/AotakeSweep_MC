@@ -3,11 +3,16 @@
   "id": "${mod_id}",
   "version": "${version}",
   "name": "${mod_name}",
-  "description": "",
-  "authors": [],
-  "contact": {},
+  "description": "${mod_desc}",
+  "authors": [
+    "Tsuki Maaii"
+  ],
+  "contact": {
+    "sources": "https://github.com/TinyTsuki/AotakeSweep_MC",
+    "issues": "https://github.com/TinyTsuki/AotakeSweep_MC/issues"
+  },
   "license": "MIT",
-  "icon": "logo.png",
+  "icon": "pack.png",
   "environment": "*",
   "entrypoints": {
     "client": [

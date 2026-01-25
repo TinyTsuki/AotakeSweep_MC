@@ -32,7 +32,7 @@ public class SweepTimeSyncToClient implements AotakePacket {
     public SweepTimeSyncToClient() {
         this.currentTime = System.currentTimeMillis();
         this.nextSweepTime = ServerEventHandler.getNextSweepTime();
-        this.sweepInterval = ServerConfig.SERVER_CONFIG.sweepInterval();
+        this.sweepInterval = ServerConfig.get().sweepConfig().sweepInterval();
     }
 
     public SweepTimeSyncToClient(FriendlyByteBuf buf) {

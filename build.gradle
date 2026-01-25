@@ -9,6 +9,7 @@ def javaVer = 17
 version = project.mod_version
 mod_id = project.mod_id
 mod_name = project.mod_name
+mod_desc = project.mod_desc
 
 base {
     archivesName = mod_id
@@ -16,6 +17,14 @@ base {
 
 java {
     toolchain.languageVersion = JavaLanguageVersion.of(javaVer)
+}
+
+loom {
+    runs {
+        client {
+            programArgs '--username', 'Dev', '--uuid', '380df991-f603-344c-a090-369bad2a924a'
+        }
+    }
 }
 
 repositories {
@@ -61,6 +70,7 @@ dependencies {
 processResources {
     inputs.property "mod_id", project.mod_id
     inputs.property "mod_name", project.mod_name
+    inputs.property "mod_desc", project.mod_desc
     inputs.property "version", project.version
     inputs.property "minecraft_version", project.minecraft_version
     inputs.property "loader_version", project.loader_version
@@ -69,6 +79,7 @@ processResources {
     filesMatching("fabric.mod.json") {
         expand "mod_id": mod_id,
                 "mod_name": project.mod_name,
+                "mod_desc": project.mod_desc,
                 "version": project.version,
                 "minecraft_version": project.minecraft_version,
                 "loader_version": project.loader_version

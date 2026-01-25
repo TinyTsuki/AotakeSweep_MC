@@ -169,7 +169,7 @@ public class Component implements Cloneable, Serializable {
         String language = this.languageCode;
         if (StringUtils.isNullOrEmpty(language)) {
             try {
-                language = ServerConfig.SERVER_CONFIG.defaultLanguage();
+                language = ServerConfig.get().defaultLanguage();
             } catch (Exception e) {
                 if (FabricLoader.getInstance().getEnvironmentType() == EnvType.CLIENT) {
                     language = AotakeUtils.getClientLanguage();

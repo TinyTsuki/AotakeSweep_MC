@@ -163,7 +163,7 @@ public class ClientEventHandler implements ClientModInitializer {
                     lastTime = System.currentTimeMillis();
                     AotakeUtils.sendPacketToServer(new OpenDustbinToServer(0));
                 }
-                if (ClientConfig.CLIENT_CONFIG.progressBarKeyApplyMode()) {
+                if (ClientConfig.get().progressBarConfig().progressBarKeyApplyMode()) {
                     if (PROGRESS_KEY.isDown() && System.currentTimeMillis() - lastTime > 100) {
                         lastTime = System.currentTimeMillis();
                         showProgress = !showProgress;
@@ -172,14 +172,14 @@ public class ClientEventHandler implements ClientModInitializer {
                     showProgress = PROGRESS_KEY.isDown();
                 }
             }
+            updateHideExpBar();
         });
     }
 
     private static void onScreenEvent() {
         ScreenEvents.AFTER_INIT.register((client, screen, scaledWidth, scaledHeight) -> {
             if (isAotakeContainerScreen(client, screen)) {
-                if (!REGISTERED_SCREEN.add(screen)) return;
-
+                REGISTERED_SCREEN.add(screen);
                 screenAfterInit();
 
                 ScreenEvents.afterRender(screen).register((screenRendered, graphics, mouseX, mouseY, tickDelta) ->
@@ -460,6 +460,28 @@ public class ClientEventHandler implements ClientModInitializer {
         }
     }
 
+    private static void updateHideExpBar() {
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.player == null || mc.options.hideGui) {
+            hideExpBar = false;
+            return;
+        }
+        List<String> displayList = getProgressDisplayList(mc);
+        boolean hide = displayList.contains(EnumProgressBarType.POLE.name()) && ClientConfig.get().progressBarConfig().poleConfig().hideExperienceBarPole();
+        if (displayList.contains(EnumProgressBarType.TEXT.name()) && ClientConfig.get().progressBarConfig().textConfig().hideExperienceBarText()) {
+            hide = true;
+        }
+        if (displayList.contains(EnumProgressBarType.LEAF.name()) && ClientConfig.get().progressBarConfig().leafConfig().hideExperienceBarLeaf()) {
+            hide = true;
+        }
+        hideExpBar = hide;
+    }
+
+    private static List<String> getProgressDisplayList(Minecraft mc) {
+        boolean hold = showProgress && mc.screen == null;
+        return hold ? ClientConfig.get().progressBarConfig().progressBarDisplayHold() : ClientConfig.get().progressBarConfig().progressBarDisplayNormal();
+    }
+
     private static void onHudRender() {
         HudRenderCallback.EVENT.register(ClientEventHandler::renderProgress);
     }
@@ -469,21 +491,18 @@ public class ClientEventHandler implements ClientModInitializer {
         if (mc.options.hideGui) return;
         if (mc.player == null) return;
 
-        boolean hold = showProgress && mc.screen == null;
+        List<String> displayList = getProgressDisplayList(mc);
 
-        List<String> displayList = hold ? ClientConfig.CLIENT_CONFIG.progressBarDisplayHold() : ClientConfig.CLIENT_CONFIG.progressBarDisplayNormal();
-
-        double scale = ClientConfig.CLIENT_CONFIG.progressBarTextSize() / 16.0;
+        double scale = ClientConfig.get().progressBarConfig().textConfig().progressBarTextSize() / 16.0;
 
         if (displayList.contains(EnumProgressBarType.POLE.name())) {
-            hideExpBar = ClientConfig.CLIENT_CONFIG.hideExperienceBarPole();
-            int width = ClientConfig.CLIENT_CONFIG.progressBarPoleWidth();
-            int height = ClientConfig.CLIENT_CONFIG.progressBarPoleHeight();
+            int width = ClientConfig.get().progressBarConfig().poleConfig().progressBarPoleWidth();
+            int height = ClientConfig.get().progressBarConfig().poleConfig().progressBarPoleHeight();
             int drawX = getPoleX();
             int drawY = getPoleY();
 
             AbstractGuiUtils.TransformArgs transformArgs = new AbstractGuiUtils.TransformArgs(graphics);
-            transformArgs.setAngle(ClientConfig.CLIENT_CONFIG.progressBarPoleAngle())
+            transformArgs.setAngle(ClientConfig.get().progressBarConfig().poleConfig().progressBarPoleAngle())
                     .setCenter(EnumRotationCenter.CENTER)
                     .setX(drawX)
                     .setY(drawY)
@@ -496,7 +515,6 @@ public class ClientEventHandler implements ClientModInitializer {
         }
 
         if (displayList.contains(EnumProgressBarType.TEXT.name())) {
-            hideExpBar = ClientConfig.CLIENT_CONFIG.hideExperienceBarText();
             Text time = Text.literal(getText())
                     .setGraphics(graphics)
                     .setColor(getTextColor())
@@ -504,7 +522,7 @@ public class ClientEventHandler implements ClientModInitializer {
                     .setFont(Minecraft.getInstance().font);
             AbstractGuiUtils.TransformArgs textTransformArgs = new AbstractGuiUtils.TransformArgs(graphics);
             textTransformArgs.setScale(scale)
-                    .setAngle(ClientConfig.CLIENT_CONFIG.progressBarTextAngle())
+                    .setAngle(ClientConfig.get().progressBarConfig().textConfig().progressBarTextAngle())
                     .setCenter(EnumRotationCenter.CENTER)
                     .setX(getTextX())
                     .setY(getTextY())
@@ -517,11 +535,10 @@ public class ClientEventHandler implements ClientModInitializer {
         }
 
         if (displayList.contains(EnumProgressBarType.LEAF.name())) {
-            hideExpBar = ClientConfig.CLIENT_CONFIG.hideExperienceBarLeaf();
-            int poleW = ClientConfig.CLIENT_CONFIG.progressBarPoleWidth();
+            int poleW = ClientConfig.get().progressBarConfig().poleConfig().progressBarPoleWidth();
 
-            int width = ClientConfig.CLIENT_CONFIG.progressBarLeafWidth();
-            int height = ClientConfig.CLIENT_CONFIG.progressBarLeafHeight();
+            int width = ClientConfig.get().progressBarConfig().leafConfig().progressBarLeafWidth();
+            int height = ClientConfig.get().progressBarConfig().leafConfig().progressBarLeafHeight();
             int rangeWidth = poleW - width;
             int startX = getLeafX();
 
@@ -529,7 +546,7 @@ public class ClientEventHandler implements ClientModInitializer {
             int drawY = getLeafY();
 
             AbstractGuiUtils.TransformArgs transformArgs = new AbstractGuiUtils.TransformArgs(graphics);
-            transformArgs.setAngle(ClientConfig.CLIENT_CONFIG.progressBarLeafAngle())
+            transformArgs.setAngle(ClientConfig.get().progressBarConfig().leafConfig().progressBarLeafAngle())
                     .setCenter(EnumRotationCenter.CENTER)
                     .setX(drawX)
                     .setY(drawY)
@@ -544,30 +561,30 @@ public class ClientEventHandler implements ClientModInitializer {
 
     private static int getLeafX() {
         int baseX = getPoleX();
-        int width = ClientConfig.CLIENT_CONFIG.progressBarPoleWidth();
+        int width = ClientConfig.get().progressBarConfig().poleConfig().progressBarPoleWidth();
         double x;
-        String xString = ClientConfig.CLIENT_CONFIG.progressBarLeafPosition().split(",")[0];
+        String xString = ClientConfig.get().progressBarConfig().leafConfig().progressBarLeafPosition().split(",")[0];
         if (xString.endsWith("%")) {
             x = StringUtils.toDouble(xString.replace("%", "")) * 0.01d * width;
         } else {
             x = StringUtils.toInt(xString);
         }
-        int quadrant = ClientConfig.CLIENT_CONFIG.progressBarLeafScreenQuadrant();
+        int quadrant = ClientConfig.get().progressBarConfig().leafConfig().progressBarLeafScreenQuadrant();
         if (quadrant == 2 || quadrant == 3) {
             x = baseX - x;
         } else {
             x = baseX + x;
         }
-        switch (EnumRotationCenter.valueOf(ClientConfig.CLIENT_CONFIG.progressBarLeafBase())) {
+        switch (EnumRotationCenter.valueOf(ClientConfig.get().progressBarConfig().leafConfig().progressBarLeafBase())) {
             case CENTER:
             case TOP_CENTER:
             case BOTTOM_CENTER: {
-                x -= ClientConfig.CLIENT_CONFIG.progressBarLeafWidth() / 2.0;
+                x -= ClientConfig.get().progressBarConfig().leafConfig().progressBarLeafWidth() / 2.0;
             }
             break;
             case TOP_RIGHT:
             case BOTTOM_RIGHT: {
-                x -= ClientConfig.CLIENT_CONFIG.progressBarLeafWidth();
+                x -= ClientConfig.get().progressBarConfig().leafConfig().progressBarLeafWidth();
             }
             break;
         }
@@ -576,28 +593,28 @@ public class ClientEventHandler implements ClientModInitializer {
 
     private static int getLeafY() {
         int baseY = getPoleY();
-        int height = ClientConfig.CLIENT_CONFIG.progressBarPoleHeight();
+        int height = ClientConfig.get().progressBarConfig().poleConfig().progressBarPoleHeight();
         double y;
-        String yString = ClientConfig.CLIENT_CONFIG.progressBarLeafPosition().split(",")[1];
+        String yString = ClientConfig.get().progressBarConfig().leafConfig().progressBarLeafPosition().split(",")[1];
         if (yString.endsWith("%")) {
             y = StringUtils.toDouble(yString.replace("%", "")) * 0.01d * height;
         } else {
             y = StringUtils.toInt(yString);
         }
-        int quadrant = ClientConfig.CLIENT_CONFIG.progressBarLeafScreenQuadrant();
+        int quadrant = ClientConfig.get().progressBarConfig().leafConfig().progressBarLeafScreenQuadrant();
         if (quadrant == 1 || quadrant == 2) {
             y = baseY - y;
         } else {
             y = baseY + y;
         }
-        switch (EnumRotationCenter.valueOf(ClientConfig.CLIENT_CONFIG.progressBarLeafBase())) {
+        switch (EnumRotationCenter.valueOf(ClientConfig.get().progressBarConfig().leafConfig().progressBarLeafBase())) {
             case CENTER: {
-                y -= ClientConfig.CLIENT_CONFIG.progressBarLeafHeight() / 2.0;
+                y -= ClientConfig.get().progressBarConfig().leafConfig().progressBarLeafHeight() / 2.0;
             }
             break;
             case BOTTOM_LEFT:
             case BOTTOM_RIGHT: {
-                y -= ClientConfig.CLIENT_CONFIG.progressBarLeafHeight();
+                y -= ClientConfig.get().progressBarConfig().leafConfig().progressBarLeafHeight();
             }
             break;
         }
@@ -607,26 +624,26 @@ public class ClientEventHandler implements ClientModInitializer {
     private static int getPoleX() {
         int width = Minecraft.getInstance().getWindow().getGuiScaledWidth();
         double x;
-        String xString = ClientConfig.CLIENT_CONFIG.progressBarPolePosition().split(",")[0];
+        String xString = ClientConfig.get().progressBarConfig().poleConfig().progressBarPolePosition().split(",")[0];
         if (xString.endsWith("%")) {
             x = StringUtils.toDouble(xString.replace("%", "")) * 0.01d * width;
         } else {
             x = StringUtils.toInt(xString);
         }
-        int quadrant = ClientConfig.CLIENT_CONFIG.progressBarPoleScreenQuadrant();
+        int quadrant = ClientConfig.get().progressBarConfig().poleConfig().progressBarPoleScreenQuadrant();
         if (quadrant == 2 || quadrant == 3) {
             x = width - x;
         }
-        switch (EnumRotationCenter.valueOf(ClientConfig.CLIENT_CONFIG.progressBarPoleBase())) {
+        switch (EnumRotationCenter.valueOf(ClientConfig.get().progressBarConfig().poleConfig().progressBarPoleBase())) {
             case CENTER:
             case TOP_CENTER:
             case BOTTOM_CENTER: {
-                x -= ClientConfig.CLIENT_CONFIG.progressBarPoleWidth() / 2.0;
+                x -= ClientConfig.get().progressBarConfig().poleConfig().progressBarPoleWidth() / 2.0;
             }
             break;
             case TOP_RIGHT:
             case BOTTOM_RIGHT: {
-                x -= ClientConfig.CLIENT_CONFIG.progressBarPoleWidth();
+                x -= ClientConfig.get().progressBarConfig().poleConfig().progressBarPoleWidth();
             }
             break;
         }
@@ -636,24 +653,24 @@ public class ClientEventHandler implements ClientModInitializer {
     private static int getPoleY() {
         int height = Minecraft.getInstance().getWindow().getGuiScaledHeight();
         double y;
-        String yString = ClientConfig.CLIENT_CONFIG.progressBarPolePosition().split(",")[1];
+        String yString = ClientConfig.get().progressBarConfig().poleConfig().progressBarPolePosition().split(",")[1];
         if (yString.endsWith("%")) {
             y = StringUtils.toDouble(yString.replace("%", "")) * 0.01d * height;
         } else {
             y = StringUtils.toInt(yString);
         }
-        int quadrant = ClientConfig.CLIENT_CONFIG.progressBarPoleScreenQuadrant();
+        int quadrant = ClientConfig.get().progressBarConfig().poleConfig().progressBarPoleScreenQuadrant();
         if (quadrant == 1 || quadrant == 2) {
             y = height - y;
         }
-        switch (EnumRotationCenter.valueOf(ClientConfig.CLIENT_CONFIG.progressBarPoleBase())) {
+        switch (EnumRotationCenter.valueOf(ClientConfig.get().progressBarConfig().poleConfig().progressBarPoleBase())) {
             case CENTER: {
-                y -= ClientConfig.CLIENT_CONFIG.progressBarPoleHeight() / 2.0;
+                y -= ClientConfig.get().progressBarConfig().poleConfig().progressBarPoleHeight() / 2.0;
             }
             break;
             case BOTTOM_LEFT:
             case BOTTOM_RIGHT: {
-                y -= ClientConfig.CLIENT_CONFIG.progressBarPoleHeight();
+                y -= ClientConfig.get().progressBarConfig().poleConfig().progressBarPoleHeight();
             }
             break;
         }
@@ -662,30 +679,30 @@ public class ClientEventHandler implements ClientModInitializer {
 
     private static int getTextX() {
         int baseX = getPoleX();
-        int width = ClientConfig.CLIENT_CONFIG.progressBarPoleWidth();
+        int width = ClientConfig.get().progressBarConfig().poleConfig().progressBarPoleWidth();
         double x;
-        String xString = ClientConfig.CLIENT_CONFIG.progressBarTextPosition().split(",")[0];
+        String xString = ClientConfig.get().progressBarConfig().textConfig().progressBarTextPosition().split(",")[0];
         if (xString.endsWith("%")) {
             x = StringUtils.toDouble(xString.replace("%", "")) * 0.01d * width;
         } else {
             x = StringUtils.toInt(xString);
         }
-        int quadrant = ClientConfig.CLIENT_CONFIG.progressBarTextScreenQuadrant();
+        int quadrant = ClientConfig.get().progressBarConfig().textConfig().progressBarTextScreenQuadrant();
         if (quadrant == 2 || quadrant == 3) {
             x = baseX - x;
         } else {
             x = baseX + x;
         }
-        switch (EnumRotationCenter.valueOf(ClientConfig.CLIENT_CONFIG.progressBarTextBase())) {
+        switch (EnumRotationCenter.valueOf(ClientConfig.get().progressBarConfig().textConfig().progressBarTextBase())) {
             case CENTER:
             case TOP_CENTER:
             case BOTTOM_CENTER: {
-                x -= ClientConfig.CLIENT_CONFIG.progressBarTextSize() / 16.0 * getTextWidth() / 2.0;
+                x -= ClientConfig.get().progressBarConfig().textConfig().progressBarTextSize() / 16.0 * getTextWidth() / 2.0;
             }
             break;
             case TOP_RIGHT:
             case BOTTOM_RIGHT: {
-                x -= ClientConfig.CLIENT_CONFIG.progressBarTextSize() / 16.0 * getTextWidth();
+                x -= ClientConfig.get().progressBarConfig().textConfig().progressBarTextSize() / 16.0 * getTextWidth();
             }
             break;
         }
@@ -694,28 +711,28 @@ public class ClientEventHandler implements ClientModInitializer {
 
     private static int getTextY() {
         int baseY = getPoleY();
-        int height = ClientConfig.CLIENT_CONFIG.progressBarPoleHeight();
+        int height = ClientConfig.get().progressBarConfig().poleConfig().progressBarPoleHeight();
         double y;
-        String yString = ClientConfig.CLIENT_CONFIG.progressBarTextPosition().split(",")[1];
+        String yString = ClientConfig.get().progressBarConfig().textConfig().progressBarTextPosition().split(",")[1];
         if (yString.endsWith("%")) {
             y = StringUtils.toDouble(yString.replace("%", "")) * 0.01d * height;
         } else {
             y = StringUtils.toInt(yString);
         }
-        int quadrant = ClientConfig.CLIENT_CONFIG.progressBarTextScreenQuadrant();
+        int quadrant = ClientConfig.get().progressBarConfig().textConfig().progressBarTextScreenQuadrant();
         if (quadrant == 1 || quadrant == 2) {
             y = baseY - y;
         } else {
             y = baseY + y;
         }
-        switch (EnumRotationCenter.valueOf(ClientConfig.CLIENT_CONFIG.progressBarTextBase())) {
+        switch (EnumRotationCenter.valueOf(ClientConfig.get().progressBarConfig().textConfig().progressBarTextBase())) {
             case CENTER: {
-                y -= ClientConfig.CLIENT_CONFIG.progressBarTextSize() / 16.0 * getTextHeight() / 2.0;
+                y -= ClientConfig.get().progressBarConfig().textConfig().progressBarTextSize() / 16.0 * getTextHeight() / 2.0;
             }
             break;
             case BOTTOM_LEFT:
             case BOTTOM_RIGHT: {
-                y -= ClientConfig.CLIENT_CONFIG.progressBarTextSize() / 16.0 * getTextHeight();
+                y -= ClientConfig.get().progressBarConfig().textConfig().progressBarTextSize() / 16.0 * getTextHeight();
             }
             break;
         }
@@ -777,7 +794,7 @@ public class ClientEventHandler implements ClientModInitializer {
     }
 
     private static Color getTextColor() {
-        return Color.parse(ClientConfig.CLIENT_CONFIG.progressBarTextColor(), Color.white());
+        return Color.parse(ClientConfig.get().progressBarConfig().textConfig().progressBarTextColor(), Color.white());
     }
 
 }

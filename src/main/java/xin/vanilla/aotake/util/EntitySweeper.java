@@ -69,14 +69,14 @@ public class EntitySweeper {
         if (result.getTotalBatch() == 0) LOGGER.debug("AddDrops started at {}", System.currentTimeMillis());
         this.init();
 
-        if (result.getTotalBatch() == 0 && CollectionUtils.isNotNullOrEmpty(entities) && entities.size() > ServerConfig.SERVER_CONFIG.sweepEntityLimit()) {
-            List<List<Entity>> lists = CollectionUtils.splitToCollections(entities, ServerConfig.SERVER_CONFIG.sweepEntityLimit(), ServerConfig.SERVER_CONFIG.sweepBatchLimit());
+        if (result.getTotalBatch() == 0 && CollectionUtils.isNotNullOrEmpty(entities) && entities.size() > ServerConfig.get().batchConfig().sweepEntityLimit()) {
+            List<List<Entity>> lists = CollectionUtils.splitToCollections(entities, ServerConfig.get().batchConfig().sweepEntityLimit(), ServerConfig.get().batchConfig().sweepBatchLimit());
             result.setTotalBatch(lists.size());
             if (lists.size() > 1) {
                 for (int i = 1; i < lists.size(); i++) {
                     List<Entity> entityList = lists.get(i);
                     AotakeScheduler.schedule(AotakeSweep.serverInstance().key()
-                            , ServerConfig.SERVER_CONFIG.sweepEntityInterval() * i
+                            , ServerConfig.get().batchConfig().sweepEntityInterval() * i
                             , () -> AotakeSweep.entitySweeper().addDrops(entityList, result)
                     );
                 }
@@ -96,7 +96,7 @@ public class EntitySweeper {
         }
 
         for (Entity entity : entitiesToRemove) {
-            if (entity.isAlive() && entity.level() instanceof ServerLevel) {
+            if (entity.level() instanceof ServerLevel) {
                 scheduleRemoveEntity(entity, false);
             }
         }
@@ -140,7 +140,7 @@ public class EntitySweeper {
                 }
                 if (playerData.isEnableWarningVoice()) {
                     String voice = AotakeUtils.getWarningVoice(result.isEmpty() ? "fail" : "success");
-                    float volume = ServerConfig.SERVER_CONFIG.sweepWarningVoiceVolume() / 100f;
+                    float volume = ServerConfig.get().sweepConfig().sweepWarningVoiceVolume() / 100f;
                     if (StringUtils.isNotNullOrEmpty(voice)) {
                         AotakeUtils.executeCommandNoOutput(p, String.format("playsound %s voice @s ~ ~ ~ %s", voice, volume));
                     }
@@ -168,7 +168,7 @@ public class EntitySweeper {
         // 处理掉落物
         if (entity instanceof ItemEntity) {
             ItemStack item = ((ItemEntity) entity).getItem();
-            if (!AotakeSweep.entityFilter().validEntity(ServerConfig.SERVER_CONFIG.entityRedlist(), entity)) {
+            if (!AotakeSweep.entityFilter().validEntity(ServerConfig.get().sweepConfig().entityRedlist(), entity)) {
                 itemToRecycle = item.copy();
                 result.setItemCount(item.getCount());
             }
@@ -178,10 +178,10 @@ public class EntitySweeper {
         // 处理其他实体
         else {
             // 回收实体
-            if (!ServerConfig.SERVER_CONFIG.catchItem().isEmpty()
-                    && AotakeSweep.entityFilter().validEntity(ServerConfig.SERVER_CONFIG.catchEntity(), entity)
+            if (!ServerConfig.get().catchConfig().catchItem().isEmpty()
+                    && AotakeSweep.entityFilter().validEntity(ServerConfig.get().catchConfig().catchEntity(), entity)
             ) {
-                String randomItem = CollectionUtils.getRandomElement(ServerConfig.SERVER_CONFIG.catchItem());
+                String randomItem = CollectionUtils.getRandomElement(ServerConfig.get().catchConfig().catchItem());
                 itemToRecycle = new ItemStack(AotakeUtils.deserializeItem(randomItem));
                 CompoundTag tag = itemToRecycle.getOrCreateTag();
                 CompoundTag aotake = new CompoundTag();
@@ -215,8 +215,8 @@ public class EntitySweeper {
 
     private void handleItemRecycling(WorldCoordinate coordinate, ItemStack item, SweepResult result) {
         // 自清洁模式
-        if (ServerConfig.SERVER_CONFIG.selfCleanMode().contains(EnumSelfCleanMode.SWEEP_DELETE.name())) {
-            switch (EnumDustbinMode.valueOfOrDefault(ServerConfig.SERVER_CONFIG.dustbinMode())) {
+        if (ServerConfig.get().dustbinConfig().selfCleanMode().contains(EnumSelfCleanMode.SWEEP_DELETE.name())) {
+            switch (EnumDustbinMode.valueOfOrDefault(ServerConfig.get().dustbinConfig().dustbinMode())) {
                 case VIRTUAL: {
                     selfCleanVirtualDustbin();
                 }
@@ -235,7 +235,7 @@ public class EntitySweeper {
         ItemStack remaining = item;
         int recycledCount = item.getCount();
 
-        switch (EnumDustbinMode.valueOfOrDefault(ServerConfig.SERVER_CONFIG.dustbinMode())) {
+        switch (EnumDustbinMode.valueOfOrDefault(ServerConfig.get().dustbinConfig().dustbinMode())) {
             case VIRTUAL: {
                 remaining = addItemToVirtualDustbin(remaining);
             }
@@ -274,7 +274,7 @@ public class EntitySweeper {
     }
 
     private void selfCleanDustbinBlock() {
-        for (String pos : ServerConfig.SERVER_CONFIG.dustbinBlockPositions()) {
+        for (String pos : ServerConfig.get().dustbinConfig().dustbinBlockPositions()) {
             WorldCoordinate dustbinPos = WorldCoordinate.fromSimpleString(pos);
             Storage<ItemVariant> storage = AotakeUtils.getBlockItemHandler(dustbinPos);
             if (storage != null) {
@@ -317,7 +317,7 @@ public class EntitySweeper {
 
     private ItemStack addItemToDustbinBlock(ItemStack item) {
         ItemStack remaining = item;
-        for (String pos : ServerConfig.SERVER_CONFIG.dustbinBlockPositions()) {
+        for (String pos : ServerConfig.get().dustbinConfig().dustbinBlockPositions()) {
             WorldCoordinate dustbinPos = WorldCoordinate.fromSimpleString(pos);
             Storage<ItemVariant> storage = AotakeUtils.getBlockItemHandler(dustbinPos);
             if (storage != null) {
@@ -333,7 +333,8 @@ public class EntitySweeper {
                                 SingleSlotStorage<ItemVariant> slot = slotted.getSlot(i);
                                 long cap = slot.getCapacity();
                                 if (cap > 0 && cap < minCap) minCap = cap;
-                            } catch (Throwable ignored) {
+                            } catch (Throwable t) {
+                                LOGGER.debug("Failed to get slot capacity", t);
                             }
                         }
                     } else {
@@ -341,7 +342,8 @@ public class EntitySweeper {
                             try {
                                 long cap = view.getCapacity();
                                 if (cap > 0 && cap < minCap) minCap = cap;
-                            } catch (Throwable ignored) {
+                            } catch (Throwable t) {
+                                LOGGER.debug("Failed to get view capacity", t);
                             }
                         }
                     }
@@ -352,11 +354,12 @@ public class EntitySweeper {
                     List<ItemStack> itemStackList = splitItemStack(remaining, invMax);
                     int splits = itemStackList.size();
                     for (ItemStack itemStack : itemStackList) {
-                        ItemStack leftover = AotakeUtils.addItemToBlock(itemStack, dustbinPos);
+                        ItemStack leftover = AotakeUtils.addItemToStorage(itemStack, storage);
                         remainingList.add(leftover);
                     }
                     if (splits > 0) remaining = mergeItemStack(remainingList);
-                } catch (Throwable ignored) {
+                } catch (Throwable t) {
+                    LOGGER.debug("Failed to add item to dustbin block at {}", dustbinPos, t);
                 }
             }
         }
@@ -364,18 +367,18 @@ public class EntitySweeper {
     }
 
     private void handleOverflow(WorldCoordinate coordinate, ItemStack item, SweepResult result) {
-        EnumOverflowMode mode = EnumOverflowMode.valueOf(ServerConfig.SERVER_CONFIG.dustbinOverflowMode());
+        EnumOverflowMode mode = EnumOverflowMode.valueOf(ServerConfig.get().dustbinConfig().dustbinOverflowMode());
 
         switch (mode) {
             case KEEP: {
                 // 多余部分移除
-                if (dropList.size() < ServerConfig.SERVER_CONFIG.cacheLimit()) {
+                if (dropList.size() < ServerConfig.get().dustbinConfig().cacheLimit()) {
                     this.dropList.add(new KeyValue<>(coordinate, item.copy()));
                 }
             }
             break;
             case REPLACE: {
-                switch (EnumDustbinMode.valueOfOrDefault(ServerConfig.SERVER_CONFIG.dustbinMode())) {
+                switch (EnumDustbinMode.valueOfOrDefault(ServerConfig.get().dustbinConfig().dustbinMode())) {
                     case VIRTUAL:
                     case VIRTUAL_BLOCK: {
                         SimpleContainer inv = this.inventoryList.get(AotakeSweep.RANDOM.nextInt(this.inventoryList.size()));
@@ -385,7 +388,7 @@ public class EntitySweeper {
                     break;
                     case BLOCK:
                     case BLOCK_VIRTUAL: {
-                        String pos = CollectionUtils.getRandomElement(ServerConfig.SERVER_CONFIG.dustbinBlockPositions());
+                        String pos = CollectionUtils.getRandomElement(ServerConfig.get().dustbinConfig().dustbinBlockPositions());
                         WorldCoordinate dustbinPos = WorldCoordinate.fromSimpleString(pos);
                         Storage<ItemVariant> storage = AotakeUtils.getBlockItemHandler(dustbinPos);
 
@@ -439,8 +442,14 @@ public class EntitySweeper {
 
         KeyValue<Entity, Boolean> keyValue;
         while ((keyValue = queue.poll()) != null) {
-            if (keyValue.getKey().isAlive()) {
-                keyValue.getKey().remove(Entity.RemovalReason.KILLED);
+            Entity entity = keyValue.getKey();
+            if (entity.isAlive()) {
+                try {
+                    entity.discard();
+                    LOGGER.debug("Removed entity {} at {}", entity, entity.position());
+                } catch (Throwable t) {
+                    LOGGER.debug("Failed to remove entity {}", entity, t);
+                }
             }
         }
     }

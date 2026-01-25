@@ -25,7 +25,7 @@ public abstract class GuiConditionalHideMixin {
                     target = "Lnet/minecraft/client/gui/Gui;renderJumpMeter(Lnet/minecraft/world/entity/PlayerRideableJumping;Lnet/minecraft/client/gui/GuiGraphics;I)V"
             )
     )
-    private void redirectRenderJumpMeter(Gui guiInstance, PlayerRideableJumping playerRideableJumping, GuiGraphics guiGraphics, int x) {
+    private void aotake$redirectRenderJumpMeter(Gui guiInstance, PlayerRideableJumping playerRideableJumping, GuiGraphics guiGraphics, int x) {
         if (!ClientEventHandler.hideExpBar()) {
             ((GuiConditionalHideMixin) (Object) guiInstance).invokeRenderJumpMeter(playerRideableJumping, guiGraphics, x);
         }
@@ -38,7 +38,7 @@ public abstract class GuiConditionalHideMixin {
                     target = "Lnet/minecraft/client/gui/Gui;renderExperienceBar(Lnet/minecraft/client/gui/GuiGraphics;I)V"
             )
     )
-    private void redirectRenderExperienceBar(Gui guiInstance, GuiGraphics guiGraphics, int x) {
+    private void aotake$redirectRenderExperienceBar(Gui guiInstance, GuiGraphics guiGraphics, int x) {
         if (!ClientEventHandler.hideExpBar()) {
             ((GuiConditionalHideMixin) (Object) guiInstance).invokeRenderExperienceBar(guiGraphics, x);
         }
