@@ -11,6 +11,7 @@ import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
 import net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback;
 import net.fabricmc.fabric.api.client.screen.v1.ScreenEvents;
 import net.fabricmc.fabric.api.resource.ResourceManagerHelper;
+import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
@@ -486,7 +487,7 @@ public class ClientEventHandler implements ClientModInitializer {
         HudRenderCallback.EVENT.register(ClientEventHandler::renderProgress);
     }
 
-    private static void renderProgress(GuiGraphics graphics, float tickDelta) {
+    private static void renderProgress(GuiGraphics graphics, DeltaTracker tickCounter) {
         Minecraft mc = Minecraft.getInstance();
         if (mc.options.hideGui) return;
         if (mc.player == null) return;
