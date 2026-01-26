@@ -44,6 +44,10 @@ public final class ModNetworkHandler {
             SweepTimeSyncToClient packet = new SweepTimeSyncToClient(buf);
             client.execute(() -> SweepTimeSyncToClient.handle(packet));
         });
+        ClientPlayNetworking.registerGlobalReceiver(GhostCameraToClient.ID, (client, handler, buf, responseSender) -> {
+            GhostCameraToClient packet = new GhostCameraToClient(buf);
+            client.execute(() -> GhostCameraToClient.handle(packet));
+        });
         ClientPlayNetworking.registerGlobalReceiver(ModLoadedToBoth.ID, (client, handler, buf, responseSender) ->
                 client.execute(() -> ModLoadedToBoth.handle(null))
         );

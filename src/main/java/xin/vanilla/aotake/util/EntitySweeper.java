@@ -15,6 +15,7 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.SimpleContainer;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.boss.EnderDragonPart;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
@@ -156,8 +157,7 @@ public class EntitySweeper {
     private SweepResult processDrop(@NonNull Entity original) {
         SweepResult result = new SweepResult();
         WorldCoordinate coordinate = new WorldCoordinate(original);
-        // Entity entity = (original instanceof PartEntity) ? ((PartEntity<?>) original).getParent() : original;
-        Entity entity = original;
+        Entity entity = (original instanceof EnderDragonPart part) ? part.parentMob : original;
 
         String typeKey = (entity instanceof ItemEntity)
                 ? AotakeUtils.getItemRegistryName(((ItemEntity) entity).getItem())
@@ -435,6 +435,9 @@ public class EntitySweeper {
     public static void scheduleRemoveEntity(Entity entity, boolean keepData) {
         if (!(entity.level() instanceof ServerLevel)) return;
         ResourceKey<Level> dimensionKey = entity.level().dimension();
+        if (entity instanceof EnderDragonPart part) {
+            entity = part.parentMob;
+        }
         pendingRemovals
                 .computeIfAbsent(dimensionKey, k -> new ConcurrentLinkedQueue<>())
                 .add(new KeyValue<>(entity, keepData));

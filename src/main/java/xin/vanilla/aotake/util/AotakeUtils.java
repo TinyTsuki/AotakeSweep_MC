@@ -169,6 +169,13 @@ public class AotakeUtils {
     /**
      * 判断是否拥有指令权限
      */
+    public static boolean hasPermission(Player player, int  level) {
+        return player.hasPermissions(level);
+    }
+
+    /**
+     * 判断是否拥有指令权限
+     */
     public static boolean hasCommandPermission(CommandSourceStack source, EnumCommandType type) {
         return source.hasPermission(getCommandPermissionLevel(type)) || hasVirtualPermission(source.getEntity(), type);
     }

@@ -249,6 +249,8 @@
   "text.autoconfig.aotake_sweep-server.option.permissionConfig.permissionClearDrop.@Tooltip": "清除掉落物的权限",
   "text.autoconfig.aotake_sweep-server.option.permissionConfig.permissionDelaySweep": "延迟本次清理的权限",
   "text.autoconfig.aotake_sweep-server.option.permissionConfig.permissionDelaySweep.@Tooltip": "延迟本次清理的权限",
+  "text.autoconfig.aotake_sweep-server.option.permissionConfig.permissionCatchPlayer": "捕获玩家的权限",
+  "text.autoconfig.aotake_sweep-server.option.permissionConfig.permissionCatchPlayer.@Tooltip": "捕获玩家的权限",
 
   "text.autoconfig.aotake_sweep-server.option.commandConfig": "自定义指令",
   "text.autoconfig.aotake_sweep-server.option.commandConfig.commandLanguage": "设置语言",
