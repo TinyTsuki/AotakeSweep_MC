@@ -1,10 +1,10 @@
+[简体中文](README.md) | **English** | [日本語](README_ja.md)
+
 # Aotake Sweep
 
 ![](src/main/resources/logo.png)
 
 **A Minecraft (Neo)Forge Timed Cleanup MOD.**
-
-[简体中文](README.md) | **English** | [日本語](README_ja.md)
 
 ## Table of Contents
 

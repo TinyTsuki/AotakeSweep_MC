@@ -1,10 +1,10 @@
+**简体中文** | [English](README_en.md) | [日本語](README_ja.md)
+
 # Aotake Sweep (竹叶清)
 
 ![](src/main/resources/logo.png)
 
 **一个 Minecraft (Neo)Forge 定时扫地 MOD。**
-
-**简体中文** | [English](README_en.md) | [日本語](README_ja.md)
 
 ## 目录
 

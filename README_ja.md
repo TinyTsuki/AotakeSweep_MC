@@ -1,10 +1,10 @@
+[简体中文](README.md) | [English](README_en.md) | **日本語**
+
 # Aotake Sweep (竹葉清)
 
 ![](src/main/resources/logo.png)
 
 **Minecraft (Neo)Forge 向け定期掃除 MOD。**
-
-[简体中文](README.md) | [English](README_en.md) | **日本語**
 
 ## 目次
 
