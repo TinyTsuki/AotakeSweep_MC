@@ -465,6 +465,13 @@ public class ServerConfig implements ConfigData {
         @ConfigEntry.Gui.Tooltip
         @ConfigEntry.BoundedDiscrete(min = 0, max = 4)
         private int permissionDelaySweep = 2;
+
+        /**
+         * 捕获玩家权限
+         */
+        @ConfigEntry.Gui.Tooltip
+        @ConfigEntry.BoundedDiscrete(min = 0, max = 4)
+        private int permissionCatchPlayer = 3;
     }
     // endregion 指令权限
 

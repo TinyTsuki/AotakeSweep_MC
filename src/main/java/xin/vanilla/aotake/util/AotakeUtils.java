@@ -169,6 +169,13 @@ public class AotakeUtils {
     /**
      * 判断是否拥有指令权限
      */
+    public static boolean hasPermission(Player player, int level) {
+        return player.hasPermissions(level);
+    }
+
+    /**
+     * 判断是否拥有指令权限
+     */
     public static boolean hasCommandPermission(CommandSourceStack source, EnumCommandType type) {
         return source.hasPermission(getCommandPermissionLevel(type)) || hasVirtualPermission(source.getEntity(), type);
     }
@@ -744,8 +751,8 @@ public class AotakeUtils {
                 if (aotake.contains("entity")) {
                     try {
                         CompoundTag entityTag = aotake.getCompound("entity");
-                    sanitizeCapturedEntityTag(entityTag);
-                    result = EntityType.loadEntityRecursive(entityTag, level, e -> e);
+                        sanitizeCapturedEntityTag(entityTag);
+                        result = EntityType.loadEntityRecursive(entityTag, level, e -> e);
                     } catch (Exception e) {
                         LOGGER.error("Failed to load entity from item stack: {}", itemStack, e);
                     }
