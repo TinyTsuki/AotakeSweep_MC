@@ -31,10 +31,8 @@ import java.util.List;
 @Config(name = AotakeSweep.MODID + "-server")
 public class ServerConfig implements ConfigData {
 
-    private static ServerConfig SERVER_CONFIG;
-
     public static ServerConfig get() {
-        return SERVER_CONFIG;
+        return AutoConfig.getConfigHolder(ServerConfig.class).getConfig();
     }
 
     // region 基础设置
@@ -613,7 +611,6 @@ public class ServerConfig implements ConfigData {
 
     public static void register() {
         AutoConfig.register(ServerConfig.class, Toml4jConfigSerializer::new);
-        init();
         AutoConfig.getConfigHolder(ServerConfig.class)
                 .registerSaveListener((holder, config) -> {
                     AotakeSweep.entityFilter().clear();
@@ -622,15 +619,12 @@ public class ServerConfig implements ConfigData {
                 });
     }
 
-    private static void init() {
-        SERVER_CONFIG = AutoConfig.getConfigHolder(ServerConfig.class).getConfig();
-    }
-
     /**
      * 重置服务器配置文件
      */
     public static void resetConfig() {
-        init();
+        AutoConfig.getConfigHolder(ServerConfig.class).resetToDefault();
+        AutoConfig.getConfigHolder(ServerConfig.class).save();
     }
 
     public static void resetConfigWithMode1() {
@@ -650,6 +644,8 @@ public class ServerConfig implements ConfigData {
             put("60", "§r§e清理将会在§r§e%s§r§e秒后开始。");
         }}, new TypeToken<LinkedHashMap<String, String>>() {
         }.getType()));
+
+        AutoConfig.getConfigHolder(ServerConfig.class).save();
     }
 
     public static void resetConfigWithMode2() {
@@ -669,6 +665,8 @@ public class ServerConfig implements ConfigData {
             put("60", "§r§eThe cleanup will start in §r§e%s§r§e seconds.");
         }}, new TypeToken<LinkedHashMap<String, String>>() {
         }.getType()));
+
+        AutoConfig.getConfigHolder(ServerConfig.class).save();
     }
 
     @Override
