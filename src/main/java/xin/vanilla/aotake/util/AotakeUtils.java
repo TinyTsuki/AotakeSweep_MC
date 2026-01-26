@@ -743,7 +743,9 @@ public class AotakeUtils {
                 CompoundTag aotake = customData.getCompound(AotakeSweep.MODID);
                 if (aotake.contains("entity")) {
                     try {
-                        result = EntityType.loadEntityRecursive(aotake.getCompound("entity"), level, e -> e);
+                        CompoundTag entityTag = aotake.getCompound("entity");
+                    sanitizeCapturedEntityTag(entityTag);
+                    result = EntityType.loadEntityRecursive(entityTag, level, e -> e);
                     } catch (Exception e) {
                         LOGGER.error("Failed to load entity from item stack: {}", itemStack, e);
                     }
@@ -755,6 +757,17 @@ public class AotakeUtils {
             ((ItemEntity) result).setDefaultPickUpDelay();
         }
         return result;
+    }
+
+    public static CompoundTag sanitizeCapturedEntityTag(CompoundTag entityTag) {
+        if (entityTag == null) return new CompoundTag();
+        entityTag.remove("Passengers");
+        entityTag.remove("Vehicle");
+        entityTag.remove("RootVehicle");
+        entityTag.remove("UUID");
+        entityTag.remove("UUIDMost");
+        entityTag.remove("UUIDLeast");
+        return entityTag;
     }
 
     private static final Map<String, String> warns = new HashMap<>();
