@@ -24,10 +24,9 @@ import java.util.List;
 @Config(name = AotakeSweep.MODID + "-client")
 public class ClientConfig implements ConfigData {
 
-    private static ClientConfig CLIENT_CONFIG;
 
     public static ClientConfig get() {
-        return CLIENT_CONFIG;
+        return AutoConfig.getConfigHolder(ClientConfig.class).getConfig();
     }
 
     // region 进度条设置
@@ -224,7 +223,6 @@ public class ClientConfig implements ConfigData {
 
     public static void register() {
         AutoConfig.register(ClientConfig.class, Toml4jConfigSerializer::new);
-        CLIENT_CONFIG = AutoConfig.getConfigHolder(ClientConfig.class).getConfig();
     }
 
     @Override
