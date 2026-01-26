@@ -192,7 +192,11 @@ public class EntitySweeper {
                     CompoundTag aotake = new CompoundTag();
                     aotake.putBoolean("byPlayer", false);
                     CompoundTag entityTag = new CompoundTag();
+                    if (entity.isPassenger()) {
+                        entity.stopRiding();
+                    }
                     entity.save(entityTag);
+                    AotakeUtils.sanitizeCapturedEntityTag(entityTag);
                     aotake.put("entity", entityTag);
                     customData.put(AotakeSweep.MODID, aotake);
                     itemToRecycle.set(DataComponents.CUSTOM_DATA, CustomData.of(customData));
