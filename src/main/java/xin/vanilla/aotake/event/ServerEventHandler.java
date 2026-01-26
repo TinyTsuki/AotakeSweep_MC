@@ -48,6 +48,7 @@ import xin.vanilla.aotake.util.*;
 
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -64,6 +65,9 @@ public class ServerEventHandler {
     private static long lastChunkCheckTime = System.currentTimeMillis();
     private static long lastVoiceTime = System.currentTimeMillis();
     private static final AtomicBoolean chunkSweepLock = new AtomicBoolean(false);
+    private static final Map<String, Long> lastCatchTick = new ConcurrentHashMap<>();
+    private static final Map<String, Long> lastUseEntityTick = new ConcurrentHashMap<>();
+    private static final Map<String, Long> suppressUseItemTick = new ConcurrentHashMap<>();
 
 
     public static void register() {
@@ -319,26 +323,35 @@ public class ServerEventHandler {
             CompoundTag aotake = tag.getCompound(AotakeSweep.MODID);
             if (aotake.isEmpty()) {
                 tag.remove(AotakeSweep.MODID);
+                CompoundTag originalTag = original.getTag();
+                if (originalTag != null) {
+                    originalTag.remove(AotakeSweep.MODID);
+                }
             } else {
-                original.shrink(1);
-
                 CompoundTag entityData = aotake.getCompound("entity");
+                AotakeUtils.sanitizeCapturedEntityTag(entityData);
                 ServerLevel level = player.serverLevel();
                 Entity entity = EntityType.loadEntityRecursive(entityData, level, (e) -> e);
                 if (entity != null) {
                     // 将实体放置到指定位置并加入世界
                     entity.moveTo(coordinate.getX(), coordinate.getY(), coordinate.getZ(), (float) coordinate.getYaw(), (float) coordinate.getPitch());
-                    level.addFreshEntity(entity);
+                    boolean spawned = level.addFreshEntity(entity);
+                    if (!spawned) {
+                        return null;
+                    }
+                    original.shrink(1);
                     // 恢复物品原来的名称
                     net.minecraft.network.chat.Component name = AotakeUtils.textComponentFromJson(aotake.getString("name"));
                     if (name != null) copy.setHoverName(name);
                     else copy.resetHoverName();
                     // 清空节点下nbt
-                    tag.put(AotakeSweep.MODID, new CompoundTag());
+                    tag.remove(AotakeSweep.MODID);
                     if (!aotake.getBoolean("byPlayer")) {
                         copy.shrink(1);
                     }
-                    player.addItem(copy);
+                    if (!copy.isEmpty()) {
+                        player.addItem(copy);
+                    }
                     AotakeUtils.sendActionBarMessage(player, Component.translatable(EnumI18nType.MESSAGE, "entity_released", entity.getDisplayName()));
 
                     return entity;
@@ -352,13 +365,23 @@ public class ServerEventHandler {
 
     public static InteractionResultHolder<ItemStack> onPlayerUseItem(Player player, Level world, InteractionHand hand) {
         if (AotakeSweep.disable()) return InteractionResultHolder.pass(player.getItemInHand(hand));
-        if (!(player instanceof ServerPlayer)) return InteractionResultHolder.pass(player.getItemInHand(hand));
+        if (!(player instanceof ServerPlayer serverPlayer))
+            return InteractionResultHolder.pass(player.getItemInHand(hand));
 
         ItemStack stack = player.getItemInHand(hand);
+        long tick = serverPlayer.serverLevel().getGameTime();
+        String uuid = serverPlayer.getStringUUID();
+        Long suppressTick = suppressUseItemTick.get(uuid);
+        if (suppressTick != null && suppressTick == tick) {
+            return InteractionResultHolder.fail(stack);
+        }
         CompoundTag tag = stack.getTag();
         if (tag != null && tag.contains(AotakeSweep.MODID)) {
             CompoundTag aotake = tag.getCompound(AotakeSweep.MODID);
-            if (aotake.isEmpty()) tag.remove(AotakeSweep.MODID);
+            if (aotake.isEmpty()) {
+                tag.remove(AotakeSweep.MODID);
+                return InteractionResultHolder.pass(stack);
+            }
             return InteractionResultHolder.fail(stack);
         }
 
@@ -375,6 +398,7 @@ public class ServerEventHandler {
 
         Entity released = releaseEntity(serverPlayer, original, coordinate);
         if (released != null) {
+            suppressUseItemTick.put(serverPlayer.getStringUUID(), serverPlayer.serverLevel().getGameTime());
             return InteractionResult.SUCCESS;
         }
 
@@ -384,8 +408,18 @@ public class ServerEventHandler {
     public static InteractionResult onRightEntity(Player player, Level world, InteractionHand hand, Entity entity, @Nullable EntityHitResult hitResult) {
         if (AotakeSweep.disable()) return InteractionResult.PASS;
         if (!(player instanceof ServerPlayer serverPlayer)) return InteractionResult.PASS;
+        if (hand != InteractionHand.MAIN_HAND) return InteractionResult.PASS;
+
+        long tick = serverPlayer.serverLevel().getGameTime();
+        String uuid = serverPlayer.getStringUUID();
+        Long lastUseTick = lastUseEntityTick.get(uuid);
+        if (lastUseTick != null && lastUseTick == tick) {
+            return InteractionResult.SUCCESS;
+        }
+        lastUseEntityTick.put(uuid, tick);
 
         ItemStack original = player.getItemInHand(hand);
+        if (original.isEmpty()) return InteractionResult.PASS;
         ItemStack copy = original.copy();
         copy.setCount(1);
 
@@ -400,6 +434,7 @@ public class ServerEventHandler {
                     back.startRiding(entity, true);
                     // 同步客户端乘客信息
                     AotakeUtils.broadcastPacket(new ClientboundSetPassengersPacket(entity));
+                    suppressUseItemTick.put(uuid, tick);
                     return InteractionResult.SUCCESS;
                 }
             }
@@ -412,14 +447,25 @@ public class ServerEventHandler {
         boolean hasEntityInTag = tag != null && tag.contains(AotakeSweep.MODID)
                 && tag.getCompound(AotakeSweep.MODID).contains("entity");
 
+        if (entity instanceof Player) return InteractionResult.PASS;
+
         if (allowCatch && isCatchItem && serverPlayer.isCrouching() && !hasEntityInTag) {
+            Long lastTick = lastCatchTick.get(uuid);
+            if (lastTick != null && lastTick == tick) {
+                return InteractionResult.SUCCESS;
+            }
+
             original.shrink(1);
 
             tag = copy.getOrCreateTag();
             CompoundTag aotake = new CompoundTag();
             aotake.putBoolean("byPlayer", true);
             CompoundTag entityTag = new CompoundTag();
+            if (entity.isPassenger()) {
+                entity.stopRiding();
+            }
             entity.save(entityTag);
+            AotakeUtils.sanitizeCapturedEntityTag(entityTag);
             aotake.put("entity", entityTag);
             aotake.putString("name", AotakeUtils.getItemCustomNameJson(copy));
             tag.put(AotakeSweep.MODID, aotake);
@@ -429,6 +475,8 @@ public class ServerEventHandler {
             serverPlayer.addItem(copy);
             // 移除被捕实体
             AotakeUtils.removeEntity(entity, true);
+            lastCatchTick.put(uuid, tick);
+            suppressUseItemTick.put(uuid, tick);
 
             AotakeUtils.sendActionBarMessage(serverPlayer, Component.translatable(EnumI18nType.MESSAGE, "entity_caught"));
             return InteractionResult.SUCCESS;
