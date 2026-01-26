@@ -249,6 +249,8 @@
   "text.autoconfig.aotake_sweep-server.option.permissionConfig.permissionClearDrop.@Tooltip": "Clear Drops Permission",
   "text.autoconfig.aotake_sweep-server.option.permissionConfig.permissionDelaySweep": "Delay Sweep Permission",
   "text.autoconfig.aotake_sweep-server.option.permissionConfig.permissionDelaySweep.@Tooltip": "Delay Sweep Permission",
+  "text.autoconfig.aotake_sweep-server.option.permissionConfig.permissionCatchPlayer": "Catch Player Permission",
+  "text.autoconfig.aotake_sweep-server.option.permissionConfig.permissionCatchPlayer.@Tooltip": "Catch Player Permission",
 
   "text.autoconfig.aotake_sweep-server.option.commandConfig": "Custom Command",
   "text.autoconfig.aotake_sweep-server.option.commandConfig.commandLanguage": "Language Command",

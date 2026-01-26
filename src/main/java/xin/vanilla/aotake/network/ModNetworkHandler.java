@@ -20,6 +20,7 @@ public final class ModNetworkHandler {
 
         PayloadTypeRegistry.playS2C().register(CustomConfigSyncToClient.ID, CustomConfigSyncToClient.CODEC);
         PayloadTypeRegistry.playS2C().register(SweepTimeSyncToClient.ID, SweepTimeSyncToClient.CODEC);
+        PayloadTypeRegistry.playS2C().register(GhostCameraToClient.ID, GhostCameraToClient.CODEC);
         PayloadTypeRegistry.playS2C().register(ModLoadedToBoth.ID, ModLoadedToBoth.CODEC);
     }
 
@@ -42,6 +43,9 @@ public final class ModNetworkHandler {
         ClientPlayNetworking.registerGlobalReceiver(SweepTimeSyncToClient.ID, (payload, context) ->
                 context.client().execute(() -> SweepTimeSyncToClient.handle(payload))
         );
+        ClientPlayNetworking.registerGlobalReceiver(GhostCameraToClient.ID, (payload, context) -> {
+            context.client().execute(() -> GhostCameraToClient.handle(payload));
+        });
         ClientPlayNetworking.registerGlobalReceiver(ModLoadedToBoth.ID, (payload, context) ->
                 context.client().execute(() -> ModLoadedToBoth.handle(null))
         );
