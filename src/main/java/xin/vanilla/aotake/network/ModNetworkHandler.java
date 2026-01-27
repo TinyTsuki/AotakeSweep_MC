@@ -2,6 +2,9 @@ package xin.vanilla.aotake.network;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientPacketListener;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.server.network.ServerGamePacketListenerImpl;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.api.distmarker.OnlyIn;
 import net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent;
@@ -21,12 +24,24 @@ public class ModNetworkHandler {
         registrar.playToServer(ClearDustbinToServer.TYPE, ClearDustbinToServer.STREAM_CODEC, ClearDustbinToServer::handle);
         registrar.playToClient(CustomConfigSyncToClient.TYPE, CustomConfigSyncToClient.STREAM_CODEC, CustomConfigSyncToClient::handle);
         registrar.playToClient(SweepTimeSyncToClient.TYPE, SweepTimeSyncToClient.STREAM_CODEC, SweepTimeSyncToClient::handle);
+        registrar.playToClient(GhostCameraToClient.TYPE, GhostCameraToClient.STREAM_CODEC, GhostCameraToClient::handle);
+    }
+
+    @OnlyIn(Dist.CLIENT)
+    public static boolean hasAotakeServer() {
+        return hasCannel(ModLoadedToBoth.TYPE.id());
     }
 
     @OnlyIn(Dist.CLIENT)
     @SuppressWarnings("UnstableApiUsage")
-    public static boolean hasAotakeServer() {
+    public static boolean hasCannel(ResourceLocation channel) {
         ClientPacketListener connection = Minecraft.getInstance().getConnection();
-        return connection != null && NetworkRegistry.hasChannel(connection, ModLoadedToBoth.TYPE.id());
+        return connection != null && NetworkRegistry.hasChannel(connection, channel);
+    }
+
+    @SuppressWarnings("UnstableApiUsage")
+    public static boolean hasCannel(ServerPlayer player, ResourceLocation channel) {
+        ServerGamePacketListenerImpl connection = player.connection;
+        return NetworkRegistry.hasChannel(connection, channel);
     }
 }
