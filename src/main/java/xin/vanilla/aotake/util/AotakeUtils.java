@@ -58,6 +58,7 @@ import xin.vanilla.aotake.data.WorldCoordinate;
 import xin.vanilla.aotake.data.player.PlayerSweepData;
 import xin.vanilla.aotake.data.world.WorldTrashData;
 import xin.vanilla.aotake.enums.*;
+import xin.vanilla.aotake.network.ModNetworkHandler;
 
 import javax.annotation.Nullable;
 import java.io.File;
@@ -381,14 +382,18 @@ public class AotakeUtils {
      * 发送数据包至服务器
      */
     public static void sendPacketToServer(CustomPacketPayload packet) {
-        ClientPlayNetworking.send(packet);
+        if (ModNetworkHandler.hasCannel(packet.type().id())) {
+            ClientPlayNetworking.send(packet);
+        }
     }
 
     /**
      * 发送数据包至玩家
      */
     public static void sendPacketToPlayer(ServerPlayer player, CustomPacketPayload packet) {
-        ServerPlayNetworking.send(player, packet);
+        if (ModNetworkHandler.hasCannel(player, packet.type().id())) {
+            ServerPlayNetworking.send(player, packet);
+        }
     }
 
     /**
