@@ -9,7 +9,7 @@ import me.shedaniel.autoconfig.ConfigData;
 import me.shedaniel.autoconfig.annotation.Config;
 import me.shedaniel.autoconfig.annotation.ConfigEntry;
 import me.shedaniel.autoconfig.serializer.Toml4jConfigSerializer;
-import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.core.Registry;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.item.Items;
@@ -129,8 +129,8 @@ public class ServerConfig implements ConfigData {
          */
         @ConfigEntry.Gui.Tooltip
         private List<String> entityList = new ArrayList<>() {{
-            add(BuiltInRegistries.ENTITY_TYPE.getKey(EntityType.ARROW).toString());
-            add(BuiltInRegistries.ENTITY_TYPE.getKey(EntityType.SPECTRAL_ARROW).toString());
+            add(Registry.ENTITY_TYPE.getKey(EntityType.ARROW).toString());
+            add(Registry.ENTITY_TYPE.getKey(EntityType.SPECTRAL_ARROW).toString());
             add("tick, clazz, itemClazz, createProcessing = [CreateData.Processing.Time]" +
                     " -> " +
                     "tick >= 5 && clazz :> itemClazz && (createProcessing <= 0 || createProcessing == null)");
@@ -250,9 +250,9 @@ public class ServerConfig implements ConfigData {
          */
         @ConfigEntry.Gui.Tooltip
         private List<String> catchItem = new ArrayList<>() {{
-            add(BuiltInRegistries.ITEM.getKey(Items.SNOWBALL).toString());
-            add(BuiltInRegistries.ITEM.getKey(Items.GLASS_BOTTLE).toString());
-            add(BuiltInRegistries.ITEM.getKey(Items.MUSIC_DISC_13).toString());
+            add(Registry.ITEM.getKey(Items.SNOWBALL).toString());
+            add(Registry.ITEM.getKey(Items.GLASS_BOTTLE).toString());
+            add(Registry.ITEM.getKey(Items.MUSIC_DISC_13).toString());
         }};
     }
     // endregion 实体捕获

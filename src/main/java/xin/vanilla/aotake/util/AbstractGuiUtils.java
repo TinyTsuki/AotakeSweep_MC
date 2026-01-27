@@ -3,6 +3,7 @@ package xin.vanilla.aotake.util;
 import com.mojang.blaze3d.platform.Window;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.PoseStack;
+import com.mojang.math.Vector3f;
 import lombok.Data;
 import lombok.Getter;
 import lombok.NonNull;
@@ -17,7 +18,6 @@ import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.item.ItemStack;
-import org.joml.Quaternionf;
 import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.GL11;
 import xin.vanilla.aotake.data.Color;
@@ -290,15 +290,15 @@ public class AbstractGuiUtils {
 
         // 旋转
         if (args.getAngle() % 360 != 0) {
-            args.getStack().mulPose(new Quaternionf().rotateZ((float) Math.toRadians(args.getAngle())));
+            args.getStack().mulPose(Vector3f.ZP.rotationDegrees((float) args.getAngle()));
         }
 
         // 翻转
         if (args.isFlipHorizontal()) {
-            args.getStack().mulPose(new Quaternionf().rotateY((float) Math.toRadians(180)));
+            args.getStack().mulPose(Vector3f.YP.rotationDegrees(180));
         }
         if (args.isFlipVertical()) {
-            args.getStack().mulPose(new Quaternionf().rotateX((float) Math.toRadians(180)));
+            args.getStack().mulPose(Vector3f.XP.rotationDegrees(180));
         }
 
         // 返回原点
@@ -747,10 +747,10 @@ public class AbstractGuiUtils {
         AbstractGuiUtils.drawEffectIcon(poseStack, font, effectInstance, x, y, ITEM_ICON_SIZE, ITEM_ICON_SIZE, showText);
     }
 
-    public static void renderItem(PoseStack poseStack, ItemRenderer itemRenderer, Font fontRenderer, ItemStack itemStack, int x, int y, boolean showText) {
-        itemRenderer.renderGuiItem(poseStack, itemStack, x, y);
+    public static void renderItem(PoseStack poseStack, ItemRenderer itemRenderer, Font font, ItemStack itemStack, int x, int y, boolean showText) {
+        itemRenderer.renderGuiItem(itemStack, x, y);
         if (showText) {
-            itemRenderer.renderGuiItemDecorations(poseStack, fontRenderer, itemStack, x, y, String.valueOf(itemStack.getCount()));
+            itemRenderer.renderGuiItemDecorations(font, itemStack, x, y, String.valueOf(itemStack.getCount()));
         }
     }
 
@@ -1215,7 +1215,7 @@ public class AbstractGuiUtils {
     }
 
     public static Button newButton(int x, int y, int width, int height, Component content, Button.OnPress onPress) {
-        return Button.builder(content.toTextComponent(), onPress).pos(x, y).size(width, height).build();
+        return new Button(x, y, width, height, content.toTextComponent(), onPress);
     }
 
     // endregion 重写方法签名

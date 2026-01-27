@@ -17,8 +17,7 @@ import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.arguments.blocks.BlockStateParser;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
-import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.core.registries.Registries;
+import net.minecraft.core.Registry;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.NbtIo;
 import net.minecraft.nbt.TagParser;
@@ -472,7 +471,7 @@ public class AotakeUtils {
     }
 
     public static String getClientLanguage() {
-        return Minecraft.getInstance().getLanguageManager().getSelected();
+        return Minecraft.getInstance().getLanguageManager().getSelected().getCode();
     }
 
     // endregion 玩家语言相关
@@ -1157,8 +1156,7 @@ public class AotakeUtils {
      */
     public static BlockState deserializeBlockState(String block) {
         try {
-            return BlockStateParser.parseForBlock(AotakeSweep.serverInstance().key().getAllLevels().iterator().next().holderLookup(Registries.BLOCK)
-                    , new StringReader(block), false).blockState();
+            return BlockStateParser.parseForBlock(Registry.BLOCK, new StringReader(block), false).blockState();
         } catch (Exception e) {
             LOGGER.error("Invalid unsafe block: {}", block, e);
             return null;
@@ -1221,7 +1219,7 @@ public class AotakeUtils {
      */
     @NonNull
     public static String getItemRegistryName(@NonNull Item item) {
-        ResourceLocation location = BuiltInRegistries.ITEM.getKey(item);
+        ResourceLocation location = Registry.ITEM.getKey(item);
         return location == null ? "" : location.toString();
     }
 
@@ -1241,7 +1239,7 @@ public class AotakeUtils {
      */
     @NonNull
     public static String getEntityTypeRegistryName(@NonNull EntityType<?> entityType) {
-        ResourceLocation location = BuiltInRegistries.ENTITY_TYPE.getKey(entityType);
+        ResourceLocation location = Registry.ENTITY_TYPE.getKey(entityType);
         return location == null ? AotakeSweep.emptyResource().toString() : location.toString();
     }
 

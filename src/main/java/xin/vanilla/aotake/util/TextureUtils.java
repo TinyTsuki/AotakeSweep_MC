@@ -7,7 +7,7 @@ import net.minecraft.client.renderer.texture.AbstractTexture;
 import net.minecraft.client.renderer.texture.DynamicTexture;
 import net.minecraft.client.renderer.texture.MissingTextureAtlasSprite;
 import net.minecraft.client.renderer.texture.TextureManager;
-import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.core.Registry;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.packs.resources.Resource;
 import net.minecraft.server.packs.resources.ResourceManager;
@@ -93,7 +93,7 @@ public class TextureUtils implements SimpleSynchronousResourceReloadListener {
      */
     public static ResourceLocation getEffectTexture(MobEffectInstance effectInstance) {
         ResourceLocation effectIcon;
-        ResourceLocation registryName = BuiltInRegistries.MOB_EFFECT.getKey(effectInstance.getEffect());
+        ResourceLocation registryName = Registry.MOB_EFFECT.getKey(effectInstance.getEffect());
         if (registryName != null) {
             effectIcon = AotakeSweep.createResource(registryName.getNamespace(), DEFAULT_EFFECT_DIR + registryName.getPath() + ".png");
         } else {

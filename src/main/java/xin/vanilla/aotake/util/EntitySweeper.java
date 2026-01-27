@@ -1,8 +1,8 @@
 package xin.vanilla.aotake.util;
 
 import lombok.NonNull;
+import net.fabricmc.fabric.api.transfer.v1.item.InventoryStorage;
 import net.fabricmc.fabric.api.transfer.v1.item.ItemVariant;
-import net.fabricmc.fabric.api.transfer.v1.storage.SlottedStorage;
 import net.fabricmc.fabric.api.transfer.v1.storage.Storage;
 import net.fabricmc.fabric.api.transfer.v1.storage.StorageView;
 import net.fabricmc.fabric.api.transfer.v1.storage.base.SingleSlotStorage;
@@ -328,27 +328,12 @@ public class EntitySweeper {
                 int invMax = 64;
                 try {
                     long minCap = Long.MAX_VALUE;
-                    if (storage instanceof SlottedStorage<?> slottedRaw) {
-                        @SuppressWarnings("unchecked")
-                        SlottedStorage<ItemVariant> slotted = (SlottedStorage<ItemVariant>) slottedRaw;
-                        int slotCount = slotted.getSlotCount();
-                        for (int i = 0; i < slotCount; i++) {
-                            try {
-                                SingleSlotStorage<ItemVariant> slot = slotted.getSlot(i);
-                                long cap = slot.getCapacity();
-                                if (cap > 0 && cap < minCap) minCap = cap;
-                            } catch (Throwable t) {
-                                LOGGER.debug("Failed to get slot capacity", t);
-                            }
-                        }
-                    } else {
-                        for (StorageView<ItemVariant> view : storage) {
-                            try {
-                                long cap = view.getCapacity();
-                                if (cap > 0 && cap < minCap) minCap = cap;
-                            } catch (Throwable t) {
-                                LOGGER.debug("Failed to get view capacity", t);
-                            }
+                    for (StorageView<ItemVariant> view : storage) {
+                        try {
+                            long cap = view.getCapacity();
+                            if (cap > 0 && cap < minCap) minCap = cap;
+                        } catch (Throwable t) {
+                            LOGGER.debug("Failed to get view capacity", t);
                         }
                     }
                     if (minCap != Long.MAX_VALUE) {

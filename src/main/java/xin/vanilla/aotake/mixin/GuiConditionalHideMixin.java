@@ -2,7 +2,6 @@ package xin.vanilla.aotake.mixin;
 
 import com.mojang.blaze3d.vertex.PoseStack;
 import net.minecraft.client.gui.Gui;
-import net.minecraft.world.entity.PlayerRideableJumping;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.gen.Invoker;
 import org.spongepowered.asm.mixin.injection.At;
@@ -14,7 +13,7 @@ import xin.vanilla.aotake.event.ClientEventHandler;
 public abstract class GuiConditionalHideMixin {
 
     @Invoker("renderJumpMeter")
-    public abstract void invokeRenderJumpMeter(PlayerRideableJumping playerRideableJumping, PoseStack stack, int x);
+    public abstract void invokeRenderJumpMeter(PoseStack stack, int x);
 
     @Invoker("renderExperienceBar")
     public abstract void invokeRenderExperienceBar(PoseStack stack, int x);
@@ -23,12 +22,12 @@ public abstract class GuiConditionalHideMixin {
             method = "render",
             at = @At(
                     value = "INVOKE",
-                    target = "Lnet/minecraft/client/gui/Gui;renderJumpMeter(Lnet/minecraft/world/entity/PlayerRideableJumping;Lcom/mojang/blaze3d/vertex/PoseStack;I)V"
+                    target = "Lnet/minecraft/client/gui/Gui;renderJumpMeter(Lcom/mojang/blaze3d/vertex/PoseStack;I)V"
             )
     )
-    private void aotake$redirectRenderJumpMeter(Gui guiInstance, PlayerRideableJumping playerRideableJumping, PoseStack stack, int x) {
+    private void aotake$redirectRenderJumpMeter(Gui guiInstance, PoseStack stack, int x) {
         if (!ClientEventHandler.hideExpBar()) {
-            ((GuiConditionalHideMixin) (Object) guiInstance).invokeRenderJumpMeter(playerRideableJumping, stack, x);
+            ((GuiConditionalHideMixin) (Object) guiInstance).invokeRenderJumpMeter(stack, x);
         }
     }
 
