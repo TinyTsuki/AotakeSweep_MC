@@ -60,6 +60,7 @@ import xin.vanilla.aotake.data.WorldCoordinate;
 import xin.vanilla.aotake.data.player.PlayerSweepData;
 import xin.vanilla.aotake.data.world.WorldTrashData;
 import xin.vanilla.aotake.enums.*;
+import xin.vanilla.aotake.network.ModNetworkHandler;
 
 import javax.annotation.Nullable;
 import java.io.File;
@@ -366,14 +367,18 @@ public class AotakeUtils {
      * 发送数据包至服务器
      */
     public static void sendPacketToServer(CustomPacketPayload msg) {
-        PacketDistributor.sendToServer(msg);
+        if (ModNetworkHandler.hasCannel(msg.type().id())) {
+            PacketDistributor.sendToServer(msg);
+        }
     }
 
     /**
      * 发送数据包至玩家
      */
     public static void sendPacketToPlayer(CustomPacketPayload msg, ServerPlayer player) {
-        PacketDistributor.sendToPlayer(player, msg);
+        if (ModNetworkHandler.hasCannel(player, msg.type().id())) {
+            PacketDistributor.sendToPlayer(player, msg);
+        }
     }
 
     // endregion 消息相关
@@ -755,6 +760,17 @@ public class AotakeUtils {
             ((ItemEntity) result).setDefaultPickUpDelay();
         }
         return result;
+    }
+
+    public static CompoundTag sanitizeCapturedEntityTag(CompoundTag entityTag) {
+        if (entityTag == null) return new CompoundTag();
+        entityTag.remove("Passengers");
+        entityTag.remove("Vehicle");
+        entityTag.remove("RootVehicle");
+        entityTag.remove("UUID");
+        entityTag.remove("UUIDMost");
+        entityTag.remove("UUIDLeast");
+        return entityTag;
     }
 
     private static final Map<String, String> warns = new HashMap<>();
