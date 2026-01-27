@@ -169,7 +169,7 @@ public class AotakeUtils {
     /**
      * 判断是否拥有指令权限
      */
-    public static boolean hasPermission(Player player, int  level) {
+    public static boolean hasPermission(Player player, int level) {
         return player.hasPermissions(level);
     }
 
@@ -345,7 +345,7 @@ public class AotakeUtils {
             } catch (CommandSyntaxException ignored) {
             }
         } else if (success) {
-            source.sendSuccess(() -> Component.translatable(key, args).setLanguageCode(ServerConfig.get().defaultLanguage()).toChatComponent(), false);
+            source.sendSuccess(Component.translatable(key, args).setLanguageCode(ServerConfig.get().defaultLanguage()).toChatComponent(), false);
         } else {
             source.sendFailure(Component.translatable(key, args).setLanguageCode(ServerConfig.get().defaultLanguage()).toChatComponent());
         }
@@ -575,7 +575,7 @@ public class AotakeUtils {
     }
 
     public static boolean isSafeEntity(Map<KeyValue<Level, BlockPos>, BlockState> blockStateCache, Entity entity) {
-        Level level = entity.level();
+        Level level = entity.getLevel();
 
         boolean stateFlag = false;
         if (!SAFE_BLOCKS.isEmpty() || !SAFE_BLOCKS_STATE.isEmpty()) {
@@ -634,7 +634,7 @@ public class AotakeUtils {
                 // 安全实体
                 .filter(entity -> isSafeEntity(blockStateCache, entity))
                 .collect(Collectors.groupingBy(entity -> {
-                    String dimension = entity.level().dimension().location().toString();
+                    String dimension = entity.getLevel().dimension().location().toString();
                     int chunkX = entity.blockPosition().getX() / 16;
                     int chunkZ = entity.blockPosition().getZ() / 16;
                     return dimension + "," + chunkX + "," + chunkZ;
@@ -953,8 +953,8 @@ public class AotakeUtils {
 
             BlockHitResult ray = new BlockHitResult(hitVec, direction, coordinate.toBlockPos(), false);
 
-            BlockState state = player.serverLevel().getBlockState(coordinate.toBlockPos());
-            InteractionResult res = state.use(player.serverLevel(), player, InteractionHand.MAIN_HAND, ray);
+            BlockState state = player.getLevel().getBlockState(coordinate.toBlockPos());
+            InteractionResult res = state.use(player.getLevel(), player, InteractionHand.MAIN_HAND, ray);
             if (res.consumesAction()) {
                 result = 1;
             }
@@ -1003,9 +1003,9 @@ public class AotakeUtils {
         inventoryList.forEach(inventory -> inventory.removeAllItems()
                 .forEach(item -> {
                     if (!item.isEmpty()) {
-                        Entity entity = AotakeUtils.getEntityFromItem(player.serverLevel(), item);
+                        Entity entity = AotakeUtils.getEntityFromItem(player.getLevel(), item);
                         entity.moveTo(player.getX(), player.getY(), player.getZ(), player.getYRot(), player.getXRot());
-                        player.serverLevel().addFreshEntity(entity);
+                        player.getLevel().addFreshEntity(entity);
                     }
                 })
         );
@@ -1031,9 +1031,9 @@ public class AotakeUtils {
                         if (extracted > 0) {
                             ItemStack stack = variant.toStack((int) extracted);
                             if (!stack.isEmpty()) {
-                                Entity entity = AotakeUtils.getEntityFromItem(player.serverLevel(), stack);
+                                Entity entity = AotakeUtils.getEntityFromItem(player.getLevel(), stack);
                                 entity.moveTo(player.getX(), player.getY(), player.getZ(), player.getYRot(), player.getXRot());
-                                player.serverLevel().addFreshEntity(entity);
+                                player.getLevel().addFreshEntity(entity);
                             }
                         }
                     } catch (Throwable ignored) {

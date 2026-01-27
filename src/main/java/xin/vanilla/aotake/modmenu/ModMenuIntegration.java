@@ -1,11 +1,12 @@
 package xin.vanilla.aotake.modmenu;
 
+import com.mojang.blaze3d.vertex.PoseStack;
 import com.terraformersmc.modmenu.api.ConfigScreenFactory;
 import com.terraformersmc.modmenu.api.ModMenuApi;
 import me.shedaniel.autoconfig.AutoConfig;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiComponent;
 import net.minecraft.client.gui.screens.Screen;
 import org.jetbrains.annotations.NotNull;
 import xin.vanilla.aotake.config.ClientConfig;
@@ -66,10 +67,10 @@ public class ModMenuIntegration implements ModMenuApi {
             }
 
             @Override
-            public void render(@NotNull GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
-                this.renderBackground(graphics);
-                graphics.drawCenteredString(this.font, this.title, this.width / 2, 20, 0xFFFFFF);
-                super.render(graphics, mouseX, mouseY, partialTick);
+            public void render(@NotNull PoseStack stack, int mouseX, int mouseY, float partialTick) {
+                this.renderBackground(stack);
+                GuiComponent.drawCenteredString(stack, this.font, this.title, this.width / 2, 20, 0xFFFFFF);
+                super.render(stack, mouseX, mouseY, partialTick);
             }
 
             @Override

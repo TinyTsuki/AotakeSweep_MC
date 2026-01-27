@@ -164,7 +164,7 @@ public class EntityFilter {
                         }
                         return result;
                     });
-                    if (accessor != null && entity.getEntityData().hasItem(accessor)) {
+                    if (accessor != null) {
                         try {
                             varsOut.put(key, entity.getEntityData().get(accessor));
                         } catch (Throwable ignored) {
@@ -255,7 +255,7 @@ public class EntityFilter {
                             break;
                         case "dim":
                         case "dimension":
-                            if (dim == null) dim = AotakeUtils.getDimensionRegistryName(entity.level());
+                            if (dim == null) dim = AotakeUtils.getDimensionRegistryName(entity.level);
                             varsOut.put(key, dim);
                             break;
                         case "x":

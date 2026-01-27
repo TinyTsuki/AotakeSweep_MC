@@ -193,8 +193,8 @@ public class ServerEventHandler {
                 List<Map.Entry<String, List<Entity>>> overcrowdedChunks = AotakeUtils.getAllEntitiesByFilter(null, true).stream()
                         .collect(Collectors.groupingBy(entity -> {
                             // 获取区块维度和坐标
-                            String dimension = entity.level() != null
-                                    ? entity.level().dimension().location().toString()
+                            String dimension = entity.level != null
+                                    ? entity.level.dimension().location().toString()
                                     : "unknown";
                             int chunkX = entity.blockPosition().getX() >> 4;
                             int chunkZ = entity.blockPosition().getZ() >> 4;
@@ -355,7 +355,7 @@ public class ServerEventHandler {
                     if (target != null) {
                         ServerLevel level = AotakeUtils.getWorld(coordinate.getDimension());
                         if (level == null) {
-                            level = player.serverLevel();
+                            level = player.getLevel();
                         }
                         target.teleportTo(level, coordinate.getX(), coordinate.getY(), coordinate.getZ(), (float) coordinate.getYaw(), (float) coordinate.getPitch());
                         original.shrink(1);
@@ -376,7 +376,7 @@ public class ServerEventHandler {
                 } else {
                     CompoundTag entityData = aotake.getCompound("entity");
                     AotakeUtils.sanitizeCapturedEntityTag(entityData);
-                    ServerLevel level = player.serverLevel();
+                    ServerLevel level = player.getLevel();
                     Entity entity = EntityType.loadEntityRecursive(entityData, level, (e) -> e);
                     if (entity != null) {
                         // 将实体放置到指定位置并加入世界
@@ -416,7 +416,7 @@ public class ServerEventHandler {
             return InteractionResultHolder.pass(player.getItemInHand(hand));
 
         ItemStack stack = player.getItemInHand(hand);
-        long tick = serverPlayer.serverLevel().getGameTime();
+        long tick = serverPlayer.getLevel().getGameTime();
         String uuid = serverPlayer.getStringUUID();
         Long suppressTick = suppressUseItemTick.get(uuid);
         if (suppressTick != null && suppressTick == tick) {
@@ -445,7 +445,7 @@ public class ServerEventHandler {
 
         Entity released = releaseEntity(serverPlayer, original, coordinate);
         if (released != null) {
-            suppressUseItemTick.put(serverPlayer.getStringUUID(), serverPlayer.serverLevel().getGameTime());
+            suppressUseItemTick.put(serverPlayer.getStringUUID(), serverPlayer.getLevel().getGameTime());
             return InteractionResult.SUCCESS;
         }
 
@@ -458,7 +458,7 @@ public class ServerEventHandler {
         if (hand != InteractionHand.MAIN_HAND) return InteractionResult.PASS;
         if (entity instanceof EnderDragonPart part) entity = part.parentMob;
 
-        long tick = serverPlayer.serverLevel().getGameTime();
+        long tick = serverPlayer.getLevel().getGameTime();
         String uuid = serverPlayer.getStringUUID();
         Long lastUseTick = lastUseEntityTick.get(uuid);
         if (lastUseTick != null && lastUseTick == tick) {
@@ -709,7 +709,7 @@ public class ServerEventHandler {
                             || Math.abs(targetPlayer.getYRot() - yaw) > 1.0f
                             || Math.abs(targetPlayer.getXRot() - pitch) > 1.0f;
             if (needTeleport) {
-                ServerLevel level = (ServerLevel) target.level();
+                ServerLevel level = (ServerLevel) target.level;
                 targetPlayer.teleportTo(level, desired.x, desired.y, desired.z, yaw, pitch);
                 targetPlayer.setDeltaMovement(Vec3.ZERO);
                 targetPlayer.fallDistance = 0;

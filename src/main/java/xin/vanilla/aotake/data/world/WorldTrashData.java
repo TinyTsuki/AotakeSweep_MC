@@ -142,7 +142,7 @@ public class WorldTrashData extends SavedData {
     }
 
     public static WorldTrashData get(ServerPlayer player) {
-        return get(player.serverLevel());
+        return get(player.getLevel());
     }
 
     public static WorldTrashData get(ServerLevel world) {

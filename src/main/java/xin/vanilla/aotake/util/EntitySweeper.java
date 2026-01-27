@@ -97,7 +97,7 @@ public class EntitySweeper {
         }
 
         for (Entity entity : entitiesToRemove) {
-            if (entity.level() instanceof ServerLevel) {
+            if (entity.level instanceof ServerLevel) {
                 scheduleRemoveEntity(entity, false);
             }
         }
@@ -433,8 +433,8 @@ public class EntitySweeper {
     }
 
     public static void scheduleRemoveEntity(Entity entity, boolean keepData) {
-        if (!(entity.level() instanceof ServerLevel)) return;
-        ResourceKey<Level> dimensionKey = entity.level().dimension();
+        if (!(entity.level instanceof ServerLevel)) return;
+        ResourceKey<Level> dimensionKey = entity.level.dimension();
         if (entity instanceof EnderDragonPart part) {
             entity = part.parentMob;
         }

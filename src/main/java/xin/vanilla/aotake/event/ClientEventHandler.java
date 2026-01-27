@@ -1,5 +1,6 @@
 package xin.vanilla.aotake.event;
 
+import com.mojang.blaze3d.vertex.PoseStack;
 import lombok.Getter;
 import lombok.experimental.Accessors;
 import net.fabricmc.api.ClientModInitializer;
@@ -13,7 +14,6 @@ import net.fabricmc.fabric.api.client.screen.v1.ScreenEvents;
 import net.fabricmc.fabric.api.resource.ResourceManagerHelper;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.inventory.ContainerScreen;
 import net.minecraft.client.player.LocalPlayer;
@@ -182,8 +182,8 @@ public class ClientEventHandler implements ClientModInitializer {
                 REGISTERED_SCREEN.add(screen);
                 screenAfterInit();
 
-                ScreenEvents.afterRender(screen).register((screenRendered, graphics, mouseX, mouseY, tickDelta) ->
-                        screenAfterRender(client, screenRendered, graphics, mouseX, mouseY)
+                ScreenEvents.afterRender(screen).register((screenRendered, stack, mouseX, mouseY, tickDelta) ->
+                        screenAfterRender(client, screenRendered, stack, mouseX, mouseY)
                 );
 
                 ScreenEvents.afterTick(screen).register(screenTicked ->
@@ -219,7 +219,7 @@ public class ClientEventHandler implements ClientModInitializer {
         }
     }
 
-    private static void screenAfterRender(Minecraft client, Screen screen, GuiGraphics graphics, int mouseX, int mouseY) {
+    private static void screenAfterRender(Minecraft client, Screen screen, PoseStack stack, int mouseX, int mouseY) {
         LocalPlayer player = client.player;
         mouseHelper.tick(mouseX, mouseY);
 
@@ -244,12 +244,13 @@ public class ClientEventHandler implements ClientModInitializer {
             }
 
             ResourceLocation texture = TextureUtils.loadCustomTexture(TextureUtils.INTERNAL_THEME_DIR + "clear_cache.png");
-            AbstractGuiUtils.blitBlend(graphics, texture, x, y, 0, 0, w, h, w, h);
+            AbstractGuiUtils.bindTexture(texture);
+            AbstractGuiUtils.blitBlend(stack, x, y, 0, 0, w, h, w, h);
 
             if (hover) {
                 AbstractGuiUtils.drawPopupMessage(Text.empty()
                                 .setText(Component.translatable(EnumI18nType.MESSAGE, "clear_cache"))
-                                .setGraphics(graphics)
+                                .setStack(stack)
                         , mouseX
                         , mouseY
                         , screen.width
@@ -278,12 +279,13 @@ public class ClientEventHandler implements ClientModInitializer {
                 }
 
                 ResourceLocation texture = TextureUtils.loadCustomTexture(TextureUtils.INTERNAL_THEME_DIR + "clear_all.png");
-                AbstractGuiUtils.blitBlend(graphics, texture, x, y, 0, 0, w, h, w, h);
+                AbstractGuiUtils.bindTexture(texture);
+                AbstractGuiUtils.blitBlend(stack, x, y, 0, 0, w, h, w, h);
 
                 if (hover) {
                     AbstractGuiUtils.drawPopupMessage(Text.empty()
                                     .setText(Component.translatable(EnumI18nType.MESSAGE, "clear_all_dustbin"))
-                                    .setGraphics(graphics)
+                                    .setStack(stack)
                             , mouseX
                             , mouseY
                             , screen.width
@@ -312,12 +314,13 @@ public class ClientEventHandler implements ClientModInitializer {
                 }
 
                 ResourceLocation texture = TextureUtils.loadCustomTexture(TextureUtils.INTERNAL_THEME_DIR + "clear_page.png");
-                AbstractGuiUtils.blitBlend(graphics, texture, x, y, 0, 0, w, h, w, h);
+                AbstractGuiUtils.bindTexture(texture);
+                AbstractGuiUtils.blitBlend(stack, x, y, 0, 0, w, h, w, h);
 
                 if (hover) {
                     AbstractGuiUtils.drawPopupMessage(Text.empty()
                                     .setText(Component.translatable(EnumI18nType.MESSAGE, "clear_cur_dustbin"))
-                                    .setGraphics(graphics)
+                                    .setStack(stack)
                             , mouseX
                             , mouseY
                             , screen.width
@@ -346,12 +349,13 @@ public class ClientEventHandler implements ClientModInitializer {
             }
 
             ResourceLocation texture = TextureUtils.loadCustomTexture(TextureUtils.INTERNAL_THEME_DIR + "refresh.png");
-            AbstractGuiUtils.blitBlend(graphics, texture, x, y, 0, 0, w, h, w, h);
+            AbstractGuiUtils.bindTexture(texture);
+            AbstractGuiUtils.blitBlend(stack, x, y, 0, 0, w, h, w, h);
 
             if (hover) {
                 AbstractGuiUtils.drawPopupMessage(Text.empty()
                                 .setText(Component.translatable(EnumI18nType.MESSAGE, "refresh_page"))
-                                .setGraphics(graphics)
+                                .setStack(stack)
                         , mouseX
                         , mouseY
                         , screen.width
@@ -381,12 +385,13 @@ public class ClientEventHandler implements ClientModInitializer {
             }
 
             ResourceLocation texture = TextureUtils.loadCustomTexture(TextureUtils.INTERNAL_THEME_DIR + "up.png");
-            AbstractGuiUtils.blitBlend(graphics, texture, x, y, 0, 0, w, h, w, h);
+            AbstractGuiUtils.bindTexture(texture);
+            AbstractGuiUtils.blitBlend(stack, x, y, 0, 0, w, h, w, h);
 
             if (hover) {
                 AbstractGuiUtils.drawPopupMessage(Text.empty()
                                 .setText(Component.translatable(EnumI18nType.MESSAGE, "previous_page"))
-                                .setGraphics(graphics)
+                                .setStack(stack)
                         , mouseX
                         , mouseY
                         , screen.width
@@ -416,12 +421,13 @@ public class ClientEventHandler implements ClientModInitializer {
             }
 
             ResourceLocation texture = TextureUtils.loadCustomTexture(TextureUtils.INTERNAL_THEME_DIR + "down.png");
-            AbstractGuiUtils.blitBlend(graphics, texture, x, y, 0, 0, w, h, w, h);
+            AbstractGuiUtils.bindTexture(texture);
+            AbstractGuiUtils.blitBlend(stack, x, y, 0, 0, w, h, w, h);
 
             if (hover) {
                 AbstractGuiUtils.drawPopupMessage(Text.empty()
                                 .setText(Component.translatable(EnumI18nType.MESSAGE, "next_page"))
-                                .setGraphics(graphics)
+                                .setStack(stack)
                         , mouseX
                         , mouseY
                         , screen.width
@@ -486,7 +492,7 @@ public class ClientEventHandler implements ClientModInitializer {
         HudRenderCallback.EVENT.register(ClientEventHandler::renderProgress);
     }
 
-    private static void renderProgress(GuiGraphics graphics, float tickDelta) {
+    private static void renderProgress(PoseStack stack, float tickDelta) {
         Minecraft mc = Minecraft.getInstance();
         if (mc.options.hideGui) return;
         if (mc.player == null) return;
@@ -501,7 +507,7 @@ public class ClientEventHandler implements ClientModInitializer {
             int drawX = getPoleX();
             int drawY = getPoleY();
 
-            AbstractGuiUtils.TransformArgs transformArgs = new AbstractGuiUtils.TransformArgs(graphics);
+            AbstractGuiUtils.TransformArgs transformArgs = new AbstractGuiUtils.TransformArgs(stack);
             transformArgs.setAngle(ClientConfig.get().progressBarConfig().poleConfig().progressBarPoleAngle())
                     .setCenter(EnumRotationCenter.CENTER)
                     .setX(drawX)
@@ -510,17 +516,18 @@ public class ClientEventHandler implements ClientModInitializer {
                     .setHeight(height);
             AbstractGuiUtils.renderByTransform(transformArgs, (arg) -> {
                 ResourceLocation texture = TextureUtils.loadCustomTexture(TextureUtils.INTERNAL_THEME_DIR + "pole.png");
-                AbstractGuiUtils.blitBlend(graphics, texture, (int) arg.getX(), (int) arg.getY(), 0, 0, (int) arg.getWidth(), (int) arg.getHeight(), (int) arg.getWidth(), (int) arg.getHeight());
+                AbstractGuiUtils.bindTexture(texture);
+                AbstractGuiUtils.blitBlend(stack, (int) arg.getX(), (int) arg.getY(), 0, 0, (int) arg.getWidth(), (int) arg.getHeight(), (int) arg.getWidth(), (int) arg.getHeight());
             });
         }
 
         if (displayList.contains(EnumProgressBarType.TEXT.name())) {
             Text time = Text.literal(getText())
-                    .setGraphics(graphics)
+                    .setStack(stack)
                     .setColor(getTextColor())
                     .setShadow(true)
                     .setFont(Minecraft.getInstance().font);
-            AbstractGuiUtils.TransformArgs textTransformArgs = new AbstractGuiUtils.TransformArgs(graphics);
+            AbstractGuiUtils.TransformArgs textTransformArgs = new AbstractGuiUtils.TransformArgs(stack);
             textTransformArgs.setScale(scale)
                     .setAngle(ClientConfig.get().progressBarConfig().textConfig().progressBarTextAngle())
                     .setCenter(EnumRotationCenter.CENTER)
@@ -545,7 +552,7 @@ public class ClientEventHandler implements ClientModInitializer {
             int drawX = (int) (startX + rangeWidth * getProgress());
             int drawY = getLeafY();
 
-            AbstractGuiUtils.TransformArgs transformArgs = new AbstractGuiUtils.TransformArgs(graphics);
+            AbstractGuiUtils.TransformArgs transformArgs = new AbstractGuiUtils.TransformArgs(stack);
             transformArgs.setAngle(ClientConfig.get().progressBarConfig().leafConfig().progressBarLeafAngle())
                     .setCenter(EnumRotationCenter.CENTER)
                     .setX(drawX)
@@ -554,7 +561,8 @@ public class ClientEventHandler implements ClientModInitializer {
                     .setHeight(height);
             AbstractGuiUtils.renderByTransform(transformArgs, (arg) -> {
                 ResourceLocation texture = TextureUtils.loadCustomTexture(TextureUtils.INTERNAL_THEME_DIR + "leaf.png");
-                AbstractGuiUtils.blitBlend(graphics, texture, (int) arg.getX(), (int) arg.getY(), 0, 0, (int) arg.getWidth(), (int) arg.getHeight(), (int) arg.getWidth(), (int) arg.getHeight());
+                AbstractGuiUtils.bindTexture(texture);
+                AbstractGuiUtils.blitBlend(stack, (int) arg.getX(), (int) arg.getY(), 0, 0, (int) arg.getWidth(), (int) arg.getHeight(), (int) arg.getWidth(), (int) arg.getHeight());
             });
         }
     }

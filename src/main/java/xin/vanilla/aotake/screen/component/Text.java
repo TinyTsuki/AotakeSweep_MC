@@ -1,5 +1,6 @@
 package xin.vanilla.aotake.screen.component;
 
+import com.mojang.blaze3d.vertex.PoseStack;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.experimental.Accessors;
@@ -7,7 +8,6 @@ import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
-import net.minecraft.client.gui.GuiGraphics;
 import xin.vanilla.aotake.data.Color;
 import xin.vanilla.aotake.enums.EnumI18nType;
 import xin.vanilla.aotake.util.AotakeUtils;
@@ -21,7 +21,7 @@ public class Text {
      * 矩阵栈
      */
     @Getter
-    private GuiGraphics graphics;
+    private PoseStack stack;
     /**
      * 字体渲染器
      */
@@ -86,7 +86,7 @@ public class Text {
                 .setHovered(this.hovered)
                 .setAlign(this.align)
                 .setHoverAlign(this.hoverAlign)
-                .setGraphics(this.graphics)
+                .setStack(this.stack)
                 .setFont(this.font);
     }
 
@@ -97,7 +97,7 @@ public class Text {
                 .setHovered(this.hovered)
                 .setAlign(this.align)
                 .setHoverAlign(this.hoverAlign)
-                .setGraphics(this.graphics)
+                .setStack(this.stack)
                 .setFont(this.font);
     }
 

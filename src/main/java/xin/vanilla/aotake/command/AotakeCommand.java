@@ -238,7 +238,7 @@ public class AotakeCommand {
                             AotakeUtils.sendTranslatableMessage(player, I18nUtils.getKey(EnumI18nType.MESSAGE, "player_virtual_op"), target.getDisplayName().getString(), permissions);
                         }
                     } else {
-                        source.sendSuccess(() -> Component.translatable(language, EnumI18nType.MESSAGE, "player_virtual_op", target.getDisplayName().getString(), permissions).toChatComponent(), true);
+                        source.sendSuccess(Component.translatable(language, EnumI18nType.MESSAGE, "player_virtual_op", target.getDisplayName().getString(), permissions).toChatComponent(), true);
                     }
                     // 更新权限信息
                     source.getServer().getPlayerList().sendPlayerPermissionLevel(target);
@@ -288,10 +288,10 @@ public class AotakeCommand {
             List<Entity> entities;
             if (range > 0) {
                 ServerPlayer player = context.getSource().getPlayerOrException();
-                entities = new ArrayList<>(player.level().getEntitiesOfClass(Entity.class, player.getBoundingBox().inflate(range)));
+                entities = new ArrayList<>(player.level.getEntitiesOfClass(Entity.class, player.getBoundingBox().inflate(range)));
             } else if (dimension != null) {
                 entities = AotakeUtils.getAllEntities().stream()
-                        .filter(entity -> entity.level() == dimension)
+                        .filter(entity -> entity.level == dimension)
                         .collect(Collectors.toList());
             } else {
                 entities = AotakeUtils.getAllEntities();
@@ -313,10 +313,10 @@ public class AotakeCommand {
             List<Entity> entities;
             if (range > 0) {
                 ServerPlayer player = context.getSource().getPlayerOrException();
-                entities = new ArrayList<>(player.level().getEntitiesOfClass(Entity.class, player.getBoundingBox().inflate(range)));
+                entities = new ArrayList<>(player.level.getEntitiesOfClass(Entity.class, player.getBoundingBox().inflate(range)));
             } else if (dimension != null) {
                 entities = AotakeUtils.getAllEntities().stream()
-                        .filter(entity -> entity.level() == dimension)
+                        .filter(entity -> entity.level == dimension)
                         .collect(Collectors.toList());
             } else {
                 entities = AotakeUtils.getAllEntities();
@@ -850,7 +850,7 @@ public class AotakeCommand {
                                                     }
                                                 }
                                                 Component component = Component.translatable(lang, EnumI18nType.MESSAGE, "server_config_mode", mode);
-                                                source.sendSuccess(() -> component.toChatComponent(lang), false);
+                                                source.sendSuccess(component.toChatComponent(lang), false);
 
                                                 // 更新权限信息
                                                 source.getServer().getPlayerList().getPlayers()

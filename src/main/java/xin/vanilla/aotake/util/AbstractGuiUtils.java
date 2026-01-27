@@ -2,15 +2,17 @@ package xin.vanilla.aotake.util;
 
 import com.mojang.blaze3d.platform.Window;
 import com.mojang.blaze3d.systems.RenderSystem;
+import com.mojang.blaze3d.vertex.PoseStack;
 import lombok.Data;
 import lombok.Getter;
 import lombok.NonNull;
 import lombok.experimental.Accessors;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiComponent;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.EditBox;
+import net.minecraft.client.renderer.entity.ItemRenderer;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.effect.MobEffectInstance;
@@ -59,8 +61,8 @@ public class AbstractGuiUtils {
     /**
      * 以默认深度绘制
      */
-    public static void renderByDepth(GuiGraphics graphics, Consumer<GuiGraphics> drawFunc) {
-        AbstractGuiUtils.renderByDepth(graphics, EDepth.FOREGROUND, drawFunc);
+    public static void renderByDepth(PoseStack poseStack, Consumer<PoseStack> drawFunc) {
+        AbstractGuiUtils.renderByDepth(poseStack, EDepth.FOREGROUND, drawFunc);
     }
 
     /**
@@ -68,17 +70,17 @@ public class AbstractGuiUtils {
      *
      * @param depth 深度
      */
-    public static void renderByDepth(GuiGraphics graphics, EDepth depth, Consumer<GuiGraphics> drawFunc) {
+    public static void renderByDepth(PoseStack poseStack, EDepth depth, Consumer<PoseStack> drawFunc) {
         if (depth != null) {
             RenderSystem.disableDepthTest();
-            graphics.pose().pushPose();
-            graphics.pose().translate(0, 0, depth.getDepth());
+            poseStack.pushPose();
+            poseStack.translate(0, 0, depth.getDepth());
         }
 
-        drawFunc.accept(graphics);
+        drawFunc.accept(poseStack);
 
         if (depth != null) {
-            graphics.pose().popPose();
+            poseStack.popPose();
             RenderSystem.enableDepthTest();
         }
     }
@@ -92,23 +94,23 @@ public class AbstractGuiUtils {
         RenderSystem.setShaderTexture(0, resourceLocation);
     }
 
-    public static void blit(GuiGraphics graphics, int x0, int y0, int z, int destWidth, int destHeight, TextureAtlasSprite sprite) {
-        graphics.blit(x0, y0, z, destWidth, destHeight, sprite);
+    public static void blit(PoseStack poseStack, int x0, int y0, int z, int destWidth, int destHeight, TextureAtlasSprite sprite) {
+        GuiComponent.blit(poseStack, x0, y0, z, destWidth, destHeight, sprite);
     }
 
-    public static void blitBlend(GuiGraphics graphics, int x0, int y0, int z, int destWidth, int destHeight, TextureAtlasSprite sprite) {
+    public static void blitBlend(PoseStack poseStack, int x0, int y0, int z, int destWidth, int destHeight, TextureAtlasSprite sprite) {
         blitByBlend(() ->
-                graphics.blit(x0, y0, z, destWidth, destHeight, sprite)
+                GuiComponent.blit(poseStack, x0, y0, z, destWidth, destHeight, sprite)
         );
     }
 
-    public static void blit(GuiGraphics graphics, ResourceLocation texture, int x0, int y0, int z, double u0, double v0, int width, int height, int textureHeight, int textureWidth) {
-        graphics.blit(texture, x0, y0, z, (float) u0, (float) v0, width, height, textureHeight, textureWidth);
+    public static void blit(PoseStack poseStack, int x0, int y0, int z, double u0, double v0, int width, int height, int textureHeight, int textureWidth) {
+        GuiComponent.blit(poseStack, x0, y0, z, (float) u0, (float) v0, width, height, textureHeight, textureWidth);
     }
 
-    public static void blitBlend(GuiGraphics graphics, ResourceLocation texture, int x0, int y0, int z, double u0, double v0, int width, int height, int textureHeight, int textureWidth) {
+    public static void blitBlend(PoseStack poseStack, int x0, int y0, int z, double u0, double v0, int width, int height, int textureHeight, int textureWidth) {
         blitByBlend(() ->
-                graphics.blit(texture, x0, y0, z, (float) u0, (float) v0, width, height, textureHeight, textureWidth)
+                GuiComponent.blit(poseStack, x0, y0, z, (float) u0, (float) v0, width, height, textureHeight, textureWidth)
         );
     }
 
@@ -126,23 +128,23 @@ public class AbstractGuiUtils {
      * @param textureWidth  整个纹理的宽度，用于计算纹理坐标。
      * @param textureHeight 整个纹理的高度，用于计算纹理坐标。
      */
-    public static void blit(GuiGraphics graphics, ResourceLocation texture, int x0, int y0, int destWidth, int destHeight, double u0, double v0, int srcWidth, int srcHeight, int textureWidth, int textureHeight) {
-        graphics.blit(texture, x0, y0, destWidth, destHeight, (float) u0, (float) v0, srcWidth, srcHeight, textureWidth, textureHeight);
+    public static void blit(PoseStack poseStack, int x0, int y0, int destWidth, int destHeight, double u0, double v0, int srcWidth, int srcHeight, int textureWidth, int textureHeight) {
+        GuiComponent.blit(poseStack, x0, y0, destWidth, destHeight, (float) u0, (float) v0, srcWidth, srcHeight, textureWidth, textureHeight);
     }
 
-    public static void blitBlend(GuiGraphics graphics, ResourceLocation texture, int x0, int y0, int destWidth, int destHeight, double u0, double v0, int srcWidth, int srcHeight, int textureWidth, int textureHeight) {
+    public static void blitBlend(PoseStack poseStack, int x0, int y0, int destWidth, int destHeight, double u0, double v0, int srcWidth, int srcHeight, int textureWidth, int textureHeight) {
         blitByBlend(() ->
-                graphics.blit(texture, x0, y0, destWidth, destHeight, (float) u0, (float) v0, srcWidth, srcHeight, textureWidth, textureHeight)
+                GuiComponent.blit(poseStack, x0, y0, destWidth, destHeight, (float) u0, (float) v0, srcWidth, srcHeight, textureWidth, textureHeight)
         );
     }
 
-    public static void blit(GuiGraphics graphics, ResourceLocation texture, int x0, int y0, double u0, double v0, int destWidth, int destHeight, int textureWidth, int textureHeight) {
-        graphics.blit(texture, x0, y0, (float) u0, (float) v0, destWidth, destHeight, textureWidth, textureHeight);
+    public static void blit(PoseStack poseStack, int x0, int y0, double u0, double v0, int destWidth, int destHeight, int textureWidth, int textureHeight) {
+        GuiComponent.blit(poseStack, x0, y0, (float) u0, (float) v0, destWidth, destHeight, textureWidth, textureHeight);
     }
 
-    public static void blitBlend(GuiGraphics graphics, ResourceLocation texture, int x0, int y0, double u0, double v0, int destWidth, int destHeight, int textureWidth, int textureHeight) {
+    public static void blitBlend(PoseStack poseStack, int x0, int y0, double u0, double v0, int destWidth, int destHeight, int textureWidth, int textureHeight) {
         blitByBlend(() ->
-                graphics.blit(texture, x0, y0, (float) u0, (float) v0, destWidth, destHeight, textureWidth, textureHeight)
+                GuiComponent.blit(poseStack, x0, y0, (float) u0, (float) v0, destWidth, destHeight, textureWidth, textureHeight)
         );
     }
 
@@ -160,7 +162,7 @@ public class AbstractGuiUtils {
     @Data
     @Accessors(chain = true)
     public static class TransformArgs {
-        private GuiGraphics graphics;
+        private PoseStack stack;
         private double x;
         private double y;
         private double width;
@@ -194,8 +196,8 @@ public class AbstractGuiUtils {
          */
         private boolean blend = false;
 
-        public TransformArgs(GuiGraphics graphics) {
-            this.graphics = graphics;
+        public TransformArgs(PoseStack stack) {
+            this.stack = stack;
         }
 
         public TransformArgs setCoordinate(ScreenCoordinate coordinate) {
@@ -219,7 +221,7 @@ public class AbstractGuiUtils {
     @Data
     @Accessors(chain = true)
     public static class TransformDrawArgs {
-        private final GuiGraphics graphics;
+        private final PoseStack stack;
         private double x;
         private double y;
         private double width;
@@ -234,7 +236,7 @@ public class AbstractGuiUtils {
     public static void renderByTransform(TransformArgs args, Consumer<TransformDrawArgs> drawFunc) {
 
         // 保存当前矩阵状态
-        args.getGraphics().pose().pushPose();
+        args.getStack().pushPose();
 
         // 计算目标点
         double tranX = 0, tranY = 0;
@@ -281,31 +283,31 @@ public class AbstractGuiUtils {
                 break;
         }
         // 移至目标点
-        args.getGraphics().pose().translate(tranX, tranY, 0);
+        args.getStack().translate(tranX, tranY, 0);
 
         // 缩放
-        args.getGraphics().pose().scale((float) args.getScale(), (float) args.getScale(), 1);
+        args.getStack().scale((float) args.getScale(), (float) args.getScale(), 1);
 
         // 旋转
         if (args.getAngle() % 360 != 0) {
-            args.getGraphics().pose().mulPose(new Quaternionf().rotateZ((float) Math.toRadians(args.getAngle())));
+            args.getStack().mulPose(new Quaternionf().rotateZ((float) Math.toRadians(args.getAngle())));
         }
 
         // 翻转
         if (args.isFlipHorizontal()) {
-            args.getGraphics().pose().mulPose(new Quaternionf().rotateY((float) Math.toRadians(180)));
+            args.getStack().mulPose(new Quaternionf().rotateY((float) Math.toRadians(180)));
         }
         if (args.isFlipVertical()) {
-            args.getGraphics().pose().mulPose(new Quaternionf().rotateX((float) Math.toRadians(180)));
+            args.getStack().mulPose(new Quaternionf().rotateX((float) Math.toRadians(180)));
         }
 
         // 返回原点
-        args.getGraphics().pose().translate(-tranW, -tranH, 0);
+        args.getStack().translate(-tranW, -tranH, 0);
 
         // 关闭背面剔除
         RenderSystem.disableCull();
         // 绘制方法
-        TransformDrawArgs drawArgs = new TransformDrawArgs(args.getGraphics());
+        TransformDrawArgs drawArgs = new TransformDrawArgs(args.getStack());
         drawArgs.setX(0).setY(0).setWidth(args.getWidth()).setHeight(args.getHeight());
 
         // 启用混合模式
@@ -331,31 +333,31 @@ public class AbstractGuiUtils {
         RenderSystem.enableCull();
 
         // 恢复矩阵状态
-        args.getGraphics().pose().popPose();
+        args.getStack().popPose();
     }
 
     // endregion 绘制纹理
 
     // region 绘制文字
 
-    public static void drawString(GuiGraphics graphics, Font font, String text, double x, double y) {
-        AbstractGuiUtils.drawString(Text.literal(text).setGraphics(graphics).setFont(font), x, y);
+    public static void drawString(PoseStack poseStack, Font font, String text, double x, double y) {
+        AbstractGuiUtils.drawString(Text.literal(text).setStack(poseStack).setFont(font), x, y);
     }
 
-    public static void drawString(GuiGraphics graphics, Font font, String text, double x, double y, int argb) {
-        AbstractGuiUtils.drawString(Text.literal(text).setColor(Color.argb(argb)).setGraphics(graphics).setFont(font), x, y);
+    public static void drawString(PoseStack poseStack, Font font, String text, double x, double y, int argb) {
+        AbstractGuiUtils.drawString(Text.literal(text).setColor(Color.argb(argb)).setStack(poseStack).setFont(font), x, y);
     }
 
-    public static void drawString(GuiGraphics graphics, Font font, String text, double x, double y, boolean shadow) {
-        AbstractGuiUtils.drawString(Text.literal(text).setShadow(shadow).setGraphics(graphics).setFont(font), x, y);
+    public static void drawString(PoseStack poseStack, Font font, String text, double x, double y, boolean shadow) {
+        AbstractGuiUtils.drawString(Text.literal(text).setShadow(shadow).setStack(poseStack).setFont(font), x, y);
     }
 
-    public static void drawString(GuiGraphics graphics, Font font, String text, double x, double y, int argb, boolean shadow) {
-        AbstractGuiUtils.drawString(Text.literal(text).setColor(Color.argb(argb)).setShadow(shadow).setGraphics(graphics).setFont(font), x, y);
+    public static void drawString(PoseStack poseStack, Font font, String text, double x, double y, int argb, boolean shadow) {
+        AbstractGuiUtils.drawString(Text.literal(text).setColor(Color.argb(argb)).setShadow(shadow).setStack(poseStack).setFont(font), x, y);
     }
 
     public static void drawString(Text text, double x, double y, EDepth depth) {
-        AbstractGuiUtils.renderByDepth(text.getGraphics(), depth, (stack) ->
+        AbstractGuiUtils.renderByDepth(text.getStack(), depth, (stack) ->
                 AbstractGuiUtils.drawString(text, x, y)
         );
     }
@@ -448,8 +450,8 @@ public class AbstractGuiUtils {
      * @param y     绘制的Y坐标
      * @param argbs 文本颜色
      */
-    public static void drawMultilineText(GuiGraphics graphics, Font font, String text, double x, double y, int... argbs) {
-        AbstractGuiUtils.drawMultilineText(Text.literal(text).setGraphics(graphics).setFont(font), x, y, argbs);
+    public static void drawMultilineText(PoseStack poseStack, Font font, String text, double x, double y, int... argbs) {
+        AbstractGuiUtils.drawMultilineText(Text.literal(text).setStack(poseStack).setFont(font), x, y, argbs);
     }
 
     /**
@@ -486,8 +488,8 @@ public class AbstractGuiUtils {
      * @param maxWidth 文本显示的最大宽度
      * @param argb     文本颜色
      */
-    public static void drawLimitedText(GuiGraphics graphics, Font font, String text, double x, double y, int maxWidth, int argb) {
-        AbstractGuiUtils.drawLimitedText(Text.literal(text).setGraphics(graphics).setFont(font).setColor(Color.argb(argb)).setShadow(true), x, y, maxWidth, 0, EnumEllipsisPosition.END);
+    public static void drawLimitedText(PoseStack poseStack, Font font, String text, double x, double y, int maxWidth, int argb) {
+        AbstractGuiUtils.drawLimitedText(Text.literal(text).setStack(poseStack).setFont(font).setColor(Color.argb(argb)).setShadow(true), x, y, maxWidth, 0, EnumEllipsisPosition.END);
     }
 
     /**
@@ -500,8 +502,8 @@ public class AbstractGuiUtils {
      * @param argb     文本颜色
      * @param shadow   是否显示阴影
      */
-    public static void drawLimitedText(GuiGraphics graphics, Font font, String text, double x, double y, int maxWidth, int argb, boolean shadow) {
-        AbstractGuiUtils.drawLimitedText(Text.literal(text).setGraphics(graphics).setFont(font).setColor(Color.argb(argb)).setShadow(shadow), x, y, maxWidth, 0, EnumEllipsisPosition.END);
+    public static void drawLimitedText(PoseStack poseStack, Font font, String text, double x, double y, int maxWidth, int argb, boolean shadow) {
+        AbstractGuiUtils.drawLimitedText(Text.literal(text).setStack(poseStack).setFont(font).setColor(Color.argb(argb)).setShadow(shadow), x, y, maxWidth, 0, EnumEllipsisPosition.END);
     }
 
     /**
@@ -514,8 +516,8 @@ public class AbstractGuiUtils {
      * @param position 省略号位置（开头、中间、结尾）
      * @param argb     文本颜色
      */
-    public static void drawLimitedText(GuiGraphics graphics, Font font, String text, double x, double y, int maxWidth, EnumEllipsisPosition position, int argb) {
-        AbstractGuiUtils.drawLimitedText(Text.literal(text).setGraphics(graphics).setFont(font).setColor(Color.argb(argb)).setShadow(true), x, y, maxWidth, 0, position);
+    public static void drawLimitedText(PoseStack poseStack, Font font, String text, double x, double y, int maxWidth, EnumEllipsisPosition position, int argb) {
+        AbstractGuiUtils.drawLimitedText(Text.literal(text).setStack(poseStack).setFont(font).setColor(Color.argb(argb)).setShadow(true), x, y, maxWidth, 0, position);
     }
 
     /**
@@ -529,8 +531,8 @@ public class AbstractGuiUtils {
      * @param argb     文本颜色
      * @param shadow   是否显示阴影
      */
-    public static void drawLimitedText(GuiGraphics graphics, Font font, String text, double x, double y, int maxWidth, EnumEllipsisPosition position, int argb, boolean shadow) {
-        AbstractGuiUtils.drawLimitedText(Text.literal(text).setGraphics(graphics).setFont(font).setColor(Color.argb(argb)).setShadow(shadow), x, y, maxWidth, 0, position);
+    public static void drawLimitedText(PoseStack poseStack, Font font, String text, double x, double y, int maxWidth, EnumEllipsisPosition position, int argb, boolean shadow) {
+        AbstractGuiUtils.drawLimitedText(Text.literal(text).setStack(poseStack).setFont(font).setColor(Color.argb(argb)).setShadow(shadow), x, y, maxWidth, 0, position);
     }
 
     /**
@@ -676,11 +678,16 @@ public class AbstractGuiUtils {
                 }
 
                 // 绘制每行文本
-                GuiGraphics graphics = text.getGraphics();
+                PoseStack poseStack = text.getStack();
                 if (!text.isBgColorEmpty()) {
-                    AbstractGuiUtils.fill(graphics, (int) (x + xOffset), (int) (y + index * font.lineHeight), font.width(line), font.lineHeight, text.getBgColorArgb());
+                    AbstractGuiUtils.fill(poseStack, (int) (x + xOffset), (int) (y + index * font.lineHeight), font.width(line), font.lineHeight, text.getBgColorArgb());
                 }
-                graphics.drawString(font, text.copyWithoutChildren().setText(line).toComponent().toTextComponent().getVisualOrderText(), (int) ((float) x + xOffset), (int) ((float) y + index * font.lineHeight), text.getColor(), text.isShadow());
+                if (text.isShadow()) {
+                    font.drawShadow(poseStack, text.copyWithoutChildren().setText(line).toComponent().toTextComponent(AotakeUtils.getClientLanguage()), (float) x + xOffset, (float) y + index * font.lineHeight, text.getColorArgb());
+                } else {
+                    font.draw(poseStack, text.copyWithoutChildren().setText(line).toComponent().toTextComponent(AotakeUtils.getClientLanguage()), (float) x + xOffset, (float) y + index * font.lineHeight, text.getColorArgb());
+                }
+
                 index++;
             }
         }
@@ -700,10 +707,11 @@ public class AbstractGuiUtils {
      * @param height         目标矩形的高度，决定了图像在屏幕上的高度
      * @param showText       是否显示效果等级和持续时间
      */
-    public static void drawEffectIcon(GuiGraphics graphics, Font font, MobEffectInstance effectInstance, int x, int y, int width, int height, boolean showText) {
+    public static void drawEffectIcon(PoseStack poseStack, Font font, MobEffectInstance effectInstance, int x, int y, int width, int height, boolean showText) {
         ResourceLocation effectIcon = TextureUtils.getEffectTexture(effectInstance);
         if (effectIcon != null) {
-            AbstractGuiUtils.blit(graphics, effectIcon, x, y, 0, 0, width, height, width, height);
+            AbstractGuiUtils.bindTexture(effectIcon);
+            AbstractGuiUtils.blit(poseStack, x, y, 0, 0, width, height, width, height);
         }
         if (showText) {
             // 效果等级
@@ -713,7 +721,7 @@ public class AbstractGuiUtils {
                 float fontX = x + width - (float) amplifierWidth / 2;
                 float fontY = y - 1;
                 int argb = 0xFFFFFFFF;
-                graphics.drawString(font, amplifierString.setColor(Color.argb(argb)).toTextComponent(), (int) fontX, (int) fontY, argb, true);
+                font.drawShadow(poseStack, amplifierString.setColor(Color.argb(argb)).toTextComponent(), fontX, fontY, argb);
             }
             // 效果持续时间
             if (effectInstance.getDuration() > 0) {
@@ -722,7 +730,7 @@ public class AbstractGuiUtils {
                 float fontX = x + width - (float) durationWidth / 2 - 2;
                 float fontY = y + (float) height / 2 + 1;
                 int argb = 0xFFFFFFFF;
-                graphics.drawString(font, durationString.setColor(Color.argb(argb)).toTextComponent(), (int) fontX, (int) fontY, argb, true);
+                font.drawShadow(poseStack, durationString.setColor(Color.argb(argb)).toTextComponent(), fontX, fontY, argb);
             }
         }
     }
@@ -735,14 +743,14 @@ public class AbstractGuiUtils {
      * @param y              矩形的左上角y坐标
      * @param showText       是否显示效果等级和持续时间
      */
-    public static void drawEffectIcon(GuiGraphics graphics, Font font, MobEffectInstance effectInstance, int x, int y, boolean showText) {
-        AbstractGuiUtils.drawEffectIcon(graphics, font, effectInstance, x, y, ITEM_ICON_SIZE, ITEM_ICON_SIZE, showText);
+    public static void drawEffectIcon(PoseStack poseStack, Font font, MobEffectInstance effectInstance, int x, int y, boolean showText) {
+        AbstractGuiUtils.drawEffectIcon(poseStack, font, effectInstance, x, y, ITEM_ICON_SIZE, ITEM_ICON_SIZE, showText);
     }
 
-    public static void renderItem(GuiGraphics graphics, Font fontRenderer, ItemStack itemStack, int x, int y, boolean showText) {
-        graphics.renderItem(itemStack, x, y);
+    public static void renderItem(PoseStack poseStack, ItemRenderer itemRenderer, Font fontRenderer, ItemStack itemStack, int x, int y, boolean showText) {
+        itemRenderer.renderGuiItem(poseStack, itemStack, x, y);
         if (showText) {
-            graphics.renderItemDecorations(fontRenderer, itemStack, x, y, String.valueOf(itemStack.getCount()));
+            itemRenderer.renderGuiItemDecorations(poseStack, fontRenderer, itemStack, x, y, String.valueOf(itemStack.getCount()));
         }
     }
 
@@ -806,22 +814,22 @@ public class AbstractGuiUtils {
      * @param y    像素的 Y 坐标
      * @param argb 像素的颜色
      */
-    public static void drawPixel(GuiGraphics graphics, int x, int y, int argb) {
-        graphics.fill(x, y, x + 1, y + 1, argb);
+    public static void drawPixel(PoseStack poseStack, int x, int y, int argb) {
+        GuiComponent.fill(poseStack, x, y, x + 1, y + 1, argb);
     }
 
     /**
      * 绘制一个正方形
      */
-    public static void fill(GuiGraphics graphics, int x, int y, int width, int argb) {
-        AbstractGuiUtils.fill(graphics, x, y, width, width, argb);
+    public static void fill(PoseStack poseStack, int x, int y, int width, int argb) {
+        AbstractGuiUtils.fill(poseStack, x, y, width, width, argb);
     }
 
     /**
      * 绘制一个矩形
      */
-    public static void fill(GuiGraphics graphics, int x, int y, int width, int height, int argb) {
-        AbstractGuiUtils.fill(graphics, x, y, width, height, argb, 0);
+    public static void fill(PoseStack poseStack, int x, int y, int width, int height, int argb) {
+        AbstractGuiUtils.fill(poseStack, x, y, width, height, argb, 0);
     }
 
     /**
@@ -834,10 +842,10 @@ public class AbstractGuiUtils {
      * @param argb   矩形的颜色
      * @param radius 圆角半径(0-10)
      */
-    public static void fill(GuiGraphics graphics, int x, int y, int width, int height, int argb, int radius) {
+    public static void fill(PoseStack poseStack, int x, int y, int width, int height, int argb, int radius) {
         // 如果半径为0，则直接绘制普通矩形
         if (radius <= 0) {
-            graphics.fill(x, y, x + width, y + height, argb);
+            GuiComponent.fill(poseStack, x, y, x + width, y + height, argb);
             return;
         }
 
@@ -845,31 +853,31 @@ public class AbstractGuiUtils {
         radius = Math.min(radius, 10);
 
         // 1. 绘制中间的矩形部分（去掉圆角占用的区域）
-        AbstractGuiUtils.fill(graphics, x + radius + 1, y + radius + 1, width - 2 * (radius + 1), height - 2 * (radius + 1), argb);
+        AbstractGuiUtils.fill(poseStack, x + radius + 1, y + radius + 1, width - 2 * (radius + 1), height - 2 * (radius + 1), argb);
 
         // 2. 绘制四条边（去掉圆角占用的部分）
         // 上边
-        AbstractGuiUtils.fill(graphics, x + radius + 1, y, width - 2 * radius - 2, radius, argb);
-        AbstractGuiUtils.fill(graphics, x + radius + 1, y + radius, width - 2 * (radius + 1), 1, argb);
+        AbstractGuiUtils.fill(poseStack, x + radius + 1, y, width - 2 * radius - 2, radius, argb);
+        AbstractGuiUtils.fill(poseStack, x + radius + 1, y + radius, width - 2 * (radius + 1), 1, argb);
         // 下边
-        AbstractGuiUtils.fill(graphics, x + radius + 1, y + height - radius, width - 2 * radius - 2, radius, argb);
-        AbstractGuiUtils.fill(graphics, x + radius + 1, y + height - radius - 1, width - 2 * (radius + 1), 1, argb);
+        AbstractGuiUtils.fill(poseStack, x + radius + 1, y + height - radius, width - 2 * radius - 2, radius, argb);
+        AbstractGuiUtils.fill(poseStack, x + radius + 1, y + height - radius - 1, width - 2 * (radius + 1), 1, argb);
         // 左边
-        AbstractGuiUtils.fill(graphics, x, y + radius + 1, radius, height - 2 * radius - 2, argb);
-        AbstractGuiUtils.fill(graphics, x + radius, y + radius + 1, 1, height - 2 * (radius + 1), argb);
+        AbstractGuiUtils.fill(poseStack, x, y + radius + 1, radius, height - 2 * radius - 2, argb);
+        AbstractGuiUtils.fill(poseStack, x + radius, y + radius + 1, 1, height - 2 * (radius + 1), argb);
         // 右边
-        AbstractGuiUtils.fill(graphics, x + width - radius, y + radius + 1, radius, height - 2 * radius - 2, argb);
-        AbstractGuiUtils.fill(graphics, x + width - radius - 1, y + radius + 1, 1, height - 2 * (radius + 1), argb);
+        AbstractGuiUtils.fill(poseStack, x + width - radius, y + radius + 1, radius, height - 2 * radius - 2, argb);
+        AbstractGuiUtils.fill(poseStack, x + width - radius - 1, y + radius + 1, 1, height - 2 * (radius + 1), argb);
 
         // 3. 绘制四个圆角
         // 左上角
-        AbstractGuiUtils.drawCircleQuadrant(graphics, x + radius, y + radius, radius, argb, 1);
+        AbstractGuiUtils.drawCircleQuadrant(poseStack, x + radius, y + radius, radius, argb, 1);
         // 右上角
-        AbstractGuiUtils.drawCircleQuadrant(graphics, x + width - radius - 1, y + radius, radius, argb, 2);
+        AbstractGuiUtils.drawCircleQuadrant(poseStack, x + width - radius - 1, y + radius, radius, argb, 2);
         // 左下角
-        AbstractGuiUtils.drawCircleQuadrant(graphics, x + radius, y + height - radius - 1, radius, argb, 3);
+        AbstractGuiUtils.drawCircleQuadrant(poseStack, x + radius, y + height - radius - 1, radius, argb, 3);
         // 右下角
-        AbstractGuiUtils.drawCircleQuadrant(graphics, x + width - radius - 1, y + height - radius - 1, radius, argb, 4);
+        AbstractGuiUtils.drawCircleQuadrant(poseStack, x + width - radius - 1, y + height - radius - 1, radius, argb, 4);
     }
 
     /**
@@ -881,22 +889,22 @@ public class AbstractGuiUtils {
      * @param argb     圆角颜色
      * @param quadrant 指定绘制的象限（1=左上，2=右上，3=左下，4=右下）
      */
-    private static void drawCircleQuadrant(GuiGraphics graphics, int centerX, int centerY, int radius, int argb, int quadrant) {
+    private static void drawCircleQuadrant(PoseStack poseStack, int centerX, int centerY, int radius, int argb, int quadrant) {
         for (int dx = 0; dx <= radius; dx++) {
             for (int dy = 0; dy <= radius; dy++) {
                 if (dx * dx + dy * dy <= radius * radius) {
                     switch (quadrant) {
                         case 1: // 左上角
-                            AbstractGuiUtils.drawPixel(graphics, centerX - dx, centerY - dy, argb);
+                            AbstractGuiUtils.drawPixel(poseStack, centerX - dx, centerY - dy, argb);
                             break;
                         case 2: // 右上角
-                            AbstractGuiUtils.drawPixel(graphics, centerX + dx, centerY - dy, argb);
+                            AbstractGuiUtils.drawPixel(poseStack, centerX + dx, centerY - dy, argb);
                             break;
                         case 3: // 左下角
-                            AbstractGuiUtils.drawPixel(graphics, centerX - dx, centerY + dy, argb);
+                            AbstractGuiUtils.drawPixel(poseStack, centerX - dx, centerY + dy, argb);
                             break;
                         case 4: // 右下角
-                            AbstractGuiUtils.drawPixel(graphics, centerX + dx, centerY + dy, argb);
+                            AbstractGuiUtils.drawPixel(poseStack, centerX + dx, centerY + dy, argb);
                             break;
                     }
                 }
@@ -910,15 +918,15 @@ public class AbstractGuiUtils {
      * @param thickness 边框厚度
      * @param argb      边框颜色
      */
-    public static void fillOutLine(GuiGraphics graphics, int x, int y, int width, int height, int thickness, int argb) {
+    public static void fillOutLine(PoseStack poseStack, int x, int y, int width, int height, int thickness, int argb) {
         // 上边
-        AbstractGuiUtils.fill(graphics, x, y, width, thickness, argb);
+        AbstractGuiUtils.fill(poseStack, x, y, width, thickness, argb);
         // 下边
-        AbstractGuiUtils.fill(graphics, x, y + height - thickness, width, thickness, argb);
+        AbstractGuiUtils.fill(poseStack, x, y + height - thickness, width, thickness, argb);
         // 左边
-        AbstractGuiUtils.fill(graphics, x, y, thickness, height, argb);
+        AbstractGuiUtils.fill(poseStack, x, y, thickness, height, argb);
         // 右边
-        AbstractGuiUtils.fill(graphics, x + width - thickness, y, thickness, height, argb);
+        AbstractGuiUtils.fill(poseStack, x + width - thickness, y, thickness, height, argb);
     }
 
     /**
@@ -932,33 +940,33 @@ public class AbstractGuiUtils {
      * @param argb      边框颜色
      * @param radius    圆角半径（0-10）
      */
-    public static void fillOutLine(GuiGraphics graphics, int x, int y, int width, int height, int thickness, int argb, int radius) {
+    public static void fillOutLine(PoseStack poseStack, int x, int y, int width, int height, int thickness, int argb, int radius) {
         if (radius <= 0) {
             // 如果没有圆角，直接绘制普通边框
-            AbstractGuiUtils.fillOutLine(graphics, x, y, width, height, thickness, argb);
+            AbstractGuiUtils.fillOutLine(poseStack, x, y, width, height, thickness, argb);
         } else {
             // 限制圆角半径的最大值为10
             radius = Math.min(radius, 10);
 
             // 1. 绘制四条边（去掉圆角区域）
             // 上边
-            AbstractGuiUtils.fill(graphics, x + radius, y, width - 2 * radius, thickness, argb);
+            AbstractGuiUtils.fill(poseStack, x + radius, y, width - 2 * radius, thickness, argb);
             // 下边
-            AbstractGuiUtils.fill(graphics, x + radius, y + height - thickness, width - 2 * radius, thickness, argb);
+            AbstractGuiUtils.fill(poseStack, x + radius, y + height - thickness, width - 2 * radius, thickness, argb);
             // 左边
-            AbstractGuiUtils.fill(graphics, x, y + radius, thickness, height - 2 * radius, argb);
+            AbstractGuiUtils.fill(poseStack, x, y + radius, thickness, height - 2 * radius, argb);
             // 右边
-            AbstractGuiUtils.fill(graphics, x + width - thickness, y + radius, thickness, height - 2 * radius, argb);
+            AbstractGuiUtils.fill(poseStack, x + width - thickness, y + radius, thickness, height - 2 * radius, argb);
 
             // 2. 绘制四个圆角
             // 左上角
-            drawCircleBorder(graphics, x + radius, y + radius, radius, thickness, argb, 1);
+            drawCircleBorder(poseStack, x + radius, y + radius, radius, thickness, argb, 1);
             // 右上角
-            drawCircleBorder(graphics, x + width - radius - 1, y + radius, radius, thickness, argb, 2);
+            drawCircleBorder(poseStack, x + width - radius - 1, y + radius, radius, thickness, argb, 2);
             // 左下角
-            drawCircleBorder(graphics, x + radius, y + height - radius - 1, radius, thickness, argb, 3);
+            drawCircleBorder(poseStack, x + radius, y + height - radius - 1, radius, thickness, argb, 3);
             // 右下角
-            drawCircleBorder(graphics, x + width - radius - 1, y + height - radius - 1, radius, thickness, argb, 4);
+            drawCircleBorder(poseStack, x + width - radius - 1, y + height - radius - 1, radius, thickness, argb, 4);
         }
     }
 
@@ -972,22 +980,22 @@ public class AbstractGuiUtils {
      * @param argb      边框颜色
      * @param quadrant  指定绘制的象限（1=左上，2=右上，3=左下，4=右下）
      */
-    private static void drawCircleBorder(GuiGraphics graphics, int centerX, int centerY, int radius, int thickness, int argb, int quadrant) {
+    private static void drawCircleBorder(PoseStack poseStack, int centerX, int centerY, int radius, int thickness, int argb, int quadrant) {
         for (int dx = 0; dx <= radius; dx++) {
             for (int dy = 0; dy <= radius; dy++) {
                 if (Math.sqrt(dx * dx + dy * dy) <= radius && Math.sqrt(dx * dx + dy * dy) >= radius - thickness) {
                     switch (quadrant) {
                         case 1: // 左上角
-                            AbstractGuiUtils.drawPixel(graphics, centerX - dx, centerY - dy, argb);
+                            AbstractGuiUtils.drawPixel(poseStack, centerX - dx, centerY - dy, argb);
                             break;
                         case 2: // 右上角
-                            AbstractGuiUtils.drawPixel(graphics, centerX + dx, centerY - dy, argb);
+                            AbstractGuiUtils.drawPixel(poseStack, centerX + dx, centerY - dy, argb);
                             break;
                         case 3: // 左下角
-                            AbstractGuiUtils.drawPixel(graphics, centerX - dx, centerY + dy, argb);
+                            AbstractGuiUtils.drawPixel(poseStack, centerX - dx, centerY + dy, argb);
                             break;
                         case 4: // 右下角
-                            AbstractGuiUtils.drawPixel(graphics, centerX + dx, centerY + dy, argb);
+                            AbstractGuiUtils.drawPixel(poseStack, centerX + dx, centerY + dy, argb);
                             break;
                     }
                 }
@@ -1008,8 +1016,8 @@ public class AbstractGuiUtils {
      * @param screenWidth  屏幕宽度
      * @param screenHeight 屏幕高度
      */
-    public static void drawPopupMessage(GuiGraphics graphics, Font font, String message, double x, double y, int screenWidth, int screenHeight) {
-        AbstractGuiUtils.drawPopupMessage(graphics, font, message, x, y, screenWidth, screenHeight, 0xFFFFFFFF, 0xAA000000);
+    public static void drawPopupMessage(PoseStack poseStack, Font font, String message, double x, double y, int screenWidth, int screenHeight) {
+        AbstractGuiUtils.drawPopupMessage(poseStack, font, message, x, y, screenWidth, screenHeight, 0xFFFFFFFF, 0xAA000000);
     }
 
     /**
@@ -1023,8 +1031,8 @@ public class AbstractGuiUtils {
      * @param bgArgb       背景颜色
      * @param textArgb     文本颜色
      */
-    public static void drawPopupMessage(GuiGraphics graphics, Font font, String message, double x, double y, int screenWidth, int screenHeight, int textArgb, int bgArgb) {
-        AbstractGuiUtils.drawPopupMessage(graphics, font, message, x, y, screenWidth, screenHeight, 2, textArgb, bgArgb);
+    public static void drawPopupMessage(PoseStack poseStack, Font font, String message, double x, double y, int screenWidth, int screenHeight, int textArgb, int bgArgb) {
+        AbstractGuiUtils.drawPopupMessage(poseStack, font, message, x, y, screenWidth, screenHeight, 2, textArgb, bgArgb);
     }
 
     /**
@@ -1039,8 +1047,8 @@ public class AbstractGuiUtils {
      * @param bgArgb       背景颜色
      * @param textArgb     文本颜色
      */
-    public static void drawPopupMessage(GuiGraphics graphics, Font font, String message, double x, double y, int screenWidth, int screenHeight, int margin, int textArgb, int bgArgb) {
-        AbstractGuiUtils.drawPopupMessage(graphics, font, message, x, y, screenWidth, screenHeight, margin, margin, textArgb, bgArgb);
+    public static void drawPopupMessage(PoseStack poseStack, Font font, String message, double x, double y, int screenWidth, int screenHeight, int margin, int textArgb, int bgArgb) {
+        AbstractGuiUtils.drawPopupMessage(poseStack, font, message, x, y, screenWidth, screenHeight, margin, margin, textArgb, bgArgb);
     }
 
     /**
@@ -1055,8 +1063,8 @@ public class AbstractGuiUtils {
      * @param bgArgb       背景颜色
      * @param textArgb     文本颜色
      */
-    public static void drawPopupMessage(GuiGraphics graphics, Font font, String message, double x, double y, int screenWidth, int screenHeight, int margin, int padding, int textArgb, int bgArgb) {
-        AbstractGuiUtils.drawPopupMessage(Text.literal(message).setGraphics(graphics).setFont(font).setColor(Color.argb(textArgb)), x, y, screenWidth, screenHeight, margin, padding, bgArgb);
+    public static void drawPopupMessage(PoseStack poseStack, Font font, String message, double x, double y, int screenWidth, int screenHeight, int margin, int padding, int textArgb, int bgArgb) {
+        AbstractGuiUtils.drawPopupMessage(Text.literal(message).setStack(poseStack).setFont(font).setColor(Color.argb(textArgb)), x, y, screenWidth, screenHeight, margin, padding, bgArgb);
     }
 
     /**
@@ -1152,9 +1160,9 @@ public class AbstractGuiUtils {
         double finalAdjustedY = adjustedY;
         int finalMsgWidth = msgWidth;
         int finalMsgHeight = msgHeight;
-        AbstractGuiUtils.renderByDepth(text.getGraphics(), EDepth.POPUP_TIPS, (stack) -> {
+        AbstractGuiUtils.renderByDepth(text.getStack(), EDepth.POPUP_TIPS, (stack) -> {
             // 在计算完的坐标位置绘制消息框背景
-            text.getGraphics().fill((int) finalAdjustedX, (int) finalAdjustedY, (int) (finalAdjustedX + finalMsgWidth), (int) (finalAdjustedY + finalMsgHeight), bgArgb);
+            GuiComponent.fill(text.getStack(), (int) finalAdjustedX, (int) finalAdjustedY, (int) (finalAdjustedX + finalMsgWidth), (int) (finalAdjustedY + finalMsgHeight), bgArgb);
             // 绘制消息文字
             AbstractGuiUtils.drawLimitedText(text, finalAdjustedX + (float) padding / 2, finalAdjustedY + (float) padding / 2, finalMsgWidth, finalMsgHeight / text.getFont().lineHeight, EnumEllipsisPosition.MIDDLE);
         });
