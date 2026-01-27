@@ -59,6 +59,7 @@ import xin.vanilla.aotake.data.player.PlayerSweepData;
 import xin.vanilla.aotake.data.world.WorldTrashData;
 import xin.vanilla.aotake.enums.*;
 import xin.vanilla.aotake.network.AotakePacket;
+import xin.vanilla.aotake.network.ModNetworkHandler;
 
 import javax.annotation.Nullable;
 import java.io.File;
@@ -394,7 +395,9 @@ public class AotakeUtils {
      * 发送数据包至服务器
      */
     public static void sendPacketToServer(ResourceLocation id, FriendlyByteBuf buf) {
-        ClientPlayNetworking.send(id, buf);
+        if (ModNetworkHandler.hasCannel(id)) {
+            ClientPlayNetworking.send(id, buf);
+        }
     }
 
     /**
@@ -429,7 +432,9 @@ public class AotakeUtils {
      * 发送数据包至玩家
      */
     public static void sendPacketToPlayer(ServerPlayer player, ResourceLocation id, FriendlyByteBuf buf) {
-        ServerPlayNetworking.send(player, id, buf);
+        if (ModNetworkHandler.hasCannel(player, id)) {
+            ServerPlayNetworking.send(player, id, buf);
+        }
     }
 
     // endregion 消息相关

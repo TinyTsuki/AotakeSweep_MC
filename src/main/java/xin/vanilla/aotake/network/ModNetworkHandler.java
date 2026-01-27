@@ -6,6 +6,8 @@ import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.level.ServerPlayer;
 import xin.vanilla.aotake.network.packet.*;
 
 import java.util.List;
@@ -55,7 +57,16 @@ public final class ModNetworkHandler {
 
     @Environment(EnvType.CLIENT)
     public static boolean hasAotakeServer() {
-        return ClientPlayNetworking.getSendable().contains(ModLoadedToBoth.ID);
+        return hasCannel(ModLoadedToBoth.ID);
+    }
+
+    @Environment(EnvType.CLIENT)
+    public static boolean hasCannel(ResourceLocation channel) {
+        return ClientPlayNetworking.getSendable().contains(channel);
+    }
+
+    public static boolean hasCannel(ServerPlayer player, ResourceLocation channel) {
+        return ServerPlayNetworking.getSendable(player).contains(channel);
     }
 
 }
