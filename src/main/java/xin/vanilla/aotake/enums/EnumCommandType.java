@@ -27,6 +27,7 @@ public enum EnumCommandType {
     CLEAR_DROP_CONCISE(),
     DELAY_SWEEP(),
     DELAY_SWEEP_CONCISE(),
+    CATCH_PLAYER(true),
     ;
 
     /**

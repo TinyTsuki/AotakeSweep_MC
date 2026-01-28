@@ -241,7 +241,7 @@ public class AotakeCommand {
                         source.sendSuccess(() -> Component.translatable(language, EnumI18nType.MESSAGE, "player_virtual_op", target.getDisplayName().getString(), permissions).toChatComponent(), true);
                     }
                     // 更新权限信息
-                    source.getServer().getPlayerList().sendPlayerPermissionLevel(target);
+                    AotakeUtils.refreshPermission(target);
                     for (ServerPlayer player : source.getServer().getPlayerList().getPlayers()) {
                         if (AotakeSweep.customConfigStatus().contains(AotakeUtils.getPlayerUUIDString(player))) {
                             AotakeUtils.sendPacketToPlayer(new CustomConfigSyncToClient(), player);
@@ -837,7 +837,7 @@ public class AotakeCommand {
                                                 String lang = CommandUtils.getLanguage(source);
                                                 switch (mode) {
                                                     case 0:
-                                                        ServerConfig.resetConfig();
+                                                        ServerConfig.resetConfigWithMode0();
                                                         break;
                                                     case 1:
                                                         ServerConfig.resetConfigWithMode1();
@@ -854,10 +854,7 @@ public class AotakeCommand {
 
                                                 // 更新权限信息
                                                 source.getServer().getPlayerList().getPlayers()
-                                                        .forEach(player -> source.getServer()
-                                                                .getPlayerList()
-                                                                .sendPlayerPermissionLevel(player)
-                                                        );
+                                                        .forEach(AotakeUtils::refreshPermission);
                                                 return 1;
                                             })
                                     )

@@ -9,7 +9,7 @@ import xin.vanilla.aotake.AotakeSweep;
 import xin.vanilla.aotake.util.AotakeUtils;
 
 public record ModLoadedToBoth() implements CustomPacketPayload {
-    public static final CustomPacketPayload.Type<ModLoadedToBoth> ID = new CustomPacketPayload.Type<>(AotakeSweep.createResource("client_loaded"));
+    public static final CustomPacketPayload.Type<ModLoadedToBoth> ID = new CustomPacketPayload.Type<>(AotakeSweep.createIdentifier("client_loaded"));
     public static final StreamCodec<FriendlyByteBuf, ModLoadedToBoth> CODEC = StreamCodec.unit(new ModLoadedToBoth());
 
     @Override

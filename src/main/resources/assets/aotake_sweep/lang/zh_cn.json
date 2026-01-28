@@ -131,10 +131,13 @@
   "text.autoconfig.aotake_sweep-client.option.progressBarConfig.textConfig.progressBarTextBase.@Tooltip": "进度条文字位置基准点",
   "text.autoconfig.aotake_sweep-client.option.progressBarConfig.textConfig.progressBarTextAngle": "进度条文字角度",
   "text.autoconfig.aotake_sweep-client.option.progressBarConfig.textConfig.progressBarTextAngle.@Tooltip": "进度条文字角度",
-  "text.autoconfig.aotake_sweep-client.option.progressBarConfig.textConfig.progressBarTextHeight": "进度条文字高度",
-  "text.autoconfig.aotake_sweep-client.option.progressBarConfig.textConfig.progressBarTextHeight.@Tooltip": "进度条文字高度",
-  "text.autoconfig.aotake_sweep-client.option.progressBarConfig.textConfig.progressBarTextWidth": "进度条文字宽度",
-  "text.autoconfig.aotake_sweep-client.option.progressBarConfig.textConfig.progressBarTextWidth.@Tooltip": "进度条文字宽度",
+  "text.autoconfig.aotake_sweep-client.option.progressBarConfig.textConfig.progressBarTextSize": "进度条文字大小",
+  "text.autoconfig.aotake_sweep-client.option.progressBarConfig.textConfig.progressBarTextSize.@Tooltip": "进度条文字大小",
+  "text.autoconfig.aotake_sweep-client.option.progressBarConfig.textConfig.progressBarTextColor": "进度条文字颜色",
+  "text.autoconfig.aotake_sweep-client.option.progressBarConfig.textConfig.progressBarTextColor.@Tooltip": "进度条文字颜色",
+
+  "text.autoconfig.aotake_sweep-client.option.vanillaDustbin": "垃圾箱页面原版UI",
+  "text.autoconfig.aotake_sweep-client.option.vanillaDustbin.@Tooltip": "垃圾箱页面原版UI",
 
   "text.autoconfig.aotake_sweep-server.title": "服务器配置",
   "text.autoconfig.aotake_sweep-server.option.helpHeader": "帮助指令信息头部内容",

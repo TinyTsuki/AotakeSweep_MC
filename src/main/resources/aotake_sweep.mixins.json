@@ -4,8 +4,8 @@
   "package": "xin.vanilla.aotake.mixin",
   "compatibilityLevel": "JAVA_17",
   "mixins": [
-    "ServerPlayerMixin",
-    "MinecraftServerSaveMixin"
+    "MinecraftServerSaveMixin",
+    "ServerPlayerMixin"
   ],
   "injectors": {
     "defaultRequire": 1
@@ -14,6 +14,9 @@
     "requireAnnotations": true
   },
   "client": [
-    "GuiConditionalHideMixin"
+    "AbstractContainerScreenAccessor",
+    "ContainerScreenMixin",
+    "GuiConditionalHideMixin",
+    "ScreenAccessor"
   ]
 }
