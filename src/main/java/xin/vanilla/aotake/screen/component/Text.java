@@ -19,7 +19,7 @@ public class Text {
     /**
      * 矩阵栈
      */
-    private PoseStack poseStack;
+    private PoseStack stack;
     /**
      * 字体渲染器
      */
@@ -84,7 +84,7 @@ public class Text {
                 .setHovered(this.hovered)
                 .setAlign(this.align)
                 .setHoverAlign(this.hoverAlign)
-                .setPoseStack(this.poseStack)
+                .setStack(this.stack)
                 .setFont(this.font);
     }
 
@@ -95,12 +95,12 @@ public class Text {
                 .setHovered(this.hovered)
                 .setAlign(this.align)
                 .setHoverAlign(this.hoverAlign)
-                .setPoseStack(this.poseStack)
+                .setStack(this.stack)
                 .setFont(this.font);
     }
 
     public PoseStack getPoseStack() {
-        return poseStack == null ? new PoseStack() : this.poseStack;
+        return stack == null ? new PoseStack() : this.stack;
     }
 
     public Font getFont() {

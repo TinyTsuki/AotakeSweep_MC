@@ -1,6 +1,9 @@
 package xin.vanilla.aotake.util;
 
-import net.minecraft.nbt.*;
+import net.minecraft.nbt.CollectionTag;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.StringTag;
+import net.minecraft.nbt.Tag;
 
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -43,46 +46,6 @@ public class NBTPathUtils {
     public static String getString(Tag root, String path, String defaultVal) {
         Tag tag = getTagByPath(root, path);
         return (tag instanceof StringTag) ? tag.getAsString() : defaultVal;
-    }
-
-    public static boolean getBoolean(Tag root, String path, boolean defaultVal) {
-        Tag tag = getTagByPath(root, path);
-        if (tag instanceof ByteTag byteTag) {
-            return byteTag.getAsByte() != 0;
-        } else if (tag instanceof IntTag intTag) {
-            return intTag.getAsInt() != 0;
-        }
-        return defaultVal;
-    }
-
-    public static int getByte(Tag root, String path, int defaultVal) {
-        Tag tag = getTagByPath(root, path);
-        return (tag instanceof NumericTag numericTag) ? numericTag.getAsByte() : defaultVal;
-    }
-
-    public static int getShort(Tag root, String path, int defaultVal) {
-        Tag tag = getTagByPath(root, path);
-        return (tag instanceof NumericTag numericTag) ? numericTag.getAsShort() : defaultVal;
-    }
-
-    public static int getInt(Tag root, String path, int defaultVal) {
-        Tag tag = getTagByPath(root, path);
-        return (tag instanceof NumericTag numericTag) ? numericTag.getAsInt() : defaultVal;
-    }
-
-    public static float getFloat(Tag root, String path, float defaultVal) {
-        Tag tag = getTagByPath(root, path);
-        return (tag instanceof NumericTag numericTag) ? numericTag.getAsFloat() : defaultVal;
-    }
-
-    public static long getLong(Tag root, String path, long defaultVal) {
-        Tag tag = getTagByPath(root, path);
-        return (tag instanceof NumericTag numericTag) ? numericTag.getAsLong() : defaultVal;
-    }
-
-    public static double getDouble(Tag root, String path, double defaultVal) {
-        Tag tag = getTagByPath(root, path);
-        return (tag instanceof NumericTag numericTag) ? numericTag.getAsDouble() : defaultVal;
     }
 
     public static boolean has(Tag root, String path) {
