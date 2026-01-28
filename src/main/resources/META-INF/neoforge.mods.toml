@@ -11,6 +11,8 @@ logoFile = "logo.png"
     authors = "${mod_authors}"
     description = '''${mod_description}'''
     clientRequired = false
+[[mixins]]
+    config = "${mod_id}.mixins.json"
 [[dependencies."${mod_id}"]]
     modId = "neoforge"
     type = "required"

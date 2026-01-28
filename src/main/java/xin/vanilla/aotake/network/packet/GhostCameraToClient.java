@@ -10,11 +10,11 @@ import org.jetbrains.annotations.NotNull;
 import xin.vanilla.aotake.AotakeSweep;
 
 public record GhostCameraToClient(int entityId, boolean reset) implements CustomPacketPayload {
-    public static final CustomPacketPayload.Type<GhostCameraToClient> TYPE = new CustomPacketPayload.Type<>(AotakeSweep.createResource("ghost_camera"));
+    public static final CustomPacketPayload.Type<GhostCameraToClient> TYPE = new CustomPacketPayload.Type<>(AotakeSweep.createIdentifier("ghost_camera"));
     public static final StreamCodec<ByteBuf, GhostCameraToClient> STREAM_CODEC = StreamCodec.of(
             (buf, packet) -> {
-                buf.writeInt(packet.entityId);
-                buf.writeBoolean(packet.reset);
+                buf.writeInt(packet.entityId());
+                buf.writeBoolean(packet.reset());
             },
             buf -> new GhostCameraToClient(buf.readInt(), buf.readBoolean())
     );
@@ -28,12 +28,12 @@ public record GhostCameraToClient(int entityId, boolean reset) implements Custom
         ctx.enqueueWork(() -> {
             Minecraft client = Minecraft.getInstance();
             if (client.player == null) return;
-            if (packet.reset) {
+            if (packet.reset()) {
                 client.setCameraEntity(client.player);
                 return;
             }
             if (client.level == null) return;
-            Entity entity = client.level.getEntity(packet.entityId);
+            Entity entity = client.level.getEntity(packet.entityId());
             if (entity != null) {
                 client.setCameraEntity(entity);
             }

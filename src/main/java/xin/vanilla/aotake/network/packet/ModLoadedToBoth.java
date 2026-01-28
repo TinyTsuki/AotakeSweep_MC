@@ -10,8 +10,8 @@ import org.jetbrains.annotations.NotNull;
 import xin.vanilla.aotake.AotakeSweep;
 import xin.vanilla.aotake.util.AotakeUtils;
 
-public class ModLoadedToBoth implements CustomPacketPayload {
-    public final static CustomPacketPayload.Type<ModLoadedToBoth> TYPE = new CustomPacketPayload.Type<>(AotakeSweep.createResource("client_loaded"));
+public record ModLoadedToBoth() implements CustomPacketPayload {
+    public final static CustomPacketPayload.Type<ModLoadedToBoth> TYPE = new CustomPacketPayload.Type<>(AotakeSweep.createIdentifier("client_loaded"));
     public final static StreamCodec<ByteBuf, ModLoadedToBoth> STREAM_CODEC = new StreamCodec<>() {
         public @NotNull ModLoadedToBoth decode(@NotNull ByteBuf byteBuf) {
             return new ModLoadedToBoth((new FriendlyByteBuf(byteBuf)));
@@ -22,13 +22,11 @@ public class ModLoadedToBoth implements CustomPacketPayload {
         }
     };
 
-    public ModLoadedToBoth() {
+    public ModLoadedToBoth(FriendlyByteBuf ignore) {
+        this();
     }
 
-    public ModLoadedToBoth(FriendlyByteBuf buf) {
-    }
-
-    public void toBytes(FriendlyByteBuf buf) {
+    public void toBytes(FriendlyByteBuf ignore) {
     }
 
     @Override
@@ -36,7 +34,7 @@ public class ModLoadedToBoth implements CustomPacketPayload {
         return TYPE;
     }
 
-    public static void handle(ModLoadedToBoth packet, IPayloadContext ctx) {
+    public static void handle(ModLoadedToBoth ignore, IPayloadContext ctx) {
         ctx.enqueueWork(() -> {
             if (ctx.player() instanceof ServerPlayer player) {
                 AotakeSweep.getCustomConfigStatus().add(AotakeUtils.getPlayerUUIDString(player));
@@ -44,6 +42,8 @@ public class ModLoadedToBoth implements CustomPacketPayload {
                 AotakeUtils.sendPacketToPlayer(new CustomConfigSyncToClient(), player);
                 // 同步清理时间到客户端
                 AotakeUtils.sendPacketToPlayer(new SweepTimeSyncToClient(), player);
+                // 刷新权限信息
+                AotakeUtils.refreshPermission(player);
             }
         });
     }

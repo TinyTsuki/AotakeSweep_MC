@@ -25,6 +25,7 @@ public class ModNetworkHandler {
         registrar.playToClient(CustomConfigSyncToClient.TYPE, CustomConfigSyncToClient.STREAM_CODEC, CustomConfigSyncToClient::handle);
         registrar.playToClient(SweepTimeSyncToClient.TYPE, SweepTimeSyncToClient.STREAM_CODEC, SweepTimeSyncToClient::handle);
         registrar.playToClient(GhostCameraToClient.TYPE, GhostCameraToClient.STREAM_CODEC, GhostCameraToClient::handle);
+        registrar.playToClient(DustbinPageSyncToClient.TYPE, DustbinPageSyncToClient.STREAM_CODEC, DustbinPageSyncToClient::handle);
     }
 
     @OnlyIn(Dist.CLIENT)

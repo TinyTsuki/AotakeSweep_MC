@@ -11,8 +11,8 @@ import xin.vanilla.aotake.AotakeSweep;
 import xin.vanilla.aotake.enums.EnumCommandType;
 import xin.vanilla.aotake.util.AotakeUtils;
 
-public class OpenDustbinToServer implements CustomPacketPayload {
-    public final static CustomPacketPayload.Type<OpenDustbinToServer> TYPE = new CustomPacketPayload.Type<>(AotakeSweep.createResource("open_dustbin"));
+public record OpenDustbinToServer(int offset) implements CustomPacketPayload {
+    public final static CustomPacketPayload.Type<OpenDustbinToServer> TYPE = new CustomPacketPayload.Type<>(AotakeSweep.createIdentifier("open_dustbin"));
     public final static StreamCodec<ByteBuf, OpenDustbinToServer> STREAM_CODEC = new StreamCodec<>() {
         public @NotNull OpenDustbinToServer decode(@NotNull ByteBuf byteBuf) {
             return new OpenDustbinToServer((new FriendlyByteBuf(byteBuf)));
@@ -23,18 +23,12 @@ public class OpenDustbinToServer implements CustomPacketPayload {
         }
     };
 
-    private final int offset;
-
-    public OpenDustbinToServer(int offset) {
-        this.offset = offset;
-    }
-
     public OpenDustbinToServer(FriendlyByteBuf buf) {
-        this.offset = buf.readInt();
+        this(buf.readInt());
     }
 
     public void toBytes(FriendlyByteBuf buf) {
-        buf.writeInt(this.offset);
+        buf.writeInt(this.offset());
     }
 
     @Override
@@ -47,7 +41,7 @@ public class OpenDustbinToServer implements CustomPacketPayload {
             if (ctx.player() instanceof ServerPlayer player) {
                 String playerUUID = AotakeUtils.getPlayerUUIDString(player);
                 Integer page = AotakeSweep.getPlayerDustbinPage().getOrDefault(playerUUID, 1);
-                int i = page + packet.offset;
+                int i = page + packet.offset();
                 if (i > 0 && i <= AotakeUtils.getDustbinTotalPage()) {
                     player.closeContainer();
                 }

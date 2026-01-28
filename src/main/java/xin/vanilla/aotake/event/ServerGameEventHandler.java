@@ -3,7 +3,10 @@ package xin.vanilla.aotake.event;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
-import net.neoforged.neoforge.event.entity.player.*;
+import net.neoforged.neoforge.event.entity.player.ArrowNockEvent;
+import net.neoforged.neoforge.event.entity.player.PlayerEvent;
+import net.neoforged.neoforge.event.entity.player.PlayerInteractEvent;
+import net.neoforged.neoforge.event.entity.player.UseItemOnBlockEvent;
 import net.neoforged.neoforge.event.tick.LevelTickEvent;
 import net.neoforged.neoforge.event.tick.ServerTickEvent;
 import org.apache.logging.log4j.LogManager;
@@ -95,16 +98,6 @@ public class ServerGameEventHandler {
     @SubscribeEvent
     public static void onPlayerLoggedOut(PlayerEvent.PlayerLoggedOutEvent event) {
         EventHandlerProxy.onPlayerLoggedOut(event);
-    }
-
-    @SubscribeEvent
-    public static void onContainerOpen(PlayerContainerEvent.Open event) {
-        EventHandlerProxy.onContainerOpen(event);
-    }
-
-    @SubscribeEvent
-    public static void onContainerClose(PlayerContainerEvent.Close event) {
-        EventHandlerProxy.onContainerClose(event);
     }
 
 }

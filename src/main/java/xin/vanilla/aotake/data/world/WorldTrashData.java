@@ -42,6 +42,7 @@ import java.util.concurrent.ConcurrentLinkedQueue;
  * 世界垃圾数据
  */
 @Getter
+@SuppressWarnings("resource")
 public class WorldTrashData extends SavedData {
     private static final String DATA_NAME = "world_trash_data";
 
@@ -63,7 +64,7 @@ public class WorldTrashData extends SavedData {
         WorldTrashData data = new WorldTrashData();
         // 未开启持久化直接返回
         try {
-            if (Boolean.FALSE.equals(ServerConfig.DUSTBIN_PERSISTENT.get())) return data;
+            if (!ServerConfig.DUSTBIN_PERSISTENT.get()) return data;
         } catch (Throwable ignored) {
         }
 
@@ -105,7 +106,7 @@ public class WorldTrashData extends SavedData {
     public CompoundTag save(CompoundTag nbt, HolderLookup.Provider provider) {
         // 未开启持久化直接返回
         try {
-            if (Boolean.FALSE.equals(ServerConfig.DUSTBIN_PERSISTENT.get())) return nbt;
+            if (!ServerConfig.DUSTBIN_PERSISTENT.get()) return nbt;
         } catch (Throwable ignored) {
         }
         ListTag dropsNBT = new ListTag();
