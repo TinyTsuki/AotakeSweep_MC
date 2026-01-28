@@ -72,7 +72,7 @@ public class JsonUtils {
 
     private static void ensureElementIsObject(JsonArray array, int index) {
         JsonElement element = array.get(index);
-        if (!element.isJsonObject() || (element.isJsonObject() && element.getAsJsonObject().size() == 0)) {
+        if (!element.isJsonObject() || (element.isJsonObject() && element.getAsJsonObject().isEmpty())) {
             array.set(index, new JsonObject());
         }
     }
@@ -123,52 +123,11 @@ public class JsonUtils {
             }
         }
 
-        if (sb.length() > 0) {
+        if (!sb.isEmpty()) {
             parts.add(sb.toString());
         }
 
         return parts;
-    }
-
-    /**
-     * 获取父路径
-     */
-    public static String getParentPath(String path) {
-        List<String> keys = parsePath(path);
-        if (keys.isEmpty()) {
-            return "";
-        }
-
-        StringBuilder parentPath = new StringBuilder();
-        for (int i = 0; i < keys.size() - 1; i++) {
-            parentPath.append(keys.get(i));
-            if (i < keys.size() - 2) {
-                parentPath.append(".");
-            }
-        }
-        return parentPath.toString();
-    }
-
-    /**
-     * 获取最后一个键
-     */
-    public static String getLastKey(String path) {
-        List<String> keys = parsePath(path);
-        if (keys.isEmpty()) {
-            return "";
-        }
-        return keys.get(keys.size() - 1);
-    }
-
-    /**
-     * 获取第一个键
-     */
-    public static String getFirstKey(String path) {
-        List<String> keys = parsePath(path);
-        if (keys.isEmpty()) {
-            return "";
-        }
-        return keys.getFirst();
     }
 
     /**
@@ -230,7 +189,7 @@ public class JsonUtils {
                 int index = Integer.parseInt(matcher.group(1));
                 if (!current.isJsonArray()) {
                     // 当前节点不是数组，检查是否可以替换
-                    if (current.isJsonObject() && current.getAsJsonObject().size() == 0) {
+                    if (current.isJsonObject() && current.getAsJsonObject().isEmpty()) {
                         JsonArray newArray = new JsonArray();
                         updateParent(parent, parentKey, newArray);
                         // 更新当前节点和根节点（如果是顶级节点）
@@ -390,26 +349,6 @@ public class JsonUtils {
     }
 
     /**
-     * 获取整数
-     *
-     * @param defaultValue 默认值
-     */
-    public static int getInt(@NonNull JsonElement json, @NonNull String path, int defaultValue) {
-        try {
-            return getInt(json, path);
-        } catch (Exception e) {
-            return defaultValue;
-        }
-    }
-
-    /**
-     * 设置整数
-     */
-    public static JsonElement setInt(@NonNull JsonElement json, @NonNull String path, int value) {
-        return setLong(json, path, value);
-    }
-
-    /**
      * 获取布尔值
      */
     public static boolean getBoolean(@NonNull JsonElement json, @NonNull String path) {
@@ -418,19 +357,6 @@ public class JsonUtils {
             return element.getAsBoolean();
         } else {
             throw new IllegalArgumentException("Expected JsonPrimitive boolean at path: " + path);
-        }
-    }
-
-    /**
-     * 获取布尔值
-     *
-     * @param defaultValue 默认值
-     */
-    public static boolean getBoolean(@NonNull JsonElement json, @NonNull String path, boolean defaultValue) {
-        try {
-            return getBoolean(json, path);
-        } catch (Exception e) {
-            return defaultValue;
         }
     }
 
@@ -473,164 +399,6 @@ public class JsonUtils {
     public static JsonElement setDouble(@NonNull JsonElement json, @NonNull String path, double value) {
         JsonElement newValue = new JsonPrimitive(value);
         return setJsonElement(json, path, newValue);
-    }
-
-    /**
-     * 获取长整型
-     */
-    public static long getLong(@NonNull JsonElement json, @NonNull String path) {
-        JsonElement element = getJsonElement(json, path);
-        if (element.isJsonPrimitive() && element.getAsJsonPrimitive().isNumber()) {
-            return element.getAsLong();
-        } else {
-            throw new IllegalArgumentException("Expected JsonPrimitive number at path: " + path);
-        }
-    }
-
-    /**
-     * 获取长整型
-     *
-     * @param defaultValue 默认值
-     */
-    public static long getLong(@NonNull JsonElement json, @NonNull String path, long defaultValue) {
-        try {
-            return getLong(json, path);
-        } catch (Exception e) {
-            return defaultValue;
-        }
-    }
-
-    /**
-     * 设置长整型
-     */
-    public static JsonElement setLong(@NonNull JsonElement json, @NonNull String path, long value) {
-        return setFloat(json, path, value);
-    }
-
-    /**
-     * 获取单精度浮点数
-     */
-    public static float getFloat(@NonNull JsonElement json, @NonNull String path) {
-        JsonElement element = getJsonElement(json, path);
-        if (element.isJsonPrimitive() && element.getAsJsonPrimitive().isNumber()) {
-            return element.getAsFloat();
-        } else {
-            throw new IllegalArgumentException("Expected JsonPrimitive number at path: " + path);
-        }
-    }
-
-    /**
-     * 获取单精度浮点数
-     *
-     * @param defaultValue 默认值
-     */
-    public static float getFloat(@NonNull JsonElement json, @NonNull String path, float defaultValue) {
-        try {
-            return getFloat(json, path);
-        } catch (Exception e) {
-            return defaultValue;
-        }
-    }
-
-    /**
-     * 设置单精度浮点数
-     */
-    public static JsonElement setFloat(@NonNull JsonElement json, @NonNull String path, float value) {
-        return setDouble(json, path, value);
-    }
-
-    /**
-     * 获取字节
-     */
-    public static byte getByte(@NonNull JsonElement json, @NonNull String path) {
-        JsonElement element = getJsonElement(json, path);
-        if (element.isJsonPrimitive() && element.getAsJsonPrimitive().isNumber()) {
-            return element.getAsByte();
-        } else {
-            throw new IllegalArgumentException("Expected JsonPrimitive number at path: " + path);
-        }
-    }
-
-    /**
-     * 获取字节
-     *
-     * @param defaultValue 默认值
-     */
-    public static byte getByte(@NonNull JsonElement json, @NonNull String path, byte defaultValue) {
-        try {
-            return getByte(json, path);
-        } catch (Exception e) {
-            return defaultValue;
-        }
-    }
-
-    /**
-     * 设置字节
-     */
-    public static JsonElement setByte(@NonNull JsonElement json, @NonNull String path, byte value) {
-        return setInt(json, path, value);
-    }
-
-    /**
-     * 获取短整型
-     */
-    public static short getShort(@NonNull JsonElement json, @NonNull String path) {
-        JsonElement element = getJsonElement(json, path);
-        if (element.isJsonPrimitive() && element.getAsJsonPrimitive().isNumber()) {
-            return element.getAsShort();
-        } else {
-            throw new IllegalArgumentException("Expected JsonPrimitive number at path: " + path);
-        }
-    }
-
-    /**
-     * 获取短整型
-     *
-     * @param defaultValue 默认值
-     */
-    public static short getShort(@NonNull JsonElement json, @NonNull String path, short defaultValue) {
-        try {
-            return getShort(json, path);
-        } catch (Exception e) {
-            return defaultValue;
-        }
-    }
-
-    /**
-     * 设置短整型
-     */
-    public static JsonElement setShort(@NonNull JsonElement json, @NonNull String path, short value) {
-        return setInt(json, path, value);
-    }
-
-    /**
-     * 获取字符
-     */
-    public static char getChar(@NonNull JsonElement json, @NonNull String path) {
-        JsonElement element = getJsonElement(json, path);
-        if (element.isJsonPrimitive() && element.getAsJsonPrimitive().isString()) {
-            String str = element.getAsString();
-            if (str.length() == 1) {
-                return str.charAt(0);
-            } else {
-                throw new IllegalArgumentException("Expected single character at path: " + path);
-            }
-        } else {
-            throw new IllegalArgumentException("Expected JsonPrimitive string at path: " + path);
-        }
-    }
-
-    /**
-     * 获取字符
-     *
-     * @param defaultValue 默认值
-     */
-    public static char getChar(@NonNull JsonElement json, @NonNull String path, char defaultValue) {
-        try {
-            return getChar(json, path);
-        } catch (Exception e) {
-            return defaultValue;
-        }
     }
 
     /**

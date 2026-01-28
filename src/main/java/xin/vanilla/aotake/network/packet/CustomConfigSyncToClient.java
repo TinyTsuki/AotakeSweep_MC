@@ -2,7 +2,6 @@ package xin.vanilla.aotake.network.packet;
 
 import com.google.gson.JsonObject;
 import io.netty.buffer.ByteBuf;
-import lombok.Getter;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
@@ -13,9 +12,8 @@ import xin.vanilla.aotake.config.CustomConfig;
 import xin.vanilla.aotake.util.JsonUtils;
 import xin.vanilla.aotake.util.VirtualPermissionManager;
 
-@Getter
-public class CustomConfigSyncToClient implements CustomPacketPayload {
-    public final static CustomPacketPayload.Type<CustomConfigSyncToClient> TYPE = new CustomPacketPayload.Type<>(AotakeSweep.createResource("custom_config_sync"));
+public record CustomConfigSyncToClient(JsonObject customConfig) implements CustomPacketPayload {
+    public final static CustomPacketPayload.Type<CustomConfigSyncToClient> TYPE = new CustomPacketPayload.Type<>(AotakeSweep.createIdentifier("custom_config_sync"));
     public final static StreamCodec<ByteBuf, CustomConfigSyncToClient> STREAM_CODEC = new StreamCodec<>() {
         public @NotNull CustomConfigSyncToClient decode(@NotNull ByteBuf byteBuf) {
             return new CustomConfigSyncToClient((new FriendlyByteBuf(byteBuf)));
@@ -26,17 +24,12 @@ public class CustomConfigSyncToClient implements CustomPacketPayload {
         }
     };
 
-    /**
-     * 自定义配置
-     */
-    private final JsonObject customConfig;
-
     public CustomConfigSyncToClient() {
-        this.customConfig = CustomConfig.getCustomConfig();
+        this(CustomConfig.getCustomConfig());
     }
 
     public CustomConfigSyncToClient(FriendlyByteBuf buf) {
-        this.customConfig = JsonUtils.GSON.fromJson(buf.readUtf(), JsonObject.class);
+        this(JsonUtils.GSON.fromJson(buf.readUtf(), JsonObject.class));
     }
 
     public void toBytes(FriendlyByteBuf buf) {
@@ -50,7 +43,7 @@ public class CustomConfigSyncToClient implements CustomPacketPayload {
 
     public static void handle(CustomConfigSyncToClient packet, IPayloadContext ctx) {
         ctx.enqueueWork(() -> {
-            CustomConfig.setClientConfig(packet.getCustomConfig());
+            CustomConfig.setClientConfig(packet.customConfig());
             VirtualPermissionManager.reloadClient();
         });
     }
