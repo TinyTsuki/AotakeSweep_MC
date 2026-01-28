@@ -1,16 +1,21 @@
 package xin.vanilla.aotake.event;
 
+import com.mojang.blaze3d.systems.RenderSystem;
+import com.mojang.brigadier.arguments.StringArgumentType;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.inventory.ContainerScreen;
 import net.minecraft.client.player.LocalPlayer;
+import net.minecraft.commands.Commands;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.entity.player.Player;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.client.event.ClientPlayerNetworkEvent;
+import net.minecraftforge.client.event.RegisterClientCommandsEvent;
 import net.minecraftforge.client.event.ScreenEvent;
 import net.minecraftforge.event.TickEvent;
-import net.minecraftforge.event.entity.player.PlayerContainerEvent;
 import net.minecraftforge.event.entity.player.PlayerEvent;
 import net.minecraftforge.event.entity.player.PlayerInteractEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
@@ -22,8 +27,9 @@ import xin.vanilla.aotake.config.ClientConfig;
 import xin.vanilla.aotake.data.KeyValue;
 import xin.vanilla.aotake.enums.EnumCommandType;
 import xin.vanilla.aotake.enums.EnumI18nType;
+import xin.vanilla.aotake.enums.EnumMCColor;
 import xin.vanilla.aotake.network.packet.ClearDustbinToServer;
-import xin.vanilla.aotake.network.packet.ClientLoadedToServer;
+import xin.vanilla.aotake.network.packet.ModLoadedToBoth;
 import xin.vanilla.aotake.network.packet.OpenDustbinToServer;
 import xin.vanilla.aotake.screen.ProgressRender;
 import xin.vanilla.aotake.screen.component.Text;
@@ -37,6 +43,37 @@ public class ClientGameEventHandler {
     private static final Logger LOGGER = LogManager.getLogger();
 
     @SubscribeEvent
+    public static void onRegisterClientCommands(RegisterClientCommandsEvent event) {
+        event.getDispatcher().register(Commands.literal(AotakeUtils.getCommandPrefix())
+                .then(Commands.literal("config")
+                        .then(Commands.literal("client")
+                                .then(Commands.argument("configKey", StringArgumentType.word())
+                                        .suggests((context, builder) -> {
+                                            String input = CommandUtils.getStringEmpty(context, "configKey");
+                                            CommandUtils.configKeySuggestion(ClientConfig.class, builder, input);
+                                            return builder.buildFuture();
+                                        })
+                                        .then(Commands.argument("configValue", StringArgumentType.word())
+                                                .suggests((context, builder) -> {
+                                                    String configKey = StringArgumentType.getString(context, "configKey");
+                                                    CommandUtils.configValueSuggestion(ClientConfig.class, builder, configKey);
+                                                    return builder.buildFuture();
+                                                })
+                                                .executes(context -> {
+                                                    Player player = Minecraft.getInstance().player;
+                                                    if (player == null) return 0;
+                                                    String configKey = StringArgumentType.getString(context, "configKey");
+                                                    String configValue = StringArgumentType.getString(context, "configValue");
+                                                    return CommandUtils.executeModifyConfigClient(ClientConfig.class, player, configKey, configValue);
+                                                })
+                                        )
+                                )
+                        )
+                )
+        );
+    }
+
+    @SubscribeEvent
     public static void onPlayerLoggedOut(ClientPlayerNetworkEvent.LoggingOut event) {
         LOGGER.debug("Client: Player logged out.");
     }
@@ -47,6 +84,18 @@ public class ClientGameEventHandler {
      * 重新打开垃圾箱页面前鼠标位置
      */
     private static final KeyValue<Double, Double> mousePos = new KeyValue<>(-1D, -1D);
+    private static int mouseRestoreTicks = 0;
+    private static int dustbinPage = -1;
+    private static int dustbinTotalPage = -1;
+    /**
+     * 是否显示进度条
+     */
+    private static boolean showProgress = false;
+
+    public static void updateDustbinPage(int page, int totalPage) {
+        dustbinPage = page;
+        dustbinTotalPage = totalPage;
+    }
 
     /**
      * 客户端Tick事件
@@ -126,16 +175,6 @@ public class ClientGameEventHandler {
         EventHandlerProxy.onRightEntity(event);
     }
 
-    @SubscribeEvent
-    public static void onContainerOpen(PlayerContainerEvent.Open event) {
-        EventHandlerProxy.onContainerOpen(event);
-    }
-
-    @SubscribeEvent
-    public static void onContainerClose(PlayerContainerEvent.Close event) {
-        EventHandlerProxy.onContainerClose(event);
-    }
-
     /**
      * 玩家登录事件
      */
@@ -155,6 +194,8 @@ public class ClientGameEventHandler {
     private static final Component MOD_NAME = Component.translatable(EnumI18nType.KEY, "categories");
 
     private static final MouseHelper mouseHelper = new MouseHelper();
+    private static Button dustbinPrevButton;
+    private static Button dustbinNextButton;
 
     @SubscribeEvent
     public static void onRenderScreen(ScreenEvent event) {
@@ -165,23 +206,104 @@ public class ClientGameEventHandler {
                 && screen.getTitle().getString()
                 .startsWith(MOD_NAME.toTextComponent(AotakeUtils.getPlayerLanguage(mc.player)).getString())
         ) {
-            switch (event) {
-                case ScreenEvent.Init.Post ignored -> {
-                    for (int i = 0; i < 20; i++) {
-                        AotakeScheduler.schedule(i, () -> {
-                            if (mousePos.key() > -1 && mousePos.val() > -1) {
-                                KeyValue<Double, Double> pos = MouseHelper.getRawCursorPos();
-                                if (Math.abs(pos.key() - mousePos.key()) < 1 && Math.abs(pos.val() - mousePos.val()) < 1) {
-                                    mousePos.setKey(-1D).setValue(-1D);
-                                }
-                                if (mousePos.key() > -1 && mousePos.val() > -1) {
-                                    MouseHelper.setMouseRawPos(mousePos);
-                                }
+            if (event instanceof ScreenEvent.Init.Post eve) {
+                for (int i = 0; i < 20; i++) {
+                    AotakeScheduler.schedule(i, () -> {
+                        if (mousePos.key() > -1 && mousePos.val() > -1 && mouseRestoreTicks > 0) {
+                            MouseHelper.setMouseRawPos(mousePos);
+                            mouseRestoreTicks--;
+                            if (mouseRestoreTicks <= 0) {
+                                mousePos.setKey(-1D).setValue(-1D);
                             }
-                        });
+                        }
+                    });
+                }
+                if (ClientConfig.VANILLA_DUSTBIN.get()) {
+                    LocalPlayer player = mc.player;
+                    int yOffset = 0;
+                    boolean canPrev = true;
+                    boolean canNext = true;
+                    if (dustbinPage > 0 && dustbinTotalPage > 0) {
+                        canPrev = dustbinPage > 1;
+                        canNext = dustbinPage < dustbinTotalPage;
+                    }
+                    if (AotakeUtils.hasCommandPermission(player, EnumCommandType.CACHE_CLEAR)) {
+                        eve.addListener(
+                                AbstractGuiUtils.newButton(screen.width / 2 - 88 - 21
+                                        , screen.height / 2 - 111 + 21 * (yOffset++)
+                                        , 20, 20
+                                        , Component.literal("✕").setColor(EnumMCColor.RED.getColor())
+                                        , button -> AotakeUtils.sendPacketToServer(new ClearDustbinToServer(true, true))
+                                        , Component.translatable(EnumI18nType.MESSAGE, "clear_cache")
+                                )
+                        );
+                    }
+                    if (AotakeUtils.hasCommandPermission(player, EnumCommandType.DUSTBIN_CLEAR)) {
+                        eve.addListener(
+                                AbstractGuiUtils.newButton(screen.width / 2 - 88 - 21
+                                        , screen.height / 2 - 111 + 21 * (yOffset++)
+                                        , 20, 20
+                                        , Component.literal("✕").setColor(EnumMCColor.RED.getColor())
+                                        , button -> AotakeUtils.sendPacketToServer(new ClearDustbinToServer(true, false))
+                                        , Component.translatable(EnumI18nType.MESSAGE, "clear_all_dustbin")
+                                )
+                        );
+                        eve.addListener(
+                                AbstractGuiUtils.newButton(screen.width / 2 - 88 - 21
+                                        , screen.height / 2 - 111 + 21 * (yOffset++)
+                                        , 20, 20
+                                        , Component.literal("✕").setColor(EnumMCColor.YELLOW.getColor())
+                                        , button -> AotakeUtils.sendPacketToServer(new ClearDustbinToServer(false, false))
+                                        , Component.translatable(EnumI18nType.MESSAGE, "clear_cur_dustbin")
+                                )
+                        );
+                    }
+                    eve.addListener(
+                            AbstractGuiUtils.newButton(screen.width / 2 - 88 - 21
+                                    , screen.height / 2 - 111 + 21 * (yOffset++)
+                                    , 20, 20
+                                    , Component.literal("↻")
+                                    , button -> AotakeUtils.sendPacketToServer(new OpenDustbinToServer(0))
+                                    , Component.translatable(EnumI18nType.MESSAGE, "refresh_page")
+                            )
+                    );
+                    Button prevButton = AbstractGuiUtils.newButton(screen.width / 2 - 88 - 21
+                            , screen.height / 2 - 111 + 21 * (yOffset++)
+                            , 20, 20
+                            , Component.literal("▲")
+                            , button -> AotakeUtils.sendPacketToServer(new OpenDustbinToServer(-1))
+                            , Component.translatable(EnumI18nType.MESSAGE, "previous_page")
+                    );
+                    prevButton.active = canPrev;
+                    dustbinPrevButton = prevButton;
+                    eve.addListener(prevButton);
+                    Button nextButton = AbstractGuiUtils.newButton(screen.width / 2 - 88 - 21
+                            , screen.height / 2 - 111 + 21 * (yOffset++)
+                            , 20, 20
+                            , Component.literal("▼")
+                            , button -> AotakeUtils.sendPacketToServer(new OpenDustbinToServer(1))
+                            , Component.translatable(EnumI18nType.MESSAGE, "next_page")
+                    );
+                    nextButton.active = canNext;
+                    dustbinNextButton = nextButton;
+                    eve.addListener(nextButton);
+                }
+            } else if (event instanceof ScreenEvent.Render.Post eve) {
+                if (ClientConfig.VANILLA_DUSTBIN.get()) {
+                    boolean canPrev = true;
+                    boolean canNext = true;
+                    if (dustbinPage > 0 && dustbinTotalPage > 0) {
+                        canPrev = dustbinPage > 1;
+                        canNext = dustbinPage < dustbinTotalPage;
+                    }
+                    if (dustbinPrevButton != null) {
+                        dustbinPrevButton.active = canPrev;
+                    }
+                    if (dustbinNextButton != null) {
+                        dustbinNextButton.active = canNext;
                     }
                 }
-                case ScreenEvent.Render.Post eve -> {
+                if (!ClientConfig.VANILLA_DUSTBIN.get()) {
                     LocalPlayer player = mc.player;
                     int mouseX = eve.getMouseX();
                     int mouseY = eve.getMouseY();
@@ -192,8 +314,14 @@ public class ClientGameEventHandler {
                     int baseH = 16;
                     int baseX = screen.width / 2 - 88;
                     int baseY = screen.height / 2 - 110;
+                    boolean canPrev = true;
+                    boolean canNext = true;
+                    if (dustbinPage > 0 && dustbinTotalPage > 0) {
+                        canPrev = dustbinPage > 1;
+                        canNext = dustbinPage < dustbinTotalPage;
+                    }
+
                     int yOffset = 0;
-                    // 清空缓存区
                     if (AotakeUtils.hasCommandPermission(player, EnumCommandType.CACHE_CLEAR)) {
                         int w = baseW;
                         int h = baseH;
@@ -227,7 +355,6 @@ public class ClientGameEventHandler {
                         }
                     }
                     if (AotakeUtils.hasCommandPermission(player, EnumCommandType.DUSTBIN_CLEAR)) {
-                        // 清空所有页
                         {
                             int w = baseW;
                             int h = baseH;
@@ -261,7 +388,6 @@ public class ClientGameEventHandler {
                             }
                         }
 
-                        // 清空当前页
                         {
                             int w = baseW;
                             int h = baseH;
@@ -295,7 +421,6 @@ public class ClientGameEventHandler {
                             }
                         }
                     }
-                    // 刷新当前页
                     {
                         int w = baseW;
                         int h = baseH;
@@ -327,16 +452,16 @@ public class ClientGameEventHandler {
                         if (mouseHelper.isLeftPressedInRect(x, y, w, h)) {
                             KeyValue<Double, Double> cursorPos = MouseHelper.getRawCursorPos();
                             mousePos.setKey(cursorPos.getKey()).setValue(cursorPos.getValue());
+                            mouseRestoreTicks = 20;
                             AotakeUtils.sendPacketToServer(new OpenDustbinToServer(0));
                         }
                     }
-                    // 上一页
                     {
                         int w = baseW;
                         int h = baseH;
                         int x = baseX - w - 1;
                         int y = baseY + (h + 1) * (yOffset++);
-                        boolean hover = mouseHelper.isHoverInRect(x, y, w, h);
+                        boolean hover = canPrev && mouseHelper.isHoverInRect(x, y, w, h);
 
                         if (mouseHelper.isLeftPressing() && hover) {
                             x--;
@@ -346,7 +471,9 @@ public class ClientGameEventHandler {
                         }
 
                         ResourceLocation texture = TextureUtils.loadCustomTexture(TextureUtils.INTERNAL_THEME_DIR + "up.png");
+                        RenderSystem.setShaderColor(1.0F, 1.0F, 1.0F, canPrev ? 1.0F : 0.5F);
                         AbstractGuiUtils.blitBlend(graphics, texture, x, y, 0, 0, w, h, w, h);
+                        RenderSystem.setShaderColor(1.0F, 1.0F, 1.0F, 1.0F);
 
                         if (hover) {
                             AbstractGuiUtils.drawPopupMessage(Text.empty()
@@ -359,19 +486,19 @@ public class ClientGameEventHandler {
                             );
                         }
 
-                        if (mouseHelper.isLeftPressedInRect(x, y, w, h)) {
+                        if (canPrev && mouseHelper.isLeftPressedInRect(x, y, w, h)) {
                             KeyValue<Double, Double> cursorPos = MouseHelper.getRawCursorPos();
                             mousePos.setKey(cursorPos.getKey()).setValue(cursorPos.getValue());
+                            mouseRestoreTicks = 20;
                             AotakeUtils.sendPacketToServer(new OpenDustbinToServer(-1));
                         }
                     }
-                    // 下一页
                     {
                         int w = baseW;
                         int h = baseH;
                         int x = baseX - w - 1;
                         int y = baseY + (h + 1) * (yOffset++);
-                        boolean hover = mouseHelper.isHoverInRect(x, y, w, h);
+                        boolean hover = canNext && mouseHelper.isHoverInRect(x, y, w, h);
 
                         if (mouseHelper.isLeftPressing() && hover) {
                             x--;
@@ -381,7 +508,9 @@ public class ClientGameEventHandler {
                         }
 
                         ResourceLocation texture = TextureUtils.loadCustomTexture(TextureUtils.INTERNAL_THEME_DIR + "down.png");
+                        RenderSystem.setShaderColor(1.0F, 1.0F, 1.0F, canNext ? 1.0F : 0.5F);
                         AbstractGuiUtils.blitBlend(graphics, texture, x, y, 0, 0, w, h, w, h);
+                        RenderSystem.setShaderColor(1.0F, 1.0F, 1.0F, 1.0F);
 
                         if (hover) {
                             AbstractGuiUtils.drawPopupMessage(Text.empty()
@@ -394,37 +523,37 @@ public class ClientGameEventHandler {
                             );
                         }
 
-                        if (mouseHelper.isLeftPressedInRect(x, y, w, h)) {
+                        if (canNext && mouseHelper.isLeftPressedInRect(x, y, w, h)) {
                             KeyValue<Double, Double> cursorPos = MouseHelper.getRawCursorPos();
                             mousePos.setKey(cursorPos.getKey()).setValue(cursorPos.getValue());
+                            mouseRestoreTicks = 20;
                             AotakeUtils.sendPacketToServer(new OpenDustbinToServer(1));
                         }
                     }
                 }
-                case ScreenEvent.KeyPressed.Pre keyEvent -> {
-                    if (keyEvent.getModifiers() != 0) return;
-                    if (keyEvent.getKeyCode() == ClientModEventHandler.DUSTBIN_KEY.getKey().getValue()) {
-                        if (System.currentTimeMillis() - lastTime > 200) {
-                            lastTime = System.currentTimeMillis();
-                            mc.setScreen(null);
-                        }
-                    } else if (keyEvent.getKeyCode() == ClientModEventHandler.DUSTBIN_PRE_KEY.getKey().getValue()) {
-                        if (System.currentTimeMillis() - lastTime > 200) {
-                            lastTime = System.currentTimeMillis();
-                            KeyValue<Double, Double> cursorPos = MouseHelper.getRawCursorPos();
-                            mousePos.setKey(cursorPos.getKey()).setValue(cursorPos.getValue());
-                            AotakeUtils.sendPacketToServer(new OpenDustbinToServer(-1));
-                        }
-                    } else if (keyEvent.getKeyCode() == ClientModEventHandler.DUSTBIN_NEXT_KEY.getKey().getValue()) {
-                        if (System.currentTimeMillis() - lastTime > 200) {
-                            lastTime = System.currentTimeMillis();
-                            KeyValue<Double, Double> cursorPos = MouseHelper.getRawCursorPos();
-                            mousePos.setKey(cursorPos.getKey()).setValue(cursorPos.getValue());
-                            AotakeUtils.sendPacketToServer(new OpenDustbinToServer(1));
-                        }
+            } else if (event instanceof ScreenEvent.KeyPressed.Pre keyEvent) {
+                if (keyEvent.getModifiers() != 0) return;
+                if (keyEvent.getKeyCode() == ClientModEventHandler.DUSTBIN_KEY.getKey().getValue()) {
+                    if (System.currentTimeMillis() - lastTime > 200) {
+                        lastTime = System.currentTimeMillis();
+                        mc.setScreen(null);
                     }
-                }
-                default -> {
+                } else if (keyEvent.getKeyCode() == ClientModEventHandler.DUSTBIN_PRE_KEY.getKey().getValue()) {
+                    if (System.currentTimeMillis() - lastTime > 200) {
+                        lastTime = System.currentTimeMillis();
+                        KeyValue<Double, Double> cursorPos = MouseHelper.getRawCursorPos();
+                        mousePos.setKey(cursorPos.getKey()).setValue(cursorPos.getValue());
+                        mouseRestoreTicks = 20;
+                        AotakeUtils.sendPacketToServer(new OpenDustbinToServer(-1));
+                    }
+                } else if (keyEvent.getKeyCode() == ClientModEventHandler.DUSTBIN_NEXT_KEY.getKey().getValue()) {
+                    if (System.currentTimeMillis() - lastTime > 200) {
+                        lastTime = System.currentTimeMillis();
+                        KeyValue<Double, Double> cursorPos = MouseHelper.getRawCursorPos();
+                        mousePos.setKey(cursorPos.getKey()).setValue(cursorPos.getValue());
+                        mouseRestoreTicks = 20;
+                        AotakeUtils.sendPacketToServer(new OpenDustbinToServer(1));
+                    }
                 }
             }
         }
@@ -434,6 +563,6 @@ public class ClientGameEventHandler {
     public static void onPlayerLoggedIn(ClientPlayerNetworkEvent.LoggingIn event) {
         LOGGER.debug("Client: Player logged in.");
         // 通知服务器客户端已加载mod
-        AotakeUtils.sendPacketToServer(new ClientLoadedToServer());
+        AotakeUtils.sendPacketToServer(new ModLoadedToBoth());
     }
 }

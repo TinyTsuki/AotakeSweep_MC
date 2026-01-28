@@ -64,13 +64,13 @@ public class ClientModEventHandler {
 
         layered.addAbove(
                 stack,
-                AotakeSweep.createResource("progress_layer_above"),
+                AotakeSweep.createIdentifier("progress_layer_above"),
                 ForgeLayeredDraw.EXPERIENCE,
                 (GuiGraphics graphics, float partialTicks) -> ProgressRender.renderProgress(graphics, false)
         );
         layered.addBelow(
                 stack,
-                AotakeSweep.createResource("progress_layer_below"),
+                AotakeSweep.createIdentifier("progress_layer_below"),
                 ForgeLayeredDraw.EXPERIENCE,
                 (GuiGraphics graphics, float partialTicks) -> ProgressRender.renderProgress(graphics, true)
         );
