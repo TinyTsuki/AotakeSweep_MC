@@ -11,7 +11,7 @@ import xin.vanilla.aotake.util.JsonUtils;
 import xin.vanilla.aotake.util.VirtualPermissionManager;
 
 public record CustomConfigSyncToClient(JsonObject customConfig) implements CustomPacketPayload {
-    public static final CustomPacketPayload.Type<CustomConfigSyncToClient> ID = new CustomPacketPayload.Type<>(AotakeSweep.createResource("custom_config_sync"));
+    public static final CustomPacketPayload.Type<CustomConfigSyncToClient> ID = new CustomPacketPayload.Type<>(AotakeSweep.createIdentifier("custom_config_sync"));
     public static final StreamCodec<FriendlyByteBuf, CustomConfigSyncToClient> CODEC = StreamCodec.of(
             (buf, packet) -> buf.writeUtf(packet.customConfig.toString()),
             buf -> new CustomConfigSyncToClient(JsonUtils.GSON.fromJson(buf.readUtf(), JsonObject.class))

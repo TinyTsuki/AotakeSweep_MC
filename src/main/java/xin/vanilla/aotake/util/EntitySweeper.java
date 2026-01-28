@@ -38,7 +38,7 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 
-@SuppressWarnings("UnstableApiUsage")
+@SuppressWarnings({"resource"})
 public class EntitySweeper {
     private static final Logger LOGGER = LogManager.getLogger();
 
@@ -84,24 +84,25 @@ public class EntitySweeper {
                             , () -> AotakeSweep.entitySweeper().addDrops(entityList, result)
                     );
                 }
-                entities = lists.get(0);
+                entities = lists.getFirst();
             }
         }
         if (result.getTotalBatch() == 0) {
             result.setTotalBatch(1);
         }
 
-        Set<Integer> seenEntities = new HashSet<>();
+        Set<Entity> seenEntities = Collections.newSetFromMap(new IdentityHashMap<>());
         for (Entity entity : entities) {
-            int id = System.identityHashCode(entity);
-            if (seenEntities.add(id)) {
+            if (seenEntities.add(entity)) {
                 result.add(this.processDrop(entity));
             }
         }
 
-        for (Entity entity : entitiesToRemove) {
-            if (entity.level() instanceof ServerLevel) {
-                scheduleRemoveEntity(entity, false);
+        if (!entitiesToRemove.isEmpty()) {
+            for (Entity entity : entitiesToRemove) {
+                if (entity.level() instanceof ServerLevel) {
+                    scheduleRemoveEntity(entity, false);
+                }
             }
         }
         entitiesToRemove.clear();
@@ -191,13 +192,14 @@ public class EntitySweeper {
                     CompoundTag customData = new CompoundTag();
                     CompoundTag aotake = new CompoundTag();
                     aotake.putBoolean("byPlayer", false);
-                    CompoundTag entityTag = new CompoundTag();
+
                     if (entity.isPassenger()) {
                         entity.stopRiding();
                     }
-                    entity.save(entityTag);
+                    CompoundTag entityTag = new CompoundTag();entity.save(entityTag);
                     AotakeUtils.sanitizeCapturedEntityTag(entityTag);
-                    aotake.put("entity", entityTag);
+                    aotake.put("entity", entityTag);aotake.putString("entityId", AotakeUtils.getEntityTypeRegistryName(entity));
+                aotake.putString("name", AotakeUtils.getItemCustomNameJson(itemToRecycle));
                     customData.put(AotakeSweep.MODID, aotake);
                     itemToRecycle.set(DataComponents.CUSTOM_DATA, CustomData.of(customData));
 
@@ -225,9 +227,9 @@ public class EntitySweeper {
     }
 
     private void handleItemRecycling(WorldCoordinate coordinate, ItemStack item, SweepResult result) {
-        // 自清洁模式
+        EnumDustbinMode dustbinMode = EnumDustbinMode.valueOfOrDefault(ServerConfig.get().dustbinConfig().dustbinMode());
         if (ServerConfig.get().dustbinConfig().selfCleanMode().contains(EnumSelfCleanMode.SWEEP_DELETE.name())) {
-            switch (EnumDustbinMode.valueOfOrDefault(ServerConfig.get().dustbinConfig().dustbinMode())) {
+            switch (dustbinMode) {
                 case VIRTUAL: {
                     selfCleanVirtualDustbin();
                 }
@@ -246,7 +248,7 @@ public class EntitySweeper {
         ItemStack remaining = item;
         int recycledCount = item.getCount();
 
-        switch (EnumDustbinMode.valueOfOrDefault(ServerConfig.get().dustbinConfig().dustbinMode())) {
+        switch (dustbinMode) {
             case VIRTUAL: {
                 remaining = addItemToVirtualDustbin(remaining);
             }
@@ -313,14 +315,19 @@ public class EntitySweeper {
             if (remaining.isEmpty()) break;
 
             if (inv.canAddItem(remaining)) {
-                List<ItemStack> remainingList = new ArrayList<>();
-                List<ItemStack> itemStackList = splitItemStack(remaining, inv.getMaxStackSize());
-                int splits = itemStackList.size();
-                for (ItemStack itemStack : itemStackList) {
-                    ItemStack leftover = inv.addItem(itemStack);
-                    remainingList.add(leftover);
+                int maxStackSize = inv.getMaxStackSize();
+                if (remaining.getCount() <= maxStackSize) {
+                    remaining = inv.addItem(remaining);
+                } else {
+                    List<ItemStack> remainingList = new ArrayList<>();
+                    List<ItemStack> itemStackList = splitItemStack(remaining, maxStackSize);
+                    int splits = itemStackList.size();
+                    for (ItemStack itemStack : itemStackList) {
+                        ItemStack leftover = inv.addItem(itemStack);
+                        remainingList.add(leftover);
+                    }
+                    if (splits > 0) remaining = mergeItemStack(remainingList);
                 }
-                if (splits > 0) remaining = mergeItemStack(remainingList);
             }
         }
         return remaining;
@@ -476,7 +483,7 @@ public class EntitySweeper {
      */
     private static List<ItemStack> splitItemStack(ItemStack stack, int invMax) {
         if (stack == null || stack.isEmpty() || invMax <= 0) {
-            return new ArrayList<>();
+            return Collections.emptyList();
         }
         int count = Math.min(invMax, stack.getMaxStackSize());
 
@@ -503,7 +510,7 @@ public class EntitySweeper {
             return ItemStack.EMPTY;
         }
 
-        ItemStack base = stacks.get(0).copy();
+        ItemStack base = stacks.getFirst().copy();
         if (base.isEmpty()) {
             return ItemStack.EMPTY;
         }

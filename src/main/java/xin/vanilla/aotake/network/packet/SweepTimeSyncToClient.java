@@ -10,7 +10,7 @@ import xin.vanilla.aotake.event.ServerEventHandler;
 
 public record SweepTimeSyncToClient(long currentTime, long nextSweepTime,
                                     long sweepInterval) implements CustomPacketPayload {
-    public static final CustomPacketPayload.Type<SweepTimeSyncToClient> ID = new CustomPacketPayload.Type<>(AotakeSweep.createResource("sweep_time_sync"));
+    public static final CustomPacketPayload.Type<SweepTimeSyncToClient> ID = new CustomPacketPayload.Type<>(AotakeSweep.createIdentifier("sweep_time_sync"));
     public static final StreamCodec<FriendlyByteBuf, SweepTimeSyncToClient> CODEC = StreamCodec.of(
             (buf, packet) -> {
                 buf.writeLong(packet.currentTime);

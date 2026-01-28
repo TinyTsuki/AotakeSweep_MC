@@ -6,7 +6,7 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
-import xin.vanilla.aotake.util.ServerPlayerLanguageManager;
+import xin.vanilla.aotake.util.PlayerLanguageManager;
 
 @Mixin(ServerPlayer.class)
 public abstract class ServerPlayerMixin {
@@ -16,6 +16,6 @@ public abstract class ServerPlayerMixin {
     )
     private void aotake$afterUpdateOptions(ClientInformation clientInformation, CallbackInfo ci) {
         ServerPlayer player = (ServerPlayer) (Object) this;
-        ServerPlayerLanguageManager.set(player, clientInformation.language());
+        PlayerLanguageManager.set(player, clientInformation.language());
     }
 }
