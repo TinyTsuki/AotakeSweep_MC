@@ -23,7 +23,10 @@ import xin.vanilla.aotake.util.AotakeScheduler;
 import xin.vanilla.aotake.util.EntityFilter;
 import xin.vanilla.aotake.util.EntitySweeper;
 
-import java.util.*;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Random;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 
@@ -121,19 +124,19 @@ public class AotakeSweep implements ModInitializer {
 
     // region 资源ID
 
-    public static ResourceLocation emptyResource() {
-        return createResource("", "");
+    public static ResourceLocation emptyIdentifier() {
+        return createIdentifier("", "");
     }
 
-    public static ResourceLocation createResource(String path) {
-        return createResource(AotakeSweep.MODID, path);
+    public static ResourceLocation createIdentifier(String path) {
+        return createIdentifier(AotakeSweep.MODID, path);
     }
 
-    public static ResourceLocation createResource(String namespace, String path) {
+    public static ResourceLocation createIdentifier(String namespace, String path) {
         return ResourceLocation.tryBuild(namespace, path);
     }
 
-    public static ResourceLocation parseResource(String location) {
+    public static ResourceLocation parseIdentifier(String location) {
         return ResourceLocation.tryParse(location);
     }
 
@@ -141,6 +144,7 @@ public class AotakeSweep implements ModInitializer {
 
 
     // region 外部方法
+    @SuppressWarnings("unused")
     public static void reloadCustomConfig() {
         CustomConfig.loadCustomConfig(false);
     }

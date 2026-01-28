@@ -131,10 +131,13 @@
   "text.autoconfig.aotake_sweep-client.option.progressBarConfig.textConfig.progressBarTextBase.@Tooltip": "Text Anchor Point",
   "text.autoconfig.aotake_sweep-client.option.progressBarConfig.textConfig.progressBarTextAngle": "Text Angle",
   "text.autoconfig.aotake_sweep-client.option.progressBarConfig.textConfig.progressBarTextAngle.@Tooltip": "Text Angle",
-  "text.autoconfig.aotake_sweep-client.option.progressBarConfig.textConfig.progressBarTextHeight": "Text Height",
-  "text.autoconfig.aotake_sweep-client.option.progressBarConfig.textConfig.progressBarTextHeight.@Tooltip": "Text Height",
-  "text.autoconfig.aotake_sweep-client.option.progressBarConfig.textConfig.progressBarTextWidth": "Text Width",
-  "text.autoconfig.aotake_sweep-client.option.progressBarConfig.textConfig.progressBarTextWidth.@Tooltip": "Text Width",
+  "text.autoconfig.aotake_sweep-client.option.progressBarConfig.textConfig.progressBarTextSize": "Text Size",
+  "text.autoconfig.aotake_sweep-client.option.progressBarConfig.textConfig.progressBarTextSize.@Tooltip": "Text Size",
+  "text.autoconfig.aotake_sweep-client.option.progressBarConfig.textConfig.progressBarTextColor": "Text Color",
+  "text.autoconfig.aotake_sweep-client.option.progressBarConfig.textConfig.progressBarTextColor.@Tooltip": "Text Color",
+
+  "text.autoconfig.aotake_sweep-client.option.vanillaDustbin": "Vanilla Dustbin UI",
+  "text.autoconfig.aotake_sweep-client.option.vanillaDustbin.@Tooltip": "Vanilla Dustbin UI",
 
   "text.autoconfig.aotake_sweep-server.title": "Server Config",
   "text.autoconfig.aotake_sweep-server.option.helpHeader": "Help Command Header",

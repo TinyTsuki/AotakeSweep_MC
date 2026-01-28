@@ -1,7 +1,6 @@
 package xin.vanilla.aotake.network.packet;
 
 import com.google.gson.JsonObject;
-import lombok.Getter;
 import net.fabricmc.fabric.api.networking.v1.PacketByteBufs;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.resources.ResourceLocation;
@@ -11,21 +10,16 @@ import xin.vanilla.aotake.network.AotakePacket;
 import xin.vanilla.aotake.util.JsonUtils;
 import xin.vanilla.aotake.util.VirtualPermissionManager;
 
-@Getter
-public class CustomConfigSyncToClient implements AotakePacket {
-    public static final ResourceLocation ID = AotakeSweep.createResource("custom_config_sync");
 
-    /**
-     * 自定义配置
-     */
-    private final JsonObject customConfig;
+public record CustomConfigSyncToClient(JsonObject customConfig) implements AotakePacket {
+    public static final ResourceLocation ID = AotakeSweep.createIdentifier("custom_config_sync");
 
     public CustomConfigSyncToClient() {
-        this.customConfig = CustomConfig.getCustomConfig();
+        this(CustomConfig.getCustomConfig());
     }
 
     public CustomConfigSyncToClient(FriendlyByteBuf buf) {
-        this.customConfig = JsonUtils.GSON.fromJson(buf.readUtf(), JsonObject.class);
+        this(JsonUtils.GSON.fromJson(buf.readUtf(), JsonObject.class));
     }
 
     @Override
@@ -40,7 +34,7 @@ public class CustomConfigSyncToClient implements AotakePacket {
     }
 
     public static void handle(CustomConfigSyncToClient packet) {
-        CustomConfig.setClientConfig(packet.getCustomConfig());
+        CustomConfig.setClientConfig(packet.customConfig());
         VirtualPermissionManager.reloadClient();
     }
 }

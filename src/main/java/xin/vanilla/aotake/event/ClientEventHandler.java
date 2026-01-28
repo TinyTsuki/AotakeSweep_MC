@@ -1,5 +1,6 @@
 package xin.vanilla.aotake.event;
 
+import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.PoseStack;
 import lombok.Getter;
 import lombok.experimental.Accessors;
@@ -14,6 +15,7 @@ import net.fabricmc.fabric.api.client.screen.v1.ScreenEvents;
 import net.fabricmc.fabric.api.resource.ResourceManagerHelper;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.inventory.ContainerScreen;
 import net.minecraft.client.player.LocalPlayer;
@@ -27,10 +29,8 @@ import xin.vanilla.aotake.config.ClientConfig;
 import xin.vanilla.aotake.config.CustomConfig;
 import xin.vanilla.aotake.data.Color;
 import xin.vanilla.aotake.data.KeyValue;
-import xin.vanilla.aotake.enums.EnumCommandType;
-import xin.vanilla.aotake.enums.EnumI18nType;
-import xin.vanilla.aotake.enums.EnumProgressBarType;
-import xin.vanilla.aotake.enums.EnumRotationCenter;
+import xin.vanilla.aotake.enums.*;
+import xin.vanilla.aotake.mixin.ScreenAccessor;
 import xin.vanilla.aotake.network.ModNetworkHandler;
 import xin.vanilla.aotake.network.packet.ClearDustbinToServer;
 import xin.vanilla.aotake.network.packet.ModLoadedToBoth;
@@ -77,6 +77,9 @@ public class ClientEventHandler implements ClientModInitializer {
      * 重新打开垃圾箱页面前鼠标位置
      */
     private static final KeyValue<Double, Double> mousePos = new KeyValue<>(-1D, -1D);
+    private static int mouseRestoreTicks = 0;
+    private static int dustbinPage = -1;
+    private static int dustbinTotalPage = -1;
     /**
      * 是否显示进度条
      */
@@ -87,10 +90,17 @@ public class ClientEventHandler implements ClientModInitializer {
     @Getter
     private static boolean hideExpBar = false;
 
+    public static void updateDustbinPage(int page, int totalPage) {
+        dustbinPage = page;
+        dustbinTotalPage = totalPage;
+    }
+
     private static final Component MOD_NAME = Component.translatable(EnumI18nType.KEY, "categories");
 
     private static final MouseHelper mouseHelper = new MouseHelper();
     private static final Set<Screen> REGISTERED_SCREEN = Collections.newSetFromMap(new WeakHashMap<>());
+    private static Button dustbinPrevButton;
+    private static Button dustbinNextButton;
 
 
     @Override
@@ -180,7 +190,7 @@ public class ClientEventHandler implements ClientModInitializer {
         ScreenEvents.AFTER_INIT.register((client, screen, scaledWidth, scaledHeight) -> {
             if (isAotakeContainerScreen(client, screen)) {
                 REGISTERED_SCREEN.add(screen);
-                screenAfterInit();
+                screenAfterInit(client, screen);
 
                 ScreenEvents.afterRender(screen).register((screenRendered, stack, mouseX, mouseY, tickDelta) ->
                         screenAfterRender(client, screenRendered, stack, mouseX, mouseY)
@@ -203,67 +213,226 @@ public class ClientEventHandler implements ClientModInitializer {
                 );
     }
 
-    private static void screenAfterInit() {
+    private static void screenAfterInit(Minecraft client, Screen screen) {
         for (int i = 0; i < 20; i++) {
             AotakeScheduler.schedule(i, () -> {
-                if (mousePos.key() > -1 && mousePos.val() > -1) {
-                    KeyValue<Double, Double> pos = MouseHelper.getRawCursorPos();
-                    if (Math.abs(pos.key() - mousePos.key()) < 1 && Math.abs(pos.val() - mousePos.val()) < 1) {
+                if (mousePos.key() > -1 && mousePos.val() > -1 && mouseRestoreTicks > 0) {
+                    MouseHelper.setMouseRawPos(mousePos);
+                    mouseRestoreTicks--;
+                    if (mouseRestoreTicks <= 0) {
                         mousePos.setKey(-1D).setValue(-1D);
-                    }
-                    if (mousePos.key() > -1 && mousePos.val() > -1) {
-                        MouseHelper.setMouseRawPos(mousePos);
                     }
                 }
             });
         }
+        if (ClientConfig.get().vanillaDustbin()) {
+            LocalPlayer player = client.player;
+            if (player == null) return;
+            int yOffset = 0;
+            boolean canPrev = true;
+            boolean canNext = true;
+            if (dustbinPage > 0 && dustbinTotalPage > 0) {
+                canPrev = dustbinPage > 1;
+                canNext = dustbinPage < dustbinTotalPage;
+            }
+            ScreenAccessor screen_ = (ScreenAccessor) screen;
+            if (AotakeUtils.hasCommandPermission(player, EnumCommandType.CACHE_CLEAR)) {
+                screen_.aotake$addRenderableWidget(
+                        AbstractGuiUtils.newButton(screen.width / 2 - 88 - 21
+                                , screen.height / 2 - 111 + 21 * (yOffset++)
+                                , 20, 20
+                                , Component.literal("✕").setColor(EnumMCColor.RED.getColor())
+                                , button -> AotakeUtils.sendPacketToServer(new ClearDustbinToServer(true, true))
+                                , Component.translatable(EnumI18nType.MESSAGE, "clear_cache")
+                        )
+                );
+            }
+            if (AotakeUtils.hasCommandPermission(player, EnumCommandType.DUSTBIN_CLEAR)) {
+                screen_.aotake$addRenderableWidget(
+                        AbstractGuiUtils.newButton(screen.width / 2 - 88 - 21
+                                , screen.height / 2 - 111 + 21 * (yOffset++)
+                                , 20, 20
+                                , Component.literal("✕").setColor(EnumMCColor.RED.getColor())
+                                , button -> AotakeUtils.sendPacketToServer(new ClearDustbinToServer(true, false))
+                                , Component.translatable(EnumI18nType.MESSAGE, "clear_all_dustbin")
+                        )
+                );
+                screen_.aotake$addRenderableWidget(
+                        AbstractGuiUtils.newButton(screen.width / 2 - 88 - 21
+                                , screen.height / 2 - 111 + 21 * (yOffset++)
+                                , 20, 20
+                                , Component.literal("✕").setColor(EnumMCColor.YELLOW.getColor())
+                                , button -> AotakeUtils.sendPacketToServer(new ClearDustbinToServer(false, false))
+                                , Component.translatable(EnumI18nType.MESSAGE, "clear_cur_dustbin")
+                        )
+                );
+            }
+            screen_.aotake$addRenderableWidget(
+                    AbstractGuiUtils.newButton(screen.width / 2 - 88 - 21
+                            , screen.height / 2 - 111 + 21 * (yOffset++)
+                            , 20, 20
+                            , Component.literal("↻")
+                            , button -> AotakeUtils.sendPacketToServer(new OpenDustbinToServer(0))
+                            , Component.translatable(EnumI18nType.MESSAGE, "refresh_page")
+                    )
+            );
+            Button prevButton = AbstractGuiUtils.newButton(screen.width / 2 - 88 - 21
+                    , screen.height / 2 - 111 + 21 * (yOffset++)
+                    , 20, 20
+                    , Component.literal("▲")
+                    , button -> AotakeUtils.sendPacketToServer(new OpenDustbinToServer(-1))
+                    , Component.translatable(EnumI18nType.MESSAGE, "previous_page")
+            );
+            prevButton.active = canPrev;
+            dustbinPrevButton = prevButton;
+            screen_.aotake$addRenderableWidget(prevButton);
+            Button nextButton = AbstractGuiUtils.newButton(screen.width / 2 - 88 - 21
+                    , screen.height / 2 - 111 + 21 * (yOffset++)
+                    , 20, 20
+                    , Component.literal("▼")
+                    , button -> AotakeUtils.sendPacketToServer(new OpenDustbinToServer(1))
+                    , Component.translatable(EnumI18nType.MESSAGE, "next_page")
+            );
+            nextButton.active = canNext;
+            dustbinNextButton = nextButton;
+            screen_.aotake$addRenderableWidget(nextButton);
+        }
     }
 
     private static void screenAfterRender(Minecraft client, Screen screen, PoseStack stack, int mouseX, int mouseY) {
-        LocalPlayer player = client.player;
-        mouseHelper.tick(mouseX, mouseY);
-
-        int baseW = 16;
-        int baseH = 16;
-        int baseX = screen.width / 2 - 88;
-        int baseY = screen.height / 2 - 110;
-        int yOffset = 0;
-        // 清空缓存区
-        if (AotakeUtils.hasCommandPermission(player, EnumCommandType.CACHE_CLEAR)) {
-            int w = baseW;
-            int h = baseH;
-            int x = baseX - w - 1;
-            int y = baseY + (h + 1) * (yOffset++);
-            boolean hover = mouseHelper.isHoverInRect(x, y, w, h);
-
-            if (mouseHelper.isLeftPressing() && hover) {
-                x--;
-                y--;
-                w += 2;
-                h += 2;
+        if (ClientConfig.get().vanillaDustbin()) {
+            boolean canPrev = true;
+            boolean canNext = true;
+            if (dustbinPage > 0 && dustbinTotalPage > 0) {
+                canPrev = dustbinPage > 1;
+                canNext = dustbinPage < dustbinTotalPage;
             }
-
-            ResourceLocation texture = TextureUtils.loadCustomTexture(TextureUtils.INTERNAL_THEME_DIR + "clear_cache.png");
-            AbstractGuiUtils.bindTexture(texture);
-            AbstractGuiUtils.blitBlend(stack, x, y, 0, 0, w, h, w, h);
-
-            if (hover) {
-                AbstractGuiUtils.drawPopupMessage(Text.empty()
-                                .setText(Component.translatable(EnumI18nType.MESSAGE, "clear_cache"))
-                                .setStack(stack)
-                        , mouseX
-                        , mouseY
-                        , screen.width
-                        , screen.height
-                );
+            if (dustbinPrevButton != null) {
+                dustbinPrevButton.active = canPrev;
             }
-
-            if (mouseHelper.isLeftPressedInRect(x, y, w, h)) {
-                AotakeUtils.sendPacketToServer(new ClearDustbinToServer(true, true));
+            if (dustbinNextButton != null) {
+                dustbinNextButton.active = canNext;
             }
         }
-        if (AotakeUtils.hasCommandPermission(player, EnumCommandType.DUSTBIN_CLEAR)) {
-            // 清空所有页
+        if (!ClientConfig.get().vanillaDustbin()) {
+            LocalPlayer player = client.player;
+            if (player == null) return;
+            mouseHelper.tick(mouseX, mouseY);
+
+            int baseW = 16;
+            int baseH = 16;
+            int baseX = screen.width / 2 - 88;
+            int baseY = screen.height / 2 - 110;
+            boolean canPrev = true;
+            boolean canNext = true;
+            if (dustbinPage > 0 && dustbinTotalPage > 0) {
+                canPrev = dustbinPage > 1;
+                canNext = dustbinPage < dustbinTotalPage;
+            }
+
+            int yOffset = 0;
+            if (AotakeUtils.hasCommandPermission(player, EnumCommandType.CACHE_CLEAR)) {
+                int w = baseW;
+                int h = baseH;
+                int x = baseX - w - 1;
+                int y = baseY + (h + 1) * (yOffset++);
+                boolean hover = mouseHelper.isHoverInRect(x, y, w, h);
+
+                if (mouseHelper.isLeftPressing() && hover) {
+                    x--;
+                    y--;
+                    w += 2;
+                    h += 2;
+                }
+
+                ResourceLocation texture = TextureUtils.loadCustomTexture(TextureUtils.INTERNAL_THEME_DIR + "clear_cache.png");
+                AbstractGuiUtils.bindTexture(texture);
+                AbstractGuiUtils.blitBlend(stack, x, y, 0, 0, w, h, w, h);
+
+                if (hover) {
+                    AbstractGuiUtils.drawPopupMessage(Text.empty()
+                                    .setText(Component.translatable(EnumI18nType.MESSAGE, "clear_cache"))
+                                    .setStack(stack)
+                            , mouseX
+                            , mouseY
+                            , screen.width
+                            , screen.height
+                    );
+                }
+
+                if (mouseHelper.isLeftPressedInRect(x, y, w, h)) {
+                    AotakeUtils.sendPacketToServer(new ClearDustbinToServer(true, true));
+                }
+            }
+            if (AotakeUtils.hasCommandPermission(player, EnumCommandType.DUSTBIN_CLEAR)) {
+                {
+                    int w = baseW;
+                    int h = baseH;
+                    int x = baseX - w - 1;
+                    int y = baseY + (h + 1) * (yOffset++);
+                    boolean hover = mouseHelper.isHoverInRect(x, y, w, h);
+
+                    if (mouseHelper.isLeftPressing() && hover) {
+                        x--;
+                        y--;
+                        w += 2;
+                        h += 2;
+                    }
+
+                    ResourceLocation texture = TextureUtils.loadCustomTexture(TextureUtils.INTERNAL_THEME_DIR + "clear_all.png");
+                    AbstractGuiUtils.bindTexture(texture);
+                    AbstractGuiUtils.blitBlend(stack, x, y, 0, 0, w, h, w, h);
+
+                    if (hover) {
+                        AbstractGuiUtils.drawPopupMessage(Text.empty()
+                                        .setText(Component.translatable(EnumI18nType.MESSAGE, "clear_all_dustbin"))
+                                        .setStack(stack)
+                                , mouseX
+                                , mouseY
+                                , screen.width
+                                , screen.height
+                        );
+                    }
+
+                    if (mouseHelper.isLeftPressedInRect(x, y, w, h)) {
+                        AotakeUtils.sendPacketToServer(new ClearDustbinToServer(true, false));
+                    }
+                }
+
+                {
+                    int w = baseW;
+                    int h = baseH;
+                    int x = baseX - w - 1;
+                    int y = baseY + (h + 1) * (yOffset++);
+                    boolean hover = mouseHelper.isHoverInRect(x, y, w, h);
+
+                    if (mouseHelper.isLeftPressing() && hover) {
+                        x--;
+                        y--;
+                        w += 2;
+                        h += 2;
+                    }
+
+                    ResourceLocation texture = TextureUtils.loadCustomTexture(TextureUtils.INTERNAL_THEME_DIR + "clear_page.png");
+                    AbstractGuiUtils.bindTexture(texture);
+                    AbstractGuiUtils.blitBlend(stack, x, y, 0, 0, w, h, w, h);
+
+                    if (hover) {
+                        AbstractGuiUtils.drawPopupMessage(Text.empty()
+                                        .setText(Component.translatable(EnumI18nType.MESSAGE, "clear_cur_dustbin"))
+                                        .setStack(stack)
+                                , mouseX
+                                , mouseY
+                                , screen.width
+                                , screen.height
+                        );
+                    }
+
+                    if (mouseHelper.isLeftPressedInRect(x, y, w, h)) {
+                        AotakeUtils.sendPacketToServer(new ClearDustbinToServer(false, false));
+                    }
+                }
+            }
             {
                 int w = baseW;
                 int h = baseH;
@@ -278,13 +447,13 @@ public class ClientEventHandler implements ClientModInitializer {
                     h += 2;
                 }
 
-                ResourceLocation texture = TextureUtils.loadCustomTexture(TextureUtils.INTERNAL_THEME_DIR + "clear_all.png");
+                ResourceLocation texture = TextureUtils.loadCustomTexture(TextureUtils.INTERNAL_THEME_DIR + "refresh.png");
                 AbstractGuiUtils.bindTexture(texture);
                 AbstractGuiUtils.blitBlend(stack, x, y, 0, 0, w, h, w, h);
 
                 if (hover) {
                     AbstractGuiUtils.drawPopupMessage(Text.empty()
-                                    .setText(Component.translatable(EnumI18nType.MESSAGE, "clear_all_dustbin"))
+                                    .setText(Component.translatable(EnumI18nType.MESSAGE, "refresh_page"))
                                     .setStack(stack)
                             , mouseX
                             , mouseY
@@ -294,17 +463,18 @@ public class ClientEventHandler implements ClientModInitializer {
                 }
 
                 if (mouseHelper.isLeftPressedInRect(x, y, w, h)) {
-                    AotakeUtils.sendPacketToServer(new ClearDustbinToServer(true, false));
+                    KeyValue<Double, Double> cursorPos = MouseHelper.getRawCursorPos();
+                    mousePos.setKey(cursorPos.getKey()).setValue(cursorPos.getValue());
+                    mouseRestoreTicks = 20;
+                    AotakeUtils.sendPacketToServer(new OpenDustbinToServer(0));
                 }
             }
-
-            // 清空当前页
             {
                 int w = baseW;
                 int h = baseH;
                 int x = baseX - w - 1;
                 int y = baseY + (h + 1) * (yOffset++);
-                boolean hover = mouseHelper.isHoverInRect(x, y, w, h);
+                boolean hover = canPrev && mouseHelper.isHoverInRect(x, y, w, h);
 
                 if (mouseHelper.isLeftPressing() && hover) {
                     x--;
@@ -313,13 +483,15 @@ public class ClientEventHandler implements ClientModInitializer {
                     h += 2;
                 }
 
-                ResourceLocation texture = TextureUtils.loadCustomTexture(TextureUtils.INTERNAL_THEME_DIR + "clear_page.png");
+                ResourceLocation texture = TextureUtils.loadCustomTexture(TextureUtils.INTERNAL_THEME_DIR + "up.png");
                 AbstractGuiUtils.bindTexture(texture);
+                RenderSystem.setShaderColor(1.0F, 1.0F, 1.0F, canPrev ? 1.0F : 0.5F);
                 AbstractGuiUtils.blitBlend(stack, x, y, 0, 0, w, h, w, h);
+                RenderSystem.setShaderColor(1.0F, 1.0F, 1.0F, 1.0F);
 
                 if (hover) {
                     AbstractGuiUtils.drawPopupMessage(Text.empty()
-                                    .setText(Component.translatable(EnumI18nType.MESSAGE, "clear_cur_dustbin"))
+                                    .setText(Component.translatable(EnumI18nType.MESSAGE, "previous_page"))
                                     .setStack(stack)
                             , mouseX
                             , mouseY
@@ -328,117 +500,50 @@ public class ClientEventHandler implements ClientModInitializer {
                     );
                 }
 
-                if (mouseHelper.isLeftPressedInRect(x, y, w, h)) {
-                    AotakeUtils.sendPacketToServer(new ClearDustbinToServer(false, false));
+                if (canPrev && mouseHelper.isLeftPressedInRect(x, y, w, h)) {
+                    KeyValue<Double, Double> cursorPos = MouseHelper.getRawCursorPos();
+                    mousePos.setKey(cursorPos.getKey()).setValue(cursorPos.getValue());
+                    mouseRestoreTicks = 20;
+                    AotakeUtils.sendPacketToServer(new OpenDustbinToServer(-1));
                 }
             }
-        }
-        // 刷新当前页
-        {
-            int w = baseW;
-            int h = baseH;
-            int x = baseX - w - 1;
-            int y = baseY + (h + 1) * (yOffset++);
-            boolean hover = mouseHelper.isHoverInRect(x, y, w, h);
+            {
+                int w = baseW;
+                int h = baseH;
+                int x = baseX - w - 1;
+                int y = baseY + (h + 1) * (yOffset++);
+                boolean hover = canNext && mouseHelper.isHoverInRect(x, y, w, h);
 
-            if (mouseHelper.isLeftPressing() && hover) {
-                x--;
-                y--;
-                w += 2;
-                h += 2;
-            }
+                if (mouseHelper.isLeftPressing() && hover) {
+                    x--;
+                    y--;
+                    w += 2;
+                    h += 2;
+                }
 
-            ResourceLocation texture = TextureUtils.loadCustomTexture(TextureUtils.INTERNAL_THEME_DIR + "refresh.png");
-            AbstractGuiUtils.bindTexture(texture);
-            AbstractGuiUtils.blitBlend(stack, x, y, 0, 0, w, h, w, h);
+                ResourceLocation texture = TextureUtils.loadCustomTexture(TextureUtils.INTERNAL_THEME_DIR + "down.png");
+                AbstractGuiUtils.bindTexture(texture);
+                RenderSystem.setShaderColor(1.0F, 1.0F, 1.0F, canNext ? 1.0F : 0.5F);
+                AbstractGuiUtils.blitBlend(stack, x, y, 0, 0, w, h, w, h);
+                RenderSystem.setShaderColor(1.0F, 1.0F, 1.0F, 1.0F);
 
-            if (hover) {
-                AbstractGuiUtils.drawPopupMessage(Text.empty()
-                                .setText(Component.translatable(EnumI18nType.MESSAGE, "refresh_page"))
-                                .setStack(stack)
-                        , mouseX
-                        , mouseY
-                        , screen.width
-                        , screen.height
-                );
-            }
+                if (hover) {
+                    AbstractGuiUtils.drawPopupMessage(Text.empty()
+                                    .setText(Component.translatable(EnumI18nType.MESSAGE, "next_page"))
+                                    .setStack(stack)
+                            , mouseX
+                            , mouseY
+                            , screen.width
+                            , screen.height
+                    );
+                }
 
-            if (mouseHelper.isLeftPressedInRect(x, y, w, h)) {
-                KeyValue<Double, Double> cursorPos = MouseHelper.getRawCursorPos();
-                mousePos.setKey(cursorPos.getKey()).setValue(cursorPos.getValue());
-                AotakeUtils.sendPacketToServer(new OpenDustbinToServer(0));
-            }
-        }
-        // 上一页
-        {
-            int w = baseW;
-            int h = baseH;
-            int x = baseX - w - 1;
-            int y = baseY + (h + 1) * (yOffset++);
-            boolean hover = mouseHelper.isHoverInRect(x, y, w, h);
-
-            if (mouseHelper.isLeftPressing() && hover) {
-                x--;
-                y--;
-                w += 2;
-                h += 2;
-            }
-
-            ResourceLocation texture = TextureUtils.loadCustomTexture(TextureUtils.INTERNAL_THEME_DIR + "up.png");
-            AbstractGuiUtils.bindTexture(texture);
-            AbstractGuiUtils.blitBlend(stack, x, y, 0, 0, w, h, w, h);
-
-            if (hover) {
-                AbstractGuiUtils.drawPopupMessage(Text.empty()
-                                .setText(Component.translatable(EnumI18nType.MESSAGE, "previous_page"))
-                                .setStack(stack)
-                        , mouseX
-                        , mouseY
-                        , screen.width
-                        , screen.height
-                );
-            }
-
-            if (mouseHelper.isLeftPressedInRect(x, y, w, h)) {
-                KeyValue<Double, Double> cursorPos = MouseHelper.getRawCursorPos();
-                mousePos.setKey(cursorPos.getKey()).setValue(cursorPos.getValue());
-                AotakeUtils.sendPacketToServer(new OpenDustbinToServer(-1));
-            }
-        }
-        // 下一页
-        {
-            int w = baseW;
-            int h = baseH;
-            int x = baseX - w - 1;
-            int y = baseY + (h + 1) * (yOffset++);
-            boolean hover = mouseHelper.isHoverInRect(x, y, w, h);
-
-            if (mouseHelper.isLeftPressing() && hover) {
-                x--;
-                y--;
-                w += 2;
-                h += 2;
-            }
-
-            ResourceLocation texture = TextureUtils.loadCustomTexture(TextureUtils.INTERNAL_THEME_DIR + "down.png");
-            AbstractGuiUtils.bindTexture(texture);
-            AbstractGuiUtils.blitBlend(stack, x, y, 0, 0, w, h, w, h);
-
-            if (hover) {
-                AbstractGuiUtils.drawPopupMessage(Text.empty()
-                                .setText(Component.translatable(EnumI18nType.MESSAGE, "next_page"))
-                                .setStack(stack)
-                        , mouseX
-                        , mouseY
-                        , screen.width
-                        , screen.height
-                );
-            }
-
-            if (mouseHelper.isLeftPressedInRect(x, y, w, h)) {
-                KeyValue<Double, Double> cursorPos = MouseHelper.getRawCursorPos();
-                mousePos.setKey(cursorPos.getKey()).setValue(cursorPos.getValue());
-                AotakeUtils.sendPacketToServer(new OpenDustbinToServer(1));
+                if (canNext && mouseHelper.isLeftPressedInRect(x, y, w, h)) {
+                    KeyValue<Double, Double> cursorPos = MouseHelper.getRawCursorPos();
+                    mousePos.setKey(cursorPos.getKey()).setValue(cursorPos.getValue());
+                    mouseRestoreTicks = 20;
+                    AotakeUtils.sendPacketToServer(new OpenDustbinToServer(1));
+                }
             }
         }
     }
@@ -454,6 +559,7 @@ public class ClientEventHandler implements ClientModInitializer {
                 lastTime = System.currentTimeMillis();
                 KeyValue<Double, Double> cursorPos = MouseHelper.getRawCursorPos();
                 mousePos.setKey(cursorPos.getKey()).setValue(cursorPos.getValue());
+                mouseRestoreTicks = 20;
                 AotakeUtils.sendPacketToServer(new OpenDustbinToServer(-1));
             }
         } else if (DUSTBIN_NEXT_KEY.isDown()) {
@@ -461,6 +567,7 @@ public class ClientEventHandler implements ClientModInitializer {
                 lastTime = System.currentTimeMillis();
                 KeyValue<Double, Double> cursorPos = MouseHelper.getRawCursorPos();
                 mousePos.setKey(cursorPos.getKey()).setValue(cursorPos.getValue());
+                mouseRestoreTicks = 20;
                 AotakeUtils.sendPacketToServer(new OpenDustbinToServer(1));
             }
         }
