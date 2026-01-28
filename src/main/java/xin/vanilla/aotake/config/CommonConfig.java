@@ -1,13 +1,13 @@
 package xin.vanilla.aotake.config;
 
-import com.google.gson.reflect.TypeToken;
 import net.minecraftforge.common.ForgeConfigSpec;
 import xin.vanilla.aotake.AotakeSweep;
-import xin.vanilla.aotake.util.JsonUtils;
+import xin.vanilla.aotake.util.AotakeUtils;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 public class CommonConfig {
 
@@ -198,7 +198,7 @@ public class CommonConfig {
                 DUSTBIN_PAGE_LIMIT = COMMON_BUILDER
                         .comment("The maximum number of pages in the virtual dustbin."
                                 , "虚拟垃圾箱页数限制。")
-                        .defineInRange("dustbinPageLimit", 1, 0, 16 * 16 * 16 * 16);
+                        .defineInRange("dustbinPageLimit", 2, 0, 16 * 16 * 16 * 16);
 
                 // 缓存区物品限制
                 CACHE_LIMIT = COMMON_BUILDER
@@ -225,33 +225,13 @@ public class CommonConfig {
                                 , "Optional variables when 'success': [entityCount], [itemCount], [recycledItemCount], [recycledEntityCount]"
                                 , "提示内容，留空将使用内置提示。"
                                 , "success时可选变量：[entityCount], [itemCount], [recycledItemCount], [recycledEntityCount]")
-                        .define("sweepWarningContent", JsonUtils.GSON.toJson(new LinkedHashMap<String, String>() {{
-                            put("error", "§r§e香草酱坏掉了，这绝对不是香草酱的错！");
-                            put("fail", "§r§e香草酱什么也没吃到，失落地离开了。");
-                            put("success", "§r§e香草酱吃掉了[itemCount]个物品与[entityCount]个实体，并满意地离开了。");
-                            put("1", "§r§e饥肠辘辘的香草酱将会在§r§e%s§r§e秒后到来！");
-                            put("2", "§r§e饥肠辘辘的香草酱将会在§r§e%s§r§e秒后到来！");
-                            put("3", "§r§e饥肠辘辘的香草酱将会在§r§e%s§r§e秒后到来！");
-                            put("4", "§r§e饥肠辘辘的香草酱将会在§r§e%s§r§e秒后到来！");
-                            put("5", "§r§e饥肠辘辘的香草酱将会在§r§e%s§r§e秒后到来！");
-                            put("10", "§r§e饥肠辘辘的香草酱将会在§r§e%s§r§e秒后到来。");
-                            put("30", "§r§e饥肠辘辘的香草酱将会在§r§e%s§r§e秒后到来。");
-                            put("60", "§r§e饥肠辘辘的香草酱将会在§r§e%s§r§e秒后到来。");
-                        }}, new TypeToken<LinkedHashMap<String, String>>() {
-                        }.getType()));
+                        .define("sweepWarningContent", "");
 
                 // 打扫前提示语音
                 SWEEP_WARNING_VOICE = COMMON_BUILDER
                         .comment("Notification sounds, separated by commas. Leave empty to disable this feature."
                                 , "提示语音，多个逗号分隔，留空禁用该功能。")
-                        .define("sweepWarningVoice", JsonUtils.GSON.toJson(new LinkedHashMap<String, String>() {{
-                            put("error", "aotake_sweep:error");
-                            put("fail", "aotake_sweep:fail");
-                            put("success", "aotake_sweep:success");
-                            put("5", "aotake_sweep:agog");
-                            put("30", "aotake_sweep:hungry");
-                        }}, new TypeToken<LinkedHashMap<String, String>>() {
-                        }.getType()));
+                        .define("sweepWarningVoice", "");
 
                 // 打扫前提示语音音量
                 SWEEP_WARNING_VOICE_VOLUME = COMMON_BUILDER
@@ -442,36 +422,20 @@ public class CommonConfig {
     }
 
 
+    public static void save() {
+        COMMON_CONFIG.save();
+    }
+
     /**
      * 重置服务器配置文件
      */
-    public static void resetConfig() {
-        DUSTBIN_PAGE_LIMIT.set(1);
+    private static void resetConfig() {
+        DUSTBIN_PAGE_LIMIT.set(2);
         CACHE_LIMIT.set(5000);
 
         SWEEP_WHEN_NO_PLAYER.set(false);
-        SWEEP_WARNING_CONTENT.set(JsonUtils.GSON.toJson(new LinkedHashMap<String, String>() {{
-            put("error", "§r§e香草酱坏掉了，这绝对不是香草酱的错！");
-            put("fail", "§r§e香草酱什么也没吃到，失落地离开了。");
-            put("success", "§r§e香草酱吃掉了[itemCount]个物品与[entityCount]个实体，并满意地离开了。");
-            put("1", "§r§e饥肠辘辘的香草酱将会在§r§e%s§r§e秒后到来！");
-            put("2", "§r§e饥肠辘辘的香草酱将会在§r§e%s§r§e秒后到来！");
-            put("3", "§r§e饥肠辘辘的香草酱将会在§r§e%s§r§e秒后到来！");
-            put("4", "§r§e饥肠辘辘的香草酱将会在§r§e%s§r§e秒后到来！");
-            put("5", "§r§e饥肠辘辘的香草酱将会在§r§e%s§r§e秒后到来！");
-            put("10", "§r§e饥肠辘辘的香草酱将会在§r§e%s§r§e秒后到来。");
-            put("30", "§r§e饥肠辘辘的香草酱将会在§r§e%s§r§e秒后到来。");
-            put("60", "§r§e饥肠辘辘的香草酱将会在§r§e%s§r§e秒后到来。");
-        }}, new TypeToken<LinkedHashMap<String, String>>() {
-        }.getType()));
-        SWEEP_WARNING_VOICE.set(JsonUtils.GSON.toJson(new LinkedHashMap<String, String>() {{
-            put("error", "aotake_sweep:error");
-            put("fail", "aotake_sweep:fail");
-            put("success", "aotake_sweep:success");
-            put("5", "aotake_sweep:agog");
-            put("30", "aotake_sweep:hungry");
-        }}, new TypeToken<LinkedHashMap<String, String>>() {
-        }.getType()));
+        SWEEP_WARNING_CONTENT.set("");
+        SWEEP_WARNING_VOICE.set("");
 
         SAFE_BLOCKS.set(new ArrayList<>());
         SAFE_BLOCKS_BELOW.set(new ArrayList<>());
@@ -500,49 +464,64 @@ public class CommonConfig {
         CONCISE_SWEEP.set(false);
         CONCISE_CLEAR_DROP.set(true);
         CONCISE_DELAY_SWEEP.set(false);
+    }
+
+    public static void resetConfigWithMode0() {
+        resetConfig();
 
         COMMON_CONFIG.save();
+
+        Map<String, List<String>> group = WarningConfig.buildDefaultWarnGroup();
+        List<Map<String, List<String>>> groups = new ArrayList<>();
+        groups.add(group);
+        WarningConfig.saveWarningContentGroups(groups);
+        AotakeUtils.clearWarns();
     }
 
     public static void resetConfigWithMode1() {
         resetConfig();
 
-        SWEEP_WARNING_CONTENT.set(JsonUtils.GSON.toJson(new LinkedHashMap<String, String>() {{
-            put("error", "清理过程中发生了异常，请检查服务器异常日志。");
-            put("fail", "§r§e世界很干净。");
-            put("success", "§r§e清理了[itemCount]个物品与[entityCount]个实体。");
-            put("1", "§r§e清理将会在§r§e%s§r§e秒后开始！");
-            put("2", "§r§e清理将会在§r§e%s§r§e秒后开始！");
-            put("3", "§r§e清理将会在§r§e%s§r§e秒后开始！");
-            put("4", "§r§e清理将会在§r§e%s§r§e秒后开始！");
-            put("5", "§r§e清理将会在§r§e%s§r§e秒后开始！");
-            put("10", "§r§e清理将会在§r§e%s§r§e秒后开始。");
-            put("30", "§r§e清理将会在§r§e%s§r§e秒后开始。");
-            put("60", "§r§e清理将会在§r§e%s§r§e秒后开始。");
-        }}, new TypeToken<LinkedHashMap<String, String>>() {
-        }.getType()));
-
         COMMON_CONFIG.save();
+
+        Map<String, List<String>> group = new LinkedHashMap<>();
+        group.put("error", AotakeUtils.singleList("清理过程中发生了异常，请检查服务器异常日志。"));
+        group.put("fail", AotakeUtils.singleList("§r§e世界很干净。"));
+        group.put("success", AotakeUtils.singleList("§r§e清理了[itemCount]个物品与[entityCount]个实体。"));
+        group.put("1", AotakeUtils.singleList("§r§e清理将会在§r§e%s§r§e秒后开始！"));
+        group.put("2", AotakeUtils.singleList("§r§e清理将会在§r§e%s§r§e秒后开始！"));
+        group.put("3", AotakeUtils.singleList("§r§e清理将会在§r§e%s§r§e秒后开始！"));
+        group.put("4", AotakeUtils.singleList("§r§e清理将会在§r§e%s§r§e秒后开始！"));
+        group.put("5", AotakeUtils.singleList("§r§e清理将会在§r§e%s§r§e秒后开始！"));
+        group.put("10", AotakeUtils.singleList("§r§e清理将会在§r§e%s§r§e秒后开始。"));
+        group.put("30", AotakeUtils.singleList("§r§e清理将会在§r§e%s§r§e秒后开始。"));
+        group.put("60", AotakeUtils.singleList("§r§e清理将会在§r§e%s§r§e秒后开始。"));
+        List<Map<String, List<String>>> groups = new ArrayList<>();
+        groups.add(group);
+        WarningConfig.saveWarningContentGroups(groups);
+        AotakeUtils.clearWarns();
     }
 
     public static void resetConfigWithMode2() {
         resetConfig();
 
-        SWEEP_WARNING_CONTENT.set(JsonUtils.GSON.toJson(new LinkedHashMap<String, String>() {{
-            put("error", "An error occurred while cleaning up, check the server logs for details.");
-            put("fail", "§r§eCleaned up nothing.");
-            put("success", "§r§eCleaned up [itemCount] items and [entityCount] entities.");
-            put("1", "§r§eThe cleanup will start in §r§e%s§r§e seconds!");
-            put("2", "§r§eThe cleanup will start in §r§e%s§r§e seconds!");
-            put("3", "§r§eThe cleanup will start in §r§e%s§r§e seconds!");
-            put("4", "§r§eThe cleanup will start in §r§e%s§r§e seconds!");
-            put("5", "§r§eThe cleanup will start in §r§e%s§r§e seconds!");
-            put("10", "§r§eThe cleanup will start in §r§e%s§r§e seconds.");
-            put("30", "§r§eThe cleanup will start in §r§e%s§r§e seconds.");
-            put("60", "§r§eThe cleanup will start in §r§e%s§r§e seconds.");
-        }}, new TypeToken<LinkedHashMap<String, String>>() {
-        }.getType()));
-
         COMMON_CONFIG.save();
+
+        Map<String, List<String>> group = new LinkedHashMap<>();
+        group.put("error", AotakeUtils.singleList("An error occurred while cleaning up, check the server logs for details."));
+        group.put("fail", AotakeUtils.singleList("§r§eCleaned up nothing."));
+        group.put("success", AotakeUtils.singleList("§r§eCleaned up [itemCount] items and [entityCount] entities."));
+        group.put("1", AotakeUtils.singleList("§r§eThe cleanup will start in §r§e%s§r§e seconds!"));
+        group.put("2", AotakeUtils.singleList("§r§eThe cleanup will start in §r§e%s§r§e seconds!"));
+        group.put("3", AotakeUtils.singleList("§r§eThe cleanup will start in §r§e%s§r§e seconds!"));
+        group.put("4", AotakeUtils.singleList("§r§eThe cleanup will start in §r§e%s§r§e seconds!"));
+        group.put("5", AotakeUtils.singleList("§r§eThe cleanup will start in §r§e%s§r§e seconds!"));
+        group.put("10", AotakeUtils.singleList("§r§eThe cleanup will start in §r§e%s§r§e seconds."));
+        group.put("30", AotakeUtils.singleList("§r§eThe cleanup will start in §r§e%s§r§e seconds."));
+        group.put("60", AotakeUtils.singleList("§r§eThe cleanup will start in §r§e%s§r§e seconds."));
+        List<Map<String, List<String>>> groups = new ArrayList<>();
+        groups.add(group);
+        WarningConfig.saveWarningContentGroups(groups);
+        AotakeUtils.clearWarns();
     }
+
 }

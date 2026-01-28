@@ -1,6 +1,5 @@
 package xin.vanilla.aotake.util;
 
-import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 import lombok.NonNull;
 import org.apache.logging.log4j.LogManager;
@@ -16,7 +15,6 @@ import java.util.*;
 public class I18nUtils {
     private static final Map<String, JsonObject> LANGUAGES = new HashMap<>();
     private static final String DEFAULT_LANGUAGE = "en_us";
-    private static final Gson GSON = new Gson();
     private static final Logger LOGGER = LogManager.getLogger();
     private static final String LANG_PATH = String.format("/assets/%s/lang/", AotakeSweep.MODID);
     private static final String LANG_FILE_PATH = String.format("%s%%s.json", LANG_PATH);
@@ -46,20 +44,6 @@ public class I18nUtils {
     /**
      * 获取翻译文本
      */
-    public static String getTranslationClient(@NonNull EnumI18nType type, @NonNull String key) {
-        return getTranslation(getKey(type, key), AotakeUtils.getClientLanguage());
-    }
-
-    /**
-     * 获取翻译文本
-     */
-    public static String getTranslation(@NonNull EnumI18nType type, @NonNull String key, @NonNull String languageCode) {
-        return getTranslation(getKey(type, key), languageCode);
-    }
-
-    /**
-     * 获取翻译文本
-     */
     public static String getTranslation(@NonNull String key, @NonNull String languageCode) {
         languageCode = languageCode.toLowerCase(Locale.ROOT);
         JsonObject language = LANGUAGES.getOrDefault(languageCode, LANGUAGES.get(DEFAULT_LANGUAGE));
@@ -78,10 +62,6 @@ public class I18nUtils {
 
     public static Component enabled(@NonNull String languageCode, boolean enabled) {
         return Component.translatable(languageCode, EnumI18nType.WORD, enabled ? "enabled" : "disabled");
-    }
-
-    public static Component enabled(boolean enabled) {
-        return Component.translatable(EnumI18nType.WORD, enabled ? "enabled" : "disabled");
     }
 
     /**

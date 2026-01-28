@@ -5,9 +5,13 @@
   "compatibilityLevel": "JAVA_8",
   "refmap": "aotake_sweep.refmap.json",
   "mixins": [
+    "ServerPlayerAccessor",
+    "ServerPlayerMixin"
   ],
   "client": [
-    "MultiPlayerGameModeMixin"
+    "MultiPlayerGameModeMixin",
+    "ContainerScreenMixin",
+    "AbstractContainerScreenAccessor"
   ],
   "injectors": {
     "defaultRequire": 1
