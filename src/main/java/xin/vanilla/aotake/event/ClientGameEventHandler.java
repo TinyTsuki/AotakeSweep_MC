@@ -11,7 +11,6 @@ import net.minecraftforge.client.event.ClientPlayerNetworkEvent;
 import net.minecraftforge.client.event.GuiScreenEvent;
 import net.minecraftforge.client.event.RenderGameOverlayEvent;
 import net.minecraftforge.event.TickEvent;
-import net.minecraftforge.event.entity.player.PlayerContainerEvent;
 import net.minecraftforge.event.entity.player.PlayerEvent;
 import net.minecraftforge.event.entity.player.PlayerInteractEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
@@ -27,7 +26,7 @@ import xin.vanilla.aotake.enums.EnumI18nType;
 import xin.vanilla.aotake.enums.EnumProgressBarType;
 import xin.vanilla.aotake.enums.EnumRotationCenter;
 import xin.vanilla.aotake.network.packet.ClearDustbinToServer;
-import xin.vanilla.aotake.network.packet.ClientLoadedToServer;
+import xin.vanilla.aotake.network.packet.ModLoadedToBoth;
 import xin.vanilla.aotake.network.packet.OpenDustbinToServer;
 import xin.vanilla.aotake.screen.component.Text;
 import xin.vanilla.aotake.util.*;
@@ -136,16 +135,6 @@ public class ClientGameEventHandler {
     @SubscribeEvent
     public static void onRightEntity(PlayerInteractEvent.EntityInteractSpecific event) {
         EventHandlerProxy.onRightEntity(event);
-    }
-
-    @SubscribeEvent
-    public static void onContainerOpen(PlayerContainerEvent.Open event) {
-        EventHandlerProxy.onContainerOpen(event);
-    }
-
-    @SubscribeEvent
-    public static void onContainerClose(PlayerContainerEvent.Close event) {
-        EventHandlerProxy.onContainerClose(event);
     }
 
     /**
@@ -550,7 +539,7 @@ public class ClientGameEventHandler {
     public static void onPlayerLoggedIn(ClientPlayerNetworkEvent.LoggedInEvent event) {
         LOGGER.debug("Client: Player logged in.");
         // 通知服务器客户端已加载mod
-        AotakeUtils.sendPacketToServer(new ClientLoadedToServer());
+        AotakeUtils.sendPacketToServer(new ModLoadedToBoth());
     }
 
     private static int getLeafX() {

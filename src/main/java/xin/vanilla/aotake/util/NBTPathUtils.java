@@ -1,6 +1,9 @@
 package xin.vanilla.aotake.util;
 
-import net.minecraft.nbt.*;
+import net.minecraft.nbt.CollectionNBT;
+import net.minecraft.nbt.CompoundNBT;
+import net.minecraft.nbt.INBT;
+import net.minecraft.nbt.StringNBT;
 
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -45,46 +48,6 @@ public class NBTPathUtils {
     public static String getString(INBT root, String path, String defaultVal) {
         INBT tag = getTagByPath(root, path);
         return (tag instanceof StringNBT) ? tag.getAsString() : defaultVal;
-    }
-
-    public static boolean getBoolean(INBT root, String path, boolean defaultVal) {
-        INBT tag = getTagByPath(root, path);
-        if (tag instanceof ByteNBT) {
-            return ((ByteNBT) tag).getAsByte() != 0;
-        } else if (tag instanceof IntNBT) {
-            return ((IntNBT) tag).getAsInt() != 0;
-        }
-        return defaultVal;
-    }
-
-    public static int getByte(INBT root, String path, int defaultVal) {
-        INBT tag = getTagByPath(root, path);
-        return (tag instanceof NumberNBT) ? ((NumberNBT) tag).getAsByte() : defaultVal;
-    }
-
-    public static int getShort(INBT root, String path, int defaultVal) {
-        INBT tag = getTagByPath(root, path);
-        return (tag instanceof NumberNBT) ? ((NumberNBT) tag).getAsShort() : defaultVal;
-    }
-
-    public static int getInt(INBT root, String path, int defaultVal) {
-        INBT tag = getTagByPath(root, path);
-        return (tag instanceof NumberNBT) ? ((NumberNBT) tag).getAsInt() : defaultVal;
-    }
-
-    public static float getFloat(INBT root, String path, float defaultVal) {
-        INBT tag = getTagByPath(root, path);
-        return (tag instanceof NumberNBT) ? ((NumberNBT) tag).getAsFloat() : defaultVal;
-    }
-
-    public static long getLong(INBT root, String path, long defaultVal) {
-        INBT tag = getTagByPath(root, path);
-        return (tag instanceof NumberNBT) ? ((NumberNBT) tag).getAsLong() : defaultVal;
-    }
-
-    public static double getDouble(INBT root, String path, double defaultVal) {
-        INBT tag = getTagByPath(root, path);
-        return (tag instanceof NumberNBT) ? ((NumberNBT) tag).getAsDouble() : defaultVal;
     }
 
     public static boolean has(INBT root, String path) {

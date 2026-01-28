@@ -30,6 +30,7 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
+@SuppressWarnings("resource")
 public class EntitySweeper {
     private static final Logger LOGGER = LogManager.getLogger();
 
@@ -180,7 +181,14 @@ public class EntitySweeper {
                 CompoundNBT tag = itemToRecycle.getOrCreateTag();
                 CompoundNBT aotake = new CompoundNBT();
                 aotake.putBoolean("byPlayer", false);
-                aotake.put("entity", entity.serializeNBT());
+                if (entity.isPassenger()) {
+                    entity.stopRiding();
+                }
+                CompoundNBT entityTag = new CompoundNBT();
+                entity.save(entityTag);
+                AotakeUtils.sanitizeCapturedEntityTag(entityTag);
+                aotake.put("entity", entityTag);
+                aotake.putString("entityId", AotakeUtils.getEntityTypeRegistryName(entity));
                 tag.put(AotakeSweep.MODID, aotake);
 
                 result.setRecycledEntityCount(1);

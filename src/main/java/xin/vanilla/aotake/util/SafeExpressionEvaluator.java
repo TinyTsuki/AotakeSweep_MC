@@ -8,27 +8,34 @@ import java.util.*;
 import java.util.regex.Pattern;
 
 /**
- * 安全表达式求值器（编译一次 -> 重复求值）
- * <p>
- * 新增：支持当一侧为类名字符串（例如 "java.lang.Double"）时，将其解析为 Class，并用于 :> / <: 操作。
+ * 安全表达式求值器
  */
 public class SafeExpressionEvaluator {
     private static final Logger LOGGER = LogManager.getLogger();
 
     // 允许的数学函数
     private static final Set<String> MATH_FUNCTIONS = new HashSet<>(Arrays.asList(
-            "sqrt", "pow", "log", "sin", "cos", "abs", "random"
+            // 基本运算
+            "sqrt", "pow", "abs", "max", "min",
+            // 对数函数
+            "log", "log10", "exp",
+            // 三角函数
+            "sin", "cos", "tan", "asin", "acos", "atan", "atan2",
+            // 双曲函数
+            "sinh", "cosh", "tanh",
+            // 取整函数
+            "ceil", "floor", "round",
+            // 其他
+            "signum", "toRadians", "toDegrees", "random"
     ));
 
     // 允许的安全方法
-    private static final Set<String> SAFE_METHODS = new HashSet<>(Arrays.asList(
+    private static final Set<String> SAFE_METHODS = new HashSet<>(Collections.singletonList(
             "contains"
     ));
 
     // 编译后的 AST 根节点
     private final Node root;
-
-    private final Map<String, Object> boundVars = new HashMap<>();
 
     public SafeExpressionEvaluator(String expression) {
         Tokenizer tok = new Tokenizer(expression);
@@ -38,68 +45,13 @@ public class SafeExpressionEvaluator {
 
     // region public
 
-    public SafeExpressionEvaluator clearVars() {
-        boundVars.clear();
-        return this;
-    }
-
-    public SafeExpressionEvaluator setVar(String name, Object value) {
-        boundVars.put(name, value);
-        return this;
-    }
-
-    public SafeExpressionEvaluator putVar(String name, Object value) {
-        return setVar(name, value);
-    }
-
-    public boolean hasVar(String name) {
-        return boundVars.containsKey(name);
-    }
-
-    public double evaluate() {
-        return evaluate(true);
-    }
-
-    public double evaluate(boolean throwException) {
-        try {
-            return evaluate(boundVars);
-        } catch (Throwable e) {
-            if (throwException) {
-                throw e;
-            } else {
-                LOGGER.error("Failed to evaluate expression", e);
-            }
-            return 0.0;
-        }
-    }
-
-    public double evaluate(Map<String, Object> vars) {
-        return evaluate(vars, true);
-    }
-
-    public double evaluate(Map<String, Object> vars, boolean throwException) {
-        try {
-            Map<String, Object> merged = new HashMap<>(boundVars);
-            if (vars != null) merged.putAll(vars);
-            Object val = root.evaluate(merged);
-            return toDouble(val);
-        } catch (Throwable e) {
-            if (throwException) {
-                throw e;
-            } else {
-                LOGGER.error("Failed to evaluate expression", e);
-            }
-            return 0.0;
-        }
-    }
-
     public boolean evaluateBoolean(Map<String, Object> vars) {
         return evaluateBoolean(vars, true);
     }
 
     public boolean evaluateBoolean(Map<String, Object> vars, boolean throwException) {
         try {
-            Map<String, Object> merged = new HashMap<>(boundVars);
+            Map<String, Object> merged = new HashMap<>();
             if (vars != null) merged.putAll(vars);
             Object val = root.evaluate(merged);
             return toBoolean(val);
@@ -119,6 +71,72 @@ public class SafeExpressionEvaluator {
     private static boolean isNumericString(String s) {
         if (s == null) return false;
         return Pattern.matches("^-?\\d+(\\.\\d+)?$", s.trim());
+    }
+
+    /**
+     * 是否为整数类型
+     */
+    private static boolean isIntegerType(Object o) {
+        if (o == null) return false;
+        if (o instanceof Byte || o instanceof Short || o instanceof Integer || o instanceof Long) {
+            return true;
+        }
+        if (o instanceof Float || o instanceof Double) {
+            return false;
+        }
+        if (o instanceof Number) {
+            double d = ((Number) o).doubleValue();
+            return d == Math.floor(d) && !Double.isInfinite(d);
+        }
+        if (o instanceof String) {
+            String s = ((String) o).trim();
+            return Pattern.matches("^-?\\d+$", s);
+        }
+        return false;
+    }
+
+    /**
+     * 获取整数值
+     */
+    private static long toLong(Object o) {
+        if (o == null) return 0L;
+        if (o instanceof Byte) return ((Byte) o).longValue();
+        if (o instanceof Short) return ((Short) o).longValue();
+        if (o instanceof Integer) return ((Integer) o).longValue();
+        if (o instanceof Long) return (Long) o;
+        if (o instanceof Number) {
+            double d = ((Number) o).doubleValue();
+            return (long) d;
+        }
+        if (o instanceof String) {
+            String s = ((String) o).trim();
+            if (Pattern.matches("^-?\\d+$", s)) {
+                return Long.parseLong(s);
+            }
+        }
+        return 0L;
+    }
+
+    /**
+     * 解析数字字符串
+     */
+    private static Number parseNumber(String s) {
+        if (s == null) return 0;
+        s = s.trim();
+        if (s.contains(".")) {
+            return Double.parseDouble(s);
+        } else {
+            try {
+                long l = Long.parseLong(s);
+                if (l >= Integer.MIN_VALUE && l <= Integer.MAX_VALUE) {
+                    return (int) l;
+                } else {
+                    return l;
+                }
+            } catch (NumberFormatException e) {
+                return Double.parseDouble(s);
+            }
+        }
     }
 
     private static double toDouble(Object o) {
@@ -150,7 +168,7 @@ public class SafeExpressionEvaluator {
         IDENT, NUMBER, STRING,
         TRUE, FALSE, NULL,
         LPAREN, RPAREN, COMMA,
-        PLUS, MINUS, MUL, DIV, POW,
+        PLUS, MINUS, MUL, DIV, MOD, POW,
         AND, OR, NOT,
         EQ, NEQ, LT, GT, LE, GE,
         ARROW, LARROW,
@@ -253,6 +271,9 @@ public class SafeExpressionEvaluator {
                 case '/':
                     pos++;
                     return new Token(TokenType.DIV, "/");
+                case '%':
+                    pos++;
+                    return new Token(TokenType.MOD, "%");
                 case '^':
                     pos++;
                     return new Token(TokenType.POW, "^");
@@ -425,7 +446,7 @@ public class SafeExpressionEvaluator {
 
         private Node parseMul() {
             Node left = parseUnary();
-            while (tok.peek().type == TokenType.MUL || tok.peek().type == TokenType.DIV) {
+            while (tok.peek().type == TokenType.MUL || tok.peek().type == TokenType.DIV || tok.peek().type == TokenType.MOD) {
                 Token op = tok.next();
                 Node right = parseUnary();
                 left = new BinaryNode(op.text, left, right);
@@ -462,7 +483,7 @@ public class SafeExpressionEvaluator {
             switch (t.type) {
                 case NUMBER:
                     tok.next();
-                    return new ValueNode(Double.parseDouble(t.text));
+                    return new ValueNode(parseNumber(t.text));
                 case STRING:
                     tok.next();
                     return new ValueNode(t.text);
@@ -632,27 +653,98 @@ public class SafeExpressionEvaluator {
                 else throw new RuntimeException("Function " + name + " requires numeric args, got " + v);
             }
             switch (name) {
+                // 基本运算
                 case "sqrt":
+                    if (evalArgs.size() != 1) throw new RuntimeException("sqrt(x) requires 1 argument");
                     return Math.sqrt(evalArgs.get(0));
                 case "pow":
+                    if (evalArgs.size() != 2) throw new RuntimeException("pow(x,y) requires 2 arguments");
                     return Math.pow(evalArgs.get(0), evalArgs.get(1));
+                case "abs":
+                    if (evalArgs.size() != 1) throw new RuntimeException("abs(x) requires 1 argument");
+                    return Math.abs(evalArgs.get(0));
+                case "max":
+                    if (evalArgs.size() != 2) throw new RuntimeException("max(x,y) requires 2 arguments");
+                    return Math.max(evalArgs.get(0), evalArgs.get(1));
+                case "min":
+                    if (evalArgs.size() != 2) throw new RuntimeException("min(x,y) requires 2 arguments");
+                    return Math.min(evalArgs.get(0), evalArgs.get(1));
+                // 对数函数
                 case "log":
+                    if (evalArgs.size() != 1) throw new RuntimeException("log(x) requires 1 argument");
                     return Math.log(evalArgs.get(0));
+                case "log10":
+                    if (evalArgs.size() != 1) throw new RuntimeException("log10(x) requires 1 argument");
+                    return Math.log10(evalArgs.get(0));
+                case "exp":
+                    if (evalArgs.size() != 1) throw new RuntimeException("exp(x) requires 1 argument");
+                    return Math.exp(evalArgs.get(0));
+                // 三角函数
                 case "sin":
+                    if (evalArgs.size() != 1) throw new RuntimeException("sin(x) requires 1 argument");
                     return Math.sin(evalArgs.get(0));
                 case "cos":
+                    if (evalArgs.size() != 1) throw new RuntimeException("cos(x) requires 1 argument");
                     return Math.cos(evalArgs.get(0));
-                case "abs":
-                    return Math.abs(evalArgs.get(0));
+                case "tan":
+                    if (evalArgs.size() != 1) throw new RuntimeException("tan(x) requires 1 argument");
+                    return Math.tan(evalArgs.get(0));
+                case "asin":
+                    if (evalArgs.size() != 1) throw new RuntimeException("asin(x) requires 1 argument");
+                    return Math.asin(evalArgs.get(0));
+                case "acos":
+                    if (evalArgs.size() != 1) throw new RuntimeException("acos(x) requires 1 argument");
+                    return Math.acos(evalArgs.get(0));
+                case "atan":
+                    if (evalArgs.size() != 1) throw new RuntimeException("atan(x) requires 1 argument");
+                    return Math.atan(evalArgs.get(0));
+                case "atan2":
+                    if (evalArgs.size() != 2) throw new RuntimeException("atan2(y,x) requires 2 arguments");
+                    return Math.atan2(evalArgs.get(0), evalArgs.get(1));
+                // 双曲函数
+                case "sinh":
+                    if (evalArgs.size() != 1) throw new RuntimeException("sinh(x) requires 1 argument");
+                    return Math.sinh(evalArgs.get(0));
+                case "cosh":
+                    if (evalArgs.size() != 1) throw new RuntimeException("cosh(x) requires 1 argument");
+                    return Math.cosh(evalArgs.get(0));
+                case "tanh":
+                    if (evalArgs.size() != 1) throw new RuntimeException("tanh(x) requires 1 argument");
+                    return Math.tanh(evalArgs.get(0));
+                // 取整函数
+                case "ceil":
+                    if (evalArgs.size() != 1) throw new RuntimeException("ceil(x) requires 1 argument");
+                    return Math.ceil(evalArgs.get(0));
+                case "floor":
+                    if (evalArgs.size() != 1) throw new RuntimeException("floor(x) requires 1 argument");
+                    return Math.floor(evalArgs.get(0));
+                case "round":
+                    if (evalArgs.size() != 1) throw new RuntimeException("round(x) requires 1 argument");
+                    return (double) Math.round(evalArgs.get(0));
+                // 其他
+                case "signum":
+                    if (evalArgs.size() != 1) throw new RuntimeException("signum(x) requires 1 argument");
+                    return Math.signum(evalArgs.get(0));
+                case "toRadians":
+                    if (evalArgs.size() != 1) throw new RuntimeException("toRadians(x) requires 1 argument");
+                    return Math.toRadians(evalArgs.get(0));
+                case "toDegrees":
+                    if (evalArgs.size() != 1) throw new RuntimeException("toDegrees(x) requires 1 argument");
+                    return Math.toDegrees(evalArgs.get(0));
                 case "random": {
-                    if (evalArgs.size() != 2) throw new RuntimeException("random(start,end) need 2 args");
-                    double min = evalArgs.get(0), max = evalArgs.get(1);
-                    if (min > max) {
-                        double t = min;
-                        min = max;
-                        max = t;
+                    if (evalArgs.isEmpty()) {
+                        return Math.random();
+                    } else if (evalArgs.size() == 2) {
+                        double min = evalArgs.get(0), max = evalArgs.get(1);
+                        if (min > max) {
+                            double t = min;
+                            min = max;
+                            max = t;
+                        }
+                        return min + Math.random() * (max - min);
+                    } else {
+                        throw new RuntimeException("random() or random(start,end) requires 0 or 2 arguments");
                     }
-                    return min + Math.random() * (max - min);
                 }
                 default:
                     throw new RuntimeException("Unsupported function: " + name);
@@ -810,19 +902,89 @@ public class SafeExpressionEvaluator {
                     // a <: b  ==  b :> a
                     return handleArrowOp(rvObj, lvObj);
                 }
-            } else if ("+".equals(op) || "-".equals(op) || "*".equals(op) || "/".equals(op) || "^".equals(op)) {
-                double a = toDouble(lvObj), b = toDouble(rvObj);
-                switch (op) {
-                    case "+":
-                        return a + b;
-                    case "-":
-                        return a - b;
-                    case "*":
-                        return a * b;
-                    case "/":
-                        return a / b;
-                    case "^":
-                        return Math.pow(a, b);
+            } else if ("+".equals(op) || "-".equals(op) || "*".equals(op) || "/".equals(op) || "%".equals(op) || "^".equals(op)) {
+                // 检查操作数是否为整数类型
+                boolean leftIsInt = isIntegerType(lvObj);
+                boolean rightIsInt = isIntegerType(rvObj);
+                boolean bothInt = leftIsInt && rightIsInt;
+
+                if (bothInt) {
+                    // 进行整数运算
+                    long a = toLong(lvObj);
+                    long b = toLong(rvObj);
+
+                    switch (op) {
+                        case "+": {
+                            long result = a + b;
+                            if (result >= Integer.MIN_VALUE && result <= Integer.MAX_VALUE) {
+                                return (int) result;
+                            }
+                            return result;
+                        }
+                        case "-": {
+                            long result = a - b;
+                            if (result >= Integer.MIN_VALUE && result <= Integer.MAX_VALUE) {
+                                return (int) result;
+                            }
+                            return result;
+                        }
+                        case "*": {
+                            long result = a * b;
+                            if (result >= Integer.MIN_VALUE && result <= Integer.MAX_VALUE) {
+                                return (int) result;
+                            }
+                            return result;
+                        }
+                        case "/": {
+                            if (b == 0) {
+                                throw new RuntimeException("Division by zero");
+                            }
+                            // 整数除法
+                            long result = a / b;
+                            if (result >= Integer.MIN_VALUE && result <= Integer.MAX_VALUE) {
+                                return (int) result;
+                            }
+                            return result;
+                        }
+                        case "%": {
+                            if (b == 0) {
+                                throw new RuntimeException("Modulo by zero");
+                            }
+                            long result = a % b;
+                            if (result >= Integer.MIN_VALUE && result <= Integer.MAX_VALUE) {
+                                return (int) result;
+                            }
+                            return result;
+                        }
+                        case "^": {
+                            return Math.pow(a, b);
+                        }
+                    }
+                } else {
+                    // 进行浮点数运算
+                    double a = toDouble(lvObj);
+                    double b = toDouble(rvObj);
+
+                    switch (op) {
+                        case "+":
+                            return a + b;
+                        case "-":
+                            return a - b;
+                        case "*":
+                            return a * b;
+                        case "/":
+                            if (b == 0.0) {
+                                throw new RuntimeException("Division by zero");
+                            }
+                            return a / b;
+                        case "%":
+                            if (b == 0.0) {
+                                throw new RuntimeException("Modulo by zero");
+                            }
+                            return a % b;
+                        case "^":
+                            return Math.pow(a, b);
+                    }
                 }
             }
 
@@ -862,33 +1024,4 @@ public class SafeExpressionEvaluator {
         return null;
     }
 
-    public static void main(String[] args) {
-        Map<String, Object> vars = new HashMap<>();
-        vars.put("team", "Red");
-        vars.put("playerTeam", "Blue");
-        vars.put("name", "Alex");
-        vars.put("playerX", 100.0);
-        vars.put("playerY", null);
-        vars.put("b", true);
-        vars.put("clazz", Number.class);
-        vars.put("clazzString", "java.lang.Double");
-        List<Number> list = new ArrayList<>();
-        list.add(100.0);
-        vars.put("list", list);
-
-        System.out.println("1: " + new SafeExpressionEvaluator("team == 'Red' && playerTeam != 'Red'").evaluateBoolean(vars));
-        System.out.println("2: " + new SafeExpressionEvaluator("team == 'Red' || playerTeam == 'Red'").evaluateBoolean(vars));
-        System.out.println("3: " + new SafeExpressionEvaluator("((name == 'Alex' && team == 'Red') || playerTeam == 'Red')").evaluateBoolean(vars));
-        System.out.println("4: " + new SafeExpressionEvaluator("playerX == null && playerY != null").evaluateBoolean(vars));
-        System.out.println("5: " + new SafeExpressionEvaluator("!(playerX == null && playerY != null)").evaluateBoolean(vars));
-        System.out.println("6: " + new SafeExpressionEvaluator("!b").evaluateBoolean(vars));
-        System.out.println("7: " + new SafeExpressionEvaluator("!false").evaluateBoolean(vars));
-        System.out.println("8: " + new SafeExpressionEvaluator("true").evaluateBoolean(vars));
-        System.out.println("9: " + new SafeExpressionEvaluator("'100' == 100 && '123' > 100").evaluateBoolean(vars));
-        System.out.println("10: " + new SafeExpressionEvaluator("clazzString :> clazz").evaluateBoolean(vars));
-        System.out.println("11: " + new SafeExpressionEvaluator("clazzString <: clazz").evaluateBoolean(vars));
-        System.out.println("12: " + new SafeExpressionEvaluator("list.contains(playerX)").evaluateBoolean(vars));
-        System.out.println("13: " + new SafeExpressionEvaluator("clazzString == 'java.lang.Double'").evaluateBoolean(vars));
-        System.out.println("14: " + new SafeExpressionEvaluator("clazzString == java.lang.Double").evaluateBoolean(vars));
-    }
 }

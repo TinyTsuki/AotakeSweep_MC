@@ -10,7 +10,7 @@ import xin.vanilla.aotake.enums.EnumOperationType;
 import java.util.*;
 import java.util.stream.Collectors;
 
-@SuppressWarnings("unused")
+
 public class VirtualPermissionManager {
 
     private static final Map<String, Set<EnumCommandType>> OP_MAP = deserialize();
@@ -54,14 +54,6 @@ public class VirtualPermissionManager {
         } else {
             return getExistingPermissions(player.getStringUUID());
         }
-    }
-
-    public static String buildPermissionsString(EnumCommandType... types) {
-        return Arrays.stream(types)
-                .filter(EnumCommandType::isOp)
-                .sorted(Comparator.comparingInt(EnumCommandType::getSort))
-                .map(EnumCommandType::name)
-                .collect(Collectors.joining(","));
     }
 
     public static String buildPermissionsString(Set<EnumCommandType> types) {

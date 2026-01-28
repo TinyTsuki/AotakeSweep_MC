@@ -4,9 +4,14 @@
   "package": "xin.vanilla.aotake.mixin",
   "compatibilityLevel": "JAVA_8",
   "refmap": "aotake_sweep.refmap.json",
-  "mixins": [],
+  "mixins": [
+    "ServerPlayerAccessor",
+    "ServerPlayerMixin"
+  ],
   "client": [
-    "MinecraftClientMixin"
+    "MinecraftClientMixin",
+    "ChestScreenMixin",
+    "ContainerScreenAccessor"
   ],
   "injectors": {
     "defaultRequire": 1

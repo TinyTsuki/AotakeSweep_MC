@@ -16,6 +16,7 @@ import javax.annotation.Nonnull;
 import java.util.concurrent.PriorityBlockingQueue;
 import java.util.concurrent.atomic.AtomicLong;
 
+@SuppressWarnings("resource")
 public class AotakeScheduler {
 
     private static final Logger LOGGER = LogManager.getLogger();

@@ -43,6 +43,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
+@SuppressWarnings("resource")
 public class AotakeCommand {
     private static final Logger LOGGER = LogManager.getLogger();
 

@@ -198,7 +198,7 @@ public class CommonConfig {
                 DUSTBIN_PAGE_LIMIT = COMMON_BUILDER
                         .comment("The maximum number of pages in the virtual dustbin."
                                 , "虚拟垃圾箱页数限制。")
-                        .defineInRange("dustbinPageLimit", 1, 0, 16 * 16 * 16 * 16);
+                        .defineInRange("dustbinPageLimit", 2, 0, 16 * 16 * 16 * 16);
 
                 // 缓存区物品限制
                 CACHE_LIMIT = COMMON_BUILDER
@@ -442,11 +442,15 @@ public class CommonConfig {
     }
 
 
+    public static void save() {
+        COMMON_CONFIG.save();
+    }
+
     /**
      * 重置服务器配置文件
      */
     public static void resetConfig() {
-        DUSTBIN_PAGE_LIMIT.set(1);
+        DUSTBIN_PAGE_LIMIT.set(2);
         CACHE_LIMIT.set(5000);
 
         SWEEP_WHEN_NO_PLAYER.set(false);

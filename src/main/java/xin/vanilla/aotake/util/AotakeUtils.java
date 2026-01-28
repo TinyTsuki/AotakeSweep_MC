@@ -56,16 +56,17 @@ import xin.vanilla.aotake.data.WorldCoordinate;
 import xin.vanilla.aotake.data.player.PlayerSweepData;
 import xin.vanilla.aotake.data.world.WorldTrashData;
 import xin.vanilla.aotake.enums.*;
+import xin.vanilla.aotake.mixin.ServerPlayerAccessor;
 import xin.vanilla.aotake.network.ModNetworkHandler;
 
 import javax.annotation.Nullable;
 import java.io.File;
-import java.io.InputStream;
-import java.io.OutputStream;
 import java.util.*;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
+
+@SuppressWarnings("resource")
 public class AotakeUtils {
     private static final Logger LOGGER = LogManager.getLogger();
 
@@ -319,30 +320,11 @@ public class AotakeUtils {
     /**
      * 广播消息
      *
-     * @param player  发送者
-     * @param message 消息
-     */
-    public static void broadcastMessage(ServerPlayerEntity player, Component message) {
-        player.server.getPlayerList().broadcastMessage(new TranslationTextComponent("chat.type.announcement", player.getDisplayName(), message.toChatComponent()), ChatType.SYSTEM, Util.NIL_UUID);
-    }
-
-    /**
-     * 广播消息
-     *
      * @param server  发送者
      * @param message 消息
      */
     public static void broadcastMessage(MinecraftServer server, Component message) {
         server.getPlayerList().broadcastMessage(new TranslationTextComponent("chat.type.announcement", "Server", message.toChatComponent()), ChatType.SYSTEM, Util.NIL_UUID);
-    }
-
-    /**
-     * 发送消息至所有玩家
-     */
-    public static void sendMessageToAll(Component message) {
-        for (ServerPlayerEntity player : AotakeSweep.getServerInstance().key().getPlayerList().getPlayers()) {
-            sendMessage(player, message);
-        }
     }
 
     /**
@@ -353,16 +335,6 @@ public class AotakeUtils {
      */
     public static void sendMessage(PlayerEntity player, Component message) {
         player.sendMessage(message.toChatComponent(AotakeUtils.getPlayerLanguage(player)), player.getUUID());
-    }
-
-    /**
-     * 发送消息
-     *
-     * @param player  玩家
-     * @param message 消息
-     */
-    public static void sendMessage(PlayerEntity player, String message) {
-        player.sendMessage(Component.literal(message).toChatComponent(), player.getUUID());
     }
 
     /**
@@ -394,15 +366,6 @@ public class AotakeUtils {
             source.sendSuccess(Component.translatable(key, args).setLanguageCode(ServerConfig.DEFAULT_LANGUAGE.get()).toChatComponent(), false);
         } else {
             source.sendFailure(Component.translatable(key, args).setLanguageCode(ServerConfig.DEFAULT_LANGUAGE.get()).toChatComponent());
-        }
-    }
-
-    /**
-     * 发送操作栏消息至所有玩家
-     */
-    public static void sendActionBarMessageToAll(Component message) {
-        for (ServerPlayerEntity player : AotakeSweep.getServerInstance().key().getPlayerList().getPlayers()) {
-            sendActionBarMessage(player, message);
         }
     }
 
@@ -472,7 +435,7 @@ public class AotakeUtils {
     }
 
     public static String getServerPlayerLanguage(ServerPlayerEntity player) {
-        return player.getLanguage();
+        return PlayerLanguageManager.get(player);
     }
 
     /**
@@ -482,7 +445,7 @@ public class AotakeUtils {
      * @param targetPlayer   目标玩家
      */
     public static void clonePlayerLanguage(ServerPlayerEntity originalPlayer, ServerPlayerEntity targetPlayer) {
-        FieldUtils.setPrivateFieldValue(ServerPlayerEntity.class, targetPlayer, FieldUtils.getPlayerLanguageFieldName(originalPlayer), getServerPlayerLanguage(originalPlayer));
+        ((ServerPlayerAccessor) targetPlayer).language(((ServerPlayerAccessor) originalPlayer).language());
     }
 
     public static String getClientLanguage() {
@@ -818,6 +781,17 @@ public class AotakeUtils {
         return result;
     }
 
+    public static CompoundNBT sanitizeCapturedEntityTag(CompoundNBT entityTag) {
+        if (entityTag == null) return new CompoundNBT();
+        entityTag.remove("Passengers");
+        entityTag.remove("Vehicle");
+        entityTag.remove("RootVehicle");
+        entityTag.remove("UUID");
+        entityTag.remove("UUIDMost");
+        entityTag.remove("UUIDLeast");
+        return entityTag;
+    }
+
     private static final Map<String, String> warns = new HashMap<>();
     private static final Map<String, String> voices = new HashMap<>();
 
@@ -1091,15 +1065,6 @@ public class AotakeUtils {
 
     // region nbt文件读写
 
-    public static CompoundNBT readCompressed(InputStream stream) {
-        try {
-            return CompressedStreamTools.readCompressed(stream);
-        } catch (Exception e) {
-            LOGGER.error("Failed to read compressed stream", e);
-            return new CompoundNBT();
-        }
-    }
-
     public static CompoundNBT readCompressed(File file) {
         try {
             return CompressedStreamTools.readCompressed(file);
@@ -1120,17 +1085,6 @@ public class AotakeUtils {
         return result;
     }
 
-    public static boolean writeCompressed(CompoundNBT tag, OutputStream stream) {
-        boolean result = false;
-        try {
-            CompressedStreamTools.writeCompressed(tag, stream);
-            result = true;
-        } catch (Exception e) {
-            LOGGER.error("Failed to write compressed stream", e);
-        }
-        return result;
-    }
-
     // endregion nbt文件读写
 
 
@@ -1141,20 +1095,6 @@ public class AotakeUtils {
      */
     public static ServerWorld getWorld(RegistryKey<World> dimension) {
         return AotakeSweep.getServerInstance().key().getLevel(dimension);
-    }
-
-    /**
-     * 序列化方块默认状态
-     */
-    public static String serializeBlockState(Block block) {
-        return serializeBlockState(block.defaultBlockState());
-    }
-
-    /**
-     * 序列化方块状态
-     */
-    public static String serializeBlockState(BlockState blockState) {
-        return BlockStateParser.serialize(blockState);
     }
 
     /**
@@ -1242,7 +1182,7 @@ public class AotakeUtils {
         EntityType<?> entityType = entity.getType();
         ResourceLocation location = ForgeRegistries.ENTITIES.getKey(entityType);
         if (location == null) location = entityType.getRegistryName();
-        return location == null ? AotakeSweep.emptyResource().toString() : location.toString();
+        return location == null ? AotakeSweep.emptyIdentifier().toString() : location.toString();
     }
 
     public static String getItemCustomNameJson(@NonNull ItemStack itemStack) {
@@ -1250,19 +1190,6 @@ public class AotakeUtils {
         CompoundNBT compoundnbt = itemStack.getTagElement("display");
         if (compoundnbt != null && compoundnbt.contains("Name", 8)) {
             result = compoundnbt.getString("Name");
-        }
-        return result;
-    }
-
-    public static ITextComponent getItemCustomName(@NonNull ItemStack itemStack) {
-        ITextComponent result = null;
-        String nameJson = getItemCustomNameJson(itemStack);
-        if (StringUtils.isNotNullOrEmpty(nameJson)) {
-            try {
-                result = ITextComponent.Serializer.fromJson(nameJson);
-            } catch (Exception e) {
-                LOGGER.error("Invalid unsafe item name: {}", nameJson, e);
-            }
         }
         return result;
     }
@@ -1281,10 +1208,6 @@ public class AotakeUtils {
 
     public static String getPlayerUUIDString(@NonNull PlayerEntity player) {
         return player.getUUID().toString();
-    }
-
-    public static String getPlayerName(@NonNull PlayerEntity player) {
-        return player.getName().getString();
     }
 
     public static ServerPlayerEntity getPlayerByUUID(String uuid) {
