@@ -141,6 +141,8 @@ public class ClientConfig {
 
     // endregion 进度条设置
 
+    public static final ForgeConfigSpec.BooleanValue VANILLA_DUSTBIN;
+
     static {
         ForgeConfigSpec.Builder CLIENT_BUILDER = new ForgeConfigSpec.Builder();
 
@@ -436,8 +438,23 @@ public class ClientConfig {
 
         }
 
+        {
+            CLIENT_BUILDER.comment("Dustbin", "垃圾箱").push("dustbin");
+
+            VANILLA_DUSTBIN = CLIENT_BUILDER
+                    .comment("Whether to use the vanilla UI for dustbin screen."
+                            , "垃圾箱页面是否使用原版UI。")
+                    .define("vanillaDustbin", false);
+
+            CLIENT_BUILDER.pop();
+        }
+
         CLIENT_BUILDER.pop();
 
         CLIENT_CONFIG = CLIENT_BUILDER.build();
+    }
+
+    public static void save() {
+        CLIENT_CONFIG.save();
     }
 }

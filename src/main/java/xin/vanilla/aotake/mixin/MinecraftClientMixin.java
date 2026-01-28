@@ -13,7 +13,7 @@ public class MinecraftClientMixin {
             method = {"allowsMultiplayer"},
             cancellable = true
     )
-    public void multiplayer(CallbackInfoReturnable<Boolean> callbackInfo) {
+    public void aotake$interceptAllowsMultiplayer(CallbackInfoReturnable<Boolean> callbackInfo) {
         callbackInfo.setReturnValue(true);
         callbackInfo.cancel();
     }
@@ -23,7 +23,7 @@ public class MinecraftClientMixin {
             method = {"allowsChat"},
             cancellable = true
     )
-    public void chat(CallbackInfoReturnable<Boolean> callbackInfo) {
+    public void aotake$interceptAllowsChat(CallbackInfoReturnable<Boolean> callbackInfo) {
         callbackInfo.setReturnValue(true);
         callbackInfo.cancel();
     }

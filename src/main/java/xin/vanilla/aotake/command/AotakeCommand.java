@@ -25,6 +25,7 @@ import net.minecraft.world.server.ServerWorld;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import xin.vanilla.aotake.AotakeSweep;
+import xin.vanilla.aotake.config.ClientConfig;
 import xin.vanilla.aotake.config.CommonConfig;
 import xin.vanilla.aotake.config.CustomConfig;
 import xin.vanilla.aotake.config.ServerConfig;
@@ -43,6 +44,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
+@SuppressWarnings("resource")
 public class AotakeCommand {
     private static final Logger LOGGER = LogManager.getLogger();
 
@@ -241,7 +243,7 @@ public class AotakeCommand {
                         source.sendSuccess(Component.translatable(language, EnumI18nType.MESSAGE, "player_virtual_op", target.getDisplayName().getString(), permissions).toChatComponent(), true);
                     }
                     // 更新权限信息
-                    source.getServer().getPlayerList().sendPlayerPermissionLevel(target);
+                    AotakeUtils.refreshPermission(target);
                     for (ServerPlayerEntity player : source.getServer().getPlayerList().getPlayers()) {
                         if (AotakeSweep.getCustomConfigStatus().contains(AotakeUtils.getPlayerUUIDString(player))) {
                             AotakeUtils.sendPacketToPlayer(new CustomConfigSyncToClient(), player);
@@ -838,8 +840,8 @@ public class AotakeCommand {
                                                 String lang = CommandUtils.getLanguage(source);
                                                 switch (mode) {
                                                     case 0:
-                                                        ServerConfig.resetConfig();
-                                                        CommonConfig.resetConfig();
+                                                        ServerConfig.resetConfigWithMode0();
+                                                        CommonConfig.resetConfigWithMode0();
                                                         break;
                                                     case 1:
                                                         ServerConfig.resetConfigWithMode1();
@@ -858,10 +860,7 @@ public class AotakeCommand {
 
                                                 // 更新权限信息
                                                 source.getServer().getPlayerList().getPlayers()
-                                                        .forEach(player -> source.getServer()
-                                                                .getPlayerList()
-                                                                .sendPlayerPermissionLevel(player)
-                                                        );
+                                                        .forEach(AotakeUtils::refreshPermission);
                                                 return 1;
                                             })
                                     )
@@ -921,6 +920,30 @@ public class AotakeCommand {
                                             )
                                     )
                             )// endregion 修改common配置
+                            // region 修改client配置
+                            .then(Commands.literal("client")
+                                    .requires(source -> {
+                                        try {
+                                            return AotakeSweep.getCustomConfigStatus().contains(AotakeUtils.getPlayerUUIDString(source.getPlayerOrException()));
+                                        } catch (CommandSyntaxException e) {
+                                            return false;
+                                        }
+                                    })
+                                    .then(Commands.argument("configKey", StringArgumentType.word())
+                                            .suggests((context, builder) -> {
+                                                String input = CommandUtils.getStringEmpty(context, "configKey");
+                                                CommandUtils.configKeySuggestion(ClientConfig.class, builder, input);
+                                                return builder.buildFuture();
+                                            })
+                                            .then(Commands.argument("configValue", StringArgumentType.word())
+                                                    .suggests((context, builder) -> {
+                                                        String configKey = StringArgumentType.getString(context, "configKey");
+                                                        CommandUtils.configValueSuggestion(ClientConfig.class, builder, configKey);
+                                                        return builder.buildFuture();
+                                                    })
+                                            )
+                                    )
+                            )// endregion 修改client配置
                             // region 玩家设置
                             // 显示打扫结果信息
                             .then(Commands.literal("player")

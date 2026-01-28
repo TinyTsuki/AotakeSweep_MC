@@ -25,10 +25,6 @@ public class CollectionUtils {
         return !isNullOrEmpty(array);
     }
 
-    public static boolean isNullOrEmpty(int[] array) {
-        return array == null || array.length == 0;
-    }
-
     public static boolean isNullOrEmpty(Map<?, ?> map) {
         return map == null || map.isEmpty();
     }
@@ -88,62 +84,11 @@ public class CollectionUtils {
         return getNthElement(elements, index);
     }
 
-    /**
-     * 从给定的集合中取第一个元素
-     */
-    public static <T> T getFirst(Collection<T> elements) {
-        if (elements == null || elements.isEmpty()) {
-            return null;
-        }
-
-        return getNthElement(elements, 0);
-    }
-
-    /**
-     * 从给定的集合中取第一个元素
-     */
-    public static <T> T getFirst(T[] elements) {
-        if (elements == null || elements.length == 0) {
-            return null;
-        }
-
-        return elements[0];
-    }
-
-    /**
-     * 从给定的集合中取最后一个元素
-     */
-    public static <T> T getLast(Collection<T> elements) {
-        if (elements == null || elements.isEmpty()) {
-            return null;
-        }
-
-        return getNthElement(elements, elements.size() - 1);
-    }
-
-    /**
-     * 从给定的集合中取最后一个元素
-     */
-    public static <T> T getLast(T[] elements) {
-        if (elements == null || elements.length == 0) {
-            return null;
-        }
-
-        return elements[elements.length - 1];
-    }
-
     public static <T> T getOrDefault(Collection<T> elements, int index, T defaultValue) {
         if (elements == null || elements.isEmpty() || index >= elements.size()) {
             return defaultValue;
         }
         return getNthElement(elements, index);
-    }
-
-    public static <T> T getOrDefault(T[] elements, int index, T defaultValue) {
-        if (elements == null || elements.length == 0 || index >= elements.length) {
-            return defaultValue;
-        }
-        return elements[index];
     }
 
     /**
@@ -164,16 +109,6 @@ public class CollectionUtils {
         }
         // This should never happen due to the size check in getRandomElement.
         throw new IllegalStateException("Could not find element at the specified index.");
-    }
-
-    /**
-     * 将集合根据指定数量分成多个子集合
-     *
-     * @param source 源集合
-     * @param size   每个子集合的大小
-     */
-    public static <T> List<List<T>> splitToCollections(Collection<T> source, int size) {
-        return splitToCollections(source, size, 0);
     }
 
     /**
@@ -210,89 +145,6 @@ public class CollectionUtils {
                     return list.subList(start, end);
                 })
                 .collect(Collectors.toList());
-    }
-
-    /**
-     * 将集合根据指定数量分成多个子数组
-     */
-    public static <T> List<T[]> splitToArrays(Collection<T> source, int size) {
-        return splitToArrays(source, size, 0);
-    }
-
-    /**
-     * 将集合根据指定数量分成多个子数组
-     * <p>
-     * 若根据 size 拆分后的组数超过 limit，则忽略 size，
-     * 改为根据 limit 均匀拆分为 limit 组。
-     *
-     * @param source 源集合
-     * @param size   每个子集合的大小
-     * @param limit  最大子集合数量，0 为不限制
-     */
-    @SuppressWarnings("unchecked")
-    public static <T> List<T[]> splitToArrays(Collection<T> source, int size, int limit) {
-        if (source == null || source.isEmpty() || size <= 0) {
-            return Collections.emptyList();
-        }
-
-        List<T> list = (source instanceof List) ? (List<T>) source : new ArrayList<>(source);
-        int total = list.size();
-
-        T[] full = list.toArray((T[]) new Object[0]);
-
-        int chunkCount = (total + size - 1) / size;
-
-        if (limit <= 0 || chunkCount <= limit) {
-            return IntStream.range(0, chunkCount)
-                    .mapToObj(i -> Arrays.copyOfRange(full, i * size, Math.min(total, (i + 1) * size)))
-                    .collect(Collectors.toList());
-        } else {
-            return IntStream.range(0, limit)
-                    .mapToObj(i -> Arrays.copyOfRange(full, total * i / limit, total * (i + 1) / limit))
-                    .collect(Collectors.toList());
-        }
-    }
-
-    /**
-     * 将数组根据指定数量分成多个子集合
-     */
-    public static <T> List<List<T>> splitToCollections(T[] array, int size) {
-        return splitToCollections(array, size, 0);
-    }
-
-    /**
-     * 将数组根据指定数量分成多个子集合
-     * <p>
-     * 若根据 size 拆分后的组数超过 limit，则忽略 size，
-     * 改为根据 limit 均匀拆分为 limit 组。
-     *
-     * @param array 源数组
-     * @param size  每个子集合的大小
-     * @param limit 最大子集合数量，0 为不限制
-     */
-    public static <T> List<List<T>> splitToCollections(T[] array, int size, int limit) {
-        return splitToCollections(Arrays.asList(array), size, limit);
-    }
-
-    /**
-     * 将数组根据指定数量分成多个子数组
-     */
-    public static <T> List<T[]> splitToArrays(T[] array, int size) {
-        return splitToArrays(array, size, 0);
-    }
-
-    /**
-     * 将数组根据指定数量分成多个子数组
-     * <p>
-     * 若根据 size 拆分后的组数超过 limit，则忽略 size，
-     * 改为根据 limit 均匀拆分为 limit 组。
-     *
-     * @param array 源数组
-     * @param size  每个子集合的大小
-     * @param limit 最大子集合数量，0 为不限制
-     */
-    public static <T> List<T[]> splitToArrays(T[] array, int size, int limit) {
-        return splitToArrays(Arrays.asList(array), size, limit);
     }
 
 }
