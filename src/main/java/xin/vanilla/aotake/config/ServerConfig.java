@@ -217,6 +217,11 @@ public class ServerConfig {
      */
     public static final ForgeConfigSpec.IntValue PERMISSION_DELAY_SWEEP;
 
+    /**
+     * 使用物品捕获玩家的权限等级
+     */
+    public static final ForgeConfigSpec.IntValue PERMISSION_CATCH_PLAYER;
+
     // endregion 指令权限
 
 
@@ -269,6 +274,7 @@ public class ServerConfig {
                         .defineList("entityList", new ArrayList<>() {{
                                     add(ForgeRegistries.ENTITY_TYPES.getKey(EntityType.ARROW).toString());
                                     add(ForgeRegistries.ENTITY_TYPES.getKey(EntityType.SPECTRAL_ARROW).toString());
+                                    add(ForgeRegistries.ENTITY_TYPES.getKey(EntityType.EXPERIENCE_ORB).toString());
                                     add("tick, clazz, itemClazz, createProcessing = [CreateData.Processing.Time]" +
                                             " -> " +
                                             "tick >= 5 && clazz :> itemClazz && (createProcessing <= 0 || createProcessing == null)");
@@ -339,7 +345,7 @@ public class ServerConfig {
                                 , "区块内实体过多检测模式："
                                 , "DEFAULT：区块内所有实体超过阈值触发清理；"
                                 , "ADVANCED：区块内某个类型实体超过阈值触发清理。")
-                        .define("chunkCheckMode", EnumChunkCheckMode.DEFAULT.name(), EnumChunkCheckMode::isValid);
+                        .define("chunkCheckMode", EnumChunkCheckMode.ADVANCED.name(), EnumChunkCheckMode::isValid);
 
                 // 区块检测实体名单
                 CHUNK_CHECK_ENTITY_LIST = SERVER_BUILDER
@@ -567,6 +573,11 @@ public class ServerConfig {
                             , "延迟本次清理指令所需的权限等级。")
                     .defineInRange("permissionDelaySweep", 1, 0, 4);
 
+            PERMISSION_CATCH_PLAYER = SERVER_BUILDER
+                    .comment("The permission level required to catch player."
+                            , "延迟本次清理指令所需的权限等级。")
+                    .defineInRange("permissionCatchPlayer", 3, 0, 4);
+
             SERVER_BUILDER.pop();
         }
 
@@ -575,10 +586,14 @@ public class ServerConfig {
     }
 
 
+    public static void save() {
+        SERVER_CONFIG.save();
+    }
+
     /**
      * 重置服务器配置文件
      */
-    public static void resetConfig() {
+    private static void resetConfig() {
         HELP_HEADER.set("-----==== Aotake Sweep Help (%d/%d) ====-----");
         HELP_INFO_NUM_PER_PAGE.set(5);
         DEFAULT_LANGUAGE.set("en_us");
@@ -588,6 +603,7 @@ public class ServerConfig {
         ENTITY_LIST.set(new ArrayList<>() {{
             add(ForgeRegistries.ENTITY_TYPES.getKey(EntityType.ARROW).toString());
             add(ForgeRegistries.ENTITY_TYPES.getKey(EntityType.SPECTRAL_ARROW).toString());
+            add(ForgeRegistries.ENTITY_TYPES.getKey(EntityType.EXPERIENCE_ORB).toString());
             add("tick, clazz, itemClazz, createProcessing = CreateData.Processing.Time" +
                     " -> " +
                     "tick >= 5 && clazz :> itemClazz && (createProcessing <= 0 || createProcessing == null)");
@@ -600,7 +616,7 @@ public class ServerConfig {
         CHUNK_CHECK_LIMIT.set(250);
         CHUNK_CHECK_RETAIN.set(0.5);
         CHUNK_CHECK_NOTICE.set(true);
-        CHUNK_CHECK_MODE.set(EnumChunkCheckMode.DEFAULT.name());
+        CHUNK_CHECK_MODE.set(EnumChunkCheckMode.ADVANCED.name());
         CHUNK_CHECK_ENTITY_LIST.set(new ArrayList<>() {{
             add("customName, hasOwner, createProcessing = CreateData.Processing.Time" +
                     " -> " +
@@ -639,6 +655,11 @@ public class ServerConfig {
         PERMISSION_SWEEP.set(0);
         PERMISSION_CLEAR_DROP.set(1);
         PERMISSION_DELAY_SWEEP.set(1);
+        PERMISSION_CATCH_PLAYER.set(3);
+    }
+
+    public static void resetConfigWithMode0() {
+        resetConfig();
 
         SERVER_CONFIG.save();
     }

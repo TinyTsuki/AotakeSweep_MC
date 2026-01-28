@@ -10,6 +10,8 @@ import lombok.Setter;
 import lombok.experimental.Accessors;
 import net.minecraft.network.chat.*;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.fml.loading.FMLEnvironment;
 import xin.vanilla.aotake.config.ServerConfig;
 import xin.vanilla.aotake.enums.EnumI18nType;
 
@@ -164,7 +166,19 @@ public class Component implements Cloneable, Serializable {
      * 获取语言代码
      */
     public @NonNull String getLanguageCode() {
-        return this.languageCode == null ? ServerConfig.DEFAULT_LANGUAGE.get() : this.languageCode;
+        String language = this.languageCode;
+        if (StringUtils.isNullOrEmpty(language)) {
+            try {
+                language = ServerConfig.DEFAULT_LANGUAGE.get();
+            } catch (Exception e) {
+                if (FMLEnvironment.dist == Dist.CLIENT) {
+                    language = AotakeUtils.getClientLanguage();
+                } else {
+                    language = "en_us";
+                }
+            }
+        }
+        return language;
     }
 
     /**
