@@ -182,7 +182,7 @@ public class WorldCoordinate implements Serializable, Cloneable {
         coordinate.z = tag.getDouble("z");
         coordinate.yaw = tag.getDouble("yaw");
         coordinate.pitch = tag.getDouble("pitch");
-        coordinate.dimension = ResourceKey.create(Registries.DIMENSION, AotakeSweep.parseResource(tag.getString("dimension")));
+        coordinate.dimension = ResourceKey.create(Registries.DIMENSION, AotakeSweep.parseIdentifier(tag.getString("dimension")));
         return coordinate;
     }
 
@@ -212,7 +212,7 @@ public class WorldCoordinate implements Serializable, Cloneable {
         coordinate.yaw = JsonUtils.getDouble(json, "yaw", 0);
         coordinate.pitch = JsonUtils.getDouble(json, "pitch", 0);
         String dimensionStr = JsonUtils.getString(json, "dimension", Level.OVERWORLD.location().toString());
-        coordinate.dimension = ResourceKey.create(Registries.DIMENSION, AotakeSweep.parseResource(dimensionStr));
+        coordinate.dimension = ResourceKey.create(Registries.DIMENSION, AotakeSweep.parseIdentifier(dimensionStr));
         return coordinate;
     }
 
@@ -288,12 +288,12 @@ public class WorldCoordinate implements Serializable, Cloneable {
         try {
             String[] split = str.split(",");
             if (split.length == 5) {
-                ResourceKey<Level> dimension = ResourceKey.create(Registries.DIMENSION, AotakeSweep.parseResource(split[0].trim()));
+                ResourceKey<Level> dimension = ResourceKey.create(Registries.DIMENSION, AotakeSweep.parseIdentifier(split[0].trim()));
                 Direction direction = valuOfDirection(split[4].trim());
                 result = new WorldCoordinate(StringUtils.toDouble(split[1]), StringUtils.toDouble(split[2]), StringUtils.toDouble(split[3]), dimension).setDirection(direction);
             } else if (split.length == 4) {
                 if (split[0].contains(":")) {
-                    ResourceKey<Level> dimension = ResourceKey.create(Registries.DIMENSION, AotakeSweep.parseResource(split[0].trim()));
+                    ResourceKey<Level> dimension = ResourceKey.create(Registries.DIMENSION, AotakeSweep.parseIdentifier(split[0].trim()));
                     result = new WorldCoordinate(StringUtils.toDouble(split[1]), StringUtils.toDouble(split[2]), StringUtils.toDouble(split[3]), dimension);
                 } else if (Arrays.stream(Direction.values()).anyMatch(dir -> dir.getName().equals(split[3].trim()))) {
                     Direction direction = valuOfDirection(split[3].trim());
