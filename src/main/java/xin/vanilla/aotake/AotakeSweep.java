@@ -14,7 +14,6 @@ import net.minecraftforge.fml.event.config.ModConfigEvent;
 import net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent;
 import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent;
 import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
-import net.minecraftforge.fmlserverevents.FMLServerStartedEvent;
 import net.minecraftforge.fmlserverevents.FMLServerStartingEvent;
 import net.minecraftforge.fmlserverevents.FMLServerStoppingEvent;
 import org.apache.logging.log4j.LogManager;
@@ -28,13 +27,15 @@ import xin.vanilla.aotake.data.KeyValue;
 import xin.vanilla.aotake.data.player.PlayerSweepData;
 import xin.vanilla.aotake.event.ClientModEventHandler;
 import xin.vanilla.aotake.network.ModNetworkHandler;
-import xin.vanilla.aotake.network.SplitPacket;
 import xin.vanilla.aotake.util.AotakeScheduler;
 import xin.vanilla.aotake.util.CommandUtils;
 import xin.vanilla.aotake.util.EntityFilter;
 import xin.vanilla.aotake.util.EntitySweeper;
 
-import java.util.*;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Random;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 @Mod(AotakeSweep.MODID)
@@ -58,12 +59,6 @@ public class AotakeSweep {
      */
     @Getter
     private static final Set<String> customConfigStatus = new HashSet<>();
-
-    /**
-     * 分片网络包缓存
-     */
-    @Getter
-    private static final Map<String, List<? extends SplitPacket>> packetCache = new ConcurrentHashMap<>();
 
     /**
      * 玩家当前浏览的垃圾箱页数
@@ -95,8 +90,6 @@ public class AotakeSweep {
     @Getter
     private static final EntityFilter entityFilter = new EntityFilter();
 
-    // public static final Item JUNK_BALL = new JunkBall();
-
     public AotakeSweep() {
 
         // 注册网络通道
@@ -104,7 +97,6 @@ public class AotakeSweep {
 
         // 注册服务器启动和关闭事件
         MinecraftForge.EVENT_BUS.addListener(this::onServerStarting);
-        MinecraftForge.EVENT_BUS.addListener(this::onServerStarted);
         MinecraftForge.EVENT_BUS.addListener(this::onServerStopping);
 
         // 注册当前实例到事件总线
@@ -146,9 +138,6 @@ public class AotakeSweep {
         AotakeSweep.serverInstance.setKey(event.getServer()).setValue(true);
     }
 
-    private void onServerStarted(FMLServerStartedEvent event) {
-    }
-
     private void onServerStopping(FMLServerStoppingEvent event) {
         AotakeSweep.serverInstance.setValue(false);
         PlayerSweepData.clear();
@@ -172,19 +161,19 @@ public class AotakeSweep {
 
     // region 资源ID
 
-    public static ResourceLocation emptyResource() {
-        return createResource("", "");
+    public static ResourceLocation emptyIdentifier() {
+        return createIdentifier("", "");
     }
 
-    public static ResourceLocation createResource(String path) {
-        return createResource(AotakeSweep.MODID, path);
+    public static ResourceLocation createIdentifier(String path) {
+        return createIdentifier(AotakeSweep.MODID, path);
     }
 
-    public static ResourceLocation createResource(String namespace, String path) {
+    public static ResourceLocation createIdentifier(String namespace, String path) {
         return new ResourceLocation(namespace, path);
     }
 
-    public static ResourceLocation parseResource(String location) {
+    public static ResourceLocation parseIdentifier(String location) {
         return ResourceLocation.tryParse(location);
     }
 
@@ -192,6 +181,7 @@ public class AotakeSweep {
 
 
     // region 外部方法
+    @SuppressWarnings("unused")
     public void reloadCustomConfig() {
         CustomConfig.loadCustomConfig(false);
     }

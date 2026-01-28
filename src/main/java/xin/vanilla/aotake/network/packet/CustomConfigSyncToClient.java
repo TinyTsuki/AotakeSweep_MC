@@ -1,7 +1,6 @@
 package xin.vanilla.aotake.network.packet;
 
 import com.google.gson.JsonObject;
-import lombok.Getter;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraftforge.fmllegacy.network.NetworkEvent;
 import xin.vanilla.aotake.config.CustomConfig;
@@ -10,19 +9,14 @@ import xin.vanilla.aotake.util.VirtualPermissionManager;
 
 import java.util.function.Supplier;
 
-@Getter
-public class CustomConfigSyncToClient {
-    /**
-     * 自定义配置
-     */
-    private final JsonObject customConfig;
+public record CustomConfigSyncToClient(JsonObject customConfig) {
 
     public CustomConfigSyncToClient() {
-        this.customConfig = CustomConfig.getCustomConfig();
+        this(CustomConfig.getCustomConfig());
     }
 
     public CustomConfigSyncToClient(FriendlyByteBuf buf) {
-        this.customConfig = JsonUtils.GSON.fromJson(buf.readUtf(), JsonObject.class);
+        this(JsonUtils.GSON.fromJson(buf.readUtf(), JsonObject.class));
     }
 
     public void toBytes(FriendlyByteBuf buf) {
@@ -31,7 +25,7 @@ public class CustomConfigSyncToClient {
 
     public static void handle(CustomConfigSyncToClient packet, Supplier<NetworkEvent.Context> ctx) {
         ctx.get().enqueueWork(() -> {
-            CustomConfig.setClientConfig(packet.getCustomConfig());
+            CustomConfig.setClientConfig(packet.customConfig());
             VirtualPermissionManager.reloadClient();
         });
         ctx.get().setPacketHandled(true);

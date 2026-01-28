@@ -9,19 +9,14 @@ import xin.vanilla.aotake.util.AotakeUtils;
 
 import java.util.function.Supplier;
 
-public class OpenDustbinToServer {
-    private final int offset;
-
-    public OpenDustbinToServer(int offset) {
-        this.offset = offset;
-    }
+public record OpenDustbinToServer(int offset) {
 
     public OpenDustbinToServer(FriendlyByteBuf buf) {
-        this.offset = buf.readInt();
+        this(buf.readInt());
     }
 
     public void toBytes(FriendlyByteBuf buf) {
-        buf.writeInt(this.offset);
+        buf.writeInt(this.offset());
     }
 
     public static void handle(OpenDustbinToServer packet, Supplier<NetworkEvent.Context> ctx) {
@@ -30,7 +25,7 @@ public class OpenDustbinToServer {
             if (player != null) {
                 String playerUUID = AotakeUtils.getPlayerUUIDString(player);
                 Integer page = AotakeSweep.getPlayerDustbinPage().getOrDefault(playerUUID, 1);
-                int i = page + packet.offset;
+                int i = page + packet.offset();
                 if (i > 0 && i <= AotakeUtils.getDustbinTotalPage()) {
                     player.closeContainer();
                 }
