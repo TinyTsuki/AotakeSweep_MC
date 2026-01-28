@@ -14,6 +14,7 @@ import net.minecraft.network.chat.HoverEvent;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.player.Player;
 import net.minecraftforge.common.ForgeConfigSpec;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -277,6 +278,37 @@ public class CommandUtils {
         Component component = Component.translatable(EnumI18nType.MESSAGE, "config_value_set_success", configKey, parsed);
         source.sendSuccess(() -> component.toChatComponent(lang), true);
 
+        return 1;
+    }
+
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    public static int executeModifyConfigClient(Class<?> configClazz, Player player, String configKey, String configValue) {
+        ForgeConfigSpec.ConfigValue<?> cv = findConfigValueByKey(configClazz, configKey);
+        if (cv == null) {
+            AotakeUtils.sendMessage(player, Component.translatableClient(EnumI18nType.MESSAGE, "config_key_absent", configKey));
+            return 0;
+        }
+
+        Class<?> type = getConfigValueType(cv);
+        Object parsed;
+        try {
+            parsed = parseStringToType(configValue, type);
+        } catch (Exception e) {
+            LOGGER.error(e);
+            AotakeUtils.sendMessage(player, Component.translatableClient(EnumI18nType.MESSAGE, "config_value_parse_error", configValue, e.getMessage()));
+            return 0;
+        }
+
+        if (validateConfigValueWithSpec(cv, parsed)) {
+            ((ForgeConfigSpec.ConfigValue) cv).set(parsed);
+        } else {
+            AotakeUtils.sendMessage(player, Component.translatableClient(EnumI18nType.MESSAGE, "config_value_set_error", configKey, configValue));
+            return 0;
+        }
+
+        tryApplyServerConfigBake(configClazz);
+
+        AotakeUtils.sendMessage(player, Component.translatableClient(EnumI18nType.MESSAGE, "config_value_set_success", configKey, parsed));
         return 1;
     }
 
