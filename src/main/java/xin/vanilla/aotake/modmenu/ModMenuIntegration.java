@@ -38,7 +38,7 @@ public class ModMenuIntegration implements ModMenuApi {
                             if (this.minecraft != null) {
                                 this.minecraft.setScreen(AutoConfig.getConfigScreen(ServerConfig.class, this).get());
                             }
-                        }
+                        }, null
                 ));
 
                 // Client Config Button
@@ -52,7 +52,7 @@ public class ModMenuIntegration implements ModMenuApi {
                             if (this.minecraft != null) {
                                 this.minecraft.setScreen(AutoConfig.getConfigScreen(ClientConfig.class, this).get());
                             }
-                        }
+                        }, null
                 ));
 
                 // Back Button
@@ -62,7 +62,7 @@ public class ModMenuIntegration implements ModMenuApi {
                         buttonWidth,
                         buttonHeight,
                         Component.translatable("config.aotake_sweep.config.back"),
-                        button -> this.onClose()
+                        button -> this.onClose(), null
                 ));
             }
 

@@ -1,11 +1,9 @@
 package xin.vanilla.aotake.util;
 
-import com.google.gson.reflect.TypeToken;
 import com.mojang.brigadier.StringReader;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import lombok.NonNull;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
-import net.fabricmc.fabric.api.networking.v1.PacketByteBufs;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import net.fabricmc.fabric.api.transfer.v1.item.ItemStorage;
 import net.fabricmc.fabric.api.transfer.v1.item.ItemVariant;
@@ -51,23 +49,23 @@ import org.apache.logging.log4j.Logger;
 import xin.vanilla.aotake.AotakeSweep;
 import xin.vanilla.aotake.config.CustomConfig;
 import xin.vanilla.aotake.config.ServerConfig;
+import xin.vanilla.aotake.config.WarningConfig;
+import xin.vanilla.aotake.data.ChunkKey;
 import xin.vanilla.aotake.data.KeyValue;
 import xin.vanilla.aotake.data.SweepResult;
 import xin.vanilla.aotake.data.WorldCoordinate;
 import xin.vanilla.aotake.data.player.PlayerSweepData;
 import xin.vanilla.aotake.data.world.WorldTrashData;
 import xin.vanilla.aotake.enums.*;
+import xin.vanilla.aotake.event.ServerEventHandler;
 import xin.vanilla.aotake.network.AotakePacket;
 import xin.vanilla.aotake.network.ModNetworkHandler;
+import xin.vanilla.aotake.network.packet.DustbinPageSyncToClient;
 
 import javax.annotation.Nullable;
 import java.io.File;
-import java.io.InputStream;
-import java.io.OutputStream;
 import java.util.*;
 import java.util.function.Consumer;
-import java.util.function.Predicate;
-import java.util.stream.Collectors;
 
 @SuppressWarnings({"resource", "UnstableApiUsage"})
 public class AotakeUtils {
@@ -142,6 +140,7 @@ public class AotakeUtils {
             case SWEEP, SWEEP_CONCISE -> ServerConfig.get().permissionConfig().permissionSweep();
             case CLEAR_DROP, CLEAR_DROP_CONCISE -> ServerConfig.get().permissionConfig().permissionClearDrop();
             case DELAY_SWEEP, DELAY_SWEEP_CONCISE -> ServerConfig.get().permissionConfig().permissionDelaySweep();
+            case CATCH_PLAYER -> ServerConfig.get().permissionConfig().permissionCatchPlayer();
             default -> 0;
         };
     }
@@ -164,13 +163,6 @@ public class AotakeUtils {
             case DELAY_SWEEP, DELAY_SWEEP_CONCISE -> ServerConfig.get().conciseConfig().conciseDelaySweep();
             default -> false;
         };
-    }
-
-    /**
-     * 判断是否拥有指令权限
-     */
-    public static boolean hasPermission(Player player, int level) {
-        return player.hasPermissions(level);
     }
 
     /**
@@ -265,20 +257,18 @@ public class AotakeUtils {
         return executeCommand(player, command, permission, true);
     }
 
+    public static void refreshPermission(@NonNull ServerPlayer player) {
+        MinecraftServer server = player.getServer();
+        if (server == null) {
+            server = AotakeSweep.serverInstance().getKey();
+        }
+        server.getPlayerList().sendPlayerPermissionLevel(player);
+    }
+
     // endregion 指令相关
 
 
     // region 消息相关
-
-    /**
-     * 广播消息
-     *
-     * @param player  发送者
-     * @param message 消息
-     */
-    public static void broadcastMessage(ServerPlayer player, Component message) {
-        player.server.getPlayerList().broadcastSystemMessage(net.minecraft.network.chat.Component.translatable("chat.type.announcement", player.getDisplayName(), message.toChatComponent()), false);
-    }
 
     /**
      * 广播消息
@@ -291,15 +281,6 @@ public class AotakeUtils {
     }
 
     /**
-     * 发送消息至所有玩家
-     */
-    public static void sendMessageToAll(Component message) {
-        for (ServerPlayer player : AotakeSweep.serverInstance().key().getPlayerList().getPlayers()) {
-            sendMessage(player, message);
-        }
-    }
-
-    /**
      * 发送消息
      *
      * @param player  玩家
@@ -307,16 +288,6 @@ public class AotakeUtils {
      */
     public static void sendMessage(Player player, Component message) {
         player.sendSystemMessage(message.toChatComponent(AotakeUtils.getPlayerLanguage(player)));
-    }
-
-    /**
-     * 发送消息
-     *
-     * @param player  玩家
-     * @param message 消息
-     */
-    public static void sendMessage(Player player, String message) {
-        player.sendSystemMessage(Component.literal(message).toChatComponent());
     }
 
     /**
@@ -352,15 +323,6 @@ public class AotakeUtils {
     }
 
     /**
-     * 发送操作栏消息至所有玩家
-     */
-    public static void sendActionBarMessageToAll(Component message) {
-        for (ServerPlayer player : AotakeSweep.serverInstance().key().getPlayerList().getPlayers()) {
-            sendActionBarMessage(player, message);
-        }
-    }
-
-    /**
      * 发送操作栏消息
      */
     public static void sendActionBarMessage(ServerPlayer player, Component message) {
@@ -386,13 +348,6 @@ public class AotakeUtils {
     /**
      * 发送数据包至服务器
      */
-    public static void sendPacketToServer(ResourceLocation id) {
-        sendPacketToServer(id, PacketByteBufs.create());
-    }
-
-    /**
-     * 发送数据包至服务器
-     */
     public static void sendPacketToServer(ResourceLocation id, FriendlyByteBuf buf) {
         if (ModNetworkHandler.hasCannel(id)) {
             ClientPlayNetworking.send(id, buf);
@@ -409,22 +364,8 @@ public class AotakeUtils {
     /**
      * 发送数据包至玩家
      */
-    public static void sendPacketToPlayer(ResourceLocation id, ServerPlayer player) {
-        sendPacketToPlayer(player, id, PacketByteBufs.create());
-    }
-
-    /**
-     * 发送数据包至玩家
-     */
     public static void sendPacketToPlayer(AotakePacket packet, ServerPlayer player) {
         sendPacketToPlayer(player, packet.id(), packet.toBytes(null));
-    }
-
-    /**
-     * 发送数据包至玩家
-     */
-    public static void sendPacketToPlayer(ServerPlayer player, ResourceLocation id) {
-        sendPacketToPlayer(player, id, PacketByteBufs.create());
     }
 
     /**
@@ -472,7 +413,7 @@ public class AotakeUtils {
     }
 
     public static String getServerPlayerLanguage(ServerPlayer player) {
-        return ServerPlayerLanguageManager.get(player);
+        return PlayerLanguageManager.get(player);
     }
 
     public static String getClientLanguage() {
@@ -617,53 +558,87 @@ public class AotakeUtils {
 
         Map<KeyValue<Level, BlockPos>, BlockState> blockStateCache = new HashMap<>();
 
-        List<Entity> filtered = entities.stream().filter(entity -> !(entity instanceof Player)).toList();
+        boolean hasSafeRules = !SAFE_BLOCKS.isEmpty()
+                || !SAFE_BLOCKS_STATE.isEmpty()
+                || !SAFE_BLOCKS_BELOW.isEmpty()
+                || !SAFE_BLOCKS_BELOW_STATE.isEmpty()
+                || !SAFE_BLOCKS_ABOVE.isEmpty()
+                || !SAFE_BLOCKS_ABOVE_STATE.isEmpty();
+
+        List<Entity> filtered = new ArrayList<>(entities.size());
+        Map<String, Integer> nonJunkTypeCounts = new HashMap<>();
+        Map<ChunkKey, Integer> safeChunkCounts = new HashMap<>();
+        IdentityHashMap<Entity, Boolean> junkCache = new IdentityHashMap<>();
+        IdentityHashMap<Entity, Boolean> safeCache = new IdentityHashMap<>();
+        IdentityHashMap<Entity, String> typeCache = new IdentityHashMap<>();
+        IdentityHashMap<Entity, ChunkKey> chunkKeyCache = new IdentityHashMap<>();
 
         LOGGER.debug("Entity exceeded filter started at {}", System.currentTimeMillis());
-        // 超限的非垃圾实体
-        List<Entity> exceededEntityList = entities.stream()
-                // 非垃圾实体
-                .filter(entity -> !isJunkEntity(entity, chuck))
-                .collect(Collectors.groupingBy(AotakeUtils::getEntityTypeRegistryName, Collectors.toList()))
-                .entrySet().stream()
-                // 超限
-                .filter(entry -> entry.getValue().size() > ServerConfig.get().sweepConfig().entityListLimit())
-                .flatMap(entry -> entry.getValue().stream())
-                .toList();
+        for (Entity entity : entities) {
+            if (entity instanceof Player) continue;
+            filtered.add(entity);
+
+            boolean safe = hasSafeRules && isSafeEntity(blockStateCache, entity);
+            safeCache.put(entity, safe);
+            if (safe) {
+                ChunkKey key = ChunkKey.of(entity);
+                chunkKeyCache.put(entity, key);
+                safeChunkCounts.merge(key, 1, Integer::sum);
+            }
+
+            boolean junk = isJunkEntity(entity, chuck);
+            junkCache.put(entity, junk);
+            if (!junk) {
+                String type = getEntityTypeRegistryName(entity);
+                typeCache.put(entity, type);
+                nonJunkTypeCounts.merge(type, 1, Integer::sum);
+            }
+        }
 
         LOGGER.debug("Entity safe filter started at {}", System.currentTimeMillis());
+        int typeLimit = ServerConfig.get().sweepConfig().entityListLimit();
+        Set<String> exceededTypes = new HashSet<>();
+        for (Map.Entry<String, Integer> entry : nonJunkTypeCounts.entrySet()) {
+            if (entry.getValue() > typeLimit) {
+                exceededTypes.add(entry.getKey());
+            }
+        }
 
-        // 超限的安全实体
-        List<Entity> exceededBlockList = filtered.stream()
-                // 安全实体
-                .filter(entity -> isSafeEntity(blockStateCache, entity))
-                .collect(Collectors.groupingBy(entity -> {
-                    String dimension = entity.getLevel().dimension().location().toString();
-                    int chunkX = entity.blockPosition().getX() / 16;
-                    int chunkZ = entity.blockPosition().getZ() / 16;
-                    return dimension + "," + chunkX + "," + chunkZ;
-                }, Collectors.toList()))
-                .entrySet().stream()
-                // 超限
-                .filter(entry -> entry.getValue().size() > ServerConfig.get().safeConfig().safeBlocksEntityLimit())
-                .flatMap(entry -> entry.getValue().stream())
-                .toList();
+        int safeLimit = ServerConfig.get().safeConfig().safeBlocksEntityLimit();
+        Set<ChunkKey> exceededChunks = new HashSet<>();
+        for (Map.Entry<ChunkKey, Integer> entry : safeChunkCounts.entrySet()) {
+            if (entry.getValue() > safeLimit) {
+                exceededChunks.add(entry.getKey());
+            }
+        }
 
         LOGGER.debug("Entity junk filter started at {}", System.currentTimeMillis());
-
-        // 过滤
-        Predicate<Entity> predicate = entity -> {
-            boolean unsafe = !isSafeEntity(blockStateCache, entity);
-
-            // 垃圾
-            return (unsafe && isJunkEntity(entity, chuck))
-                    // 超限的非垃圾
-                    || exceededEntityList.contains(entity)
-                    // 超限的安全实体
-                    || exceededBlockList.contains(entity);
-        };
-
-        List<Entity> entityList = filtered.stream().filter(predicate).collect(Collectors.toList());
+        List<Entity> entityList = new ArrayList<>();
+        for (Entity entity : filtered) {
+            boolean safe = safeCache.getOrDefault(entity, false);
+            boolean junk = junkCache.getOrDefault(entity, false);
+            boolean exceededType = false;
+            if (!junk && !exceededTypes.isEmpty()) {
+                String type = typeCache.get(entity);
+                if (type == null) {
+                    type = getEntityTypeRegistryName(entity);
+                    typeCache.put(entity, type);
+                }
+                exceededType = exceededTypes.contains(type);
+            }
+            boolean exceededSafe = false;
+            if (safe && !exceededChunks.isEmpty()) {
+                ChunkKey key = chunkKeyCache.get(entity);
+                if (key == null) {
+                    key = ChunkKey.of(entity);
+                    chunkKeyCache.put(entity, key);
+                }
+                exceededSafe = exceededChunks.contains(key);
+            }
+            if ((!safe && junk) || exceededType || exceededSafe) {
+                entityList.add(entity);
+            }
+        }
         LOGGER.debug("Entity filter finished at {}", System.currentTimeMillis());
         return entityList;
     }
@@ -812,39 +787,50 @@ public class AotakeUtils {
         return entityTag;
     }
 
-    private static final Map<String, String> warns = new HashMap<>();
-    private static final Map<String, String> voices = new HashMap<>();
+    private static final List<Map<String, List<String>>> warnGroups = new ArrayList<>();
+    private static final List<Map<String, List<String>>> voiceGroups = new ArrayList<>();
+    private static Map<String, List<String>> activeWarnGroup = new HashMap<>();
+    private static long activeWarnGroupSweepTime = Long.MIN_VALUE;
+    private static Map<String, List<String>> activeVoiceGroup = new HashMap<>();
+    private static long activeVoiceGroupSweepTime = Long.MIN_VALUE;
 
-    private static void initWarns() {
-        if (warns.isEmpty()) {
-            warns.putAll(JsonUtils.GSON.fromJson(ServerConfig.get().sweepConfig().sweepWarningContent(), new TypeToken<Map<String, String>>() {
-            }.getType()));
-            warns.putIfAbsent("error", "message.aotake_sweep.cleanup_error");
-            warns.putIfAbsent("fail", "message.aotake_sweep.cleanup_started");
-            warns.putIfAbsent("success", "message.aotake_sweep.cleanup_started");
-        }
-        if (voices.isEmpty()) {
-            voices.putAll(JsonUtils.GSON.fromJson(ServerConfig.get().sweepConfig().sweepWarningVoice(), new TypeToken<Map<String, String>>() {
-            }.getType()));
-            voices.put("initialized", "initialized");
-        }
-    }
 
     public static void clearWarns() {
-        warns.clear();
-        voices.clear();
+        warnGroups.clear();
+        voiceGroups.clear();
+        activeWarnGroup = new HashMap<>();
+        activeWarnGroupSweepTime = Long.MIN_VALUE;
+        activeVoiceGroup = new HashMap<>();
+        activeVoiceGroupSweepTime = Long.MIN_VALUE;
+    }
+
+    private static void initWarns() {
+        if (!warnGroups.isEmpty() && !voiceGroups.isEmpty()) {
+            return;
+        }
+        WarningConfig.WarningGroupData data = WarningConfig.loadWarningGroups();
+        warnGroups.clear();
+        voiceGroups.clear();
+        if (CollectionUtils.isNotNullOrEmpty(data.contentGroups())) {
+            warnGroups.addAll(data.contentGroups());
+        }
+        if (CollectionUtils.isNotNullOrEmpty(data.voiceGroups())) {
+            voiceGroups.addAll(data.voiceGroups());
+        }
     }
 
     public static boolean hasWarning(String key) {
         initWarns();
-        return warns.containsKey(key);
+        Map<String, List<String>> group = getActiveWarnGroup();
+        return CollectionUtils.isNotNullOrEmpty(group.get(key));
     }
 
     public static Component getWarningMessage(String key, String lang, @Nullable SweepResult result) {
         Component msg = null;
         try {
             initWarns();
-            String text = warns.get(key);
+            Map<String, List<String>> group = getActiveWarnGroup();
+            String text = CollectionUtils.getRandomElement(group.get(key));
             if (StringUtils.isNotNullOrEmpty(text) && text.startsWith("message.aotake_sweep.")) {
                 text = I18nUtils.getTranslation(text, lang);
             }
@@ -870,16 +856,44 @@ public class AotakeUtils {
         return msg;
     }
 
+    private static Map<String, List<String>> getActiveWarnGroup() {
+        if (warnGroups.isEmpty()) {
+            return Collections.emptyMap();
+        }
+        long sweepTime = ServerEventHandler.getNextSweepTime();
+        if (activeWarnGroupSweepTime != sweepTime || activeWarnGroup.isEmpty()) {
+            activeWarnGroupSweepTime = sweepTime;
+            Map<String, List<String>> selected = CollectionUtils.getRandomElement(warnGroups);
+            activeWarnGroup = selected != null ? selected : warnGroups.get(0);
+        }
+        return activeWarnGroup;
+    }
+
+    private static Map<String, List<String>> getActiveVoiceGroup() {
+        if (voiceGroups.isEmpty()) {
+            return Collections.emptyMap();
+        }
+        long sweepTime = ServerEventHandler.getNextSweepTime();
+        if (activeVoiceGroupSweepTime != sweepTime || activeVoiceGroup.isEmpty()) {
+            activeVoiceGroupSweepTime = sweepTime;
+            Map<String, List<String>> selected = CollectionUtils.getRandomElement(voiceGroups);
+            activeVoiceGroup = selected != null ? selected : voiceGroups.get(0);
+        }
+        return activeVoiceGroup;
+    }
+
     public static boolean hasWarningVoice(String key) {
         initWarns();
-        return voices.containsKey(key);
+        Map<String, List<String>> group = getActiveVoiceGroup();
+        return CollectionUtils.isNotNullOrEmpty(group.get(key));
     }
 
     public static String getWarningVoice(String key) {
         String id = null;
         try {
             initWarns();
-            id = CollectionUtils.getRandomElement(voices.get(key).split(","));
+            Map<String, List<String>> group = getActiveVoiceGroup();
+            id = CollectionUtils.getRandomElement(group.get(key));
         } catch (Exception ignored) {
         }
         return id;
@@ -930,7 +944,10 @@ public class AotakeUtils {
             }
         }
 
-        if (result > 0) AotakeSweep.playerDustbinPage().put(AotakeUtils.getPlayerUUIDString(player), page);
+        if (result > 0) {
+            AotakeSweep.playerDustbinPage().put(AotakeUtils.getPlayerUUIDString(player), page);
+            AotakeUtils.sendPacketToPlayer(new DustbinPageSyncToClient(page, totalPage), player);
+        }
         return result;
     }
 
@@ -1090,15 +1107,6 @@ public class AotakeUtils {
 
     // region nbt文件读写
 
-    public static CompoundTag readCompressed(InputStream stream) {
-        try {
-            return NbtIo.readCompressed(stream);
-        } catch (Exception e) {
-            LOGGER.error("Failed to read compressed stream", e);
-            return new CompoundTag();
-        }
-    }
-
     public static CompoundTag readCompressed(File file) {
         try {
             return NbtIo.readCompressed(file);
@@ -1119,15 +1127,56 @@ public class AotakeUtils {
         return result;
     }
 
-    public static boolean writeCompressed(CompoundTag tag, OutputStream stream) {
-        boolean result = false;
-        try {
-            NbtIo.writeCompressed(tag, stream);
-            result = true;
-        } catch (Exception e) {
-            LOGGER.error("Failed to write compressed stream", e);
+    public static boolean hasAotakeTag(ItemStack item) {
+        if (item == null) return false;
+        CompoundTag tag = item.getTag();
+        return tag != null && tag.contains(AotakeSweep.MODID);
+    }
+
+    public static CompoundTag getAotakeTag(@NonNull ItemStack item) {
+        CompoundTag tag = item.getTag();
+        if (tag == null) {
+            tag = new CompoundTag();
+            item.setTag(tag);
         }
-        return result;
+        if (!tag.contains(AotakeSweep.MODID)) {
+            tag.put(AotakeSweep.MODID, new CompoundTag());
+        }
+        return tag.getCompound(AotakeSweep.MODID);
+    }
+
+    public static void setAotakeTag(@NonNull ItemStack item, CompoundTag aotakeTag) {
+        CompoundTag tag = item.getTag();
+        if (tag == null) {
+            tag = new CompoundTag();
+            item.setTag(tag);
+        }
+        tag.put(AotakeSweep.MODID, aotakeTag);
+    }
+
+    public static CompoundTag clearAotakeTag(ItemStack item) {
+        if (item == null) return null;
+        CompoundTag tag = item.getTag();
+        if (tag != null) {
+            tag.remove(AotakeSweep.MODID);
+        }
+        return tag;
+    }
+
+    public static void clearItemTag(ItemStack item) {
+        if (item == null) return;
+        CompoundTag tag = item.getTag();
+        if (tag != null && tag.isEmpty()) {
+            item.setTag(null);
+        }
+    }
+
+    public static void clearItemTagEx(ItemStack item) {
+        if (item == null) return;
+        CompoundTag tag = clearAotakeTag(item);
+        if (tag != null && tag.isEmpty()) {
+            item.setTag(null);
+        }
     }
 
     // endregion nbt文件读写
@@ -1140,20 +1189,6 @@ public class AotakeUtils {
      */
     public static ServerLevel getWorld(ResourceKey<Level> dimension) {
         return AotakeSweep.serverInstance().key().getLevel(dimension);
-    }
-
-    /**
-     * 序列化方块默认状态
-     */
-    public static String serializeBlockState(Block block) {
-        return serializeBlockState(block.defaultBlockState());
-    }
-
-    /**
-     * 序列化方块状态
-     */
-    public static String serializeBlockState(BlockState blockState) {
-        return BlockStateParser.serialize(blockState);
     }
 
     /**
@@ -1245,7 +1280,7 @@ public class AotakeUtils {
     @NonNull
     public static String getEntityTypeRegistryName(@NonNull EntityType<?> entityType) {
         ResourceLocation location = Registry.ENTITY_TYPE.getKey(entityType);
-        return location == null ? AotakeSweep.emptyResource().toString() : location.toString();
+        return location == null ? AotakeSweep.emptyIdentifier().toString() : location.toString();
     }
 
     public static String getItemCustomNameJson(@NonNull ItemStack itemStack) {
@@ -1253,19 +1288,6 @@ public class AotakeUtils {
         CompoundTag CompoundTag = itemStack.getTagElement("display");
         if (CompoundTag != null && CompoundTag.contains("Name", 8)) {
             result = CompoundTag.getString("Name");
-        }
-        return result;
-    }
-
-    public static net.minecraft.network.chat.Component getItemCustomName(@NonNull ItemStack itemStack) {
-        net.minecraft.network.chat.Component result = null;
-        String nameJson = getItemCustomNameJson(itemStack);
-        if (StringUtils.isNotNullOrEmpty(nameJson)) {
-            try {
-                result = net.minecraft.network.chat.Component.Serializer.fromJson(nameJson);
-            } catch (Exception e) {
-                LOGGER.error("Invalid unsafe item name: {}", nameJson, e);
-            }
         }
         return result;
     }
@@ -1284,10 +1306,6 @@ public class AotakeUtils {
 
     public static String getPlayerUUIDString(@NonNull Player player) {
         return player.getUUID().toString();
-    }
-
-    public static String getPlayerName(@NonNull Player player) {
-        return player.getName().getString();
     }
 
     public static ServerPlayer getPlayerByUUID(String uuid) {
@@ -1323,37 +1341,6 @@ public class AotakeUtils {
         } catch (Throwable t) {
             LOGGER.warn("Failed to add item to storage", t);
         }
-        return stack;
-    }
-
-    /**
-     * 将物品添加到指定的方块容器
-     */
-    public static ItemStack addItemToBlock(ItemStack stack, WorldCoordinate coordinate) {
-        if (stack == null || stack.isEmpty()) return ItemStack.EMPTY;
-
-        ServerLevel level = AotakeSweep.serverInstance().key().getLevel(coordinate.getDimension());
-        if (level == null) return stack;
-
-        BlockPos pos = coordinate.toBlockPos();
-        if (!level.isLoaded(pos)) return stack;
-
-        BlockEntity te = level.getBlockEntity(pos);
-        if (te == null) return stack;
-
-        try {
-            Direction side = coordinate.getDirection();
-            Storage<ItemVariant> storage = ItemStorage.SIDED.find(level, pos, side);
-
-            ItemStack remaining = addItemToStorage(stack, storage);
-            if (remaining.getCount() != stack.getCount()) {
-                te.setChanged();
-            }
-            return remaining;
-        } catch (Throwable t) {
-            LOGGER.warn("Failed to insert item into block at {}", coordinate, t);
-        }
-
         return stack;
     }
 
@@ -1401,6 +1388,12 @@ public class AotakeUtils {
 
     public static String getDimensionRegistryName(Level world) {
         return world.dimension().location().toString();
+    }
+
+    public static <T> List<T> singleList(T value) {
+        List<T> list = new ArrayList<>();
+        list.add(value);
+        return list;
     }
 
     // endregion 杂项

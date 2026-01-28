@@ -8,20 +8,11 @@ import net.minecraft.world.entity.Entity;
 import xin.vanilla.aotake.AotakeSweep;
 import xin.vanilla.aotake.network.AotakePacket;
 
-public class GhostCameraToClient implements AotakePacket {
-    public static final ResourceLocation ID = AotakeSweep.createResource("ghost_camera");
-
-    private final int entityId;
-    private final boolean reset;
-
-    public GhostCameraToClient(int entityId, boolean reset) {
-        this.entityId = entityId;
-        this.reset = reset;
-    }
+public record GhostCameraToClient(int entityId, boolean reset) implements AotakePacket {
+    public static final ResourceLocation ID = AotakeSweep.createIdentifier("ghost_camera");
 
     public GhostCameraToClient(FriendlyByteBuf buf) {
-        this.entityId = buf.readInt();
-        this.reset = buf.readBoolean();
+        this(buf.readInt(), buf.readBoolean());
     }
 
     @Override

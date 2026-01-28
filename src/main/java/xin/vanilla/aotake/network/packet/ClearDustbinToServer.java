@@ -9,20 +9,12 @@ import xin.vanilla.aotake.enums.EnumCommandType;
 import xin.vanilla.aotake.network.AotakePacket;
 import xin.vanilla.aotake.util.AotakeUtils;
 
-public class ClearDustbinToServer implements AotakePacket {
-    public static final ResourceLocation ID = AotakeSweep.createResource("clear_dustbin");
+public record ClearDustbinToServer(boolean all, boolean cache) implements AotakePacket {
 
-    private final boolean all;
-    private final boolean cache;
-
-    public ClearDustbinToServer(boolean all, boolean cache) {
-        this.all = all;
-        this.cache = cache;
-    }
+    public static final ResourceLocation ID = AotakeSweep.createIdentifier("clear_dustbin");
 
     public ClearDustbinToServer(FriendlyByteBuf buf) {
-        this.all = buf.readBoolean();
-        this.cache = buf.readBoolean();
+        this(buf.readBoolean(), buf.readBoolean());
     }
 
     @Override
@@ -32,8 +24,8 @@ public class ClearDustbinToServer implements AotakePacket {
 
     public FriendlyByteBuf toBytes(FriendlyByteBuf buf) {
         if (buf == null) buf = PacketByteBufs.create();
-        buf.writeBoolean(this.all);
-        buf.writeBoolean(this.cache);
+        buf.writeBoolean(this.all());
+        buf.writeBoolean(this.cache());
         return buf;
     }
 
@@ -42,7 +34,7 @@ public class ClearDustbinToServer implements AotakePacket {
             String playerUUID = AotakeUtils.getPlayerUUIDString(player);
             int page = AotakeSweep.playerDustbinPage().getOrDefault(playerUUID, 1);
             // 缓存区
-            if (packet.cache) {
+            if (packet.cache()) {
                 AotakeUtils.executeCommand(player, String.format("/%s"
                         , AotakeUtils.getCommand(EnumCommandType.CACHE_CLEAR))
                 );
@@ -51,7 +43,7 @@ public class ClearDustbinToServer implements AotakePacket {
             else {
                 AotakeUtils.executeCommand(player, String.format("/%s%s"
                         , AotakeUtils.getCommand(EnumCommandType.DUSTBIN_CLEAR)
-                        , packet.all ? "" : " " + page)
+                        , packet.all() ? "" : " " + page)
                 );
             }
         }

@@ -37,6 +37,7 @@ import java.util.concurrent.ConcurrentLinkedQueue;
  * 世界垃圾数据
  */
 @Getter
+@SuppressWarnings("resource")
 public class WorldTrashData extends SavedData {
     private static final String DATA_NAME = "world_trash_data";
 
