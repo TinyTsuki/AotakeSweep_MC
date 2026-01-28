@@ -220,6 +220,12 @@ public class ClientConfig implements ConfigData {
     }
     // endregion 进度条设置
 
+    /**
+     * 垃圾箱页面是否使用原版UI
+     */
+    @ConfigEntry.Gui.Tooltip
+    private boolean vanillaDustbin = false;
+
 
     public static void register() {
         AutoConfig.register(ClientConfig.class, Toml4jConfigSerializer::new);

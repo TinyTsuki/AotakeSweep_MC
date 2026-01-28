@@ -8,11 +8,8 @@ import xin.vanilla.aotake.AotakeSweep;
 import xin.vanilla.aotake.network.AotakePacket;
 import xin.vanilla.aotake.util.AotakeUtils;
 
-public class ModLoadedToBoth implements AotakePacket {
-    public static final ResourceLocation ID = AotakeSweep.createResource("client_loaded");
-
-    public ModLoadedToBoth() {
-    }
+public record ModLoadedToBoth() implements AotakePacket {
+    public static final ResourceLocation ID = AotakeSweep.createIdentifier("client_loaded");
 
     @Override
     public ResourceLocation id() {

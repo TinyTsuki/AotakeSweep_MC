@@ -21,6 +21,7 @@ import xin.vanilla.aotake.util.JsonUtils;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * 服务器配置
@@ -626,54 +627,76 @@ public class ServerConfig implements ConfigData {
                 });
     }
 
+    public static void save() {
+        AutoConfig.getConfigHolder(ServerConfig.class).save();
+    }
+
     /**
      * 重置服务器配置文件
      */
-    public static void resetConfig() {
+    private static void resetConfig() {
         AutoConfig.getConfigHolder(ServerConfig.class).resetToDefault();
-        AutoConfig.getConfigHolder(ServerConfig.class).save();
+    }
+
+    /**
+     * 重置服务器配置文件
+     */
+    public static void resetConfigWithMode0() {
+        resetConfig();
+
+        save();
+
+        Map<String, List<String>> group = WarningConfig.buildDefaultWarnGroup();
+        List<Map<String, List<String>>> groups = new ArrayList<>();
+        groups.add(group);
+        WarningConfig.saveWarningContentGroups(groups);
+        AotakeUtils.clearWarns();
     }
 
     public static void resetConfigWithMode1() {
         resetConfig();
 
-        get().sweepConfig().sweepWarningContent(JsonUtils.GSON.toJson(new LinkedHashMap<String, String>() {{
-            put("error", "清理过程中发生了异常，请检查服务器异常日志。");
-            put("fail", "§r§e世界很干净。");
-            put("success", "§r§e清理了[itemCount]个物品与[entityCount]个实体。");
-            put("1", "§r§e清理将会在§r§e%s§r§e秒后开始！");
-            put("2", "§r§e清理将会在§r§e%s§r§e秒后开始！");
-            put("3", "§r§e清理将会在§r§e%s§r§e秒后开始！");
-            put("4", "§r§e清理将会在§r§e%s§r§e秒后开始！");
-            put("5", "§r§e清理将会在§r§e%s§r§e秒后开始！");
-            put("10", "§r§e清理将会在§r§e%s§r§e秒后开始。");
-            put("30", "§r§e清理将会在§r§e%s§r§e秒后开始。");
-            put("60", "§r§e清理将会在§r§e%s§r§e秒后开始。");
-        }}, new TypeToken<LinkedHashMap<String, String>>() {
-        }.getType()));
+        save();
 
-        AutoConfig.getConfigHolder(ServerConfig.class).save();
+        Map<String, List<String>> group = new LinkedHashMap<>();
+        group.put("error", AotakeUtils.singleList("清理过程中发生了异常，请检查服务器异常日志。"));
+        group.put("fail", AotakeUtils.singleList("§r§e世界很干净。"));
+        group.put("success", AotakeUtils.singleList("§r§e清理了[itemCount]个物品与[entityCount]个实体。"));
+        group.put("1", AotakeUtils.singleList("§r§e清理将会在§r§e%s§r§e秒后开始！"));
+        group.put("2", AotakeUtils.singleList("§r§e清理将会在§r§e%s§r§e秒后开始！"));
+        group.put("3", AotakeUtils.singleList("§r§e清理将会在§r§e%s§r§e秒后开始！"));
+        group.put("4", AotakeUtils.singleList("§r§e清理将会在§r§e%s§r§e秒后开始！"));
+        group.put("5", AotakeUtils.singleList("§r§e清理将会在§r§e%s§r§e秒后开始！"));
+        group.put("10", AotakeUtils.singleList("§r§e清理将会在§r§e%s§r§e秒后开始。"));
+        group.put("30", AotakeUtils.singleList("§r§e清理将会在§r§e%s§r§e秒后开始。"));
+        group.put("60", AotakeUtils.singleList("§r§e清理将会在§r§e%s§r§e秒后开始。"));
+        List<Map<String, List<String>>> groups = new ArrayList<>();
+        groups.add(group);
+        WarningConfig.saveWarningContentGroups(groups);
+        AotakeUtils.clearWarns();
     }
 
     public static void resetConfigWithMode2() {
         resetConfig();
 
-        get().sweepConfig().sweepWarningContent(JsonUtils.GSON.toJson(new LinkedHashMap<String, String>() {{
-            put("error", "An error occurred while cleaning up, check the server logs for details.");
-            put("fail", "§r§eCleaned up nothing.");
-            put("success", "§r§eCleaned up [itemCount] items and [entityCount] entities.");
-            put("1", "§r§eThe cleanup will start in §r§e%s§r§e seconds!");
-            put("2", "§r§eThe cleanup will start in §r§e%s§r§e seconds!");
-            put("3", "§r§eThe cleanup will start in §r§e%s§r§e seconds!");
-            put("4", "§r§eThe cleanup will start in §r§e%s§r§e seconds!");
-            put("5", "§r§eThe cleanup will start in §r§e%s§r§e seconds!");
-            put("10", "§r§eThe cleanup will start in §r§e%s§r§e seconds.");
-            put("30", "§r§eThe cleanup will start in §r§e%s§r§e seconds.");
-            put("60", "§r§eThe cleanup will start in §r§e%s§r§e seconds.");
-        }}, new TypeToken<LinkedHashMap<String, String>>() {
-        }.getType()));
+        save();
 
-        AutoConfig.getConfigHolder(ServerConfig.class).save();
+        Map<String, List<String>> group = new LinkedHashMap<>();
+        group.put("error", AotakeUtils.singleList("An error occurred while cleaning up, check the server logs for details."));
+        group.put("fail", AotakeUtils.singleList("§r§eCleaned up nothing."));
+        group.put("success", AotakeUtils.singleList("§r§eCleaned up [itemCount] items and [entityCount] entities."));
+        group.put("1", AotakeUtils.singleList("§r§eThe cleanup will start in §r§e%s§r§e seconds!"));
+        group.put("2", AotakeUtils.singleList("§r§eThe cleanup will start in §r§e%s§r§e seconds!"));
+        group.put("3", AotakeUtils.singleList("§r§eThe cleanup will start in §r§e%s§r§e seconds!"));
+        group.put("4", AotakeUtils.singleList("§r§eThe cleanup will start in §r§e%s§r§e seconds!"));
+        group.put("5", AotakeUtils.singleList("§r§eThe cleanup will start in §r§e%s§r§e seconds!"));
+        group.put("10", AotakeUtils.singleList("§r§eThe cleanup will start in §r§e%s§r§e seconds."));
+        group.put("30", AotakeUtils.singleList("§r§eThe cleanup will start in §r§e%s§r§e seconds."));
+        group.put("60", AotakeUtils.singleList("§r§eThe cleanup will start in §r§e%s§r§e seconds."));
+        List<Map<String, List<String>>> groups = new ArrayList<>();
+        groups.add(group);
+        WarningConfig.saveWarningContentGroups(groups);
+        AotakeUtils.clearWarns();
     }
 
     @Override

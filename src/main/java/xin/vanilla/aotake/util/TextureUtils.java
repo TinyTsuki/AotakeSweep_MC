@@ -7,11 +7,9 @@ import net.minecraft.client.renderer.texture.AbstractTexture;
 import net.minecraft.client.renderer.texture.DynamicTexture;
 import net.minecraft.client.renderer.texture.MissingTextureAtlasSprite;
 import net.minecraft.client.renderer.texture.TextureManager;
-import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.packs.resources.Resource;
 import net.minecraft.server.packs.resources.ResourceManager;
-import net.minecraft.world.effect.MobEffectInstance;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.jetbrains.annotations.NotNull;
@@ -24,6 +22,7 @@ import java.io.InputStream;
 import java.nio.file.Files;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 
 
 public class TextureUtils implements SimpleSynchronousResourceReloadListener {
@@ -35,10 +34,6 @@ public class TextureUtils implements SimpleSynchronousResourceReloadListener {
      * 内部主题文件夹路径
      */
     public static final String INTERNAL_THEME_DIR = "textures/gui/";
-    /**
-     * 药水图标文件夹路径
-     */
-    public static final String DEFAULT_EFFECT_DIR = "textures/mob_effect/";
 
     private static final Logger LOGGER = LogManager.getLogger();
 
@@ -46,15 +41,15 @@ public class TextureUtils implements SimpleSynchronousResourceReloadListener {
         TextureManager textureManager = Minecraft.getInstance().getTextureManager();
         textureName = textureName.replaceAll("\\\\", "/");
         textureName = textureName.startsWith("./") ? textureName.substring(2) : textureName;
-        ResourceLocation customTextureLocation = AotakeSweep.createResource(TextureUtils.getSafeThemePath(textureName));
+        ResourceLocation customTextureLocation = AotakeSweep.createIdentifier(TextureUtils.getSafeThemePath(textureName));
         if (!TextureUtils.isTextureAvailable(customTextureLocation)) {
             if (!textureName.startsWith(INTERNAL_THEME_DIR)) {
-                customTextureLocation = AotakeSweep.createResource(TextureUtils.getSafeThemePath(textureName + System.currentTimeMillis()));
+                customTextureLocation = AotakeSweep.createIdentifier(TextureUtils.getSafeThemePath(textureName + System.currentTimeMillis()));
                 File textureFile = new File(textureName);
                 // 检查文件是否存在
                 if (!textureFile.exists()) {
                     LOGGER.warn("Texture file not found: {}", textureFile.getAbsolutePath());
-                    customTextureLocation = AotakeSweep.createResource(INTERNAL_THEME_DIR + DEFAULT_THEME);
+                    customTextureLocation = AotakeSweep.createIdentifier(INTERNAL_THEME_DIR + DEFAULT_THEME);
                 } else {
                     try (InputStream inputStream = Files.newInputStream(textureFile.toPath())) {
                         // 直接从InputStream创建NativeImage
@@ -65,7 +60,7 @@ public class TextureUtils implements SimpleSynchronousResourceReloadListener {
                     } catch (IOException e) {
                         LOGGER.warn("Failed to load texture: {}", textureFile.getAbsolutePath());
                         LOGGER.error(e);
-                        customTextureLocation = AotakeSweep.createResource(INTERNAL_THEME_DIR + DEFAULT_THEME);
+                        customTextureLocation = AotakeSweep.createIdentifier(INTERNAL_THEME_DIR + DEFAULT_THEME);
                     }
                 }
             }
@@ -88,49 +83,19 @@ public class TextureUtils implements SimpleSynchronousResourceReloadListener {
         return texture.getId() != -1;
     }
 
-    /**
-     * 获取药水效果图标
-     */
-    public static ResourceLocation getEffectTexture(MobEffectInstance effectInstance) {
-        ResourceLocation effectIcon;
-        ResourceLocation registryName = BuiltInRegistries.MOB_EFFECT.getKey(effectInstance.getEffect());
-        if (registryName != null) {
-            effectIcon = AotakeSweep.createResource(registryName.getNamespace(), DEFAULT_EFFECT_DIR + registryName.getPath() + ".png");
-        } else {
-            effectIcon = null;
-        }
-        return effectIcon;
-    }
-
     private static final Map<ResourceLocation, NativeImage> CACHE = new HashMap<>();
     private static final Map<ResourceLocation, KeyValue<Integer, Integer>> TEXTURE_SIZE_CACHE = new HashMap<>();
 
-    public static void clearAll() {
-        for (NativeImage img : CACHE.values()) {
-            try {
-                img.close();
-            } catch (Exception ignored) {
-            }
-        }
-        CACHE.clear();
-        TEXTURE_SIZE_CACHE.clear();
-    }
-
     /**
-     * 从资源中加载纹理并转换为 NativeImage。
-     *
-     * @param texture 纹理的 ResourceLocation
+     * 从资源中加载纹理并转换为NativeImage
      */
     public static NativeImage getTextureImage(ResourceLocation texture) {
-        // 优先从缓存中获取
         if (CACHE.containsKey(texture)) {
             return CACHE.get(texture);
         }
         try {
-            // 获取资源管理器
-            Resource resource = Minecraft.getInstance().getResourceManager().getResourceOrThrow(texture);
-            // 打开资源输入流并加载为 NativeImage
-            try (InputStream inputStream = resource.open()) {
+            Optional<Resource> resource = Minecraft.getInstance().getResourceManager().getResource(texture);
+            try (InputStream inputStream = resource.get().open()) {
                 NativeImage nativeImage = NativeImage.read(inputStream);
                 CACHE.put(texture, nativeImage);
                 return nativeImage;
@@ -158,9 +123,20 @@ public class TextureUtils implements SimpleSynchronousResourceReloadListener {
         return size;
     }
 
+    public static void clearAll() {
+        for (NativeImage img : CACHE.values()) {
+            try {
+                img.close();
+            } catch (Exception ignored) {
+            }
+        }
+        CACHE.clear();
+        TEXTURE_SIZE_CACHE.clear();
+    }
+
     @Override
     public ResourceLocation getFabricId() {
-        return AotakeSweep.createResource("texture_reload");
+        return AotakeSweep.createIdentifier("texture_reload");
     }
 
     @Override
