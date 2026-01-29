@@ -28,6 +28,8 @@ public class ModLoadedToBoth {
                 AotakeUtils.sendPacketToPlayer(new CustomConfigSyncToClient(), player);
                 // 同步清理时间到客户端
                 AotakeUtils.sendPacketToPlayer(new SweepTimeSyncToClient(), player);
+                // 刷新权限信息
+                AotakeUtils.refreshPermission(player);
             }
         });
         ctx.get().setPacketHandled(true);

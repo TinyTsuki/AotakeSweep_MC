@@ -30,6 +30,7 @@ import xin.vanilla.aotake.AotakeSweep;
 import xin.vanilla.aotake.config.CommonConfig;
 import xin.vanilla.aotake.config.CustomConfig;
 import xin.vanilla.aotake.config.ServerConfig;
+import xin.vanilla.aotake.data.ChunkKey;
 import xin.vanilla.aotake.data.ConcurrentShuffleList;
 import xin.vanilla.aotake.data.KeyValue;
 import xin.vanilla.aotake.data.WorldCoordinate;
@@ -43,6 +44,8 @@ import xin.vanilla.aotake.network.packet.GhostCameraToClient;
 import xin.vanilla.aotake.network.packet.SweepTimeSyncToClient;
 import xin.vanilla.aotake.util.*;
 
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -173,34 +176,38 @@ public class EventHandlerProxy {
             lastChunkCheckTime = now;
             try {
                 long start = System.currentTimeMillis();
-                List<Map.Entry<String, List<Entity>>> overcrowdedChunks = AotakeUtils.getAllEntitiesByFilter(null, true).stream()
-                        .collect(Collectors.groupingBy(entity -> {
-                            // 获取区块维度和坐标
-                            String dimension = entity.level != null
-                                    ? entity.level.dimension().location().toString()
-                                    : "unknown";
-                            int chunkX = entity.blockPosition().getX() >> 4;
-                            int chunkZ = entity.blockPosition().getZ() >> 4;
-                            if (EnumChunkCheckMode.DEFAULT.name().equals(ServerConfig.CHUNK_CHECK_MODE.get())) {
-                                return String.format("Dimension: %s, Chunk: %s %s", dimension, chunkX, chunkZ);
-                            } else {
-                                return String.format("Dimension: %s, Chunk: %s %s, EntityType: %s", dimension, chunkX, chunkZ, AotakeUtils.getEntityTypeRegistryName(entity));
-                            }
-                        }))
-                        .entrySet().stream()
-                        .filter(entry -> entry.getValue().size() > ServerConfig.CHUNK_CHECK_LIMIT.get())
-                        .collect(Collectors.toList());
+                boolean advanced = !EnumChunkCheckMode.DEFAULT.name().equals(ServerConfig.CHUNK_CHECK_MODE.get());
+                Map<ChunkKey, List<Entity>> chunkEntities = new HashMap<>();
+                for (Entity entity : AotakeUtils.getAllEntitiesByFilter(null, true)) {
+                    String dimension = entity.level != null
+                            ? entity.level.dimension().location().toString()
+                            : "unknown";
+                    int chunkX = entity.blockPosition().getX() >> 4;
+                    int chunkZ = entity.blockPosition().getZ() >> 4;
+                    String entityType = advanced ? AotakeUtils.getEntityTypeRegistryName(entity) : null;
+                    ChunkKey key = new ChunkKey(dimension, chunkX, chunkZ, entityType);
+                    chunkEntities.computeIfAbsent(key, k -> new ArrayList<>()).add(entity);
+                }
+                int limit = ServerConfig.CHUNK_CHECK_LIMIT.get();
+                List<Map.Entry<ChunkKey, List<Entity>>> overcrowdedChunks = new ArrayList<>();
+                for (Map.Entry<ChunkKey, List<Entity>> entry : chunkEntities.entrySet()) {
+                    if (entry.getValue().size() > limit) {
+                        overcrowdedChunks.add(entry);
+                    }
+                }
                 long end = System.currentTimeMillis();
 
                 if (!overcrowdedChunks.isEmpty()) {
                     LOGGER.debug("Chunk check started at {}", start);
                     LOGGER.debug("Chunk check finished at {}", end);
                     LOGGER.debug("Chunk check info:\n{}", overcrowdedChunks.stream()
-                            .map(entry -> String.format("%s, Entities: %s", entry.getKey(), entry.getValue().size()))
+                            .map(entry -> String.format("%s, Entities: %s"
+                                    , formatChunkKey(entry.getKey(), advanced)
+                                    , entry.getValue().size()))
                             .collect(Collectors.joining("\n")));
 
                     if (ServerConfig.CHUNK_CHECK_NOTICE.get()) {
-                        Map.Entry<String, List<Entity>> entityEntryList = overcrowdedChunks.get(0);
+                        Map.Entry<ChunkKey, List<Entity>> entityEntryList = overcrowdedChunks.get(0);
                         Entity entity = entityEntryList.getValue().get(0);
                         WorldCoordinate entityCoordinate = new WorldCoordinate(entity);
                         for (ServerPlayerEntity player : server.getPlayerList().getPlayers()) {
@@ -234,15 +241,9 @@ public class EventHandlerProxy {
                                                 )
                                                 .setClickEvent(new ClickEvent(ClickEvent.Action.COPY_TO_CLIPBOARD
                                                         , overcrowdedChunks.stream()
-                                                        .map(entry -> {
-                                                            WorldCoordinate coordinate = new WorldCoordinate(entry.getValue().get(0));
-                                                            return String.format("Dimension: %s, Chunk: %s %s, Entities: %s",
-                                                                    coordinate.getDimensionResourceId(),
-                                                                    coordinate.getXInt() >> 4,
-                                                                    coordinate.getZInt() >> 4,
-                                                                    entry.getValue().size()
-                                                            );
-                                                        })
+                                                        .map(entry -> String.format("%s, Entities: %s"
+                                                                , formatChunkKey(entry.getKey(), advanced)
+                                                                , entry.getValue().size()))
                                                         .collect(Collectors.joining("\n")))
                                                 )
                                         )
@@ -314,6 +315,12 @@ public class EventHandlerProxy {
         }
     }
 
+    private static String formatChunkKey(ChunkKey key, boolean advanced) {
+        if (advanced) {
+            return String.format("Dimension: %s, Chunk: %s %s, EntityType: %s", key.dimension(), key.chunkX(), key.chunkZ(), key.entityType());
+        }
+        return String.format("Dimension: %s, Chunk: %s %s", key.dimension(), key.chunkX(), key.chunkZ());
+    }
 
     public static void onPlayerCloned(PlayerEvent.Clone event) {
         if (event.getPlayer() instanceof ServerPlayerEntity) {
@@ -337,14 +344,10 @@ public class EventHandlerProxy {
                 event.setCanceled(true);
                 return;
             }
-            CompoundNBT tag = stack.getTag();
-            if (tag != null && tag.contains(AotakeSweep.MODID)) {
-                CompoundNBT aotake = tag.getCompound(AotakeSweep.MODID);
+            if (AotakeUtils.hasAotakeTag(stack)) {
+                CompoundNBT aotake = AotakeUtils.getAotakeTag(stack);
                 if (aotake.isEmpty()) {
-                    tag.remove(AotakeSweep.MODID);
-                    if (tag.isEmpty()) {
-                        stack.setTag(null);
-                    }
+                    AotakeUtils.clearItemTagEx(stack);
                     return;
                 }
                 event.setCancellationResult(ActionResultType.FAIL);
@@ -372,24 +375,13 @@ public class EventHandlerProxy {
         ItemStack copy = original.copy();
         copy.setCount(1);
 
-        CompoundNBT tag = copy.getTag();
-        if (tag != null && tag.contains(AotakeSweep.MODID)) {
-            CompoundNBT aotake = tag.getCompound(AotakeSweep.MODID);
+        if (AotakeUtils.hasAotakeTag(copy)) {
+            CompoundNBT aotake = AotakeUtils.getAotakeTag(copy);
             if (aotake.isEmpty()) {
-                tag.remove(AotakeSweep.MODID);
-                if (tag.isEmpty()) {
-                    copy.setTag(null);
-                }
-                CompoundNBT originalTag = original.getTag();
-                if (originalTag != null && originalTag.contains(AotakeSweep.MODID)) {
-                    originalTag.remove(AotakeSweep.MODID);
-                    if (originalTag.isEmpty()) {
-                        original.setTag(null);
-                    }
-                }
-            }
-            //
-            else {
+                AotakeUtils.clearAotakeTag(copy);
+                AotakeUtils.clearItemTag(copy);
+                AotakeUtils.clearItemTagEx(original);
+            } else {
                 if (aotake.contains("player")) {
                     if (!player.hasPermissions(ServerConfig.PERMISSION_CATCH_PLAYER.get())) {
                         return null;
@@ -409,10 +401,7 @@ public class EventHandlerProxy {
                         } else {
                             clearCustomName(copy);
                         }
-                        tag.remove(AotakeSweep.MODID);
-                        if (tag.isEmpty()) {
-                            copy.setTag(null);
-                        }
+                        AotakeUtils.clearItemTagEx(copy);
                         if (!aotake.getBoolean("byPlayer")) {
                             copy.shrink(1);
                         }
@@ -447,16 +436,14 @@ public class EventHandlerProxy {
                             return null;
                         }
                         original.shrink(1);
-                        ITextComponent name = AotakeUtils.textComponentFromJson(aotake.getString("name"));
+                        String originalNameJson = aotake.getString("name");
+                        ITextComponent name = AotakeUtils.textComponentFromJson(originalNameJson);
                         if (name != null) {
                             copy.setHoverName(name);
                         } else {
                             clearCustomName(copy);
                         }
-                        tag.remove(AotakeSweep.MODID);
-                        if (tag.isEmpty()) {
-                            copy.setTag(null);
-                        }
+                        AotakeUtils.clearItemTagEx(copy);
                         if (!aotake.getBoolean("byPlayer")) {
                             copy.shrink(1);
                         }
@@ -499,14 +486,13 @@ public class EventHandlerProxy {
             ItemStack copy = original.copy();
             copy.setCount(1);
 
-            CompoundNBT tag = copy.getTag();
             // 检查是否已包含实体
             Entity entity = event.getTarget();
             if (entity instanceof PartEntity) {
                 entity = ((PartEntity<?>) entity).getParent();
             }
-            if (tag != null && tag.contains(AotakeSweep.MODID)) {
-                CompoundNBT aotake = tag.getCompound(AotakeSweep.MODID);
+            if (AotakeUtils.hasAotakeTag(copy)) {
+                CompoundNBT aotake = AotakeUtils.getAotakeTag(copy);
                 if (!aotake.isEmpty()) {
                     WorldCoordinate coordinate = new WorldCoordinate(entity.getX(), entity.getY(), entity.getZ());
                     Entity back = releaseEntity(event, player, original, coordinate);
@@ -544,10 +530,10 @@ public class EventHandlerProxy {
 
             boolean allowCatch = ServerConfig.ALLOW_CATCH_ENTITY.get();
             boolean isCatchItem = ServerConfig.CATCH_ITEM.get().stream().anyMatch(s -> s.equals(AotakeUtils.getItemRegistryName(original)));
-            boolean hasEntityInTag = (tag != null && !tag.isEmpty()
-                    && tag.contains(AotakeSweep.MODID)
-                    && (tag.getCompound(AotakeSweep.MODID).contains("entity")
-                    || tag.getCompound(AotakeSweep.MODID).contains("player")));
+            CompoundNBT aotakeTag = AotakeUtils.getAotakeTag(copy);
+            boolean hasEntityInTag = (!aotakeTag.isEmpty()
+                    && (aotakeTag.contains("entity")
+                    || aotakeTag.contains("player")));
 
             if (allowCatch && isCatchItem && player.isCrouching() && !hasEntityInTag) {
                 Long lastTick = lastCatchTick.get(uuid);
@@ -561,7 +547,6 @@ public class EventHandlerProxy {
                 }
                 original.shrink(1);
 
-                tag = copy.getOrCreateTag();
                 CompoundNBT aotake = new CompoundNBT();
                 aotake.putBoolean("byPlayer", true);
                 if (entity instanceof PlayerEntity) {
@@ -577,9 +562,11 @@ public class EventHandlerProxy {
                     aotake.put("entity", entityTag);
                     aotake.putString("entityId", AotakeUtils.getEntityTypeRegistryName(entity));
                 }
-                aotake.putString("name", AotakeUtils.getItemCustomNameJson(copy));
-                tag.put(AotakeSweep.MODID, aotake);
-                copy.setHoverName(Component.literal(String.format("%s%s", entity.getDisplayName().getString(), copy.getHoverName().getString())).toChatComponent());
+                String originalNameText = copy.getHoverName().getString();
+                String originalNameJson = AotakeUtils.getItemCustomNameJson(copy);
+                aotake.putString("name", originalNameJson);
+                AotakeUtils.setAotakeTag(copy, aotake);
+                copy.setHoverName(Component.literal(String.format("%s %s", entity.getDisplayName().getString(), originalNameText)).toChatComponent());
                 player.addItem(copy);
                 if (!(entity instanceof ServerPlayerEntity)) {
                     AotakeUtils.removeEntity(entity, true);

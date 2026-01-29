@@ -14,4 +14,7 @@ public interface ContainerScreenAccessor {
 
     @Accessor("imageWidth")
     int aotake$getImageWidth();
+
+    @Accessor("imageHeight")
+    int aotake$getImageHeight();
 }

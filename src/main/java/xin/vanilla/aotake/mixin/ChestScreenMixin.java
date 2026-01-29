@@ -5,10 +5,13 @@ import com.mojang.blaze3d.systems.RenderSystem;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screen.inventory.ChestScreen;
 import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.util.ResourceLocation;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+import xin.vanilla.aotake.config.ClientConfig;
+import xin.vanilla.aotake.data.KeyValue;
 import xin.vanilla.aotake.enums.EnumI18nType;
 import xin.vanilla.aotake.util.AbstractGuiUtils;
 import xin.vanilla.aotake.util.AotakeUtils;
@@ -32,16 +35,25 @@ public abstract class ChestScreenMixin {
                 .toTextComponent(AotakeUtils.getPlayerLanguage(player))
                 .getContents();
         if (!title.startsWith(modTitle)) return;
+        if (ClientConfig.VANILLA_DUSTBIN.get()) return;
 
         RenderSystem.color4f(1.0F, 1.0F, 1.0F, 1.0F);
-        AbstractGuiUtils.bindTexture(TextureUtils.loadCustomTexture(TextureUtils.INTERNAL_THEME_DIR + "dustbin_gui.png"));
+        ResourceLocation texture = TextureUtils.loadCustomTexture(TextureUtils.INTERNAL_THEME_DIR + "dustbin_gui.png");
+        AbstractGuiUtils.bindTexture(texture);
         ContainerScreenAccessor accessor = (ContainerScreenAccessor) screen;
         int i = accessor.aotake$getLeftPos();
         int j = accessor.aotake$getTopPos();
         int imageWidth = accessor.aotake$getImageWidth();
-        int rowsHeight = 6 * 18 + 17;
-        AbstractGuiUtils.blitBlend(stack, i, j, 0, 0, imageWidth, rowsHeight, 256, 256);
-        AbstractGuiUtils.blitBlend(stack, i, j + rowsHeight, 0, 126, imageWidth, 96, 256, 256);
+        int imageHeight = accessor.aotake$getImageHeight();
+        KeyValue<Integer, Integer> size = TextureUtils.getTextureSize(texture);
+        int srcW = size.getKey();
+        int srcH = size.getValue();
+        double scale = Math.min(imageWidth / (double) srcW, imageHeight / (double) srcH);
+        int drawW = (int) Math.round(srcW * scale);
+        int drawH = (int) Math.round(srcH * scale);
+        int drawX = i + (imageWidth - drawW) / 2;
+        int drawY = j + (imageHeight - drawH) / 2;
+        AbstractGuiUtils.blitBlend(stack, drawX, drawY, 0, 0, drawW, drawH, srcW, srcH);
 
         ci.cancel();
     }

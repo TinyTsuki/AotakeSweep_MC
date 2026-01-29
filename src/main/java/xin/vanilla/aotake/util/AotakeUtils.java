@@ -1,9 +1,14 @@
 package xin.vanilla.aotake.util;
 
-import com.google.gson.reflect.TypeToken;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonPrimitive;
 import com.mojang.brigadier.StringReader;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
+import lombok.Getter;
 import lombok.NonNull;
+import lombok.experimental.Accessors;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockState;
 import net.minecraft.client.Minecraft;
@@ -50,19 +55,21 @@ import xin.vanilla.aotake.AotakeSweep;
 import xin.vanilla.aotake.config.CommonConfig;
 import xin.vanilla.aotake.config.CustomConfig;
 import xin.vanilla.aotake.config.ServerConfig;
+import xin.vanilla.aotake.data.ChunkKey;
 import xin.vanilla.aotake.data.KeyValue;
 import xin.vanilla.aotake.data.SweepResult;
 import xin.vanilla.aotake.data.WorldCoordinate;
 import xin.vanilla.aotake.data.player.PlayerSweepData;
 import xin.vanilla.aotake.data.world.WorldTrashData;
 import xin.vanilla.aotake.enums.*;
+import xin.vanilla.aotake.event.EventHandlerProxy;
 import xin.vanilla.aotake.mixin.ServerPlayerAccessor;
 import xin.vanilla.aotake.network.ModNetworkHandler;
+import xin.vanilla.aotake.network.packet.DustbinPageSyncToClient;
 
 import javax.annotation.Nullable;
 import java.io.File;
 import java.util.*;
-import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 
@@ -310,6 +317,14 @@ public class AotakeUtils {
      */
     public static boolean executeCommandNoOutput(@NonNull ServerPlayerEntity player, @NonNull String command, int permission) {
         return executeCommand(player, command, permission, true);
+    }
+
+    public static void refreshPermission(@NonNull ServerPlayerEntity player) {
+        MinecraftServer server = player.getServer();
+        if (server == null) {
+            server = AotakeSweep.getServerInstance().getKey();
+        }
+        server.getPlayerList().sendPlayerPermissionLevel(player);
     }
 
     // endregion 指令相关
@@ -594,53 +609,87 @@ public class AotakeUtils {
 
         Map<KeyValue<World, BlockPos>, BlockState> blockStateCache = new HashMap<>();
 
-        List<Entity> filtered = entities.stream().filter(entity -> !(entity instanceof PlayerEntity)).collect(Collectors.toList());
+        boolean hasSafeRules = !SAFE_BLOCKS.isEmpty()
+                || !SAFE_BLOCKS_STATE.isEmpty()
+                || !SAFE_BLOCKS_BELOW.isEmpty()
+                || !SAFE_BLOCKS_BELOW_STATE.isEmpty()
+                || !SAFE_BLOCKS_ABOVE.isEmpty()
+                || !SAFE_BLOCKS_ABOVE_STATE.isEmpty();
+
+        List<Entity> filtered = new ArrayList<>(entities.size());
+        Map<String, Integer> nonJunkTypeCounts = new HashMap<>();
+        Map<ChunkKey, Integer> safeChunkCounts = new HashMap<>();
+        IdentityHashMap<Entity, Boolean> junkCache = new IdentityHashMap<>();
+        IdentityHashMap<Entity, Boolean> safeCache = new IdentityHashMap<>();
+        IdentityHashMap<Entity, String> typeCache = new IdentityHashMap<>();
+        IdentityHashMap<Entity, ChunkKey> chunkKeyCache = new IdentityHashMap<>();
 
         LOGGER.debug("Entity exceeded filter started at {}", System.currentTimeMillis());
-        // 超限的非垃圾实体
-        List<Entity> exceededEntityList = entities.stream()
-                // 非垃圾实体
-                .filter(entity -> !isJunkEntity(entity, chuck))
-                .collect(Collectors.groupingBy(AotakeUtils::getEntityTypeRegistryName, Collectors.toList()))
-                .entrySet().stream()
-                // 超限
-                .filter(entry -> entry.getValue().size() > ServerConfig.ENTITY_LIST_LIMIT.get())
-                .flatMap(entry -> entry.getValue().stream())
-                .collect(Collectors.toList());
+        for (Entity entity : entities) {
+            if (entity instanceof PlayerEntity) continue;
+            filtered.add(entity);
+
+            boolean safe = hasSafeRules && isSafeEntity(blockStateCache, entity);
+            safeCache.put(entity, safe);
+            if (safe) {
+                ChunkKey key = ChunkKey.of(entity);
+                chunkKeyCache.put(entity, key);
+                safeChunkCounts.merge(key, 1, Integer::sum);
+            }
+
+            boolean junk = isJunkEntity(entity, chuck);
+            junkCache.put(entity, junk);
+            if (!junk) {
+                String type = getEntityTypeRegistryName(entity);
+                typeCache.put(entity, type);
+                nonJunkTypeCounts.merge(type, 1, Integer::sum);
+            }
+        }
 
         LOGGER.debug("Entity safe filter started at {}", System.currentTimeMillis());
+        int typeLimit = ServerConfig.ENTITY_LIST_LIMIT.get();
+        Set<String> exceededTypes = new HashSet<>();
+        for (Map.Entry<String, Integer> entry : nonJunkTypeCounts.entrySet()) {
+            if (entry.getValue() > typeLimit) {
+                exceededTypes.add(entry.getKey());
+            }
+        }
 
-        // 超限的安全实体
-        List<Entity> exceededBlockList = filtered.stream()
-                // 安全实体
-                .filter(entity -> isSafeEntity(blockStateCache, entity))
-                .collect(Collectors.groupingBy(entity -> {
-                    String dimension = entity.level.dimension().location().toString();
-                    int chunkX = entity.blockPosition().getX() / 16;
-                    int chunkZ = entity.blockPosition().getZ() / 16;
-                    return dimension + "," + chunkX + "," + chunkZ;
-                }, Collectors.toList()))
-                .entrySet().stream()
-                // 超限
-                .filter(entry -> entry.getValue().size() > CommonConfig.SAFE_BLOCKS_ENTITY_LIMIT.get())
-                .flatMap(entry -> entry.getValue().stream())
-                .collect(Collectors.toList());
+        int safeLimit = CommonConfig.SAFE_BLOCKS_ENTITY_LIMIT.get();
+        Set<ChunkKey> exceededChunks = new HashSet<>();
+        for (Map.Entry<ChunkKey, Integer> entry : safeChunkCounts.entrySet()) {
+            if (entry.getValue() > safeLimit) {
+                exceededChunks.add(entry.getKey());
+            }
+        }
 
         LOGGER.debug("Entity junk filter started at {}", System.currentTimeMillis());
-
-        // 过滤
-        Predicate<Entity> predicate = entity -> {
-            boolean unsafe = !isSafeEntity(blockStateCache, entity);
-
-            // 垃圾
-            return (unsafe && isJunkEntity(entity, chuck))
-                    // 超限的非垃圾
-                    || exceededEntityList.contains(entity)
-                    // 超限的安全实体
-                    || exceededBlockList.contains(entity);
-        };
-
-        List<Entity> entityList = filtered.stream().filter(predicate).collect(Collectors.toList());
+        List<Entity> entityList = new ArrayList<>();
+        for (Entity entity : filtered) {
+            boolean safe = safeCache.getOrDefault(entity, false);
+            boolean junk = junkCache.getOrDefault(entity, false);
+            boolean exceededType = false;
+            if (!junk && !exceededTypes.isEmpty()) {
+                String type = typeCache.get(entity);
+                if (type == null) {
+                    type = getEntityTypeRegistryName(entity);
+                    typeCache.put(entity, type);
+                }
+                exceededType = exceededTypes.contains(type);
+            }
+            boolean exceededSafe = false;
+            if (safe && !exceededChunks.isEmpty()) {
+                ChunkKey key = chunkKeyCache.get(entity);
+                if (key == null) {
+                    key = ChunkKey.of(entity);
+                    chunkKeyCache.put(entity, key);
+                }
+                exceededSafe = exceededChunks.contains(key);
+            }
+            if ((!safe && junk) || exceededType || exceededSafe) {
+                entityList.add(entity);
+            }
+        }
         LOGGER.debug("Entity filter finished at {}", System.currentTimeMillis());
         return entityList;
     }
@@ -792,34 +841,52 @@ public class AotakeUtils {
         return entityTag;
     }
 
-    private static final Map<String, String> warns = new HashMap<>();
-    private static final Map<String, String> voices = new HashMap<>();
+    private static final List<Map<String, List<String>>> warnGroups = new ArrayList<>();
+    private static final List<Map<String, List<String>>> voiceGroups = new ArrayList<>();
+    private static Map<String, List<String>> activeWarnGroup = new HashMap<>();
+    private static long activeWarnGroupSweepTime = Long.MIN_VALUE;
+    private static Map<String, List<String>> activeVoiceGroup = new HashMap<>();
+    private static long activeVoiceGroupSweepTime = Long.MIN_VALUE;
 
     private static void initWarns() {
-        if (warns.isEmpty()) {
-            warns.putAll(JsonUtils.GSON.fromJson(CommonConfig.SWEEP_WARNING_CONTENT.get(), new TypeToken<Map<String, String>>() {
-            }.getType()));
-            warns.putIfAbsent("error", "message.aotake_sweep.cleanup_error");
-            warns.putIfAbsent("fail", "message.aotake_sweep.cleanup_started");
-            warns.putIfAbsent("success", "message.aotake_sweep.cleanup_started");
+        if (warnGroups.isEmpty()) {
+            WarningContentParseResult result = parseWarningContent(CommonConfig.SWEEP_WARNING_CONTENT.get());
+            warnGroups.addAll(result.groups());
+            if (warnGroups.isEmpty()) {
+                warnGroups.add(buildDefaultWarnGroup());
+            }
+            for (Map<String, List<String>> group : warnGroups) {
+                group.putIfAbsent("error", defaultWarnList("message.aotake_sweep.cleanup_error"));
+                group.putIfAbsent("fail", defaultWarnList("message.aotake_sweep.cleanup_started"));
+                group.putIfAbsent("success", defaultWarnList("message.aotake_sweep.cleanup_started"));
+            }
+            if (result.needUpgrade()) {
+                CommonConfig.SWEEP_WARNING_CONTENT.set(buildWarningContentJson(warnGroups));
+                CommonConfig.save();
+            }
         }
-        if (voices.isEmpty()) {
-            voices.putAll(JsonUtils.GSON.fromJson(CommonConfig.SWEEP_WARNING_VOICE.get(), new TypeToken<Map<String, String>>() {
-            }.getType()));
-            voices.put("initialized", "initialized");
+        if (voiceGroups.isEmpty()) {
+            WarningContentParseResult result = parseWarningVoice(CommonConfig.SWEEP_WARNING_VOICE.get());
+            voiceGroups.addAll(result.groups());
+            if (result.needUpgrade()) {
+                CommonConfig.SWEEP_WARNING_VOICE.set(buildWarningContentJson(voiceGroups));
+                CommonConfig.save();
+            }
         }
     }
 
     public static boolean hasWarning(String key) {
         initWarns();
-        return warns.containsKey(key);
+        Map<String, List<String>> group = getActiveWarnGroup();
+        return CollectionUtils.isNotNullOrEmpty(group.get(key));
     }
 
     public static Component getWarningMessage(String key, String lang, @Nullable SweepResult result) {
         Component msg = null;
         try {
             initWarns();
-            String text = warns.get(key);
+            Map<String, List<String>> group = getActiveWarnGroup();
+            String text = CollectionUtils.getRandomElement(group.get(key));
             if (StringUtils.isNotNullOrEmpty(text) && text.startsWith("message.aotake_sweep.")) {
                 text = I18nUtils.getTranslation(text, lang);
             }
@@ -845,16 +912,277 @@ public class AotakeUtils {
         return msg;
     }
 
+    private static Map<String, List<String>> getActiveWarnGroup() {
+        if (warnGroups.isEmpty()) {
+            return Collections.emptyMap();
+        }
+        long sweepTime = EventHandlerProxy.getNextSweepTime();
+        if (activeWarnGroupSweepTime != sweepTime || activeWarnGroup.isEmpty()) {
+            activeWarnGroupSweepTime = sweepTime;
+            Map<String, List<String>> selected = CollectionUtils.getRandomElement(warnGroups);
+            activeWarnGroup = selected != null ? selected : warnGroups.get(0);
+        }
+        return activeWarnGroup;
+    }
+
+    private static Map<String, List<String>> getActiveVoiceGroup() {
+        if (voiceGroups.isEmpty()) {
+            return Collections.emptyMap();
+        }
+        long sweepTime = EventHandlerProxy.getNextSweepTime();
+        if (activeVoiceGroupSweepTime != sweepTime || activeVoiceGroup.isEmpty()) {
+            activeVoiceGroupSweepTime = sweepTime;
+            Map<String, List<String>> selected = CollectionUtils.getRandomElement(voiceGroups);
+            activeVoiceGroup = selected != null ? selected : voiceGroups.get(0);
+        }
+        return activeVoiceGroup;
+    }
+
+    private static WarningContentParseResult parseWarningContent(String raw) {
+        WarningContentParseResult result = new WarningContentParseResult();
+        if (StringUtils.isNullOrEmpty(raw)) {
+            return result;
+        }
+        JsonElement root;
+        try {
+            root = JsonUtils.GSON.fromJson(raw, JsonElement.class);
+        } catch (Exception e) {
+            return result;
+        }
+        if (root == null || root.isJsonNull()) {
+            return result;
+        }
+        if (root.isJsonObject()) {
+            JsonObject obj = root.getAsJsonObject();
+            if (obj.has("groups")) {
+                JsonElement groupsElement = obj.get("groups");
+                if (groupsElement != null && groupsElement.isJsonArray()) {
+                    parseGroupsArray(groupsElement.getAsJsonArray(), result);
+                } else {
+                    result.markUpgrade();
+                }
+            } else {
+                result.markUpgrade();
+                Map<String, List<String>> group = parseGroupObject(obj, result);
+                if (!CollectionUtils.isNullOrEmpty(group)) {
+                    result.groups.add(group);
+                }
+            }
+        } else if (root.isJsonArray()) {
+            result.markUpgrade();
+            parseGroupsArray(root.getAsJsonArray(), result);
+        } else {
+            result.markUpgrade();
+        }
+        return result;
+    }
+
+    private static WarningContentParseResult parseWarningVoice(String raw) {
+        WarningContentParseResult result = new WarningContentParseResult();
+        if (StringUtils.isNullOrEmpty(raw)) {
+            return result;
+        }
+        JsonElement root;
+        try {
+            root = JsonUtils.GSON.fromJson(raw, JsonElement.class);
+        } catch (Exception e) {
+            return result;
+        }
+        if (root == null || root.isJsonNull()) {
+            return result;
+        }
+        if (root.isJsonObject()) {
+            JsonObject obj = root.getAsJsonObject();
+            if (obj.has("groups")) {
+                JsonElement groupsElement = obj.get("groups");
+                if (groupsElement != null && groupsElement.isJsonArray()) {
+                    parseVoiceGroupsArray(groupsElement.getAsJsonArray(), result);
+                } else {
+                    result.markUpgrade();
+                }
+            } else {
+                result.markUpgrade();
+                Map<String, List<String>> group = parseVoiceGroupObject(obj, result);
+                if (!CollectionUtils.isNullOrEmpty(group)) {
+                    result.groups.add(group);
+                }
+            }
+        } else if (root.isJsonArray()) {
+            result.markUpgrade();
+            parseVoiceGroupsArray(root.getAsJsonArray(), result);
+        } else {
+            result.markUpgrade();
+        }
+        return result;
+    }
+
+    private static void parseGroupsArray(JsonArray array, WarningContentParseResult result) {
+        for (JsonElement element : array) {
+            if (element != null && element.isJsonObject()) {
+                Map<String, List<String>> group = parseGroupObject(element.getAsJsonObject(), result);
+                if (!CollectionUtils.isNullOrEmpty(group)) {
+                    result.groups.add(group);
+                }
+            } else {
+                result.markUpgrade();
+            }
+        }
+    }
+
+    private static void parseVoiceGroupsArray(JsonArray array, WarningContentParseResult result) {
+        for (JsonElement element : array) {
+            if (element != null && element.isJsonObject()) {
+                Map<String, List<String>> group = parseVoiceGroupObject(element.getAsJsonObject(), result);
+                if (!CollectionUtils.isNullOrEmpty(group)) {
+                    result.groups.add(group);
+                }
+            } else {
+                result.markUpgrade();
+            }
+        }
+    }
+
+    private static Map<String, List<String>> parseGroupObject(JsonObject obj, WarningContentParseResult result) {
+        Map<String, List<String>> group = new LinkedHashMap<>();
+        for (Map.Entry<String, JsonElement> entry : obj.entrySet()) {
+            List<String> values = parseWarningValues(entry.getValue(), result);
+            if (CollectionUtils.isNotNullOrEmpty(values)) {
+                group.put(entry.getKey(), values);
+            }
+        }
+        return group;
+    }
+
+    private static Map<String, List<String>> parseVoiceGroupObject(JsonObject obj, WarningContentParseResult result) {
+        Map<String, List<String>> group = new LinkedHashMap<>();
+        for (Map.Entry<String, JsonElement> entry : obj.entrySet()) {
+            List<String> values = parseVoiceValues(entry.getValue(), result);
+            if (CollectionUtils.isNotNullOrEmpty(values)) {
+                group.put(entry.getKey(), values);
+            }
+        }
+        return group;
+    }
+
+    private static List<String> parseWarningValues(JsonElement element, WarningContentParseResult result) {
+        List<String> values = new ArrayList<>();
+        if (element == null || element.isJsonNull()) {
+            return values;
+        }
+        if (element.isJsonArray()) {
+            for (JsonElement item : element.getAsJsonArray()) {
+                addWarningValue(values, item);
+            }
+        } else {
+            result.markUpgrade();
+            addWarningValue(values, element);
+        }
+        return values;
+    }
+
+    private static List<String> parseVoiceValues(JsonElement element, WarningContentParseResult result) {
+        List<String> values = new ArrayList<>();
+        if (element == null || element.isJsonNull()) {
+            return values;
+        }
+        if (element.isJsonArray()) {
+            for (JsonElement item : element.getAsJsonArray()) {
+                addVoiceValue(values, item);
+            }
+        } else {
+            result.markUpgrade();
+            addVoiceValue(values, element);
+        }
+        return values;
+    }
+
+    private static void addWarningValue(List<String> values, JsonElement element) {
+        if (element == null || element.isJsonNull()) {
+            return;
+        }
+        if (element.isJsonPrimitive()) {
+            values.add(element.getAsJsonPrimitive().getAsString());
+        } else {
+            values.add(element.toString());
+        }
+    }
+
+    private static void addVoiceValue(List<String> values, JsonElement element) {
+        if (element == null || element.isJsonNull()) {
+            return;
+        }
+        if (element.isJsonPrimitive()) {
+            String text = element.getAsJsonPrimitive().getAsString();
+            for (String item : text.split(",")) {
+                String trimmed = item.trim();
+                if (StringUtils.isNotNullOrEmpty(trimmed)) {
+                    values.add(trimmed);
+                }
+            }
+        } else {
+            values.add(element.toString());
+        }
+    }
+
+    private static List<String> defaultWarnList(String value) {
+        List<String> list = new ArrayList<>();
+        list.add(value);
+        return list;
+    }
+
+    private static Map<String, List<String>> buildDefaultWarnGroup() {
+        Map<String, List<String>> group = new LinkedHashMap<>();
+        group.put("error", defaultWarnList("message.aotake_sweep.cleanup_error"));
+        group.put("fail", defaultWarnList("message.aotake_sweep.cleanup_started"));
+        group.put("success", defaultWarnList("message.aotake_sweep.cleanup_started"));
+        return group;
+    }
+
+    private static String buildWarningContentJson(List<Map<String, List<String>>> groups) {
+        JsonObject root = new JsonObject();
+        JsonArray groupArray = new JsonArray();
+        for (Map<String, List<String>> group : groups) {
+            JsonObject groupObj = new JsonObject();
+            for (Map.Entry<String, List<String>> entry : group.entrySet()) {
+                List<String> values = entry.getValue();
+                if (CollectionUtils.isNullOrEmpty(values)) {
+                    continue;
+                }
+                JsonArray arr = new JsonArray();
+                for (String value : values) {
+                    arr.add(new JsonPrimitive(value));
+                }
+                groupObj.add(entry.getKey(), arr);
+            }
+            groupArray.add(groupObj);
+        }
+        root.add("groups", groupArray);
+        return JsonUtils.GSON.toJson(root);
+    }
+
+    @Getter
+    @Accessors(fluent = true)
+    private static class WarningContentParseResult {
+        private final List<Map<String, List<String>>> groups = new ArrayList<>();
+        private boolean needUpgrade;
+
+        public void markUpgrade() {
+            this.needUpgrade = true;
+        }
+    }
+
     public static boolean hasWarningVoice(String key) {
         initWarns();
-        return voices.containsKey(key);
+        Map<String, List<String>> group = getActiveVoiceGroup();
+        return CollectionUtils.isNotNullOrEmpty(group.get(key));
     }
 
     public static String getWarningVoice(String key) {
         String id = null;
         try {
             initWarns();
-            id = CollectionUtils.getRandomElement(voices.get(key).split(","));
+            Map<String, List<String>> group = getActiveVoiceGroup();
+            id = CollectionUtils.getRandomElement(group.get(key));
         } catch (Exception ignored) {
         }
         return id;
@@ -905,7 +1233,10 @@ public class AotakeUtils {
             }
         }
 
-        if (result > 0) AotakeSweep.getPlayerDustbinPage().put(AotakeUtils.getPlayerUUIDString(player), page);
+        if (result > 0) {
+            AotakeSweep.getPlayerDustbinPage().put(AotakeUtils.getPlayerUUIDString(player), page);
+            AotakeUtils.sendPacketToPlayer(new DustbinPageSyncToClient(page, totalPage), player);
+        }
         return result;
     }
 
@@ -1083,6 +1414,54 @@ public class AotakeUtils {
             LOGGER.error("Failed to write compressed file: {}", file.getAbsolutePath(), e);
         }
         return result;
+    }
+
+    public static boolean hasAotakeTag(ItemStack item) {
+        CompoundNBT tag = item.getTag();
+        return tag != null && tag.contains(AotakeSweep.MODID);
+    }
+
+    public static CompoundNBT getAotakeTag(ItemStack item) {
+        CompoundNBT tag = item.getTag();
+        if (tag == null) {
+            tag = new CompoundNBT();
+            item.setTag(tag);
+        }
+        if (!tag.contains(AotakeSweep.MODID)) {
+            tag.put(AotakeSweep.MODID, new CompoundNBT());
+        }
+        return tag.getCompound(AotakeSweep.MODID);
+    }
+
+    public static void setAotakeTag(ItemStack item, CompoundNBT aotakeTag) {
+        CompoundNBT tag = item.getTag();
+        if (tag == null) {
+            tag = new CompoundNBT();
+            item.setTag(tag);
+        }
+        tag.put(AotakeSweep.MODID, aotakeTag);
+    }
+
+    public static CompoundNBT clearAotakeTag(ItemStack item) {
+        CompoundNBT tag = item.getTag();
+        if (tag != null) {
+            tag.remove(AotakeSweep.MODID);
+        }
+        return tag;
+    }
+
+    public static void clearItemTag(ItemStack item) {
+        CompoundNBT tag = item.getTag();
+        if (tag != null && tag.isEmpty()) {
+            item.setTag(null);
+        }
+    }
+
+    public static void clearItemTagEx(ItemStack item) {
+        CompoundNBT tag = clearAotakeTag(item);
+        if (tag != null && tag.isEmpty()) {
+            item.setTag(null);
+        }
     }
 
     // endregion nbt文件读写

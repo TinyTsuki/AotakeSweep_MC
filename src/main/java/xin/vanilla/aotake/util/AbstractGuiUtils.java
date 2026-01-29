@@ -8,6 +8,8 @@ import lombok.experimental.Accessors;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.AbstractGui;
 import net.minecraft.client.gui.FontRenderer;
+import net.minecraft.client.gui.screen.Screen;
+import net.minecraft.client.gui.widget.button.Button;
 import net.minecraft.util.ResourceLocation;
 import net.minecraft.util.math.vector.Vector3f;
 import net.minecraftforge.api.distmarker.Dist;
@@ -673,4 +675,17 @@ public class AbstractGuiUtils {
 
     //  endregion 绘制弹出层提示
 
+
+    // region 重写方法签名
+
+    public static Button newButton(int x, int y, int width, int height, Component content, Button.IPressable onPress, Component tooltip) {
+        Screen screen = Minecraft.getInstance().screen;
+        return new Button(x, y, width, height, content.toTextComponent(AotakeUtils.getClientLanguage()), onPress, (button, stack, x1, y1) -> {
+            if (screen != null) {
+                screen.renderTooltip(stack, tooltip.toTextComponent(AotakeUtils.getClientLanguage()), x1, y1);
+            }
+        });
+    }
+
+    // endregion 重写方法签名
 }

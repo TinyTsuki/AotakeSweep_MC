@@ -12,6 +12,8 @@ import java.util.regex.Pattern;
  */
 public class SafeExpressionEvaluator {
     private static final Logger LOGGER = LogManager.getLogger();
+    private static final Pattern NUMERIC_PATTERN = Pattern.compile("^-?\\d+(\\.\\d+)?$");
+    private static final Pattern INTEGER_PATTERN = Pattern.compile("^-?\\d+$");
 
     // 允许的数学函数
     private static final Set<String> MATH_FUNCTIONS = new HashSet<>(Arrays.asList(
@@ -51,9 +53,8 @@ public class SafeExpressionEvaluator {
 
     public boolean evaluateBoolean(Map<String, Object> vars, boolean throwException) {
         try {
-            Map<String, Object> merged = new HashMap<>();
-            if (vars != null) merged.putAll(vars);
-            Object val = root.evaluate(merged);
+            Map<String, Object> scope = vars == null ? Collections.emptyMap() : vars;
+            Object val = root.evaluate(scope);
             return toBoolean(val);
         } catch (Throwable e) {
             if (throwException) {
@@ -70,7 +71,7 @@ public class SafeExpressionEvaluator {
 
     private static boolean isNumericString(String s) {
         if (s == null) return false;
-        return Pattern.matches("^-?\\d+(\\.\\d+)?$", s.trim());
+        return NUMERIC_PATTERN.matcher(s.trim()).matches();
     }
 
     /**
@@ -90,7 +91,7 @@ public class SafeExpressionEvaluator {
         }
         if (o instanceof String) {
             String s = ((String) o).trim();
-            return Pattern.matches("^-?\\d+$", s);
+            return INTEGER_PATTERN.matcher(s).matches();
         }
         return false;
     }
@@ -110,7 +111,7 @@ public class SafeExpressionEvaluator {
         }
         if (o instanceof String) {
             String s = ((String) o).trim();
-            if (Pattern.matches("^-?\\d+$", s)) {
+            if (INTEGER_PATTERN.matcher(s).matches()) {
                 return Long.parseLong(s);
             }
         }
@@ -643,7 +644,7 @@ public class SafeExpressionEvaluator {
         }
 
         public Object evaluate(Map<String, Object> vars) {
-            List<Double> evalArgs = new ArrayList<>();
+            List<Double> evalArgs = new ArrayList<>(args.size());
             for (Node n : args) {
                 Object v = n.evaluate(vars);
                 if (v == null) evalArgs.add(0.0);
@@ -765,7 +766,7 @@ public class SafeExpressionEvaluator {
 
         public Object evaluate(Map<String, Object> vars) {
             Object tar = target.evaluate(vars);
-            List<Object> argVals = new ArrayList<>();
+            List<Object> argVals = args.isEmpty() ? Collections.emptyList() : new ArrayList<>(args.size());
             for (Node n : args) argVals.add(n.evaluate(vars));
 
             if (!SAFE_METHODS.contains(method)) {

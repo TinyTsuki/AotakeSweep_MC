@@ -5,6 +5,7 @@ import net.minecraft.client.renderer.texture.DynamicTexture;
 import net.minecraft.client.renderer.texture.NativeImage;
 import net.minecraft.client.renderer.texture.Texture;
 import net.minecraft.client.renderer.texture.TextureManager;
+import net.minecraft.resources.IResource;
 import net.minecraft.util.ResourceLocation;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.client.event.TextureStitchEvent;
@@ -13,6 +14,7 @@ import net.minecraftforge.fml.common.Mod;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import xin.vanilla.aotake.AotakeSweep;
+import xin.vanilla.aotake.data.KeyValue;
 
 import java.io.File;
 import java.io.IOException;
@@ -80,6 +82,44 @@ public class TextureUtils {
     }
 
     private static final Map<ResourceLocation, NativeImage> CACHE = new HashMap<>();
+    private static final Map<ResourceLocation, KeyValue<Integer, Integer>> TEXTURE_SIZE_CACHE = new HashMap<>();
+
+    /**
+     * 从资源中加载纹理并转换为NativeImage
+     */
+    public static NativeImage getTextureImage(ResourceLocation texture) {
+        if (CACHE.containsKey(texture)) {
+            return CACHE.get(texture);
+        }
+        try {
+            IResource resource = Minecraft.getInstance().getResourceManager().getResource(texture);
+            try (InputStream inputStream = resource.getInputStream()) {
+                NativeImage nativeImage = NativeImage.read(inputStream);
+                CACHE.put(texture, nativeImage);
+                return nativeImage;
+            }
+        } catch (Exception e) {
+            LOGGER.debug("Failed to load texture: {}", texture);
+            return null;
+        }
+    }
+
+    /**
+     * 获取纹理的宽高
+     */
+    public static KeyValue<Integer, Integer> getTextureSize(ResourceLocation texture) {
+        KeyValue<Integer, Integer> size = new KeyValue<>(0, 0);
+        if (TEXTURE_SIZE_CACHE.containsKey(texture)) {
+            size = TEXTURE_SIZE_CACHE.get(texture);
+        } else {
+            NativeImage textureImage = getTextureImage(texture);
+            if (textureImage != null) {
+                size.setKey(textureImage.getWidth()).setValue(textureImage.getHeight());
+            }
+            TEXTURE_SIZE_CACHE.put(texture, size);
+        }
+        return size;
+    }
 
     public static void clearAll() {
         for (NativeImage img : CACHE.values()) {
@@ -89,6 +129,7 @@ public class TextureUtils {
             }
         }
         CACHE.clear();
+        TEXTURE_SIZE_CACHE.clear();
     }
 
     @SubscribeEvent

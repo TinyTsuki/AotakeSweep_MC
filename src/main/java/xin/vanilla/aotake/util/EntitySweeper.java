@@ -83,17 +83,19 @@ public class EntitySweeper {
             result.setTotalBatch(1);
         }
 
-        Set<Integer> seenEntities = new HashSet<>();
+        Set<Entity> seenEntities = Collections.newSetFromMap(new IdentityHashMap<>());
         for (Entity entity : entities) {
-            int id = System.identityHashCode(entity);
-            if (seenEntities.add(id)) {
+            Entity canonical = (entity instanceof PartEntity) ? ((PartEntity<?>) entity).getParent() : entity;
+            if (seenEntities.add(canonical)) {
                 result.add(this.processDrop(entity));
             }
         }
 
-        for (Entity entity : entitiesToRemove) {
-            if (entity.isAlive() && entity.level instanceof ServerWorld) {
-                scheduleRemoveEntity(entity, false);
+        if (!entitiesToRemove.isEmpty()) {
+            for (Entity entity : entitiesToRemove) {
+                if (entity.isAlive() && entity.level instanceof ServerWorld) {
+                    scheduleRemoveEntity(entity, false);
+                }
             }
         }
         entitiesToRemove.clear();
@@ -189,6 +191,7 @@ public class EntitySweeper {
                 AotakeUtils.sanitizeCapturedEntityTag(entityTag);
                 aotake.put("entity", entityTag);
                 aotake.putString("entityId", AotakeUtils.getEntityTypeRegistryName(entity));
+                aotake.putString("name", AotakeUtils.getItemCustomNameJson(itemToRecycle));
                 tag.put(AotakeSweep.MODID, aotake);
 
                 result.setRecycledEntityCount(1);
@@ -214,9 +217,9 @@ public class EntitySweeper {
     }
 
     private void handleItemRecycling(WorldCoordinate coordinate, ItemStack item, SweepResult result) {
-        // 自清洁模式
+        EnumDustbinMode dustbinMode = EnumDustbinMode.valueOfOrDefault(ServerConfig.DUSTBIN_MODE.get());
         if (ServerConfig.SELF_CLEAN_MODE.get().contains(EnumSelfCleanMode.SWEEP_DELETE.name())) {
-            switch (EnumDustbinMode.valueOfOrDefault(ServerConfig.DUSTBIN_MODE.get())) {
+            switch (dustbinMode) {
                 case VIRTUAL: {
                     selfCleanVirtualDustbin();
                 }
@@ -235,7 +238,7 @@ public class EntitySweeper {
         ItemStack remaining = item;
         int recycledCount = item.getCount();
 
-        switch (EnumDustbinMode.valueOfOrDefault(ServerConfig.DUSTBIN_MODE.get())) {
+        switch (dustbinMode) {
             case VIRTUAL: {
                 remaining = addItemToVirtualDustbin(remaining);
             }
@@ -292,14 +295,19 @@ public class EntitySweeper {
             if (remaining.isEmpty()) break;
 
             if (inv.canAddItem(remaining)) {
-                List<ItemStack> remainingList = new ArrayList<>();
-                List<ItemStack> itemStackList = splitItemStack(remaining, inv.getMaxStackSize());
-                int splits = itemStackList.size();
-                for (ItemStack itemStack : itemStackList) {
-                    ItemStack leftover = inv.addItem(itemStack);
-                    remainingList.add(leftover);
+                int maxStackSize = inv.getMaxStackSize();
+                if (remaining.getCount() <= maxStackSize) {
+                    remaining = inv.addItem(remaining);
+                } else {
+                    List<ItemStack> remainingList = new ArrayList<>();
+                    List<ItemStack> itemStackList = splitItemStack(remaining, maxStackSize);
+                    int splits = itemStackList.size();
+                    for (ItemStack itemStack : itemStackList) {
+                        ItemStack leftover = inv.addItem(itemStack);
+                        remainingList.add(leftover);
+                    }
+                    if (splits > 0) remaining = mergeItemStack(remainingList);
                 }
-                if (splits > 0) remaining = mergeItemStack(remainingList);
             }
         }
         return remaining;
@@ -315,14 +323,18 @@ public class EntitySweeper {
                         .map(handler::getSlotLimit)
                         .filter(i -> i > 0)
                         .min().orElse(64);
-                List<ItemStack> remainingList = new ArrayList<>();
-                List<ItemStack> itemStackList = splitItemStack(remaining, invMax);
-                int splits = itemStackList.size();
-                for (ItemStack itemStack : itemStackList) {
-                    ItemStack leftover = AotakeUtils.addItemToBlock(itemStack, dustbinPos);
-                    remainingList.add(leftover);
+                if (remaining.getCount() <= invMax) {
+                    remaining = AotakeUtils.addItemToBlock(remaining, dustbinPos);
+                } else {
+                    List<ItemStack> remainingList = new ArrayList<>();
+                    List<ItemStack> itemStackList = splitItemStack(remaining, invMax);
+                    int splits = itemStackList.size();
+                    for (ItemStack itemStack : itemStackList) {
+                        ItemStack leftover = AotakeUtils.addItemToBlock(itemStack, dustbinPos);
+                        remainingList.add(leftover);
+                    }
+                    if (splits > 0) remaining = mergeItemStack(remainingList);
                 }
-                if (splits > 0) remaining = mergeItemStack(remainingList);
             }
         }
         return remaining;
@@ -416,7 +428,7 @@ public class EntitySweeper {
      */
     private static List<ItemStack> splitItemStack(ItemStack stack, int invMax) {
         if (stack == null || stack.isEmpty() || invMax <= 0) {
-            return new ArrayList<>();
+            return Collections.emptyList();
         }
         int count = Math.min(invMax, stack.getMaxStackSize());
 
