@@ -36,10 +36,7 @@ import xin.vanilla.aotake.data.KeyValue;
 import xin.vanilla.aotake.data.WorldCoordinate;
 import xin.vanilla.aotake.data.player.PlayerSweepData;
 import xin.vanilla.aotake.data.world.WorldTrashData;
-import xin.vanilla.aotake.enums.EnumChunkCheckMode;
-import xin.vanilla.aotake.enums.EnumI18nType;
-import xin.vanilla.aotake.enums.EnumMCColor;
-import xin.vanilla.aotake.enums.EnumSelfCleanMode;
+import xin.vanilla.aotake.enums.*;
 import xin.vanilla.aotake.network.packet.GhostCameraToClient;
 import xin.vanilla.aotake.network.packet.SweepTimeSyncToClient;
 import xin.vanilla.aotake.util.*;
@@ -383,7 +380,7 @@ public class EventHandlerProxy {
                 AotakeUtils.clearItemTagEx(original);
             } else {
                 if (aotake.contains("player")) {
-                    if (!player.hasPermissions(ServerConfig.PERMISSION_CATCH_PLAYER.get())) {
+                    if (!AotakeUtils.hasCommandPermission(player, EnumCommandType.CATCH_PLAYER)) {
                         return null;
                     }
                     String playerId = aotake.getString("player");
@@ -542,7 +539,7 @@ public class EventHandlerProxy {
                     event.setCancellationResult(ActionResultType.SUCCESS);
                     return;
                 }
-                if (entity instanceof PlayerEntity && !player.hasPermissions(ServerConfig.PERMISSION_CATCH_PLAYER.get())) {
+                if (entity instanceof PlayerEntity && !AotakeUtils.hasCommandPermission(player, EnumCommandType.CATCH_PLAYER)) {
                     return;
                 }
                 original.shrink(1);
@@ -794,10 +791,8 @@ public class EventHandlerProxy {
     }
 
     private static String getCapturedPlayerUuid(ItemStack stack) {
-        if (stack == null || stack.isEmpty()) return null;
-        CompoundNBT tag = stack.getTag();
-        if (tag == null || tag.isEmpty() || !tag.contains(AotakeSweep.MODID)) return null;
-        CompoundNBT aotake = tag.getCompound(AotakeSweep.MODID);
+        if (!AotakeUtils.hasAotakeTag(stack)) return null;
+        CompoundNBT aotake = AotakeUtils.getAotakeTag(stack);
         if (!aotake.contains("player")) return null;
         String uuid = aotake.getString("player");
         return StringUtils.isNullOrEmptyEx(uuid) ? null : uuid;

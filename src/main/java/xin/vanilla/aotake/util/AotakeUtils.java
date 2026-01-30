@@ -73,7 +73,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 
-@SuppressWarnings("resource")
+@SuppressWarnings({"resource"})
 public class AotakeUtils {
     private static final Logger LOGGER = LogManager.getLogger();
 
@@ -180,6 +180,8 @@ public class AotakeUtils {
             case DELAY_SWEEP:
             case DELAY_SWEEP_CONCISE:
                 return ServerConfig.PERMISSION_DELAY_SWEEP.get();
+            case CATCH_PLAYER:
+                return ServerConfig.PERMISSION_CATCH_PLAYER.get();
             default:
                 return 0;
         }
@@ -1417,11 +1419,12 @@ public class AotakeUtils {
     }
 
     public static boolean hasAotakeTag(ItemStack item) {
+        if (item == null) return false;
         CompoundNBT tag = item.getTag();
         return tag != null && tag.contains(AotakeSweep.MODID);
     }
 
-    public static CompoundNBT getAotakeTag(ItemStack item) {
+    public static CompoundNBT getAotakeTag(@NonNull ItemStack item) {
         CompoundNBT tag = item.getTag();
         if (tag == null) {
             tag = new CompoundNBT();
@@ -1433,7 +1436,7 @@ public class AotakeUtils {
         return tag.getCompound(AotakeSweep.MODID);
     }
 
-    public static void setAotakeTag(ItemStack item, CompoundNBT aotakeTag) {
+    public static void setAotakeTag(@NonNull ItemStack item, CompoundNBT aotakeTag) {
         CompoundNBT tag = item.getTag();
         if (tag == null) {
             tag = new CompoundNBT();
@@ -1443,6 +1446,7 @@ public class AotakeUtils {
     }
 
     public static CompoundNBT clearAotakeTag(ItemStack item) {
+        if (item == null) return null;
         CompoundNBT tag = item.getTag();
         if (tag != null) {
             tag.remove(AotakeSweep.MODID);
@@ -1451,6 +1455,7 @@ public class AotakeUtils {
     }
 
     public static void clearItemTag(ItemStack item) {
+        if (item == null) return;
         CompoundNBT tag = item.getTag();
         if (tag != null && tag.isEmpty()) {
             item.setTag(null);
@@ -1458,6 +1463,7 @@ public class AotakeUtils {
     }
 
     public static void clearItemTagEx(ItemStack item) {
+        if (item == null) return;
         CompoundNBT tag = clearAotakeTag(item);
         if (tag != null && tag.isEmpty()) {
             item.setTag(null);

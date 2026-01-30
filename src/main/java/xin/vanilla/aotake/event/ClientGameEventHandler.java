@@ -6,6 +6,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.entity.player.ClientPlayerEntity;
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.gui.screen.inventory.ChestScreen;
+import net.minecraft.client.gui.widget.button.Button;
 import net.minecraft.util.ResourceLocation;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.client.event.ClientChatEvent;
@@ -191,6 +192,8 @@ public class ClientGameEventHandler {
     private static final Component MOD_NAME = Component.translatable(EnumI18nType.KEY, "categories");
 
     private static final MouseHelper mouseHelper = new MouseHelper();
+    private static Button dustbinPrevButton;
+    private static Button dustbinNextButton;
 
     @SubscribeEvent
     public static void onRenderScreen(GuiScreenEvent event) {
@@ -217,6 +220,12 @@ public class ClientGameEventHandler {
                     GuiScreenEvent.InitGuiEvent.Post eve = (GuiScreenEvent.InitGuiEvent.Post) event;
                     ClientPlayerEntity player = mc.player;
                     int yOffset = 0;
+                    boolean canPrev = true;
+                    boolean canNext = true;
+                    if (dustbinPage > 0 && dustbinTotalPage > 0) {
+                        canPrev = dustbinPage > 1;
+                        canNext = dustbinPage < dustbinTotalPage;
+                    }
                     if (AotakeUtils.hasCommandPermission(player, EnumCommandType.CACHE_CLEAR)) {
                         eve.addWidget(
                                 AbstractGuiUtils.newButton(screen.width / 2 - 88 - 21
@@ -257,26 +266,42 @@ public class ClientGameEventHandler {
                                     , Component.translatable(EnumI18nType.MESSAGE, "refresh_page")
                             )
                     );
-                    eve.addWidget(
-                            AbstractGuiUtils.newButton(screen.width / 2 - 88 - 21
-                                    , screen.height / 2 - 111 + 21 * (yOffset++)
-                                    , 20, 20
-                                    , Component.literal("▲")
-                                    , button -> AotakeUtils.sendPacketToServer(new OpenDustbinToServer(-1))
-                                    , Component.translatable(EnumI18nType.MESSAGE, "previous_page")
-                            )
+                    Button prevButton = AbstractGuiUtils.newButton(screen.width / 2 - 88 - 21
+                            , screen.height / 2 - 111 + 21 * (yOffset++)
+                            , 20, 20
+                            , Component.literal("▲")
+                            , button -> AotakeUtils.sendPacketToServer(new OpenDustbinToServer(-1))
+                            , Component.translatable(EnumI18nType.MESSAGE, "previous_page")
                     );
-                    eve.addWidget(
-                            AbstractGuiUtils.newButton(screen.width / 2 - 88 - 21
-                                    , screen.height / 2 - 111 + 21 * (yOffset++)
-                                    , 20, 20
-                                    , Component.literal("▼")
-                                    , button -> AotakeUtils.sendPacketToServer(new OpenDustbinToServer(1))
-                                    , Component.translatable(EnumI18nType.MESSAGE, "next_page")
-                            )
+                    prevButton.active = canPrev;
+                    dustbinPrevButton = prevButton;
+                    eve.addWidget(prevButton);
+                    Button nextButton = AbstractGuiUtils.newButton(screen.width / 2 - 88 - 21
+                            , screen.height / 2 - 111 + 21 * (yOffset++)
+                            , 20, 20
+                            , Component.literal("▼")
+                            , button -> AotakeUtils.sendPacketToServer(new OpenDustbinToServer(1))
+                            , Component.translatable(EnumI18nType.MESSAGE, "next_page")
                     );
+                    nextButton.active = canNext;
+                    dustbinNextButton = nextButton;
+                    eve.addWidget(nextButton);
                 }
             } else if (event instanceof GuiScreenEvent.DrawScreenEvent.Post) {
+                if (ClientConfig.VANILLA_DUSTBIN.get()) {
+                    boolean canPrev = true;
+                    boolean canNext = true;
+                    if (dustbinPage > 0 && dustbinTotalPage > 0) {
+                        canPrev = dustbinPage > 1;
+                        canNext = dustbinPage < dustbinTotalPage;
+                    }
+                    if (dustbinPrevButton != null) {
+                        dustbinPrevButton.active = canPrev;
+                    }
+                    if (dustbinNextButton != null) {
+                        dustbinNextButton.active = canNext;
+                    }
+                }
                 if (!ClientConfig.VANILLA_DUSTBIN.get()) {
                     GuiScreenEvent.DrawScreenEvent.Post eve = (GuiScreenEvent.DrawScreenEvent.Post) event;
                     ClientPlayerEntity player = mc.player;
