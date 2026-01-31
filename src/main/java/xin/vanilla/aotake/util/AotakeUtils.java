@@ -1,14 +1,8 @@
 package xin.vanilla.aotake.util;
 
-import com.google.gson.JsonArray;
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
-import com.google.gson.JsonPrimitive;
 import com.mojang.brigadier.StringReader;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
-import lombok.Getter;
 import lombok.NonNull;
-import lombok.experimental.Accessors;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockState;
 import net.minecraft.client.Minecraft;
@@ -55,6 +49,7 @@ import xin.vanilla.aotake.AotakeSweep;
 import xin.vanilla.aotake.config.CommonConfig;
 import xin.vanilla.aotake.config.CustomConfig;
 import xin.vanilla.aotake.config.ServerConfig;
+import xin.vanilla.aotake.config.WarningConfig;
 import xin.vanilla.aotake.data.ChunkKey;
 import xin.vanilla.aotake.data.KeyValue;
 import xin.vanilla.aotake.data.SweepResult;
@@ -850,30 +845,28 @@ public class AotakeUtils {
     private static Map<String, List<String>> activeVoiceGroup = new HashMap<>();
     private static long activeVoiceGroupSweepTime = Long.MIN_VALUE;
 
+
+    public static void clearWarns() {
+        warnGroups.clear();
+        voiceGroups.clear();
+        activeWarnGroup = new HashMap<>();
+        activeWarnGroupSweepTime = Long.MIN_VALUE;
+        activeVoiceGroup = new HashMap<>();
+        activeVoiceGroupSweepTime = Long.MIN_VALUE;
+    }
+
     private static void initWarns() {
-        if (warnGroups.isEmpty()) {
-            WarningContentParseResult result = parseWarningContent(CommonConfig.SWEEP_WARNING_CONTENT.get());
-            warnGroups.addAll(result.groups());
-            if (warnGroups.isEmpty()) {
-                warnGroups.add(buildDefaultWarnGroup());
-            }
-            for (Map<String, List<String>> group : warnGroups) {
-                group.putIfAbsent("error", defaultWarnList("message.aotake_sweep.cleanup_error"));
-                group.putIfAbsent("fail", defaultWarnList("message.aotake_sweep.cleanup_started"));
-                group.putIfAbsent("success", defaultWarnList("message.aotake_sweep.cleanup_started"));
-            }
-            if (result.needUpgrade()) {
-                CommonConfig.SWEEP_WARNING_CONTENT.set(buildWarningContentJson(warnGroups));
-                CommonConfig.save();
-            }
+        if (!warnGroups.isEmpty() && !voiceGroups.isEmpty()) {
+            return;
         }
-        if (voiceGroups.isEmpty()) {
-            WarningContentParseResult result = parseWarningVoice(CommonConfig.SWEEP_WARNING_VOICE.get());
-            voiceGroups.addAll(result.groups());
-            if (result.needUpgrade()) {
-                CommonConfig.SWEEP_WARNING_VOICE.set(buildWarningContentJson(voiceGroups));
-                CommonConfig.save();
-            }
+        WarningConfig.WarningGroupData data = WarningConfig.loadWarningGroups();
+        warnGroups.clear();
+        voiceGroups.clear();
+        if (CollectionUtils.isNotNullOrEmpty(data.contentGroups())) {
+            warnGroups.addAll(data.contentGroups());
+        }
+        if (CollectionUtils.isNotNullOrEmpty(data.voiceGroups())) {
+            voiceGroups.addAll(data.voiceGroups());
         }
     }
 
@@ -938,239 +931,6 @@ public class AotakeUtils {
             activeVoiceGroup = selected != null ? selected : voiceGroups.get(0);
         }
         return activeVoiceGroup;
-    }
-
-    private static WarningContentParseResult parseWarningContent(String raw) {
-        WarningContentParseResult result = new WarningContentParseResult();
-        if (StringUtils.isNullOrEmpty(raw)) {
-            return result;
-        }
-        JsonElement root;
-        try {
-            root = JsonUtils.GSON.fromJson(raw, JsonElement.class);
-        } catch (Exception e) {
-            return result;
-        }
-        if (root == null || root.isJsonNull()) {
-            return result;
-        }
-        if (root.isJsonObject()) {
-            JsonObject obj = root.getAsJsonObject();
-            if (obj.has("groups")) {
-                JsonElement groupsElement = obj.get("groups");
-                if (groupsElement != null && groupsElement.isJsonArray()) {
-                    parseGroupsArray(groupsElement.getAsJsonArray(), result);
-                } else {
-                    result.markUpgrade();
-                }
-            } else {
-                result.markUpgrade();
-                Map<String, List<String>> group = parseGroupObject(obj, result);
-                if (!CollectionUtils.isNullOrEmpty(group)) {
-                    result.groups.add(group);
-                }
-            }
-        } else if (root.isJsonArray()) {
-            result.markUpgrade();
-            parseGroupsArray(root.getAsJsonArray(), result);
-        } else {
-            result.markUpgrade();
-        }
-        return result;
-    }
-
-    private static WarningContentParseResult parseWarningVoice(String raw) {
-        WarningContentParseResult result = new WarningContentParseResult();
-        if (StringUtils.isNullOrEmpty(raw)) {
-            return result;
-        }
-        JsonElement root;
-        try {
-            root = JsonUtils.GSON.fromJson(raw, JsonElement.class);
-        } catch (Exception e) {
-            return result;
-        }
-        if (root == null || root.isJsonNull()) {
-            return result;
-        }
-        if (root.isJsonObject()) {
-            JsonObject obj = root.getAsJsonObject();
-            if (obj.has("groups")) {
-                JsonElement groupsElement = obj.get("groups");
-                if (groupsElement != null && groupsElement.isJsonArray()) {
-                    parseVoiceGroupsArray(groupsElement.getAsJsonArray(), result);
-                } else {
-                    result.markUpgrade();
-                }
-            } else {
-                result.markUpgrade();
-                Map<String, List<String>> group = parseVoiceGroupObject(obj, result);
-                if (!CollectionUtils.isNullOrEmpty(group)) {
-                    result.groups.add(group);
-                }
-            }
-        } else if (root.isJsonArray()) {
-            result.markUpgrade();
-            parseVoiceGroupsArray(root.getAsJsonArray(), result);
-        } else {
-            result.markUpgrade();
-        }
-        return result;
-    }
-
-    private static void parseGroupsArray(JsonArray array, WarningContentParseResult result) {
-        for (JsonElement element : array) {
-            if (element != null && element.isJsonObject()) {
-                Map<String, List<String>> group = parseGroupObject(element.getAsJsonObject(), result);
-                if (!CollectionUtils.isNullOrEmpty(group)) {
-                    result.groups.add(group);
-                }
-            } else {
-                result.markUpgrade();
-            }
-        }
-    }
-
-    private static void parseVoiceGroupsArray(JsonArray array, WarningContentParseResult result) {
-        for (JsonElement element : array) {
-            if (element != null && element.isJsonObject()) {
-                Map<String, List<String>> group = parseVoiceGroupObject(element.getAsJsonObject(), result);
-                if (!CollectionUtils.isNullOrEmpty(group)) {
-                    result.groups.add(group);
-                }
-            } else {
-                result.markUpgrade();
-            }
-        }
-    }
-
-    private static Map<String, List<String>> parseGroupObject(JsonObject obj, WarningContentParseResult result) {
-        Map<String, List<String>> group = new LinkedHashMap<>();
-        for (Map.Entry<String, JsonElement> entry : obj.entrySet()) {
-            List<String> values = parseWarningValues(entry.getValue(), result);
-            if (CollectionUtils.isNotNullOrEmpty(values)) {
-                group.put(entry.getKey(), values);
-            }
-        }
-        return group;
-    }
-
-    private static Map<String, List<String>> parseVoiceGroupObject(JsonObject obj, WarningContentParseResult result) {
-        Map<String, List<String>> group = new LinkedHashMap<>();
-        for (Map.Entry<String, JsonElement> entry : obj.entrySet()) {
-            List<String> values = parseVoiceValues(entry.getValue(), result);
-            if (CollectionUtils.isNotNullOrEmpty(values)) {
-                group.put(entry.getKey(), values);
-            }
-        }
-        return group;
-    }
-
-    private static List<String> parseWarningValues(JsonElement element, WarningContentParseResult result) {
-        List<String> values = new ArrayList<>();
-        if (element == null || element.isJsonNull()) {
-            return values;
-        }
-        if (element.isJsonArray()) {
-            for (JsonElement item : element.getAsJsonArray()) {
-                addWarningValue(values, item);
-            }
-        } else {
-            result.markUpgrade();
-            addWarningValue(values, element);
-        }
-        return values;
-    }
-
-    private static List<String> parseVoiceValues(JsonElement element, WarningContentParseResult result) {
-        List<String> values = new ArrayList<>();
-        if (element == null || element.isJsonNull()) {
-            return values;
-        }
-        if (element.isJsonArray()) {
-            for (JsonElement item : element.getAsJsonArray()) {
-                addVoiceValue(values, item);
-            }
-        } else {
-            result.markUpgrade();
-            addVoiceValue(values, element);
-        }
-        return values;
-    }
-
-    private static void addWarningValue(List<String> values, JsonElement element) {
-        if (element == null || element.isJsonNull()) {
-            return;
-        }
-        if (element.isJsonPrimitive()) {
-            values.add(element.getAsJsonPrimitive().getAsString());
-        } else {
-            values.add(element.toString());
-        }
-    }
-
-    private static void addVoiceValue(List<String> values, JsonElement element) {
-        if (element == null || element.isJsonNull()) {
-            return;
-        }
-        if (element.isJsonPrimitive()) {
-            String text = element.getAsJsonPrimitive().getAsString();
-            for (String item : text.split(",")) {
-                String trimmed = item.trim();
-                if (StringUtils.isNotNullOrEmpty(trimmed)) {
-                    values.add(trimmed);
-                }
-            }
-        } else {
-            values.add(element.toString());
-        }
-    }
-
-    private static List<String> defaultWarnList(String value) {
-        List<String> list = new ArrayList<>();
-        list.add(value);
-        return list;
-    }
-
-    private static Map<String, List<String>> buildDefaultWarnGroup() {
-        Map<String, List<String>> group = new LinkedHashMap<>();
-        group.put("error", defaultWarnList("message.aotake_sweep.cleanup_error"));
-        group.put("fail", defaultWarnList("message.aotake_sweep.cleanup_started"));
-        group.put("success", defaultWarnList("message.aotake_sweep.cleanup_started"));
-        return group;
-    }
-
-    private static String buildWarningContentJson(List<Map<String, List<String>>> groups) {
-        JsonObject root = new JsonObject();
-        JsonArray groupArray = new JsonArray();
-        for (Map<String, List<String>> group : groups) {
-            JsonObject groupObj = new JsonObject();
-            for (Map.Entry<String, List<String>> entry : group.entrySet()) {
-                List<String> values = entry.getValue();
-                if (CollectionUtils.isNullOrEmpty(values)) {
-                    continue;
-                }
-                JsonArray arr = new JsonArray();
-                for (String value : values) {
-                    arr.add(new JsonPrimitive(value));
-                }
-                groupObj.add(entry.getKey(), arr);
-            }
-            groupArray.add(groupObj);
-        }
-        root.add("groups", groupArray);
-        return JsonUtils.GSON.toJson(root);
-    }
-
-    @Getter
-    @Accessors(fluent = true)
-    private static class WarningContentParseResult {
-        private final List<Map<String, List<String>>> groups = new ArrayList<>();
-        private boolean needUpgrade;
-
-        public void markUpgrade() {
-            this.needUpgrade = true;
-        }
     }
 
     public static boolean hasWarningVoice(String key) {
@@ -1657,6 +1417,12 @@ public class AotakeUtils {
 
     public static String getDimensionRegistryName(World world) {
         return world.dimension().location().toString();
+    }
+
+    public static <T> List<T> singleList(T value) {
+        List<T> list = new ArrayList<>();
+        list.add(value);
+        return list;
     }
 
     // endregion 杂项

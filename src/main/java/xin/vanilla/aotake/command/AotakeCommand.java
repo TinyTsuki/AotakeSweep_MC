@@ -840,8 +840,8 @@ public class AotakeCommand {
                                                 String lang = CommandUtils.getLanguage(source);
                                                 switch (mode) {
                                                     case 0:
-                                                        ServerConfig.resetConfig();
-                                                        CommonConfig.resetConfig();
+                                                        ServerConfig.resetConfigWithMode0();
+                                                        CommonConfig.resetConfigWithMode0();
                                                         break;
                                                     case 1:
                                                         ServerConfig.resetConfigWithMode1();

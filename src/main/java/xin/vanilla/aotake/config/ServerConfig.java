@@ -589,7 +589,7 @@ public class ServerConfig {
     /**
      * 重置服务器配置文件
      */
-    public static void resetConfig() {
+    private static void resetConfig() {
         HELP_HEADER.set("-----==== Aotake Sweep Help (%d/%d) ====-----");
         HELP_INFO_NUM_PER_PAGE.set(5);
         DEFAULT_LANGUAGE.set("en_us");
@@ -652,6 +652,10 @@ public class ServerConfig {
         PERMISSION_CLEAR_DROP.set(1);
         PERMISSION_DELAY_SWEEP.set(1);
         PERMISSION_CATCH_PLAYER.set(3);
+    }
+
+    public static void resetConfigWithMode0() {
+        resetConfig();
 
         SERVER_CONFIG.save();
     }
