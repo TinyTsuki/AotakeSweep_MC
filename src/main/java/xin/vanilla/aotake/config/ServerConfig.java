@@ -132,6 +132,7 @@ public class ServerConfig implements ConfigData {
         private List<String> entityList = new ArrayList<>() {{
             add(Registry.ENTITY_TYPE.getKey(EntityType.ARROW).toString());
             add(Registry.ENTITY_TYPE.getKey(EntityType.SPECTRAL_ARROW).toString());
+            add(Registry.ENTITY_TYPE.getKey(EntityType.EXPERIENCE_ORB).toString());
             add("tick, clazz, itemClazz, createProcessing = [CreateData.Processing.Time]" +
                     " -> " +
                     "tick >= 5 && clazz :> itemClazz && (createProcessing <= 0 || createProcessing == null)");
@@ -199,7 +200,7 @@ public class ServerConfig implements ConfigData {
          */
         @ConfigEntry.Gui.Tooltip
         @ConfigEntry.Gui.EnumHandler(option = ConfigEntry.Gui.EnumHandler.EnumDisplayOption.BUTTON)
-        private EnumChunkCheckMode chunkCheckMode = EnumChunkCheckMode.DEFAULT;
+        private EnumChunkCheckMode chunkCheckMode = EnumChunkCheckMode.ADVANCED;
 
         /**
          * 区块检测实体名单
