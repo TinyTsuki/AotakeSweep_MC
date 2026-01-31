@@ -4,7 +4,7 @@
 
 ![](src/main/resources/logo.png)
 
-**A Minecraft (Neo)Forge Timed Cleanup MOD.**
+**A Minecraft Forge, Neoforge and Fabric Timed Cleanup MOD.**
 
 ## Table of Contents
 

@@ -4,7 +4,7 @@
 
 ![](src/main/resources/logo.png)
 
-**Minecraft (Neo)Forge 向け定期掃除 MOD。**
+**Minecraft Forge、NeoForge、Fabric 向け定期掃除 MOD。**
 
 ## 目次
 

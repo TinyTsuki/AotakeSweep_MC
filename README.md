@@ -4,7 +4,7 @@
 
 ![](src/main/resources/logo.png)
 
-**一个 Minecraft (Neo)Forge 定时扫地 MOD。**
+**一个 Minecraft Forge、NeoForge、Fabric 定时扫地 MOD。**
 
 ## 目录
 
