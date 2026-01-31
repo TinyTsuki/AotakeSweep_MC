@@ -49,7 +49,32 @@
 
 ## 設定
 
-MOD 関連の設定は以下のパスにあります。詳細は省略しますので、デフォルト設定ファイルのコメントを参照してください。
+MOD 関連の設定は以下のパスにあります。詳細は省略しますので、Forgeデフォルト設定ファイルのコメントを参照してください。
+
+### 通用部分
+
+- カウントダウン通知設定 [`config/aotake_sweep-warning.json`](config/aotake_sweep-warning.json)
+- サーバーゴミ箱データ `world/data/world_trash_data.dat`
+- Vanilla Xin シリーズ MOD 共通設定 `config/vanilla.xin/common_config.json`
+- Vanilla Xin シリーズ MOD プレイヤーデータ `world/playerdata/vanilla.xin/*.nbt`
+
+### Forge
+
+- 両側共通設定 [`config/aotake_sweep-common.toml`](config/forge/aotake_sweep-common.toml)
+- クライアント設定 [`config/aotake_sweep-client.toml`](config/forge/aotake_sweep-client.toml)
+- サーバー設定 [`world/serverconfig/aotake_sweep-server.toml`](config/forge/aotake_sweep-server.toml)
+
+### NeoForge
+
+- 両側共通設定 [`config/aotake_sweep-common.toml`](config/forge/aotake_sweep-common.toml)
+- クライアント設定 [`config/aotake_sweep-client.toml`](config/forge/aotake_sweep-client.toml)
+- サーバー設定 [`config/aotake_sweep-server.toml`](config/forge/aotake_sweep-server.toml)
+
+### Fabric
+
+- クライアント設定 [`config/aotake_sweep-client.toml`](config/fabric/aotake_sweep-client.toml)
+- サーバー設定 [`config/aotake_sweep-server.toml`](config/fabric/aotake_sweep-server.toml)
+
 
 - 両側共通設定 [`config/aotake_sweep-common.toml`](aotake_sweep-common.toml)
 - クライアント設定 [`config/aotake_sweep-client.toml`](aotake_sweep-client.toml)
@@ -135,7 +160,8 @@ AotakeEL をサポートする設定項目には、`entityList`、`entityRedlist
     - **変数宣言** の形式：
         1. `組み込み変数名`：例：エンティティ ID `resource`
         2. `カスタム変数名 = '文字列定数'`：例：`modName = 'AotakeSweep'`
-        3. `カスタム変数名 = [エンティティNBTパス]`：例：[Create](https://github.com/Creators-of-Create/Create)
+        3. `カスタム変数名 = [エンティティNBTパス]`
+           ：例：ForgeとNeoForgeのみ、[Create](https://github.com/Creators-of-Create/Create)
            でファンによって処理中のアイテムの残り処理時間  
            `processTime = [CreateData.Processing.Time]`
         4. `カスタム変数名 = <EntityDataKey>`：例：[Ice and Fire](https://github.com/AlexModGuy/Ice_and_Fire)
@@ -157,18 +183,14 @@ AotakeEL をサポートする設定項目には、`entityList`、`entityRedlist
         12. `-`: 減算
         13. `*`: 乗算
         14. `/`: 除算
-        15. `^`: Math.pow()
-        16. `:>`: rightClass.isAssignableFrom(leftClass)
-        17. `<:`: rightClass.isInstance(leftClass)
-        18. `contains`: left.contains(right)
-        19. `sqrt`: Math.sqrt()
-        20. `pow`: Math.pow()
-        21. `log`: Math.log()
-        22. `sin`: Math.sin()
-        23. `cos`: Math.cos()
-        24. `abs`: Math.abs()
-        25. `random`: Math.random()
-        26. `宣言された変数名`: 上記の例の `modName`、`processTime` など
+        15. `%`: 剰余
+        16. `^`: Math.pow()
+        17. `:>`: rightClass.isAssignableFrom(leftClass)
+        18. `<:`: rightClass.isInstance(leftClass)
+        19. `contains`: left.contains(right)
+        20. `Math関数`:
+            sqrt、pow、abs、max、min、log、log10、exp、sin、cos、tan、asin、acos、atan、atan2、sinh、cosh、tanh、ceil、floor、round、signum、toRadians、toDegrees、random
+        21. `宣言された変数名`: 上記の例の `modName`、`processTime` など
 4. AotakeEL 組み込み変数：
     1. `namespace`: エンティティ ID の `:` の前の部分、通常は MOD ID
     2. `path`: エンティティ ID の `:` の後の部分

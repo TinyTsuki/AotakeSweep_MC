@@ -1,0 +1,33 @@
+vanillaDustbin = false
+
+[progressBarConfig]
+progressBarDisplayNormal = ["LEAF"]
+progressBarDisplayHold = ["LEAF", "POLE", "TEXT"]
+progressBarKeyApplyMode = false
+
+[progressBarConfig.leafConfig]
+hideExperienceBarLeaf = false
+progressBarLeafScreenQuadrant = 1
+progressBarLeafPosition = "0,4"
+progressBarLeafBase = "TOP_LEFT"
+progressBarLeafAngle = 0.0
+progressBarLeafHeight = 10
+progressBarLeafWidth = 9
+
+[progressBarConfig.poleConfig]
+hideExperienceBarPole = true
+progressBarPoleScreenQuadrant = 1
+progressBarPolePosition = "50%,29"
+progressBarPoleBase = "TOP_CENTER"
+progressBarPoleAngle = 0.0
+progressBarPoleHeight = 5
+progressBarPoleWidth = 180
+
+[progressBarConfig.textConfig]
+hideExperienceBarText = true
+progressBarTextScreenQuadrant = 1
+progressBarTextPosition = "50%,8"
+progressBarTextBase = "TOP_CENTER"
+progressBarTextAngle = 0.0
+progressBarTextSize = 8
+progressBarTextColor = "0x5DA530"

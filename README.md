@@ -49,14 +49,31 @@
 
 ## 配置说明
 
-您可以在以下路径找到 MOD 相关配置，详细的信息不再赘述，请参考默认配置文件中的注释。
+您可以在以下路径找到 MOD 相关配置，详细的信息不再赘述，请参考Forge默认配置文件中的注释。
 
-- 双端通用配置 [`config/aotake_sweep-common.toml`](aotake_sweep-common.toml)
-- 客户端相关配置 [`config/aotake_sweep-client.toml`](aotake_sweep-client.toml)
-- 服务端相关配置 [`world/serverconfig/aotake_sweep-server.toml`](aotake_sweep-server.toml)
+### 通用部分
+
+- 倒计时提示配置 [`config/aotake_sweep-warning.json`](config/aotake_sweep-warning.json)
 - 服务器垃圾箱数据 `world/data/world_trash_data.dat`
 - 香草芯系列 MOD 通用配置 `config/vanilla.xin/common_config.json`
 - 香草芯系列 MOD 玩家数据 `world/playerdata/vanilla.xin/*.nbt`
+
+### Forge
+
+- 双端通用配置 [`config/aotake_sweep-common.toml`](config/forge/aotake_sweep-common.toml)
+- 客户端相关配置 [`config/aotake_sweep-client.toml`](config/forge/aotake_sweep-client.toml)
+- 服务端相关配置 [`world/serverconfig/aotake_sweep-server.toml`](config/forge/aotake_sweep-server.toml)
+
+### NeoForge
+
+- 双端通用配置 [`config/aotake_sweep-common.toml`](config/forge/aotake_sweep-common.toml)
+- 客户端相关配置 [`config/aotake_sweep-client.toml`](config/forge/aotake_sweep-client.toml)
+- 服务端相关配置 [`config/aotake_sweep-server.toml`](config/forge/aotake_sweep-server.toml)
+
+### Fabric
+
+- 客户端相关配置 [`config/aotake_sweep-client.toml`](config/fabric/aotake_sweep-client.toml)
+- 服务端相关配置 [`config/aotake_sweep-server.toml`](config/fabric/aotake_sweep-server.toml)
 
 ---
 
@@ -134,7 +151,8 @@
     - **变量声明** 有以下格式：
         1. `内置变量名称`：如 实体 ID `resource`
         2. `自定义变量名称 = '字符串常量'`：如 `modName = 'AotakeSweep'`
-        3. `自定义变量名称 = [实体NBTPath]`：如 [机械动力](https://github.com/Creators-of-Create/Create)
+        3. `自定义变量名称 = [实体NBTPath]`
+           ：仅Forge与NeoForge，如 [机械动力](https://github.com/Creators-of-Create/Create)
            中被鼓风机处理的物品的剩余处理时间  
            `processTime = [CreateData.Processing.Time]`
         4. `自定义变量名称 = <EntityDataKey>`：如 [冰火传说](https://github.com/AlexModGuy/Ice_and_Fire)
@@ -156,18 +174,14 @@
         12. `-`： 减
         13. `*`： 乘
         14. `/`： 除
-        15. `^`： Math.pow()
-        16. `:>`： rightClass.isAssignableFrom(leftClass)
-        17. `<:`： rightClass.isInstance(leftClass)
-        18. `contains`： left.contains(right)
-        19. `sqrt`： Math.sqrt()
-        20. `pow`： Math.pow()
-        21. `log`： Math.log()
-        22. `sin`： Math.sin()
-        23. `cos`： Math.cos()
-        24. `abs`： Math.abs()
-        25. `random`： Math.random()
-        26. `声明的变量名称`： 如上面例子中的 `modName`、`processTime`
+        15. `%`： 取模
+        16. `^`： Math.pow()
+        17. `:>`： rightClass.isAssignableFrom(leftClass)
+        18. `<:`： rightClass.isInstance(leftClass)
+        19. `contains`： left.contains(right)
+        20. `Math函数`：
+            sqrt、pow、abs、max、min、log、log10、exp、sin、cos、tan、asin、acos、atan、atan2、sinh、cosh、tanh、ceil、floor、round、signum、toRadians、toDegrees、random
+        21. `声明的变量名称`： 如上面例子中的 `modName`、`processTime`
 4. AotakeEL 内置变量：
     1. `namespace`：实体 ID 的 `:` 前半部分，一般为 MOD ID
     2. `path`：实体 ID 的 `:` 后半部分

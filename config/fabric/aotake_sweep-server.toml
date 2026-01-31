@@ -1,0 +1,88 @@
+helpHeader = "-----==== Aotake Sweep Help (%d/%d) ====-----"
+helpInfoNumPerPage = 5
+defaultLanguage = "en_us"
+commandPrefix = "aotake"
+
+[sweepConfig]
+sweepInterval = 600000
+sweepWhenNoPlayer = false
+sweepWarningContent = ""
+sweepWarningVoice = ""
+sweepWarningVoiceVolume = 33
+entityList = ["minecraft:arrow", "minecraft:spectral_arrow", "minecraft:experience_orb", "tick, clazz, itemClazz, createProcessing = [CreateData.Processing.Time] -> tick >= 5 && clazz :> itemClazz && (createProcessing <= 0 || createProcessing == null)"]
+entityListMode = "BLACK"
+entityListLimit = 250
+entityRedlist = []
+
+[chunkCheckConfig]
+chunkCheckInterval = 5000
+chunkCheckLimit = 250
+chunkCheckRetain = 0.5
+chunkCheckNotice = true
+chunkCheckMode = "ADVANCED"
+chunkCheckEntityList = ["customName, hasOwner, createProcessing = [CreateData.Processing.Time] -> customName != null || hasOwner || createProcessing > 0"]
+chunkCheckEntityListMode = "WHITE"
+chunkCheckOnlyNotice = false
+
+[catchConfig]
+catchEntity = []
+allowCatchEntity = false
+catchItem = ["minecraft:snowball", "minecraft:glass_bottle", "minecraft:music_disc_13"]
+
+[dustbinConfig]
+dustbinPageLimit = 1
+cacheLimit = 5000
+selfCleanInterval = 3600000
+selfCleanMode = ["NONE"]
+dustbinOverflowMode = "KEEP"
+dustbinPersistent = true
+dustbinBlockPositions = []
+dustbinMode = "VIRTUAL"
+
+[batchConfig]
+sweepEntityLimit = 500
+sweepEntityInterval = 2
+sweepBatchLimit = 10
+
+[safeConfig]
+safeBlocks = []
+safeBlocksBelow = []
+safeBlocksAbove = []
+safeBlocksEntityLimit = 250
+
+[permissionConfig]
+permissionVirtualOp = 4
+permissionDustbinOpen = 0
+permissionDustbinOpenOther = 2
+permissionDustbinClear = 1
+permissionDustbinDrop = 2
+permissionCacheClear = 2
+permissionCacheDrop = 2
+permissionSweep = 2
+permissionClearDrop = 2
+permissionDelaySweep = 2
+permissionCatchPlayer = 3
+
+[commandConfig]
+commandLanguage = "language"
+commandVirtualOp = "opv"
+commandDustbinOpen = "dustbin"
+commandDustbinClear = "cleardustbin"
+commandDustbinDrop = "dropdustbin"
+commandCacheClear = "clearcache"
+commandCacheDrop = "dropcache"
+commandSweep = "sweep"
+commandClearDrop = "killitem"
+commandDelaySweep = "delay"
+
+[conciseConfig]
+conciseLanguage = false
+conciseVirtualOp = false
+conciseDustbinOpen = false
+conciseDustbinClear = false
+conciseDustbinDrop = false
+conciseCacheClear = false
+conciseCacheDrop = false
+conciseSweep = false
+conciseClearDrop = true
+conciseDelaySweep = false

@@ -26,7 +26,7 @@
 		sweepInterval = 600000
 		#The entity list, the following entities will be cleaned up according to the entityListMode.
 		#实体名单，与配置 entityListMode 共同决定列表中的实体是否清理。
-		entityList = ["minecraft:arrow", "minecraft:spectral_arrow", "tick, clazz, itemClazz, createProcessing = [CreateData.Processing.Time] -> tick >= 5 && clazz :> itemClazz && (createProcessing <= 0 || createProcessing == null)"]
+		entityList = ["minecraft:arrow", "minecraft:spectral_arrow", "minecraft:experience_orb", "tick, clazz, itemClazz, createProcessing = [CreateData.Processing.Time] -> tick >= 5 && clazz :> itemClazz && (createProcessing <= 0 || createProcessing == null)"]
 		#The application mode of the entity list:
 		#BLACK: Blacklist, only the entities listed will be cleaned up;
 		#WHITE: Whitelist, all entities except those listed will be cleaned up.
@@ -68,7 +68,7 @@
 		#区块内实体过多检测模式：
 		#DEFAULT：区块内所有实体超过阈值触发清理；
 		#ADVANCED：区块内某个类型实体超过阈值触发清理。
-		chunkCheckMode = "DEFAULT"
+		chunkCheckMode = "ADVANCED"
 		#The entity list of chunk check, the following entities will be cleaned up according to the chunkCheckEntityListMode.
 		#区块检测实体名单，与配置 chunkCheckEntityListMode 共同决定列表中的实体是否清理。
 		chunkCheckEntityList = ["customName, hasOwner, createProcessing = [CreateData.Processing.Time] -> customName != null || hasOwner || createProcessing > 0"]
@@ -212,4 +212,8 @@
 	#延迟本次清理指令所需的权限等级。
 	#Range: 0 ~ 4
 	permissionDelaySweep = 1
+	#The permission level required to catch player.
+	#延迟本次清理指令所需的权限等级。
+	#Range: 0 ~ 4
+	permissionCatchPlayer = 3
 

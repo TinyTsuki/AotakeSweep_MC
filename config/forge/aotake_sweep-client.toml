@@ -200,3 +200,10 @@
 			#十进制：`R,G,B`、`A,R,G,B`
 			progressBarTextColor = "0x5DA530"
 
+	#Dustbin
+	#垃圾箱
+	[client.dustbin]
+		#Whether to use the vanilla UI for dustbin screen.
+		#垃圾箱页面是否使用原版UI。
+		vanillaDustbin = false
+

@@ -52,14 +52,31 @@ This MOD is required on the server side and optional on the client side.
 ## Configuration
 
 You can find the MOD-related configurations in the following paths. Details are not repeated here; please refer to the
-comments in the default configuration files.
+comments in the Forge default configuration files.
 
-- Common Config (Both Sides): [`config/aotake_sweep-common.toml`](aotake_sweep-common.toml)
-- Client Config: [`config/aotake_sweep-client.toml`](aotake_sweep-client.toml)
-- Server Config: [`world/serverconfig/aotake_sweep-server.toml`](aotake_sweep-server.toml)
+### Common
+
+- Countdown Message Config: [`config/aotake_sweep-warning.json`](config/aotake_sweep-warning.json)
 - Server Dustbin Data: `world/data/world_trash_data.dat`
 - Vanilla Xin Series Common Config: `config/vanilla.xin/common_config.json`
 - Vanilla Xin Series Player Data: `world/playerdata/vanilla.xin/*.nbt`
+
+### Forge
+
+- Common Config (Both Sides): [`config/aotake_sweep-common.toml`](config/forge/aotake_sweep-common.toml)
+- Client Config: [`config/aotake_sweep-client.toml`](config/forge/aotake_sweep-client.toml)
+- Server Config: [`world/serverconfig/aotake_sweep-server.toml`](config/forge/aotake_sweep-server.toml)
+
+### NeoForge
+
+- Common Config (Both Sides): [`config/aotake_sweep-common.toml`](config/forge/aotake_sweep-common.toml)
+- Client Config: [`config/aotake_sweep-client.toml`](config/forge/aotake_sweep-client.toml)
+- Server Config: [`config/aotake_sweep-server.toml`](config/forge/aotake_sweep-server.toml)
+
+### Fabric
+
+- Client Config: [`config/aotake_sweep-client.toml`](config/fabric/aotake_sweep-client.toml)
+- Server Config: [`config/aotake_sweep-server.toml`](config/fabric/aotake_sweep-server.toml)
 
 ---
 
@@ -135,7 +152,8 @@ Configuration items supporting AotakeEL include: `entityList`, `entityRedlist`, 
     - **Variable Declaration** formats:
         1. `Built-in Variable Name`: e.g., Entity ID `resource`
         2. `Custom Variable Name = 'String Constant'`: e.g., `modName = 'AotakeSweep'`
-        3. `Custom Variable Name = [Entity NBTPath]`: e.g., remaining processing time of items processed by a fan
+        3. `Custom Variable Name = [Entity NBTPath]`: Only Forge and NeoForge, e.g., remaining processing time of items
+           processed by a fan
            in [Create](https://github.com/Creators-of-Create/Create)
            `processTime = [CreateData.Processing.Time]`
         4. `Custom Variable Name = <EntityDataKey>`: e.g., death state of Ice and Fire Dragons
@@ -157,18 +175,14 @@ Configuration items supporting AotakeEL include: `entityList`, `entityRedlist`, 
         12. `-`: Subtract
         13. `*`: Multiply
         14. `/`: Divide
-        15. `^`: Math.pow()
-        16. `:>`: rightClass.isAssignableFrom(leftClass)
-        17. `<:`: rightClass.isInstance(leftClass)
-        18. `contains`: left.contains(right)
-        19. `sqrt`: Math.sqrt()
-        20. `pow`: Math.pow()
-        21. `log`: Math.log()
-        22. `sin`: Math.sin()
-        23. `cos`: Math.cos()
-        24. `abs`: Math.abs()
-        25. `random`: Math.random()
-        26. `Declared Variable Name`: e.g., `modName`, `processTime` in the examples above
+        15. `%`: Modulo
+        16. `^`: Math.pow()
+        17. `:>`: rightClass.isAssignableFrom(leftClass)
+        18. `<:`: rightClass.isInstance(leftClass)
+        19. `contains`: left.contains(right)
+        20. `Math functions`:
+            sqrt、pow、abs、max、min、log、log10、exp、sin、cos、tan、asin、acos、atan、atan2、sinh、cosh、tanh、ceil、floor、round、signum、toRadians、toDegrees、random
+        21. `Declared Variable Name`: e.g., `modName`, `processTime` in the examples above
 4. AotakeEL Built-in Variables:
     1. `namespace`: The part before `:` in Entity ID, usually MOD ID
     2. `path`: The part after `:` in Entity ID
