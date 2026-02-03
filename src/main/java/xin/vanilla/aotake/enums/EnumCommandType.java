@@ -1,33 +1,40 @@
 package xin.vanilla.aotake.enums;
 
+import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import lombok.Getter;
+import net.minecraft.command.CommandSource;
+import xin.vanilla.aotake.command.impl.*;
+
+import javax.annotation.Nullable;
+import java.util.function.Supplier;
 
 @Getter
 public enum EnumCommandType {
-    HELP(false, false),
-    LANGUAGE(false, false),
+    HELP(HelpCommand::help, false, false),
+    LANGUAGE(LanguageCommand::lang, false, false),
     LANGUAGE_CONCISE(),
-    VIRTUAL_OP(),
+    VIRTUAL_OP(VirtualOpCommand::vop),
     VIRTUAL_OP_CONCISE(),
-    DUSTBIN_OPEN(),
+    DUSTBIN_OPEN(DustbinCommand::open),
     DUSTBIN_OPEN_CONCISE(),
     DUSTBIN_OPEN_OTHER(true),
     DUSTBIN_OPEN_OTHER_CONCISE(true),
-    DUSTBIN_CLEAR(),
+    DUSTBIN_CLEAR(DustbinCommand::clear),
     DUSTBIN_CLEAR_CONCISE(),
-    DUSTBIN_DROP(),
+    DUSTBIN_DROP(DustbinCommand::drop),
     DUSTBIN_DROP_CONCISE(),
-    CACHE_CLEAR(),
+    CACHE_CLEAR(CacheCommand::clear),
     CACHE_CLEAR_CONCISE(),
-    CACHE_DROP(),
+    CACHE_DROP(CacheCommand::drop),
     CACHE_DROP_CONCISE(),
-    SWEEP(),
+    SWEEP(SweepCommand::sweep),
     SWEEP_CONCISE(),
-    CLEAR_DROP(),
+    CLEAR_DROP(ClearDropCommand::clear),
     CLEAR_DROP_CONCISE(),
-    DELAY_SWEEP(),
+    DELAY_SWEEP(DelayCommand::delay),
     DELAY_SWEEP_CONCISE(),
     CATCH_PLAYER(true),
+    CONFIG(ConfigCommand::config, true, true),
     ;
 
     /**
@@ -43,17 +50,28 @@ public enum EnumCommandType {
      */
     private final boolean op;
 
+    private final Supplier<LiteralArgumentBuilder<CommandSource>> instance;
+
     EnumCommandType() {
+        this.instance = null;
         this.ignore = false;
         this.op = !this.concise;
     }
 
     EnumCommandType(boolean ig) {
+        this.instance = null;
         this.ignore = ig;
         this.op = !this.concise;
     }
 
-    EnumCommandType(boolean ig, boolean op) {
+    EnumCommandType(@Nullable Supplier<LiteralArgumentBuilder<CommandSource>> instance) {
+        this.instance = instance;
+        this.ignore = false;
+        this.op = !this.concise;
+    }
+
+    EnumCommandType(@Nullable Supplier<LiteralArgumentBuilder<CommandSource>> instance, boolean ig, boolean op) {
+        this.instance = instance;
         this.ignore = ig;
         this.op = !this.concise && op;
     }
