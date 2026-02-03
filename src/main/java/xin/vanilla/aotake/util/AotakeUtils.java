@@ -126,7 +126,7 @@ public class AotakeUtils {
      */
     public static int getCommandPermissionLevel(EnumCommandType type) {
         return switch (type) {
-            case VIRTUAL_OP, VIRTUAL_OP_CONCISE -> ServerConfig.PERMISSION_VIRTUAL_OP.get();
+            case CONFIG, VIRTUAL_OP, VIRTUAL_OP_CONCISE -> ServerConfig.PERMISSION_VIRTUAL_OP.get();
             case DUSTBIN_OPEN, DUSTBIN_OPEN_CONCISE -> ServerConfig.PERMISSION_DUSTBIN_OPEN.get();
             case DUSTBIN_OPEN_OTHER, DUSTBIN_OPEN_OTHER_CONCISE -> ServerConfig.PERMISSION_DUSTBIN_OPEN_OTHER.get();
             case DUSTBIN_CLEAR, DUSTBIN_CLEAR_CONCISE -> ServerConfig.PERMISSION_DUSTBIN_CLEAR.get();
