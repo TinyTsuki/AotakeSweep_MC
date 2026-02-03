@@ -221,16 +221,16 @@ public class CommonConfig {
 
                 // 打扫前提示内容
                 SWEEP_WARNING_CONTENT = COMMON_BUILDER
-                        .comment("Notification message. Leave empty to use the built-in prompt."
+                        .comment("Notification message. This configuration option is no longer used. Please modify config/aotake_sweep-warning.json."
                                 , "Optional variables when 'success': [entityCount], [itemCount], [recycledItemCount], [recycledEntityCount]"
-                                , "提示内容，留空将使用内置提示。"
+                                , "提示内容。已不再使用该配置项，请修改 config/aotake_sweep-warning.json。"
                                 , "success时可选变量：[entityCount], [itemCount], [recycledItemCount], [recycledEntityCount]")
                         .define("sweepWarningContent", "");
 
                 // 打扫前提示语音
                 SWEEP_WARNING_VOICE = COMMON_BUILDER
-                        .comment("Notification sounds, separated by commas. Leave empty to disable this feature."
-                                , "提示语音，多个逗号分隔，留空禁用该功能。")
+                        .comment("Notification sounds, separated by commas. This configuration option is no longer used. Please modify config/aotake_sweep-warning.json."
+                                , "提示语音。已不再使用该配置项，请修改 config/aotake_sweep-warning.json。")
                         .define("sweepWarningVoice", "");
 
                 // 打扫前提示语音音量
