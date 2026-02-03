@@ -471,9 +471,9 @@ public class ClientGameEventHandler {
                         }
 
                         ResourceLocation texture = TextureUtils.loadCustomTexture(TextureUtils.INTERNAL_THEME_DIR + "up.png");
-                        RenderSystem.setShaderColor(1.0F, 1.0F, 1.0F, canPrev ? 1.0F : 0.5F);
                         AbstractGuiUtils.blitBlend(graphics, texture, x, y, 0, 0, w, h, w, h);
-                        RenderSystem.setShaderColor(1.0F, 1.0F, 1.0F, 1.0F);
+                        RenderSystem.setShaderColor(1.0F, 1.0F, 1.0F, canPrev ? 1.0F : 0.5F);
+                        // RenderSystem.setShaderColor(1.0F, 1.0F, 1.0F, 1.0F);
 
                         if (hover) {
                             AbstractGuiUtils.drawPopupMessage(Text.empty()
@@ -508,9 +508,9 @@ public class ClientGameEventHandler {
                         }
 
                         ResourceLocation texture = TextureUtils.loadCustomTexture(TextureUtils.INTERNAL_THEME_DIR + "down.png");
-                        RenderSystem.setShaderColor(1.0F, 1.0F, 1.0F, canNext ? 1.0F : 0.5F);
                         AbstractGuiUtils.blitBlend(graphics, texture, x, y, 0, 0, w, h, w, h);
-                        RenderSystem.setShaderColor(1.0F, 1.0F, 1.0F, 1.0F);
+                        RenderSystem.setShaderColor(1.0F, 1.0F, 1.0F, canNext ? 1.0F : 0.5F);
+                        // RenderSystem.setShaderColor(1.0F, 1.0F, 1.0F, 1.0F);
 
                         if (hover) {
                             AbstractGuiUtils.drawPopupMessage(Text.empty()

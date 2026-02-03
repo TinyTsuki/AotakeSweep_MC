@@ -9,9 +9,9 @@
     "ServerPlayerMixin"
   ],
   "client": [
-    "MultiPlayerGameModeMixin",
+    "AbstractContainerScreenAccessor",
     "ContainerScreenMixin",
-    "AbstractContainerScreenAccessor"
+    "MultiPlayerGameModeMixin"
   ],
   "injectors": {
     "defaultRequire": 1

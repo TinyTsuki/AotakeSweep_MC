@@ -8,6 +8,7 @@ import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.Tooltip;
+import net.minecraft.client.renderer.RenderType;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.api.distmarker.OnlyIn;
@@ -91,7 +92,7 @@ public class AbstractGuiUtils {
 
     public static void blitBlend(GuiGraphics graphics, ResourceLocation texture, int x0, int y0, double u0, double v0, int destWidth, int destHeight, int textureWidth, int textureHeight) {
         blitByBlend(() ->
-                graphics.blit(texture, x0, y0, (float) u0, (float) v0, destWidth, destHeight, textureWidth, textureHeight)
+                graphics.blit(RenderType::guiTextured, texture, x0, y0, (float) u0, (float) v0, destWidth, destHeight, textureWidth, textureHeight)
         );
     }
 

@@ -13,6 +13,7 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.SimpleContainer;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.item.ItemEntity;
@@ -385,7 +386,7 @@ public class EventHandlerProxy {
                         if (level == null) {
                             level = player.serverLevel();
                         }
-                        target.teleportTo(level, coordinate.getX(), coordinate.getY(), coordinate.getZ(), (float) coordinate.getYaw(), (float) coordinate.getPitch());
+                        AotakeUtils.teleportEntity(target, coordinate, level);
                         original.shrink(1);
                         net.minecraft.network.chat.Component name = AotakeUtils.textComponentFromJson(aotake.getString("name"));
                         if (name != null) {
@@ -418,7 +419,7 @@ public class EventHandlerProxy {
                     }
                     AotakeUtils.sanitizeCapturedEntityTag(entityData);
                     ServerLevel level = player.serverLevel();
-                    Entity entity = EntityType.loadEntityRecursive(entityData, level, e -> e);
+                    Entity entity = EntityType.loadEntityRecursive(entityData, level, EntitySpawnReason.BUCKET, e -> e);
                     if (entity != null) {
                         entity.moveTo(coordinate.getX(), coordinate.getY(), coordinate.getZ(), (float) coordinate.getYaw(), (float) coordinate.getPitch());
                         boolean spawned = level.addFreshEntity(entity);
@@ -739,7 +740,7 @@ public class EventHandlerProxy {
                             || Math.abs(targetPlayer.getXRot() - pitch) > 1.0f;
             if (needTeleport) {
                 ServerLevel level = (ServerLevel) target.level();
-                targetPlayer.teleportTo(level, desired.x, desired.y, desired.z, yaw, pitch);
+                AotakeUtils.teleportEntity(targetPlayer, new WorldCoordinate().fromVector3d(desired), level);
                 targetPlayer.setDeltaMovement(Vec3.ZERO);
                 targetPlayer.fallDistance = 0;
             }

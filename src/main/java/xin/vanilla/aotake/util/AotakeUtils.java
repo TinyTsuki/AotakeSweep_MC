@@ -25,6 +25,7 @@ import net.minecraft.world.InteractionResult;
 import net.minecraft.world.MenuProvider;
 import net.minecraft.world.SimpleContainer;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.player.Player;
@@ -35,6 +36,7 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.portal.TeleportTransition;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.Vec3;
 import net.minecraftforge.common.capabilities.ForgeCapabilities;
@@ -282,7 +284,7 @@ public class AotakeUtils {
      * @param message 消息
      */
     public static void sendMessage(Player player, Component message) {
-        player.sendSystemMessage(message.toChatComponent(AotakeUtils.getPlayerLanguage(player)));
+        player.displayClientMessage(message.toChatComponent(AotakeUtils.getPlayerLanguage(player)), false);
     }
 
     /**
@@ -293,7 +295,7 @@ public class AotakeUtils {
      * @param args   参数
      */
     public static void sendTranslatableMessage(Player player, String key, Object... args) {
-        player.sendSystemMessage(Component.translatable(key, args).setLanguageCode(AotakeUtils.getPlayerLanguage(player)).toChatComponent());
+        player.displayClientMessage(Component.translatable(key, args).setLanguageCode(AotakeUtils.getPlayerLanguage(player)).toChatComponent(), false);
     }
 
     /**
@@ -748,7 +750,7 @@ public class AotakeUtils {
                 CompoundTag aotake = customData.getCompound(AotakeSweep.MODID);
                 if (aotake.contains("entity")) {
                     try {
-                        result = EntityType.loadEntityRecursive(aotake.getCompound("entity"), level, e -> e);
+                        result = EntityType.loadEntityRecursive(aotake.getCompound("entity"), level, EntitySpawnReason.BUCKET, e -> e);
                     } catch (Exception e) {
                         LOGGER.error("Failed to load entity from item stack: {}", itemStack, e);
                     }
@@ -1383,6 +1385,27 @@ public class AotakeUtils {
         List<T> list = new ArrayList<>();
         list.add(value);
         return list;
+    }
+
+    public static void teleportEntity(@NonNull Entity entity, @NonNull WorldCoordinate coordinate, ServerLevel level) {
+        if (entity instanceof ServerPlayer player) {
+            player.teleportTo(level, coordinate.getX(), coordinate.getY(), coordinate.getZ(), Set.of()
+                    , coordinate.getYaw() == 0 ? player.getYRot() : (float) coordinate.getYaw()
+                    , coordinate.getPitch() == 0 ? player.getXRot() : (float) coordinate.getPitch(), true);
+        } else {
+            if (level == entity.level()) {
+                entity.teleportTo(coordinate.getX(), coordinate.getY(), coordinate.getZ());
+            } else {
+                entity.teleport(
+                        new TeleportTransition(level
+                                , coordinate.toVec3()
+                                , entity.getDeltaMovement()
+                                , entity.getYRot()
+                                , entity.getXRot()
+                                , TeleportTransition.DO_NOTHING)
+                );
+            }
+        }
     }
 
     // endregion 杂项
