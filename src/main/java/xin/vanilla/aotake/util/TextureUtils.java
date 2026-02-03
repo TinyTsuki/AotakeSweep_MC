@@ -2,9 +2,7 @@ package xin.vanilla.aotake.util;
 
 import com.mojang.blaze3d.platform.NativeImage;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.renderer.texture.AbstractTexture;
 import net.minecraft.client.renderer.texture.DynamicTexture;
-import net.minecraft.client.renderer.texture.MissingTextureAtlasSprite;
 import net.minecraft.client.renderer.texture.TextureManager;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.packs.resources.Resource;
@@ -16,6 +14,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import xin.vanilla.aotake.AotakeSweep;
 import xin.vanilla.aotake.data.KeyValue;
+import xin.vanilla.aotake.mixin.TextureManagerAccessor;
 
 import java.io.File;
 import java.io.IOException;
@@ -75,13 +74,7 @@ public class TextureUtils {
 
     public static boolean isTextureAvailable(ResourceLocation resourceLocation) {
         TextureManager textureManager = Minecraft.getInstance().getTextureManager();
-        DynamicTexture miss = MissingTextureAtlasSprite.getTexture();
-        AbstractTexture texture = textureManager.getTexture(resourceLocation, miss);
-        if (texture == miss) {
-            return false;
-        }
-        // 确保纹理已经加载
-        return texture.getId() != -1;
+        return ((TextureManagerAccessor) textureManager).aotake$byPath().containsKey(resourceLocation);
     }
 
     private static final Map<ResourceLocation, NativeImage> CACHE = new HashMap<>();

@@ -11,7 +11,8 @@
   "client": [
     "AbstractContainerScreenAccessor",
     "ContainerScreenMixin",
-    "MultiPlayerGameModeMixin"
+    "MultiPlayerGameModeMixin",
+    "TextureManagerAccessor"
   ],
   "injectors": {
     "defaultRequire": 1
