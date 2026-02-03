@@ -145,6 +145,7 @@ public class AotakeUtils {
      */
     public static int getCommandPermissionLevel(EnumCommandType type) {
         switch (type) {
+            case CONFIG:
             case VIRTUAL_OP:
             case VIRTUAL_OP_CONCISE:
                 return ServerConfig.PERMISSION_VIRTUAL_OP.get();
