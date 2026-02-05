@@ -131,6 +131,7 @@ repositories {
     flatDir {
         dir 'libs'
     }
+    maven { name "CurseMaven"; url "https://cursemaven.com" }
     mavenLocal()
     // IE
     maven { name = "BlameJared"; url = "https://maven.blamejared.com/" }
@@ -179,7 +180,7 @@ dependencies {
     runtimeOnly fg.deobf("blusunrize.immersiveengineering:ImmersiveEngineering:${ie_version}")
 
     // Narcissus
-    compileOnly fg.deobf("blank:narcissus_farewell:forge-${minecraft_version}-1.1.4")
+    compileOnly "curse.maven:narcissus-farewell-1210871:${narcissus_maven_id}"
 
     // For more info:
     // http://www.gradle.org/docs/current/userguide/artifact_dependencies_tutorial.html
