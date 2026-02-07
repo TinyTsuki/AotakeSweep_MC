@@ -1,7 +1,8 @@
 package xin.vanilla.aotake.network.packet;
 
+import net.fabricmc.api.EnvType;
+import net.fabricmc.api.Environment;
 import net.fabricmc.fabric.api.networking.v1.PacketByteBufs;
-import net.minecraft.client.Minecraft;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.Entity;
@@ -29,16 +30,23 @@ public record GhostCameraToClient(int entityId, boolean reset) implements Aotake
     }
 
     public static void handle(GhostCameraToClient packet) {
-        Minecraft client = Minecraft.getInstance();
-        if (client.player == null) return;
-        if (packet.reset) {
-            client.setCameraEntity(client.player);
-            return;
-        }
-        if (client.level == null) return;
-        Entity entity = client.level.getEntity(packet.entityId);
-        if (entity != null) {
-            client.setCameraEntity(entity);
+        ClientSide.handle(packet);
+    }
+
+    @Environment(EnvType.CLIENT)
+    private static final class ClientSide {
+        private static void handle(GhostCameraToClient packet) {
+            net.minecraft.client.Minecraft client = net.minecraft.client.Minecraft.getInstance();
+            if (client.player == null) return;
+            if (packet.reset()) {
+                client.setCameraEntity(client.player);
+                return;
+            }
+            if (client.level == null) return;
+            Entity entity = client.level.getEntity(packet.entityId());
+            if (entity != null) {
+                client.setCameraEntity(entity);
+            }
         }
     }
 }
