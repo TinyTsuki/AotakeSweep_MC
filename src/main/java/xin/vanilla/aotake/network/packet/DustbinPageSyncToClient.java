@@ -1,8 +1,9 @@
 package xin.vanilla.aotake.network.packet;
 
 import net.minecraft.network.FriendlyByteBuf;
+import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.api.distmarker.OnlyIn;
 import net.minecraftforge.network.NetworkEvent;
-import xin.vanilla.aotake.event.ClientGameEventHandler;
 
 import java.util.function.Supplier;
 
@@ -18,7 +19,14 @@ public record DustbinPageSyncToClient(int currentPage, int totalPage) {
     }
 
     public static void handle(DustbinPageSyncToClient packet, Supplier<NetworkEvent.Context> ctx) {
-        ctx.get().enqueueWork(() -> ClientGameEventHandler.updateDustbinPage(packet.currentPage(), packet.totalPage()));
+        ctx.get().enqueueWork(() -> ClientSide.handle(packet));
         ctx.get().setPacketHandled(true);
+    }
+
+    @OnlyIn(Dist.CLIENT)
+    private static final class ClientSide {
+        private static void handle(DustbinPageSyncToClient packet) {
+            xin.vanilla.aotake.event.ClientGameEventHandler.updateDustbinPage(packet.currentPage, packet.totalPage);
+        }
     }
 }
