@@ -1,10 +1,11 @@
 package xin.vanilla.aotake.network.packet;
 
 import io.netty.buffer.ByteBuf;
-import net.minecraft.client.Minecraft;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.world.entity.Entity;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.api.distmarker.OnlyIn;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
 import org.jetbrains.annotations.NotNull;
 import xin.vanilla.aotake.AotakeSweep;
@@ -25,8 +26,13 @@ public record GhostCameraToClient(int entityId, boolean reset) implements Custom
     }
 
     public static void handle(GhostCameraToClient packet, IPayloadContext ctx) {
-        ctx.enqueueWork(() -> {
-            Minecraft client = Minecraft.getInstance();
+        ctx.enqueueWork(() -> ClientSide.handle(packet));
+    }
+
+    @OnlyIn(Dist.CLIENT)
+    private static final class ClientSide {
+        private static void handle(GhostCameraToClient packet) {
+            net.minecraft.client.Minecraft client = net.minecraft.client.Minecraft.getInstance();
             if (client.player == null) return;
             if (packet.reset()) {
                 client.setCameraEntity(client.player);
@@ -37,6 +43,6 @@ public record GhostCameraToClient(int entityId, boolean reset) implements Custom
             if (entity != null) {
                 client.setCameraEntity(entity);
             }
-        });
+        }
     }
 }
