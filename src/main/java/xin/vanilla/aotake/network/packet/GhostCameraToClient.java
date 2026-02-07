@@ -1,8 +1,9 @@
 package xin.vanilla.aotake.network.packet;
 
-import net.minecraft.client.Minecraft;
 import net.minecraft.entity.Entity;
 import net.minecraft.network.PacketBuffer;
+import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.api.distmarker.OnlyIn;
 import net.minecraftforge.fml.network.NetworkEvent;
 
 import java.util.function.Supplier;
@@ -29,8 +30,13 @@ public class GhostCameraToClient {
     }
 
     public static void handle(GhostCameraToClient packet, Supplier<NetworkEvent.Context> ctx) {
-        ctx.get().enqueueWork(() -> {
-            Minecraft client = Minecraft.getInstance();
+        ctx.get().enqueueWork(() -> ClientSide.handle(packet));
+    }
+
+    @OnlyIn(Dist.CLIENT)
+    private static final class ClientSide {
+        private static void handle(GhostCameraToClient packet) {
+            net.minecraft.client.Minecraft client = net.minecraft.client.Minecraft.getInstance();
             if (client.player == null) return;
             if (packet.reset) {
                 client.setCameraEntity(client.player);
@@ -41,6 +47,6 @@ public class GhostCameraToClient {
             if (entity != null) {
                 client.setCameraEntity(entity);
             }
-        });
+        }
     }
 }
