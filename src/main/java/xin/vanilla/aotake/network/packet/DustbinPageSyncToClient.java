@@ -1,11 +1,12 @@
 package xin.vanilla.aotake.network.packet;
 
+import net.fabricmc.api.EnvType;
+import net.fabricmc.api.Environment;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import org.jetbrains.annotations.NotNull;
 import xin.vanilla.aotake.AotakeSweep;
-import xin.vanilla.aotake.event.ClientEventHandler;
 
 public record DustbinPageSyncToClient(int currentPage, int totalPage) implements CustomPacketPayload {
     public static final CustomPacketPayload.Type<DustbinPageSyncToClient> ID = new CustomPacketPayload.Type<>(AotakeSweep.createIdentifier("dustbin_page_sync"));
@@ -23,6 +24,13 @@ public record DustbinPageSyncToClient(int currentPage, int totalPage) implements
     }
 
     public static void handle(DustbinPageSyncToClient packet) {
-        ClientEventHandler.updateDustbinPage(packet.currentPage(), packet.totalPage());
+        ClientSide.handle(packet);
+    }
+
+    @Environment(EnvType.CLIENT)
+    private static final class ClientSide {
+        private static void handle(DustbinPageSyncToClient packet) {
+            xin.vanilla.aotake.event.ClientEventHandler.updateDustbinPage(packet.currentPage(), packet.totalPage());
+        }
     }
 }
