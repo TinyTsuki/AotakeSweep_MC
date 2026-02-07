@@ -4,10 +4,11 @@ import io.netty.buffer.ByteBuf;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.api.distmarker.OnlyIn;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
 import org.jetbrains.annotations.NotNull;
 import xin.vanilla.aotake.AotakeSweep;
-import xin.vanilla.aotake.event.ClientGameEventHandler;
 
 public record DustbinPageSyncToClient(int currentPage, int totalPage) implements CustomPacketPayload {
     public final static CustomPacketPayload.Type<DustbinPageSyncToClient> TYPE = new CustomPacketPayload.Type<>(AotakeSweep.createIdentifier("dustbin_page_sync"));
@@ -36,6 +37,13 @@ public record DustbinPageSyncToClient(int currentPage, int totalPage) implements
     }
 
     public static void handle(DustbinPageSyncToClient packet, IPayloadContext ctx) {
-        ctx.enqueueWork(() -> ClientGameEventHandler.updateDustbinPage(packet.currentPage(), packet.totalPage()));
+        ctx.enqueueWork(() -> ClientSide.handle(packet));
+    }
+
+    @OnlyIn(Dist.CLIENT)
+    private static final class ClientSide {
+        private static void handle(DustbinPageSyncToClient packet) {
+            xin.vanilla.aotake.event.ClientGameEventHandler.updateDustbinPage(packet.currentPage(), packet.totalPage());
+        }
     }
 }
