@@ -9,6 +9,8 @@ import net.minecraft.nbt.NumberNBT;
 import net.minecraft.network.datasync.DataParameter;
 import net.minecraftforge.common.UsernameCache;
 
+import javax.annotation.Nullable;
+import java.lang.reflect.Array;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -16,8 +18,10 @@ public class EntityFilter {
 
     // 缓存已解析的 filter spec（key 为 convertExpression 后的最终字符串）
     private final Map<String, FilterSpec> filterCache = new ConcurrentHashMap<>();
-    // 缓存已解析的 EntityDataAccessor
+    // 缓存已解析的 EntityDataAccessor（key 为 firstPartKey，如 "fieldName" 或 "className:fieldName"）
     private static final Map<String, DataParameter<?>> accessorCache = new ConcurrentHashMap<>();
+    // 缓存已解析的 ACCESSOR_KEY 路径（key 为完整 accessorPath 字符串）
+    private static final Map<String, AccessorPath> accessorPathCache = new ConcurrentHashMap<>();
 
     public void clear() {
         filterCache.clear();
@@ -91,6 +95,20 @@ public class EntityFilter {
         }
     }
 
+    /**
+     * 解析后的 ACCESSOR_KEY 路径
+     */
+    private static class AccessorPath {
+        @Nullable
+        final String className;
+        final List<String> chain;
+
+        AccessorPath(String className, List<String> chain) {
+            this.className = className;
+            this.chain = chain;
+        }
+    }
+
     private enum SourceType {PREDEFINED, LITERAL, ACCESSOR_KEY, NBT_PATH}
 
     private List<VarDescriptor> parseLeftVariables(String left) {
@@ -133,6 +151,95 @@ public class EntityFilter {
         return out;
     }
 
+    /**
+     * 解析 ACCESSOR_KEY 路径
+     */
+    private static AccessorPath parseAccessorPath(String path) {
+        if (path == null || path.isEmpty()) return null;
+        String[] parts = path.split(":");
+        if (parts.length == 0) return null;
+
+        String className = null;
+        List<String> chain = new ArrayList<>();
+
+        if (parts[0].isEmpty()) {
+            chain.addAll(Arrays.asList(parts).subList(1, parts.length));
+        } else if (parts.length == 1) {
+            chain.add(parts[0]);
+        } else {
+            if (parts[0].contains(".")) {
+                className = parts[0];
+                chain.addAll(Arrays.asList(parts).subList(1, parts.length));
+            } else {
+                Collections.addAll(chain, parts);
+            }
+        }
+
+        if (chain.isEmpty()) return null;
+        return new AccessorPath(className, chain);
+    }
+
+    /**
+     * 根据当前对象类型解析下一段
+     */
+    private static Object resolveSegment(Object obj, String segment) {
+        if (obj == null) return null;
+        try {
+            if (obj instanceof Map) {
+                Map<?, ?> map = (Map<?, ?>) obj;
+                Object key = tryParseKey(segment, map);
+                return map.get(key);
+            }
+            if (obj instanceof List) {
+                int idx = tryParseIndex(segment);
+                if (idx >= 0 && idx < ((List<?>) obj).size()) {
+                    return ((List<?>) obj).get(idx);
+                }
+                return null;
+            }
+            if (obj.getClass().isArray()) {
+                int idx = tryParseIndex(segment);
+                if (idx >= 0 && idx < Array.getLength(obj)) {
+                    return Array.get(obj, idx);
+                }
+                return null;
+            }
+            return FieldUtils.getPrivateFieldValue(obj.getClass(), obj, segment, true);
+        } catch (Throwable ignored) {
+            return null;
+        }
+    }
+
+    private static Object tryParseKey(String segment, Map<?, ?> map) {
+        if (map.isEmpty()) return segment;
+        Object sampleKey = map.keySet().iterator().next();
+        if (sampleKey instanceof Integer) {
+            Integer i = tryParseIndexObj(segment);
+            return i != null ? i : segment;
+        }
+        if (sampleKey instanceof Long) {
+            try {
+                return Long.parseLong(segment);
+            } catch (NumberFormatException e) {
+                return segment;
+            }
+        }
+        return segment;
+    }
+
+    private static int tryParseIndex(String segment) {
+        Integer i = tryParseIndexObj(segment);
+        return i != null ? i : -1;
+    }
+
+    private static Integer tryParseIndexObj(String segment) {
+        try {
+            return Integer.parseInt(segment);
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
+
     private void fillVarsForEntity(List<VarDescriptor> descriptors, Entity entity, Map<String, Object> varsOut) {
         if (descriptors == null || descriptors.isEmpty()) return;
 
@@ -164,7 +271,13 @@ public class EntityFilter {
                     varsOut.put(key, d.payload);
                     break;
                 case ACCESSOR_KEY:
-                    DataParameter<?> accessor = accessorCache.computeIfAbsent(d.payload, k -> {
+                    AccessorPath ap = accessorPathCache.computeIfAbsent(d.payload, EntityFilter::parseAccessorPath);
+                    if (ap == null || ap.chain.isEmpty()) {
+                        varsOut.put(key, null);
+                        break;
+                    }
+                    String firstPartKey = ap.className != null ? ap.className + ":" + ap.chain.get(0) : ap.chain.get(0);
+                    DataParameter<?> accessor = accessorCache.computeIfAbsent(firstPartKey, k -> {
                         String[] split = k.split(":", 2);
                         DataParameter<?> result;
                         if (split.length == 1) {
@@ -174,15 +287,17 @@ public class EntityFilter {
                         }
                         return result;
                     });
+                    Object value = null;
                     if (accessor != null) {
                         try {
-                            varsOut.put(key, entity.getEntityData().get(accessor));
+                            value = entity.getEntityData().get(accessor);
                         } catch (Throwable ignored) {
-                            varsOut.put(key, null);
                         }
-                    } else {
-                        varsOut.put(key, null);
                     }
+                    for (int i = 1; i < ap.chain.size() && value != null; i++) {
+                        value = resolveSegment(value, ap.chain.get(i));
+                    }
+                    varsOut.put(key, value);
                     break;
                 case NBT_PATH:
                     if (NBTPathUtils.has(entity.getPersistentData(), d.payload)) {

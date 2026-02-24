@@ -1,8 +1,10 @@
 package xin.vanilla.aotake.data;
 
+import com.google.gson.JsonObject;
 import lombok.Data;
 import lombok.experimental.Accessors;
 import net.minecraft.nbt.CompoundNBT;
+import xin.vanilla.aotake.util.JsonUtils;
 
 @Data
 @Accessors(chain = true)
@@ -30,6 +32,29 @@ public class DropStatistics {
                 , tag.getLong("time")
                 , tag.getLong("itemCount")
                 , tag.getLong("entityCount")
+        );
+    }
+
+    public JsonObject toJson() {
+        JsonObject json = new JsonObject();
+        json.add("coordinate", JsonUtils.GSON.fromJson(coordinate.toJsonString(), JsonObject.class));
+        json.addProperty("name", name);
+        json.addProperty("time", time);
+        json.addProperty("itemCount", itemCount);
+        json.addProperty("entityCount", entityCount);
+        return json;
+    }
+
+    public static DropStatistics fromJson(JsonObject json) {
+        WorldCoordinate coordinate = json.has("coordinate")
+                ? WorldCoordinate.fromJsonString(JsonUtils.GSON.toJson(json.getAsJsonObject("coordinate")))
+                : new WorldCoordinate(0, 0, 0);
+        return new DropStatistics(
+                coordinate,
+                JsonUtils.getString(json, "name", ""),
+                json.has("time") ? json.get("time").getAsLong() : 0L,
+                json.has("itemCount") ? json.get("itemCount").getAsLong() : 0L,
+                json.has("entityCount") ? json.get("entityCount").getAsLong() : 0L
         );
     }
 }

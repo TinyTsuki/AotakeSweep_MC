@@ -13,6 +13,7 @@ import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.CompoundNBT;
 import net.minecraft.nbt.INBT;
 import net.minecraft.nbt.ListNBT;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.util.text.ITextComponent;
 import net.minecraft.world.server.ServerWorld;
 import net.minecraftforge.common.util.WorldCapabilityData;
@@ -28,8 +29,10 @@ import xin.vanilla.aotake.enums.EnumI18nType;
 import xin.vanilla.aotake.enums.EnumMCColor;
 import xin.vanilla.aotake.util.AotakeUtils;
 import xin.vanilla.aotake.util.Component;
+import xin.vanilla.aotake.util.DateUtils;
 
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
@@ -77,12 +80,19 @@ public class WorldTrashData extends WorldCapabilityData {
         }
         this.setDrops(drops);
 
-        this.dropCount = new ConcurrentLinkedQueue<>();
-        ListNBT dropCountNBT = nbt.getList("dropCount", 10);
-        Queue<DropStatistics> dropCounts = new ConcurrentLinkedQueue<>();
-        for (int i = 0; i < dropCountNBT.size(); i++) {
-            CompoundNBT drop = dropCountNBT.getCompound(i);
-            dropCounts.add(DropStatistics.deserializeNBT(drop));
+        String todayStr = DateUtils.toString(new Date());
+        MinecraftServer server = AotakeSweep.getServerInstance().val() ? AotakeSweep.getServerInstance().key() : null;
+        Queue<DropStatistics> dropCounts = DropStatisticsStorage.loadByDate(server, todayStr);
+        // 若 NBT 中有 dropCount 且当日 JSON 为空，则迁移至 JSON
+        if (dropCounts.isEmpty() && nbt.contains("dropCount")) {
+            ListNBT dropCountNBT = nbt.getList("dropCount", 10);
+            for (int i = 0; i < dropCountNBT.size(); i++) {
+                dropCounts.add(DropStatistics.deserializeNBT(dropCountNBT.getCompound(i)));
+            }
+            if (server != null && !dropCounts.isEmpty()) {
+                DropStatisticsStorage.saveByDate(server, todayStr, dropCounts);
+            }
+            nbt.remove("dropCount");
         }
         this.setDropCount(dropCounts);
 
@@ -115,9 +125,10 @@ public class WorldTrashData extends WorldCapabilityData {
         }
         nbt.put("dropList", dropsNBT);
 
-        ListNBT dropCountNBT = new ListNBT();
-        this.dropCount.forEach(statistics -> dropCountNBT.add(statistics.serializeNBT()));
-        nbt.put("dropCount", dropCountNBT);
+        String todayStr = DateUtils.toString(new Date());
+        if (AotakeSweep.getServerInstance().val()) {
+            DropStatisticsStorage.saveByDate(AotakeSweep.getServerInstance().key(), todayStr, this.dropCount);
+        }
 
         ListNBT inventoryNBT = new ListNBT();
         for (Inventory inventory : this.getInventoryList()) {

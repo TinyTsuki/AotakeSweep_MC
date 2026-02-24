@@ -630,7 +630,7 @@ public class SafeExpressionEvaluator {
         }
 
         public Object evaluate(Map<String, Object> vars) {
-            throw new RuntimeException("Property access '" + prop + "' not supported for safety");
+            throw new RuntimeException("Property access '" + base + "." + prop + "' not supported for safety");
         }
     }
 
@@ -843,14 +843,17 @@ public class SafeExpressionEvaluator {
 
             if ("==".equals(op) || "=".equals(op)) {
                 if (lvObj == null && rvObj == null) return true;
-                if (lvObj == null || rvObj == null) {
-                    return false;
-                }
+                if (lvObj == null || rvObj == null) return false;
                 if (lvObj instanceof Number || rvObj instanceof Number
                         || (lvObj instanceof String && isNumericString((String) lvObj))
                         || (rvObj instanceof String && isNumericString((String) rvObj))) {
                     double a = toDouble(lvObj), b = toDouble(rvObj);
                     return Double.compare(a, b) == 0;
+                }
+                if (lvObj instanceof String || rvObj instanceof String) {
+                    String a = lvObj instanceof String ? (String) lvObj : lvObj.toString();
+                    String b = rvObj instanceof String ? (String) rvObj : rvObj.toString();
+                    return a.equals(b);
                 }
                 return Objects.equals(lvObj, rvObj);
             } else if ("!=".equals(op)) {
@@ -861,6 +864,11 @@ public class SafeExpressionEvaluator {
                         || (rvObj instanceof String && isNumericString((String) rvObj))) {
                     double a = toDouble(lvObj), b = toDouble(rvObj);
                     return Double.compare(a, b) != 0;
+                }
+                if (lvObj instanceof String || rvObj instanceof String) {
+                    String a = lvObj instanceof String ? (String) lvObj : lvObj.toString();
+                    String b = rvObj instanceof String ? (String) rvObj : rvObj.toString();
+                    return !a.equals(b);
                 }
                 return !Objects.equals(lvObj, rvObj);
             } else if ("<".equals(op) || ">".equals(op) || "<=".equals(op) || ">=".equals(op)) {
