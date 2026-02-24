@@ -310,6 +310,13 @@ public class ServerConfig implements ConfigData {
         private boolean dustbinPersistent = true;
 
         /**
+         * 掉落统计文件数量上限
+         */
+        @ConfigEntry.Gui.Tooltip
+        // @ConfigEntry.BoundedDiscrete(min = -1, max = 3650)
+        private int dropStatsFileLimit = 15;
+
+        /**
          * 垃圾箱方块位置
          */
         @ConfigEntry.Gui.Tooltip
@@ -724,6 +731,10 @@ public class ServerConfig implements ConfigData {
         if (dustbinConfig.selfCleanInterval() < 0) dustbinConfig.selfCleanInterval(0);
         if (dustbinConfig.selfCleanInterval() > 7 * 24 * 60 * 60 * 1000L)
             dustbinConfig.selfCleanInterval(7 * 24 * 60 * 60 * 1000L);
+
+        if (dustbinConfig.dropStatsFileLimit() < -1) dustbinConfig.dropStatsFileLimit(-1);
+        if (dustbinConfig.dropStatsFileLimit() > 3650) dustbinConfig.dropStatsFileLimit(3650);
+
 
         if (batchConfig.sweepEntityLimit() < 1) batchConfig.sweepEntityLimit(1);
         if (batchConfig.sweepEntityInterval() < 1) batchConfig.sweepEntityInterval(1);

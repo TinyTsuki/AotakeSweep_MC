@@ -208,6 +208,8 @@
   "text.autoconfig.aotake_sweep-server.option.dustbinConfig.dustbinOverflowMode.@Tooltip": "垃圾箱溢出时的处理方式",
   "text.autoconfig.aotake_sweep-server.option.dustbinConfig.dustbinPersistent": "垃圾箱持久化",
   "text.autoconfig.aotake_sweep-server.option.dustbinConfig.dustbinPersistent.@Tooltip": "垃圾箱持久化",
+  "text.autoconfig.aotake_sweep-server.option.dustbinConfig.dropStatsFileLimit": "掉落统计文件数量上限",
+  "text.autoconfig.aotake_sweep-server.option.dustbinConfig.dropStatsFileLimit.@Tooltip": "掉落统计文件数量上限",
   "text.autoconfig.aotake_sweep-server.option.dustbinConfig.dustbinBlockPositions": "垃圾箱方块位置",
   "text.autoconfig.aotake_sweep-server.option.dustbinConfig.dustbinBlockPositions.@Tooltip": "垃圾箱方块位置",
   "text.autoconfig.aotake_sweep-server.option.dustbinConfig.dustbinMode": "垃圾箱应用模式",
