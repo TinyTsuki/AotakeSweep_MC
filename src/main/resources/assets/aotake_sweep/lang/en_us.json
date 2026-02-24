@@ -208,6 +208,8 @@
   "text.autoconfig.aotake_sweep-server.option.dustbinConfig.dustbinOverflowMode.@Tooltip": "Overflow Mode",
   "text.autoconfig.aotake_sweep-server.option.dustbinConfig.dustbinPersistent": "Persistent",
   "text.autoconfig.aotake_sweep-server.option.dustbinConfig.dustbinPersistent.@Tooltip": "Persistent",
+  "text.autoconfig.aotake_sweep-server.option.dustbinConfig.dropStatsFileLimit": "Drop statistics files to keep",
+  "text.autoconfig.aotake_sweep-server.option.dustbinConfig.dropStatsFileLimit.@Tooltip": "Drop statistics files to keep",
   "text.autoconfig.aotake_sweep-server.option.dustbinConfig.dustbinBlockPositions": "Block Positions",
   "text.autoconfig.aotake_sweep-server.option.dustbinConfig.dustbinBlockPositions.@Tooltip": "Block Positions",
   "text.autoconfig.aotake_sweep-server.option.dustbinConfig.dustbinMode": "Block Mode",
