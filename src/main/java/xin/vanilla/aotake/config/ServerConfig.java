@@ -135,6 +135,10 @@ public class ServerConfig {
      */
     public static final ForgeConfigSpec.BooleanValue DUSTBIN_PERSISTENT;
 
+    /**
+     * 掉落统计文件数量上限
+     */
+    public static final ForgeConfigSpec.IntValue DROP_STATS_FILE_LIMIT;
 
     /**
      * 垃圾箱方块位置
@@ -453,6 +457,12 @@ public class ServerConfig {
                                 , "是否将垃圾箱物品持久化存储至服务器文件。若未启用持久化，服务器关闭后垃圾箱内物品将会丢失。")
                         .define("dustbinPersistent", true);
 
+                // 掉落统计文件数量上限
+                DROP_STATS_FILE_LIMIT = SERVER_BUILDER
+                        .comment("Maximum number of drop statistics files (by date) to keep. Older files will be deleted when exceeded. -1 = disabled, 0 = unlimited."
+                                , "掉落统计文件数量上限（按日期），超出时删除最旧的文件。-1=禁用，0=不限制。")
+                        .defineInRange("dropStatsFileLimit", 15, -1, 3650);
+
                 // 垃圾箱方块位置
                 DUSTBIN_BLOCK_POSITIONS = SERVER_BUILDER
                         .comment("The position of the dustbin block, format: dimension, x, y, z, side"
@@ -638,6 +648,7 @@ public class ServerConfig {
         }});
         DUSTBIN_OVERFLOW_MODE.set(EnumOverflowMode.KEEP.name());
         DUSTBIN_PERSISTENT.set(true);
+        DROP_STATS_FILE_LIMIT.set(15);
         DUSTBIN_BLOCK_POSITIONS.set(new ArrayList<>());
         DUSTBIN_MODE.set(EnumDustbinMode.VIRTUAL.name());
         SWEEP_ENTITY_LIMIT.set(500);
