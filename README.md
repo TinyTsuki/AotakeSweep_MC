@@ -49,14 +49,23 @@
 
 ## 配置说明
 
-您可以在以下路径找到 MOD 相关配置，详细的信息不再赘述，请参考Forge默认配置文件中的注释。
+您可以在以下路径找到 MOD 相关配置，详细的信息不再赘述，请参考 Forge 默认配置文件中的注释。
 
 ### 通用部分
 
 - 倒计时提示配置 [`config/aotake_sweep-warning.json`](config/aotake_sweep-warning.json)
 - 服务器垃圾箱数据 `world/data/world_trash_data.dat`
+- 掉落统计 `world/stats/aotake_sweep/*.json`（按日期存储，如 `2025-02-24.json`）
 - 香草芯系列 MOD 通用配置 `config/vanilla.xin/common_config.json`
 - 香草芯系列 MOD 玩家数据 `world/playerdata/vanilla.xin/*.nbt`
+
+### 服务端配置要点（垃圾箱相关）
+
+- **dustbinPersistent**：是否持久化垃圾箱数据
+- **dropStatsFileLimit**：掉落统计文件数量上限（按日期）
+    - `-1`：禁用掉落统计
+    - `0`：不限制
+    - `1`～`3650`：保留最近 N 天的统计文件，超出时删除最旧文件
 
 ### Forge
 
@@ -155,17 +164,22 @@
            ：仅Forge与NeoForge，如 [机械动力](https://github.com/Creators-of-Create/Create)
            中被鼓风机处理的物品的剩余处理时间  
            `processTime = [CreateData.Processing.Time]`
-        4. `自定义变量名称 = <EntityDataKey>`：如 [冰火传说](https://github.com/AlexModGuy/Ice_and_Fire)
-           中冰龙与火龙的死亡状态  
-           `dead = <com.github.alexthe666.iceandfire.entity.EntityDragonBase:MODEL_DEAD>`  
-           或简写 (不推荐) `dead = <MODEL_DEAD>`
+        4. `自定义变量名称 = <EntityDataKey>`：访问实体的 DataParameter 字段，支持链式取值。  
+           格式：`<fieldName>`、`<:fieldName>`、`<className:fieldName>`、`<className:fieldName:fieldName1:...>`、
+           `<:fieldName:fieldName1:...>`  
+           其中 `fieldName1` 等为前段取到对象的属性名，会自动识别为：普通对象属性、Map 的 key、List/数组的索引。  
+           示例：
+            - [冰火传说](https://github.com/AlexModGuy/Ice_and_Fire) 冰龙与火龙的死亡状态  
+              `dead = <com.github.alexthe666.iceandfire.entity.EntityDragonBase:MODEL_DEAD>`  
+              或 `dead = <:MODEL_DEAD>`（从实体类查找）
+            - 链式取值：`nested = <:data:customData:value>`
     - **逻辑表达式** 支持的语法：
         1. `(`、`)`： 括号
         2. `!`： 逻辑非
         3. `&&`： 逻辑与
         4. `||`： 逻辑或
-        5. `=`、`==`： 等于
-        6. `<>`、`!=`： 不等于
+        5. `=`、`==`： 等于（任一侧为字符串时，另一侧会转为字符串再比较）
+        6. `<>`、`!=`： 不等于（同上）
         7. `<`： 小于
         8. `<=`： 小于等于
         9. `>`： 大于

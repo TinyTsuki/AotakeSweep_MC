@@ -58,8 +58,17 @@ comments in the Forge default configuration files.
 
 - Countdown Message Config: [`config/aotake_sweep-warning.json`](config/aotake_sweep-warning.json)
 - Server Dustbin Data: `world/data/world_trash_data.dat`
+- Drop Statistics: `world/stats/aotake_sweep/*.json` (stored by date, e.g. `2025-02-24.json`)
 - Vanilla Xin Series Common Config: `config/vanilla.xin/common_config.json`
 - Vanilla Xin Series Player Data: `world/playerdata/vanilla.xin/*.nbt`
+
+### Server Config Highlights (Dustbin)
+
+- **dustbinPersistent**: Whether to persist dustbin data
+- **dropStatsFileLimit**: Maximum number of drop statistics files (by date)
+    - `-1`: Disabled
+    - `0`: Unlimited
+    - `1`–`3650`: Keep the most recent N days of statistics; older files are deleted when exceeded
 
 ### Forge
 
@@ -156,17 +165,23 @@ Configuration items supporting AotakeEL include: `entityList`, `entityRedlist`, 
            processed by a fan
            in [Create](https://github.com/Creators-of-Create/Create)
            `processTime = [CreateData.Processing.Time]`
-        4. `Custom Variable Name = <EntityDataKey>`: e.g., death state of Ice and Fire Dragons
-           in [Ice and Fire](https://github.com/AlexModGuy/Ice_and_Fire)
-           `dead = <com.github.alexthe666.iceandfire.entity.EntityDragonBase:MODEL_DEAD>`
-           or shorthand (not recommended) `dead = <MODEL_DEAD>`
+        4. `Custom Variable Name = <EntityDataKey>`: Access entity DataParameter fields, supports chained access.  
+           Formats: `<fieldName>`, `<:fieldName>`, `<className:fieldName>`, `<className:fieldName:fieldName1:...>`,
+           `<:fieldName:fieldName1:...>`.  
+           `fieldName1` etc. are property names of the object from the previous segment; auto-detected as: object
+           property, Map key, or List/array index.  
+           Examples:
+            - Death state of Ice and Fire Dragons in [Ice and Fire](https://github.com/AlexModGuy/Ice_and_Fire)  
+              `dead = <com.github.alexthe666.iceandfire.entity.EntityDragonBase:MODEL_DEAD>`  
+              or `dead = <:MODEL_DEAD>` (lookup from entity class)
+            - Chained access: `nested = <:data:customData:value>`
     - **Logical Expression** supported syntax:
         1. `(`、`)`: Parentheses
         2. `!`: Logical NOT
         3. `&&`: Logical AND
         4. `||`: Logical OR
-        5. `=`、`==`: Equal
-        6. `<>`、`!=`: Not Equal
+        5. `=`、`==`: Equal (when either side is string, the other is converted to string for comparison)
+        6. `<>`、`!=`: Not Equal (same as above)
         7. `<`: Less than
         8. `<=`: Less than or Equal
         9. `>`: Greater than

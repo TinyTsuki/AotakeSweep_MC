@@ -49,14 +49,23 @@
 
 ## 設定
 
-MOD 関連の設定は以下のパスにあります。詳細は省略しますので、Forgeデフォルト設定ファイルのコメントを参照してください。
+MOD 関連の設定は以下のパスにあります。詳細は省略しますので、Forge デフォルト設定ファイルのコメントを参照してください。
 
 ### 通用部分
 
 - カウントダウン通知設定 [`config/aotake_sweep-warning.json`](config/aotake_sweep-warning.json)
 - サーバーゴミ箱データ `world/data/world_trash_data.dat`
+- ドロップ統計 `world/stats/aotake_sweep/*.json`（日付ごとに保存、例：`2025-02-24.json`）
 - Vanilla Xin シリーズ MOD 共通設定 `config/vanilla.xin/common_config.json`
 - Vanilla Xin シリーズ MOD プレイヤーデータ `world/playerdata/vanilla.xin/*.nbt`
+
+### サーバー設定の要点（ゴミ箱関連）
+
+- **dustbinPersistent**：ゴミ箱データを永続化するか
+- **dropStatsFileLimit**：ドロップ統計ファイル数の上限（日付ごと）
+    - `-1`：無効
+    - `0`：制限なし
+    - `1`～`3650`：直近 N 日分の統計を保持、超過分は最古のファイルから削除
 
 ### Forge
 
@@ -74,14 +83,6 @@ MOD 関連の設定は以下のパスにあります。詳細は省略します�
 
 - クライアント設定 [`config/aotake_sweep-client.toml`](config/fabric/aotake_sweep-client.toml)
 - サーバー設定 [`config/aotake_sweep-server.toml`](config/fabric/aotake_sweep-server.toml)
-
-
-- 両側共通設定 [`config/aotake_sweep-common.toml`](aotake_sweep-common.toml)
-- クライアント設定 [`config/aotake_sweep-client.toml`](aotake_sweep-client.toml)
-- サーバー設定 [`world/serverconfig/aotake_sweep-server.toml`](aotake_sweep-server.toml)
-- サーバーゴミ箱データ `world/data/world_trash_data.dat`
-- Vanilla Xin シリーズ MOD 共通設定 `config/vanilla.xin/common_config.json`
-- Vanilla Xin シリーズ MOD プレイヤーデータ `world/playerdata/vanilla.xin/*.nbt`
 
 ---
 
@@ -164,17 +165,23 @@ AotakeEL をサポートする設定項目には、`entityList`、`entityRedlist
            ：例：ForgeとNeoForgeのみ、[Create](https://github.com/Creators-of-Create/Create)
            でファンによって処理中のアイテムの残り処理時間  
            `processTime = [CreateData.Processing.Time]`
-        4. `カスタム変数名 = <EntityDataKey>`：例：[Ice and Fire](https://github.com/AlexModGuy/Ice_and_Fire)
-           のアイスドラゴンとファイアドラゴンの死亡状態  
-           `dead = <com.github.alexthe666.iceandfire.entity.EntityDragonBase:MODEL_DEAD>`  
-           または省略形（非推奨） `dead = <MODEL_DEAD>`
+        4. `カスタム変数名 = <EntityDataKey>`：エンティティの DataParameter フィールドにアクセス、チェーンアクセス対応。  
+           形式：`<fieldName>`、`<:fieldName>`、`<className:fieldName>`、`<className:fieldName:fieldName1:...>`、
+           `<:fieldName:fieldName1:...>`  
+           `fieldName1` 等は前段で取得したオブジェクトのプロパティ名。通常オブジェクト属性、Map の
+           key、List/配列のインデックスを自動判別。  
+           例：
+            - [Ice and Fire](https://github.com/AlexModGuy/Ice_and_Fire) のアイスドラゴンとファイアドラゴンの死亡状態  
+              `dead = <com.github.alexthe666.iceandfire.entity.EntityDragonBase:MODEL_DEAD>`  
+              または `dead = <:MODEL_DEAD>`（エンティティクラスから検索）
+            - チェーンアクセス：`nested = <:data:customData:value>`
     - **論理式** でサポートされる構文：
         1. `(`、`)`: 括弧
         2. `!`: 論理否定
         3. `&&`: 論理積 (AND)
         4. `||`: 論理和 (OR)
-        5. `=`、`==`: 等しい
-        6. `<>`、`!=`: 等しくない
+        5. `=`、`==`: 等しい（いずれかが文字列の場合、もう一方を文字列に変換して比較）
+        6. `<>`、`!=`: 等しくない（同上）
         7. `<`: より小さい
         8. `<=``: 以下
         9. `>`: より大きい
