@@ -46,7 +46,6 @@ public class EntitySweeper {
 
     private List<SimpleContainer> inventoryList;
     private ConcurrentShuffleList<KeyValue<WorldCoordinate, ItemStack>> dropList;
-    private Queue<DropStatistics> dropCount;
 
     private final Set<Entity> entitiesToRemove = ConcurrentHashMap.newKeySet();
 
@@ -58,15 +57,11 @@ public class EntitySweeper {
         if (this.dropList == null) {
             this.dropList = worldTrashData.getDropList();
         }
-        if (this.dropCount == null) {
-            this.dropCount = worldTrashData.getDropCount();
-        }
     }
 
     public void clear() {
         this.inventoryList = null;
         this.dropList = null;
-        this.dropCount = null;
     }
 
     public SweepResult addDrops(@NonNull List<Entity> entities, SweepResult result) {
@@ -211,7 +206,7 @@ public class EntitySweeper {
         }
 
         // 记录清理历史
-        this.dropCount.add(new DropStatistics(coordinate
+        WorldTrashData.get().getDropCount().add(new DropStatistics(coordinate
                 , typeKey
                 , System.currentTimeMillis()
                 , result.getItemCount()
