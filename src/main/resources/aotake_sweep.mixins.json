@@ -9,9 +9,10 @@
     "ServerPlayerMixin"
   ],
   "client": [
-    "MinecraftClientMixin",
     "ChestScreenMixin",
-    "ContainerScreenAccessor"
+    "ContainerScreenAccessor",
+    "ContainerScreenMixin",
+    "MinecraftClientMixin"
   ],
   "injectors": {
     "defaultRequire": 1

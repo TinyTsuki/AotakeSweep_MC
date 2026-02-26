@@ -11,10 +11,4 @@ public interface ContainerScreenAccessor {
 
     @Accessor("topPos")
     int aotake$getTopPos();
-
-    @Accessor("imageWidth")
-    int aotake$getImageWidth();
-
-    @Accessor("imageHeight")
-    int aotake$getImageHeight();
 }
