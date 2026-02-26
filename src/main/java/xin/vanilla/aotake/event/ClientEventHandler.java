@@ -11,6 +11,7 @@ import net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
 import net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback;
 import net.fabricmc.fabric.api.client.screen.v1.ScreenEvents;
+import net.fabricmc.fabric.api.client.screen.v1.ScreenKeyboardEvents;
 import net.fabricmc.fabric.api.resource.ResourceManagerHelper;
 import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.KeyMapping;
@@ -28,9 +29,12 @@ import org.lwjgl.glfw.GLFW;
 import xin.vanilla.aotake.AotakeSweep;
 import xin.vanilla.aotake.config.ClientConfig;
 import xin.vanilla.aotake.config.CustomConfig;
+import xin.vanilla.aotake.config.DustbinGuiConfig;
+import xin.vanilla.aotake.config.DustbinGuiLayoutCache;
 import xin.vanilla.aotake.data.Color;
 import xin.vanilla.aotake.data.KeyValue;
 import xin.vanilla.aotake.enums.*;
+import xin.vanilla.aotake.mixin.AbstractContainerScreenAccessor;
 import xin.vanilla.aotake.mixin.ScreenAccessor;
 import xin.vanilla.aotake.network.ModNetworkHandler;
 import xin.vanilla.aotake.network.packet.ClearDustbinToServer;
@@ -96,7 +100,7 @@ public class ClientEventHandler implements ClientModInitializer {
         dustbinTotalPage = totalPage;
     }
 
-    private static final Component MOD_NAME = Component.translatable(EnumI18nType.KEY, "categories");
+    private static final Component TITLE = Component.translatable(EnumI18nType.WORD, "title");
 
     private static final MouseHelper mouseHelper = new MouseHelper();
     private static final Set<Screen> REGISTERED_SCREEN = Collections.newSetFromMap(new WeakHashMap<>());
@@ -193,6 +197,10 @@ public class ClientEventHandler implements ClientModInitializer {
                 REGISTERED_SCREEN.add(screen);
                 screenAfterInit(client, screen);
 
+                ScreenKeyboardEvents.allowKeyPress(screen).register((screen_, key, scancode, modifiers) ->
+                        !handleDustbinKeyPress(client, key, scancode)
+                );
+
                 ScreenEvents.afterRender(screen).register((screenRendered, graphics, mouseX, mouseY, tickDelta) ->
                         screenAfterRender(client, screenRendered, graphics, mouseX, mouseY)
                 );
@@ -210,7 +218,7 @@ public class ClientEventHandler implements ClientModInitializer {
         return screen instanceof ContainerScreen
                 && client.player != null
                 && screen.getTitle().getString()
-                .startsWith(MOD_NAME.toTextComponent(AotakeUtils.getPlayerLanguage(client.player)).getString()
+                .startsWith(TITLE.toTextComponent(AotakeUtils.getPlayerLanguage(client.player)).getString()
                 );
     }
 
@@ -229,6 +237,9 @@ public class ClientEventHandler implements ClientModInitializer {
         if (ClientConfig.get().vanillaDustbin()) {
             LocalPlayer player = client.player;
             if (player == null) return;
+            AbstractContainerScreenAccessor accessor = (AbstractContainerScreenAccessor) screen;
+            int baseX = accessor.aotake$getLeftPos();
+            int baseY = accessor.aotake$getTopPos();
             int yOffset = 0;
             boolean canPrev = true;
             boolean canNext = true;
@@ -239,8 +250,8 @@ public class ClientEventHandler implements ClientModInitializer {
             ScreenAccessor screen_ = (ScreenAccessor) screen;
             if (AotakeUtils.hasCommandPermission(player, EnumCommandType.CACHE_CLEAR)) {
                 screen_.aotake$addRenderableWidget(
-                        AbstractGuiUtils.newButton(screen.width / 2 - 88 - 21
-                                , screen.height / 2 - 111 + 21 * (yOffset++)
+                        AbstractGuiUtils.newButton(baseX - 21
+                                , baseY + 21 * (yOffset++)
                                 , 20, 20
                                 , Component.literal("✕").setColor(EnumMCColor.RED.getColor())
                                 , button -> AotakeUtils.sendPacketToServer(new ClearDustbinToServer(true, true))
@@ -250,8 +261,8 @@ public class ClientEventHandler implements ClientModInitializer {
             }
             if (AotakeUtils.hasCommandPermission(player, EnumCommandType.DUSTBIN_CLEAR)) {
                 screen_.aotake$addRenderableWidget(
-                        AbstractGuiUtils.newButton(screen.width / 2 - 88 - 21
-                                , screen.height / 2 - 111 + 21 * (yOffset++)
+                        AbstractGuiUtils.newButton(baseX - 21
+                                , baseY + 21 * (yOffset++)
                                 , 20, 20
                                 , Component.literal("✕").setColor(EnumMCColor.RED.getColor())
                                 , button -> AotakeUtils.sendPacketToServer(new ClearDustbinToServer(true, false))
@@ -259,8 +270,8 @@ public class ClientEventHandler implements ClientModInitializer {
                         )
                 );
                 screen_.aotake$addRenderableWidget(
-                        AbstractGuiUtils.newButton(screen.width / 2 - 88 - 21
-                                , screen.height / 2 - 111 + 21 * (yOffset++)
+                        AbstractGuiUtils.newButton(baseX - 21
+                                , baseY + 21 * (yOffset++)
                                 , 20, 20
                                 , Component.literal("✕").setColor(EnumMCColor.YELLOW.getColor())
                                 , button -> AotakeUtils.sendPacketToServer(new ClearDustbinToServer(false, false))
@@ -269,16 +280,16 @@ public class ClientEventHandler implements ClientModInitializer {
                 );
             }
             screen_.aotake$addRenderableWidget(
-                    AbstractGuiUtils.newButton(screen.width / 2 - 88 - 21
-                            , screen.height / 2 - 111 + 21 * (yOffset++)
+                    AbstractGuiUtils.newButton(baseX - 21
+                            , baseY + 21 * (yOffset++)
                             , 20, 20
                             , Component.literal("↻")
                             , button -> AotakeUtils.sendPacketToServer(new OpenDustbinToServer(0))
                             , Component.translatable(EnumI18nType.MESSAGE, "refresh_page")
                     )
             );
-            Button prevButton = AbstractGuiUtils.newButton(screen.width / 2 - 88 - 21
-                    , screen.height / 2 - 111 + 21 * (yOffset++)
+            Button prevButton = AbstractGuiUtils.newButton(baseX - 21
+                    , baseY + 21 * (yOffset++)
                     , 20, 20
                     , Component.literal("▲")
                     , button -> AotakeUtils.sendPacketToServer(new OpenDustbinToServer(-1))
@@ -287,8 +298,8 @@ public class ClientEventHandler implements ClientModInitializer {
             prevButton.active = canPrev;
             dustbinPrevButton = prevButton;
             screen_.aotake$addRenderableWidget(prevButton);
-            Button nextButton = AbstractGuiUtils.newButton(screen.width / 2 - 88 - 21
-                    , screen.height / 2 - 111 + 21 * (yOffset++)
+            Button nextButton = AbstractGuiUtils.newButton(baseX - 21
+                    , baseY + 21 * (yOffset++)
                     , 20, 20
                     , Component.literal("▼")
                     , button -> AotakeUtils.sendPacketToServer(new OpenDustbinToServer(1))
@@ -322,8 +333,13 @@ public class ClientEventHandler implements ClientModInitializer {
 
             int baseW = 16;
             int baseH = 16;
-            int baseX = screen.width / 2 - 88;
-            int baseY = screen.height / 2 - 110;
+            AbstractContainerScreenAccessor accessor = (AbstractContainerScreenAccessor) screen;
+            int baseX = DustbinGuiLayoutCache.valid
+                    ? DustbinGuiLayoutCache.leftPos + DustbinGuiConfig.getButtonXOffset()
+                    : accessor.aotake$getLeftPos();
+            int baseY = DustbinGuiLayoutCache.valid
+                    ? DustbinGuiLayoutCache.topPos + DustbinGuiConfig.getButtonYOffset()
+                    : accessor.aotake$getTopPos();
             boolean canPrev = true;
             boolean canNext = true;
             if (dustbinPage > 0 && dustbinTotalPage > 0) {
@@ -541,6 +557,40 @@ public class ClientEventHandler implements ClientModInitializer {
                 }
             }
         }
+    }
+
+    private static boolean handleDustbinKeyPress(Minecraft client, int key, int scancode) {
+        boolean isOurKey = DUSTBIN_KEY.matches(key, scancode)
+                || DUSTBIN_PRE_KEY.matches(key, scancode)
+                || DUSTBIN_NEXT_KEY.matches(key, scancode);
+        if (!isOurKey) {
+            return false;
+        }
+        if (System.currentTimeMillis() - lastTime <= 200) {
+            return true;
+        }
+        if (DUSTBIN_KEY.matches(key, scancode)) {
+            lastTime = System.currentTimeMillis();
+            client.setScreen(null);
+            return true;
+        }
+        if (DUSTBIN_PRE_KEY.matches(key, scancode)) {
+            lastTime = System.currentTimeMillis();
+            KeyValue<Double, Double> cursorPos = MouseHelper.getRawCursorPos();
+            mousePos.setKey(cursorPos.getKey()).setValue(cursorPos.getValue());
+            mouseRestoreTicks = 20;
+            AotakeUtils.sendPacketToServer(new OpenDustbinToServer(-1));
+            return true;
+        }
+        if (DUSTBIN_NEXT_KEY.matches(key, scancode)) {
+            lastTime = System.currentTimeMillis();
+            KeyValue<Double, Double> cursorPos = MouseHelper.getRawCursorPos();
+            mousePos.setKey(cursorPos.getKey()).setValue(cursorPos.getValue());
+            mouseRestoreTicks = 20;
+            AotakeUtils.sendPacketToServer(new OpenDustbinToServer(1));
+            return true;
+        }
+        return false;
     }
 
     private static void screenAfterTick(Minecraft client) {
