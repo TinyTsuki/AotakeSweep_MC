@@ -26,10 +26,13 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import xin.vanilla.aotake.AotakeSweep;
 import xin.vanilla.aotake.config.ClientConfig;
+import xin.vanilla.aotake.config.DustbinGuiConfig;
+import xin.vanilla.aotake.config.DustbinGuiLayoutCache;
 import xin.vanilla.aotake.data.KeyValue;
 import xin.vanilla.aotake.enums.EnumCommandType;
 import xin.vanilla.aotake.enums.EnumI18nType;
 import xin.vanilla.aotake.enums.EnumMCColor;
+import xin.vanilla.aotake.mixin.AbstractContainerScreenAccessor;
 import xin.vanilla.aotake.network.ModNetworkHandler;
 import xin.vanilla.aotake.network.packet.ClearDustbinToServer;
 import xin.vanilla.aotake.network.packet.ModLoadedToBoth;
@@ -185,7 +188,7 @@ public class ClientGameEventHandler {
         EventHandlerProxy.onPlayerLoggedOut(event);
     }
 
-    private static final Component MOD_NAME = Component.translatable(EnumI18nType.KEY, "categories");
+    private static final Component TITLE = Component.translatable(EnumI18nType.WORD, "title");
 
     private static final MouseHelper mouseHelper = new MouseHelper();
     private static Button dustbinPrevButton;
@@ -198,7 +201,7 @@ public class ClientGameEventHandler {
         if (!(screen instanceof ContainerScreen
                 && mc.player != null
                 && screen.getTitle().getString()
-                .startsWith(MOD_NAME.toTextComponent(AotakeUtils.getPlayerLanguage(mc.player)).getString())
+                .startsWith(TITLE.toTextComponent(AotakeUtils.getPlayerLanguage(mc.player)).getString())
         )) {
             return;
         }
@@ -215,6 +218,9 @@ public class ClientGameEventHandler {
         }
         if (ClientConfig.VANILLA_DUSTBIN.get()) {
             LocalPlayer player = mc.player;
+            AbstractContainerScreenAccessor accessor = (AbstractContainerScreenAccessor) screen;
+            int baseX = accessor.aotake$getLeftPos();
+            int baseY = accessor.aotake$getTopPos();
             int yOffset = 0;
             boolean canPrev = true;
             boolean canNext = true;
@@ -223,36 +229,36 @@ public class ClientGameEventHandler {
                 canNext = dustbinPage < dustbinTotalPage;
             }
             if (AotakeUtils.hasCommandPermission(player, EnumCommandType.CACHE_CLEAR)) {
-                event.addListener(AbstractGuiUtils.newButton(screen.width / 2 - 88 - 21, screen.height / 2 - 111 + 21 * (yOffset++), 20, 20
+                event.addListener(AbstractGuiUtils.newButton(baseX - 21, baseY + 21 * (yOffset++), 20, 20
                         , Component.literal("✕").setColor(EnumMCColor.RED.getColor())
                         , button -> AotakeUtils.sendPacketToServer(new ClearDustbinToServer(true, true))
                         , Component.translatable(EnumI18nType.MESSAGE, "clear_cache"))
                 );
             }
             if (AotakeUtils.hasCommandPermission(player, EnumCommandType.DUSTBIN_CLEAR)) {
-                event.addListener(AbstractGuiUtils.newButton(screen.width / 2 - 88 - 21, screen.height / 2 - 111 + 21 * (yOffset++)
+                event.addListener(AbstractGuiUtils.newButton(baseX - 21, baseY + 21 * (yOffset++)
                         , 20, 20, Component.literal("✕").setColor(EnumMCColor.RED.getColor())
                         , button -> AotakeUtils.sendPacketToServer(new ClearDustbinToServer(true, false))
                         , Component.translatable(EnumI18nType.MESSAGE, "clear_all_dustbin"))
                 );
-                event.addListener(AbstractGuiUtils.newButton(screen.width / 2 - 88 - 21, screen.height / 2 - 111 + 21 * (yOffset++)
+                event.addListener(AbstractGuiUtils.newButton(baseX - 21, baseY + 21 * (yOffset++)
                         , 20, 20, Component.literal("✕").setColor(EnumMCColor.YELLOW.getColor())
                         , button -> AotakeUtils.sendPacketToServer(new ClearDustbinToServer(false, false))
                         , Component.translatable(EnumI18nType.MESSAGE, "clear_cur_dustbin"))
                 );
             }
-            event.addListener(AbstractGuiUtils.newButton(screen.width / 2 - 88 - 21, screen.height / 2 - 111 + 21 * (yOffset++), 20, 20
+            event.addListener(AbstractGuiUtils.newButton(baseX - 21, baseY + 21 * (yOffset++), 20, 20
                     , Component.literal("↻"), button -> AotakeUtils.sendPacketToServer(new OpenDustbinToServer(0))
                     , Component.translatable(EnumI18nType.MESSAGE, "refresh_page"))
             );
-            Button prevButton = AbstractGuiUtils.newButton(screen.width / 2 - 88 - 21, screen.height / 2 - 111 + 21 * (yOffset++), 20, 20
+            Button prevButton = AbstractGuiUtils.newButton(baseX - 21, baseY + 21 * (yOffset++), 20, 20
                     , Component.literal("▲"), button -> AotakeUtils.sendPacketToServer(new OpenDustbinToServer(-1))
                     , Component.translatable(EnumI18nType.MESSAGE, "previous_page")
             );
             prevButton.active = canPrev;
             dustbinPrevButton = prevButton;
             event.addListener(prevButton);
-            Button nextButton = AbstractGuiUtils.newButton(screen.width / 2 - 88 - 21, screen.height / 2 - 111 + 21 * (yOffset++), 20, 20
+            Button nextButton = AbstractGuiUtils.newButton(baseX - 21, baseY + 21 * (yOffset++), 20, 20
                     , Component.literal("▼"), button -> AotakeUtils.sendPacketToServer(new OpenDustbinToServer(1))
                     , Component.translatable(EnumI18nType.MESSAGE, "next_page")
             );
@@ -269,7 +275,7 @@ public class ClientGameEventHandler {
         if (!(screen instanceof ContainerScreen
                 && mc.player != null
                 && screen.getTitle().getString()
-                .startsWith(MOD_NAME.toTextComponent(AotakeUtils.getPlayerLanguage(mc.player)).getString())
+                .startsWith(TITLE.toTextComponent(AotakeUtils.getPlayerLanguage(mc.player)).getString())
         )) {
             return;
         }
@@ -297,8 +303,13 @@ public class ClientGameEventHandler {
             GuiGraphics graphics = event.getGuiGraphics();
             int baseW = 16;
             int baseH = 16;
-            int baseX = screen.width / 2 - 88;
-            int baseY = screen.height / 2 - 110;
+            AbstractContainerScreenAccessor accessor = (AbstractContainerScreenAccessor) screen;
+            int baseX = DustbinGuiLayoutCache.valid
+                    ? DustbinGuiLayoutCache.leftPos + DustbinGuiConfig.getButtonXOffset()
+                    : accessor.aotake$getLeftPos();
+            int baseY = DustbinGuiLayoutCache.valid
+                    ? DustbinGuiLayoutCache.topPos + DustbinGuiConfig.getButtonYOffset()
+                    : accessor.aotake$getTopPos();
             boolean canPrev = true;
             boolean canNext = true;
             if (dustbinPage > 0 && dustbinTotalPage > 0) {
@@ -506,7 +517,7 @@ public class ClientGameEventHandler {
         if (!(screen instanceof ContainerScreen
                 && mc.player != null
                 && screen.getTitle().getString()
-                .startsWith(MOD_NAME.toTextComponent(AotakeUtils.getPlayerLanguage(mc.player)).getString())
+                .startsWith(TITLE.toTextComponent(AotakeUtils.getPlayerLanguage(mc.player)).getString())
         )) {
             return;
         }
