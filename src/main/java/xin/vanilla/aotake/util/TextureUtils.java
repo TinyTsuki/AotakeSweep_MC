@@ -34,7 +34,7 @@ public class TextureUtils {
     /**
      * 内部主题文件夹路径
      */
-    public static final String INTERNAL_THEME_DIR = "textures/gui/";
+    public static final String INTERNAL_THEME_DIR = "gui/";
 
     private static final Logger LOGGER = LogManager.getLogger();
 
