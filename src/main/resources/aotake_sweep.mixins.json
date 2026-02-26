@@ -10,6 +10,7 @@
   ],
   "client": [
     "AbstractContainerScreenAccessor",
+    "AbstractContainerScreenMixin",
     "ContainerScreenMixin",
     "MultiPlayerGameModeMixin",
     "TextureManagerAccessor"
