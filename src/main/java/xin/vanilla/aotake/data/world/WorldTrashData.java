@@ -192,7 +192,7 @@ public class WorldTrashData extends SavedData {
             @NonNull
             @Override
             public net.minecraft.network.chat.Component getDisplayName() {
-                Component title = Component.translatable(EnumI18nType.KEY, "categories")
+                Component title = Component.translatable(EnumI18nType.WORD, "title")
                         .setColor(0x5DA530);
                 Component vComponent = Component.literal(String.format("(%s/%s)", page, limit))
                         .setColor(0x5DA530);
