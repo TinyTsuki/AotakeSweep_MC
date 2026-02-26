@@ -15,6 +15,7 @@
   },
   "client": [
     "AbstractContainerScreenAccessor",
+    "AbstractContainerScreenMixin",
     "ContainerScreenMixin",
     "GuiConditionalHideMixin",
     "ScreenAccessor"
