@@ -4,7 +4,7 @@
   "key.aotake_sweep.open_dustbin_pre": "垃圾箱上一页",
   "key.aotake_sweep.open_dustbin_next": "垃圾箱下一页",
   "key.aotake_sweep.progress": "显示进度条",
-  "item.aotake_sweep.junk_ball": "不可回收垃圾",
+  "word.aotake_sweep.title": "竹叶清",
   "itemGroup.aotake_sweep": "竹叶清",
   "command.aotake_sweep.help": "[<页数>|<指令类型>] 查询指令帮助信息",
   "command.aotake_sweep.language": "设置玩家默认语言",
