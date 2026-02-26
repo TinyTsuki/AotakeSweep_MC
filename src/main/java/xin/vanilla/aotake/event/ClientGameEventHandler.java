@@ -26,9 +26,12 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import xin.vanilla.aotake.AotakeSweep;
 import xin.vanilla.aotake.config.ClientConfig;
+import xin.vanilla.aotake.config.DustbinGuiConfig;
+import xin.vanilla.aotake.config.DustbinGuiLayoutCache;
 import xin.vanilla.aotake.data.Color;
 import xin.vanilla.aotake.data.KeyValue;
 import xin.vanilla.aotake.enums.*;
+import xin.vanilla.aotake.mixin.AbstractContainerScreenAccessor;
 import xin.vanilla.aotake.network.packet.ClearDustbinToServer;
 import xin.vanilla.aotake.network.packet.ModLoadedToBoth;
 import xin.vanilla.aotake.network.packet.OpenDustbinToServer;
@@ -196,7 +199,7 @@ public class ClientGameEventHandler {
         EventHandlerProxy.onPlayerLoggedOut(event);
     }
 
-    private static final Component MOD_NAME = Component.translatable(EnumI18nType.KEY, "categories");
+    private static final Component TITLE = Component.translatable(EnumI18nType.WORD, "title");
 
     private static final MouseHelper mouseHelper = new MouseHelper();
     private static Button dustbinPrevButton;
@@ -209,7 +212,7 @@ public class ClientGameEventHandler {
         if (screen instanceof ContainerScreen
                 && mc.player != null
                 && screen.getTitle().getContents()
-                .startsWith(MOD_NAME.toTextComponent(AotakeUtils.getPlayerLanguage(mc.player)).getContents())
+                .startsWith(TITLE.toTextComponent(AotakeUtils.getPlayerLanguage(mc.player)).getContents())
         ) {
             if (event instanceof ScreenEvent.InitScreenEvent.Post eve) {
                 for (int i = 0; i < 20; i++) {
@@ -225,6 +228,9 @@ public class ClientGameEventHandler {
                 }
                 if (ClientConfig.VANILLA_DUSTBIN.get()) {
                     LocalPlayer player = mc.player;
+                    AbstractContainerScreenAccessor accessor = (AbstractContainerScreenAccessor) screen;
+                    int baseX = accessor.aotake$getLeftPos();
+                    int baseY = accessor.aotake$getTopPos();
                     int yOffset = 0;
                     boolean canPrev = true;
                     boolean canNext = true;
@@ -234,8 +240,8 @@ public class ClientGameEventHandler {
                     }
                     if (AotakeUtils.hasCommandPermission(player, EnumCommandType.CACHE_CLEAR)) {
                         eve.addListener(
-                                AbstractGuiUtils.newButton(screen.width / 2 - 88 - 21
-                                        , screen.height / 2 - 111 + 21 * (yOffset++)
+                                AbstractGuiUtils.newButton(baseX - 21
+                                        , baseY + 21 * (yOffset++)
                                         , 20, 20
                                         , Component.literal("✕").setColor(EnumMCColor.RED.getColor())
                                         , button -> AotakeUtils.sendPacketToServer(new ClearDustbinToServer(true, true))
@@ -245,8 +251,8 @@ public class ClientGameEventHandler {
                     }
                     if (AotakeUtils.hasCommandPermission(player, EnumCommandType.DUSTBIN_CLEAR)) {
                         eve.addListener(
-                                AbstractGuiUtils.newButton(screen.width / 2 - 88 - 21
-                                        , screen.height / 2 - 111 + 21 * (yOffset++)
+                                AbstractGuiUtils.newButton(baseX - 21
+                                        , baseY + 21 * (yOffset++)
                                         , 20, 20
                                         , Component.literal("✕").setColor(EnumMCColor.RED.getColor())
                                         , button -> AotakeUtils.sendPacketToServer(new ClearDustbinToServer(true, false))
@@ -254,8 +260,8 @@ public class ClientGameEventHandler {
                                 )
                         );
                         eve.addListener(
-                                AbstractGuiUtils.newButton(screen.width / 2 - 88 - 21
-                                        , screen.height / 2 - 111 + 21 * (yOffset++)
+                                AbstractGuiUtils.newButton(baseX - 21
+                                        , baseY + 21 * (yOffset++)
                                         , 20, 20
                                         , Component.literal("✕").setColor(EnumMCColor.YELLOW.getColor())
                                         , button -> AotakeUtils.sendPacketToServer(new ClearDustbinToServer(false, false))
@@ -264,16 +270,16 @@ public class ClientGameEventHandler {
                         );
                     }
                     eve.addListener(
-                            AbstractGuiUtils.newButton(screen.width / 2 - 88 - 21
-                                    , screen.height / 2 - 111 + 21 * (yOffset++)
+                            AbstractGuiUtils.newButton(baseX - 21
+                                    , baseY + 21 * (yOffset++)
                                     , 20, 20
                                     , Component.literal("↻")
                                     , button -> AotakeUtils.sendPacketToServer(new OpenDustbinToServer(0))
                                     , Component.translatable(EnumI18nType.MESSAGE, "refresh_page")
                             )
                     );
-                    Button prevButton = AbstractGuiUtils.newButton(screen.width / 2 - 88 - 21
-                            , screen.height / 2 - 111 + 21 * (yOffset++)
+                    Button prevButton = AbstractGuiUtils.newButton(baseX - 21
+                            , baseY + 21 * (yOffset++)
                             , 20, 20
                             , Component.literal("▲")
                             , button -> AotakeUtils.sendPacketToServer(new OpenDustbinToServer(-1))
@@ -282,8 +288,8 @@ public class ClientGameEventHandler {
                     prevButton.active = canPrev;
                     dustbinPrevButton = prevButton;
                     eve.addListener(prevButton);
-                    Button nextButton = AbstractGuiUtils.newButton(screen.width / 2 - 88 - 21
-                            , screen.height / 2 - 111 + 21 * (yOffset++)
+                    Button nextButton = AbstractGuiUtils.newButton(baseX - 21
+                            , baseY + 21 * (yOffset++)
                             , 20, 20
                             , Component.literal("▼")
                             , button -> AotakeUtils.sendPacketToServer(new OpenDustbinToServer(1))
@@ -317,8 +323,13 @@ public class ClientGameEventHandler {
                     PoseStack stack = eve.getPoseStack();
                     int baseW = 16;
                     int baseH = 16;
-                    int baseX = screen.width / 2 - 88;
-                    int baseY = screen.height / 2 - 110;
+                    AbstractContainerScreenAccessor accessor = (AbstractContainerScreenAccessor) screen;
+                    int baseX = DustbinGuiLayoutCache.valid
+                            ? DustbinGuiLayoutCache.leftPos + DustbinGuiConfig.getButtonXOffset()
+                            : accessor.aotake$getLeftPos();
+                    int baseY = DustbinGuiLayoutCache.valid
+                            ? DustbinGuiLayoutCache.topPos + DustbinGuiConfig.getButtonYOffset()
+                            : accessor.aotake$getTopPos();
                     boolean canPrev = true;
                     boolean canNext = true;
                     if (dustbinPage > 0 && dustbinTotalPage > 0) {
