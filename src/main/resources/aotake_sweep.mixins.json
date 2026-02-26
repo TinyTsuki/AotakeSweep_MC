@@ -9,8 +9,9 @@
     "ServerPlayerMixin"
   ],
   "client": [
-    "ContainerScreenMixin",
-    "AbstractContainerScreenAccessor"
+    "AbstractContainerScreenAccessor",
+    "AbstractContainerScreenMixin",
+    "ContainerScreenMixin"
   ],
   "injectors": {
     "defaultRequire": 1

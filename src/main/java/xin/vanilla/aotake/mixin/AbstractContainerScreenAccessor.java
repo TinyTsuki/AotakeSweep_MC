@@ -11,10 +11,4 @@ public interface AbstractContainerScreenAccessor {
 
     @Accessor("topPos")
     int aotake$getTopPos();
-
-    @Accessor("imageWidth")
-    int aotake$getImageWidth();
-
-    @Accessor("imageHeight")
-    int aotake$getImageHeight();
 }
