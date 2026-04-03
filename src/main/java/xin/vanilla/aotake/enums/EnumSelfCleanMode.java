@@ -1,9 +1,14 @@
 package xin.vanilla.aotake.enums;
 
+import xin.vanilla.aotake.AotakeComponent;
+import xin.vanilla.banira.common.data.Component;
+import xin.vanilla.banira.common.enums.IEnumDescribable;
+import xin.vanilla.banira.common.util.EnumDescriptionHelper;
+
 /**
  * 自清理模式
  */
-public enum EnumSelfCleanMode {
+public enum EnumSelfCleanMode implements IEnumDescribable {
     /**
      * 无
      */
@@ -47,4 +52,8 @@ public enum EnumSelfCleanMode {
         return valueOf(obj) != null;
     }
 
+    @Override
+    public Component enumDescription() {
+        return EnumDescriptionHelper.describeEnum(AotakeComponent.get(), this);
+    }
 }

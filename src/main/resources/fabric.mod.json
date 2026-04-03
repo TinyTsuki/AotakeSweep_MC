@@ -29,11 +29,12 @@
     ]
   },
   "mixins": [
-    "aotake_sweep.mixins.json"
+    "${mod_id}.mixins.json"
   ],
   "depends": {
     "fabricloader": ">=${loader_version}",
     "fabric-api": "*",
-    "minecraft": "${minecraft_version}"
+    "minecraft": "${minecraft_version}",
+    "banira_codex": "${banira_version_range}"
   }
 }

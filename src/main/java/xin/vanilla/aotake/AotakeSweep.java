@@ -4,30 +4,43 @@ import lombok.Getter;
 import lombok.Setter;
 import lombok.experimental.Accessors;
 import net.fabricmc.api.ModInitializer;
-import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
-import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
-import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.minecraft.resources.ResourceLocation;
-import net.minecraft.server.MinecraftServer;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import xin.vanilla.aotake.command.AotakeCommand;
-import xin.vanilla.aotake.config.CustomConfig;
-import xin.vanilla.aotake.config.ServerConfig;
-import xin.vanilla.aotake.data.KeyValue;
-import xin.vanilla.aotake.data.player.PlayerDataManager;
-import xin.vanilla.aotake.data.player.PlayerSweepData;
-import xin.vanilla.aotake.event.ServerEventHandler;
-import xin.vanilla.aotake.network.ModNetworkHandler;
-import xin.vanilla.aotake.util.AotakeScheduler;
+import xin.vanilla.aotake.config.ClientConfig;
+import xin.vanilla.aotake.config.CommonConfig;
+import xin.vanilla.aotake.data.world.ChunkVaultSession;
+import xin.vanilla.aotake.event.ClientGameEventHandler;
+import xin.vanilla.aotake.event.ClientModEventHandler;
+import xin.vanilla.aotake.event.EventHandlerProxy;
+import xin.vanilla.aotake.network.NetworkInit;
+import xin.vanilla.aotake.network.packet.OpenDustbinToServer;
+import xin.vanilla.aotake.network.packet.SweepDataSyncToClient;
+import xin.vanilla.aotake.notification.AotakeNotificationTypes;
+import xin.vanilla.aotake.screen.PlayerConfigScreen;
 import xin.vanilla.aotake.util.EntityFilter;
 import xin.vanilla.aotake.util.EntitySweeper;
+import xin.vanilla.banira.BaniraCodex;
+import xin.vanilla.banira.client.event.BaniraClientEventHub;
+import xin.vanilla.banira.client.gui.ConfigEditorScreen;
+import xin.vanilla.banira.client.gui.quickaction.QuickActionContext;
+import xin.vanilla.banira.client.gui.quickaction.QuickActionContextMenuItem;
+import xin.vanilla.banira.client.gui.quickaction.QuickActionRegistry;
+import xin.vanilla.banira.common.config.ConfigHolder;
+import xin.vanilla.banira.common.config.ForgeConfigAdapter;
+import xin.vanilla.banira.common.data.Component;
+import xin.vanilla.banira.common.data.KeyValue;
+import xin.vanilla.banira.common.network.ModLoadedPresence;
+import xin.vanilla.banira.common.util.BaniraEventBus;
+import xin.vanilla.banira.common.util.CommandUtils;
+import xin.vanilla.banira.common.util.EnvironmentUtils;
+import xin.vanilla.banira.common.util.PacketUtils;
 
-import java.util.HashSet;
 import java.util.Map;
 import java.util.Random;
-import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Consumer;
 
 
 @Accessors(fluent = true)
@@ -36,28 +49,22 @@ public class AotakeSweep implements ModInitializer {
     public final static String DEFAULT_COMMAND_PREFIX = "aotake";
 
     public static final String MODID = "aotake_sweep";
-    public static final String ARTIFACT_ID = "xin.vanilla";
 
     private static final Logger LOGGER = LogManager.getLogger();
-
-    /**
-     * 服务端实例
-     */
-    @Getter
-    private final static KeyValue<MinecraftServer, Boolean> serverInstance = new KeyValue<>(null, true);
-
-    /**
-     * 已安装mod的玩家列表
-     */
-    @Getter
-    private static final Set<String> customConfigStatus = new HashSet<>();
-
 
     /**
      * 玩家当前浏览的垃圾箱页数
      */
     @Getter
     private static final Map<String, Integer> playerDustbinPage = new ConcurrentHashMap<>();
+
+    /**
+     * 区块清理暂存箱：当前打开的 vaultId 与页码（供客户端翻页同步）
+     */
+    @Getter
+    private static final Map<String, Integer> playerChunkVaultPage = new ConcurrentHashMap<>();
+    @Getter
+    private static final Map<String, String> playerChunkVaultId = new ConcurrentHashMap<>();
 
     /**
      * 客户端-服务器时间
@@ -71,6 +78,18 @@ public class AotakeSweep implements ModInitializer {
     @Getter
     private static final KeyValue<Long, Long> sweepTime = new KeyValue<>(0L, 0L);
 
+    /**
+     * 客户端：由 {@link SweepDataSyncToClient} 写入，供偏好界面读取（默认与 {@link xin.vanilla.aotake.data.player.PlayerSweepData} 一致）。
+     */
+    @Getter
+    private static volatile boolean clientCachedShowSweepResult = true;
+    @Getter
+    private static volatile boolean clientCachedEnableWarningVoice = true;
+
+    public static void setClientCachedPlayerSweepPrefs(boolean showSweepResult, boolean enableWarningVoice) {
+        AotakeSweep.clientCachedShowSweepResult = showSweepResult;
+        AotakeSweep.clientCachedEnableWarningVoice = enableWarningVoice;
+    }
 
     public static final Random RANDOM = new Random();
 
@@ -86,68 +105,85 @@ public class AotakeSweep implements ModInitializer {
 
     @Override
     public void onInitialize() {
-
         // 注册网络通道
-        ModNetworkHandler.registerServerPackets();
-
-        // 注册服务器启动和关闭事件
-        ServerLifecycleEvents.SERVER_STARTING.register(server -> {
-            entitySweeper.clear();
-            AotakeSweep.serverInstance.setKey(server).setValue(true);
-        });
-        ServerLifecycleEvents.SERVER_STOPPING.register(server -> {
-            AotakeSweep.serverInstance.setValue(false);
-            PlayerSweepData.clear();
-        });
-
-        // 注册事件
-        ServerEventHandler.register();
-
-        // 注册调度器
-        ServerTickEvents.END_SERVER_TICK.register(AotakeScheduler::onServerTick);
+        NetworkInit.registerPackets();
 
         // 注册配置
-        ServerConfig.register();
-        CustomConfig.loadCustomConfig(false);
-        PlayerDataManager.register();
+        ForgeConfigAdapter.register(CommonConfig.class, MODID);
+        ForgeConfigAdapter.register(ClientConfig.class, MODID);
 
-        // 注册指令
-        registerCommands();
+        BaniraEventBus.Server.onStarting(server -> entitySweeper.clear());
+        BaniraEventBus.Commands.onRegister(event -> AotakeCommand.register(event.getDispatcher()));
 
+        BaniraEventBus.ModLifecycle.onCommonSetup(event -> {
+            AotakeNotificationTypes.registerAllOnServer();
+            ModLoadedPresence.register(MODID, player -> {
+                // 同步清理时间与玩家偏好到客户端
+                PacketUtils.sendPacketToPlayer(new SweepDataSyncToClient(player), player);
+                // 刷新权限信息
+                CommandUtils.refreshPermission(player);
+            });
+        });
+
+        BaniraEventBus.Server.onTick(EventHandlerProxy::onServerTick);
+        BaniraEventBus.WorldEvents.onTick(EventHandlerProxy::onWorldTick);
+        BaniraEventBus.Player.onClone(EventHandlerProxy::onPlayerCloned);
+        BaniraEventBus.Player.onPlayerEvent(event -> {
+            if (event instanceof PlayerEvent.Clone) return;
+            EventHandlerProxy.onPlayerUseItem(event);
+        });
+        BaniraEventBus.Interaction.onRightClickItem(EventHandlerProxy::onPlayerUseItem);
+        BaniraEventBus.Interaction.onRightClickBlock(EventHandlerProxy::onRightBlock);
+        BaniraEventBus.Interaction.onEntityInteractSpecific(EventHandlerProxy::onRightEntity);
+        BaniraEventBus.Player.onLoggedIn(player -> EventHandlerProxy.onPlayerLoggedIn(new PlayerEvent.PlayerLoggedInEvent(player)));
+        BaniraEventBus.Player.onLoggedOut(player -> EventHandlerProxy.onPlayerLoggedOut(new PlayerEvent.PlayerLoggedOutEvent(player)));
+
+        // 注册配置文件重载事件
+        context.getModEventBus().addListener(this::onConfigReload);
+
+        MinecraftForge.EVENT_BUS.addListener(ChunkVaultSession::onContainerClose);
+
+        if (EnvironmentUtils.isClient()) {
+            ClientProxy.init();
+        }
     }
 
-
-    public void registerCommands() {
-        LOGGER.debug("Registering commands");
-        CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) -> AotakeCommand.register(dispatcher));
+    public void onConfigReload(ModConfigEvent event) {
+        try {
+            ModConfig cfg = event.getConfig();
+            ConfigHolder commonHolder = ForgeConfigAdapter.getHolder(CommonConfig.class);
+            if (commonHolder != null && cfg.getSpec() == commonHolder.getSpec() && BaniraCodex.serverInstance().val()) {
+                entityFilter.clear();
+            }
+        } catch (Exception ignored) {
+        }
     }
 
-    // region 资源ID
+    @OnlyIn(Dist.CLIENT)
+    public static class ClientProxy {
+        public static void init() {
+            ClientGameEventHandler.register();
 
-    public static ResourceLocation emptyIdentifier() {
-        return createIdentifier("", "");
+            BaniraClientEventHub.ModLifecycle.onClientSetup(event -> {
+                ClientModEventHandler.bootstrap();
+
+                ResourceLocation texture = Identifier.id().create("gui/quick_icon.png");
+                Component label = AotakeComponent.get().transClient("key.aotake_sweep.categories");
+                QuickActionContextMenuItem editClientConfig = new QuickActionContextMenuItem(AotakeComponent.get().transClientAuto("edit_client_config"), ctx ->
+                        ConfigEditorScreen.open(ClientConfig.get().holder(), ctx.currentScreen())
+                );
+                Consumer<QuickActionContext> action = ctx -> PacketUtils.sendPacketToServer(new OpenDustbinToServer(0));
+                QuickActionContextMenuItem editCommonConfig = new QuickActionContextMenuItem(AotakeComponent.get().transClientAuto("edit_common_config"), ctx ->
+                        ConfigEditorScreen.open(CommonConfig.get().holder(), ctx.currentScreen())
+                );
+                QuickActionContextMenuItem editPlayerConfig = new QuickActionContextMenuItem(AotakeComponent.get().transClientAuto("edit_player_config"), ctx ->
+                        Minecraft.getInstance().setScreen(new PlayerConfigScreen(ctx.currentScreen()
+                                , AotakeSweep.isClientCachedShowSweepResult()
+                                , AotakeSweep.isClientCachedEnableWarningVoice()))
+                );
+                QuickActionRegistry.get().registerIcon(MODID + ":quick", texture, label, action, editPlayerConfig, editClientConfig, editCommonConfig);
+            });
+        }
     }
-
-    public static ResourceLocation createIdentifier(String path) {
-        return createIdentifier(AotakeSweep.MODID, path);
-    }
-
-    public static ResourceLocation createIdentifier(String namespace, String path) {
-        return ResourceLocation.tryBuild(namespace, path);
-    }
-
-    public static ResourceLocation parseIdentifier(String location) {
-        return ResourceLocation.tryParse(location);
-    }
-
-    // endregion 资源ID
-
-
-    // region 外部方法
-    @SuppressWarnings("unused")
-    public static void reloadCustomConfig() {
-        CustomConfig.loadCustomConfig(false);
-    }
-    // endregion 外部方法
 
 }

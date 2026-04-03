@@ -2,12 +2,6 @@ package xin.vanilla.aotake.event;
 
 import lombok.Getter;
 import lombok.Setter;
-import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
-import net.fabricmc.fabric.api.event.player.UseBlockCallback;
-import net.fabricmc.fabric.api.event.player.UseEntityCallback;
-import net.fabricmc.fabric.api.event.player.UseItemCallback;
-import net.fabricmc.fabric.api.networking.v1.PacketSender;
-import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.ClickEvent;
 import net.minecraft.network.chat.HoverEvent;
@@ -30,29 +24,35 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.BlockHitResult;
-import net.minecraft.world.phys.EntityHitResult;
 import net.minecraft.world.phys.Vec3;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.jetbrains.annotations.Nullable;
+import xin.vanilla.aotake.AotakeComponent;
 import xin.vanilla.aotake.AotakeSweep;
-import xin.vanilla.aotake.config.CustomConfig;
-import xin.vanilla.aotake.config.ServerConfig;
+import xin.vanilla.aotake.config.CommonConfig;
 import xin.vanilla.aotake.data.ChunkKey;
 import xin.vanilla.aotake.data.ConcurrentShuffleList;
-import xin.vanilla.aotake.data.KeyValue;
-import xin.vanilla.aotake.data.WorldCoordinate;
 import xin.vanilla.aotake.data.player.PlayerSweepData;
+import xin.vanilla.aotake.data.world.ChunkVaultGrants;
+import xin.vanilla.aotake.data.world.ChunkVaultStorage;
 import xin.vanilla.aotake.data.world.WorldTrashData;
-import xin.vanilla.aotake.enums.*;
+import xin.vanilla.aotake.enums.EnumChunkCheckMode;
+import xin.vanilla.aotake.enums.EnumCommandType;
+import xin.vanilla.aotake.enums.EnumSelfCleanMode;
 import xin.vanilla.aotake.network.packet.GhostCameraToClient;
-import xin.vanilla.aotake.network.packet.SweepTimeSyncToClient;
-import xin.vanilla.aotake.util.*;
+import xin.vanilla.aotake.network.packet.SweepDataSyncToClient;
+import xin.vanilla.aotake.notification.AotakeNotificationTypes;
+import xin.vanilla.aotake.util.AotakeUtils;
+import xin.vanilla.aotake.util.EntitySweeper;
+import xin.vanilla.banira.BaniraCodex;
+import xin.vanilla.banira.common.data.Component;
+import xin.vanilla.banira.common.data.KeyValue;
+import xin.vanilla.banira.common.data.WorldCoordinate;
+import xin.vanilla.banira.common.enums.*;
+import xin.vanilla.banira.common.util.*;
+import xin.vanilla.banira.internal.config.CustomConfig;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
@@ -68,7 +68,12 @@ public class ServerEventHandler {
     private static long lastSaveConfTime = System.currentTimeMillis();
     private static long lastReadConfTime = System.currentTimeMillis();
     private static long lastChunkCheckTime = System.currentTimeMillis();
+    private static long lastChunkVaultPruneTime = System.currentTimeMillis();
     private static long lastVoiceTime = System.currentTimeMillis();
+    /**
+     * 与 {@code countdown/1000} 一致；仅在 warnKey 变化时发倒计时通知与 SweepTimeSync，避免同一秒内每 tick 重复发送约 20 次。
+     */
+    private static String lastCountdownWarningDispatchKey = null;
     private static final AtomicBoolean chunkSweepLock = new AtomicBoolean(false);
     private static final Map<String, Long> lastCatchTick = new ConcurrentHashMap<>();
     private static final Map<String, Long> lastUseEntityTick = new ConcurrentHashMap<>();
@@ -84,56 +89,49 @@ public class ServerEventHandler {
         private long lastClampTick = -1;
     }
 
-
-    public static void register() {
-        // 注册服务端Tick事件
-        ServerTickEvents.END_SERVER_TICK.register(ServerEventHandler::onServerTick);
-        // 注册世界Tick事件
-        ServerTickEvents.END_WORLD_TICK.register(ServerEventHandler::onWorldTick);
-
-        // 注册玩家登录事件
-        ServerPlayConnectionEvents.JOIN.register(ServerEventHandler::onPlayerLoggedIn);
-        // 注册玩家登出事件
-        ServerPlayConnectionEvents.DISCONNECT.register(ServerEventHandler::onPlayerLoggedOut);
-
-        UseItemCallback.EVENT.register(ServerEventHandler::onPlayerUseItem);
-
-        UseBlockCallback.EVENT.register(ServerEventHandler::onRightBlock);
-
-        UseEntityCallback.EVENT.register(ServerEventHandler::onRightEntity);
-    }
-
-    private static void onServerTick(MinecraftServer server) {
-        if (AotakeSweep.disable()) return;
+    public static void onServerTick(TickEvent.ServerTickEvent event) {
+        if (event.phase != TickEvent.Phase.END || AotakeSweep.isDisable()) return;
+        MinecraftServer server = BaniraCodex.serverInstance().key();
         if (server == null || !server.isRunning()) return;
+        ChunkVaultGrants.bootstrapWhenServerReady(server);
 
         long now = System.currentTimeMillis();
         long countdown = nextSweepTime - now;
-        long sweepInterval = ServerConfig.get().sweepConfig().sweepInterval();
+        long sweepInterval = CommonConfig.get().base().sweep().sweepInterval();
 
-        // 扫地前提示
+        // 扫地前提示（warnKey 每秒才变一次，但服务端约 20 tick/s；仅在 key 变化时派发，避免连续重复发包/通知）
         String warnKey = String.valueOf(countdown / 1000);
         if (AotakeUtils.hasWarning(warnKey)) {
-            for (ServerPlayer player : server.getPlayerList().getPlayers()) {
-                // 给已安装mod玩家同步扫地倒计时
-                if (AotakeSweep.customConfigStatus().contains(AotakeUtils.getPlayerUUIDString(player))) {
-                    AotakeUtils.sendPacketToPlayer(new SweepTimeSyncToClient(), player);
-                }
-                Component warningMessage = AotakeUtils.getWarningMessage(warnKey, AotakeUtils.getPlayerLanguage(player), null);
-                if (warningMessage != null) {
-                    AotakeUtils.sendActionBarMessage(player, warningMessage);
+            if (!Objects.equals(lastCountdownWarningDispatchKey, warnKey)) {
+                lastCountdownWarningDispatchKey = warnKey;
+                for (ServerPlayer player : BaniraCodex.serverInstance().key()
+                        .getPlayerList()
+                        .getPlayers()
+                ) {
+                    if (PlayerUtils.isRemoteClientModInstalled(player, AotakeSweep.MODID)) {
+                        PacketUtils.sendPacketToPlayer(new SweepDataSyncToClient(player), player);
+                    }
+                    Component warningMessage = AotakeUtils.getWarningMessage(warnKey, Translator.getServerPlayerLanguage(player), null);
+                    if (warningMessage != null) {
+                        MessageUtils.sendNotification(player, warningMessage, EnumPosition.TOP_CENTER, EnumMoveType.AUTO, 1200L, EnumNotificationStyle.NORMAL, EnumNotificationVanillaFallback.ACTION_BAR, AotakeNotificationTypes.SWEEP_COUNTDOWN);
+                    }
                 }
             }
+        } else {
+            lastCountdownWarningDispatchKey = null;
         }
         // 扫地前提示音效
         if (AotakeUtils.hasWarningVoice(warnKey) && lastVoiceTime + 1010 < now) {
             lastVoiceTime = now;
-            for (ServerPlayer player : server.getPlayerList().getPlayers()) {
+            for (ServerPlayer player : BaniraCodex.serverInstance().key()
+                    .getPlayerList()
+                    .getPlayers()
+            ) {
                 if (PlayerSweepData.getData(player).isEnableWarningVoice()) {
                     String voice = AotakeUtils.getWarningVoice(warnKey);
-                    float volume = ServerConfig.get().sweepConfig().sweepWarningVoiceVolume() / 100f;
+                    float volume = CommonConfig.get().base().sweep().sweepWarningVoiceVolume() / 100f;
                     if (StringUtils.isNotNullOrEmpty(voice)) {
-                        AotakeUtils.executeCommandNoOutput(player, String.format("playsound %s voice @s ~ ~ ~ %s", voice, volume));
+                        CommandUtils.executeCommandNoOutput(player, String.format("playsound %s voice @s ~ ~ ~ %s", voice, volume));
                     }
                 }
             }
@@ -142,30 +140,30 @@ public class ServerEventHandler {
         // 扫地
         if (countdown <= 0 && sweepInterval > 0) {
             nextSweepTime = now + sweepInterval;
+            lastCountdownWarningDispatchKey = null;
             LOGGER.debug("Scheduled sweep will start");
-            AotakeScheduler.schedule(server, 1, AotakeUtils::sweep);
+            BaniraScheduler.schedule(server, 1, AotakeUtils::sweep);
             // 给已安装mod玩家同步扫地倒计时
-            for (String uuid : AotakeSweep.customConfigStatus()) {
-                ServerPlayer player = AotakeUtils.getPlayerByUUID(uuid);
-                if (player != null) {
-                    AotakeUtils.sendPacketToPlayer(new SweepTimeSyncToClient(), player);
+            for (ServerPlayer player : server.getPlayerList().getPlayers()) {
+                if (PlayerUtils.isRemoteClientModInstalled(player, AotakeSweep.MODID)) {
+                    PacketUtils.sendPacketToPlayer(new SweepDataSyncToClient(player), player);
                 }
             }
         }
 
         // 自清洁
-        if (ServerConfig.get().dustbinConfig().selfCleanInterval() <= now - lastSelfCleanTime) {
+        if (CommonConfig.get().base().dustbin().selfCleanInterval() <= now - lastSelfCleanTime) {
             lastSelfCleanTime = now;
             WorldTrashData worldTrashData = WorldTrashData.get();
             List<SimpleContainer> inventories = worldTrashData.getInventoryList();
             // 清空
-            if (ServerConfig.get().dustbinConfig().selfCleanMode().contains(EnumSelfCleanMode.SCHEDULED_CLEAR.name())) {
+            if (CommonConfig.get().base().dustbin().selfCleanMode().contains(EnumSelfCleanMode.SCHEDULED_CLEAR)) {
                 worldTrashData.getDropList().clear();
                 if (CollectionUtils.isNotNullOrEmpty(inventories)) inventories.forEach(SimpleContainer::clearContent);
                 WorldTrashData.get().setDirty();
             }
             // 随机删除
-            else if (ServerConfig.get().dustbinConfig().selfCleanMode().contains(EnumSelfCleanMode.SCHEDULED_DELETE.name())) {
+            else if (CommonConfig.get().base().dustbin().selfCleanMode().contains(EnumSelfCleanMode.SCHEDULED_DELETE)) {
                 if (AotakeSweep.RANDOM.nextBoolean()) {
                     ConcurrentShuffleList<KeyValue<WorldCoordinate, ItemStack>> dropList = worldTrashData.getDropList();
                     dropList.removeRandom();
@@ -183,15 +181,15 @@ public class ServerEventHandler {
         }
 
         // 检查区块实体数量
-        if (ServerConfig.get().chunkCheckConfig().chunkCheckInterval() > 0
+        if (CommonConfig.get().base().chunk().chunkCheckInterval() > 0
                 && !chunkSweepLock.get()
-                && ServerConfig.get().chunkCheckConfig().chunkCheckInterval() <= now - lastChunkCheckTime
+                && CommonConfig.get().base().chunk().chunkCheckInterval() <= now - lastChunkCheckTime
         ) {
             chunkSweepLock.set(true);
             lastChunkCheckTime = now;
             try {
                 long start = System.currentTimeMillis();
-                boolean advanced = !EnumChunkCheckMode.DEFAULT.equals(ServerConfig.get().chunkCheckConfig().chunkCheckMode());
+                boolean advanced = CommonConfig.get().base().chunk().chunkCheckMode() != EnumChunkCheckMode.DEFAULT;
                 Map<ChunkKey, List<Entity>> chunkEntities = new HashMap<>();
                 for (Entity entity : AotakeUtils.getAllEntitiesByFilter(null, true)) {
                     String dimension = entity.level != null
@@ -199,11 +197,11 @@ public class ServerEventHandler {
                             : "unknown";
                     int chunkX = entity.blockPosition().getX() >> 4;
                     int chunkZ = entity.blockPosition().getZ() >> 4;
-                    String entityType = advanced ? AotakeUtils.getEntityTypeRegistryName(entity) : null;
+                    String entityType = advanced ? EntityUtils.getEntityRegistryString(entity) : null;
                     ChunkKey key = new ChunkKey(dimension, chunkX, chunkZ, entityType);
                     chunkEntities.computeIfAbsent(key, k -> new ArrayList<>()).add(entity);
                 }
-                int limit = ServerConfig.get().chunkCheckConfig().chunkCheckLimit();
+                int limit = CommonConfig.get().base().chunk().chunkCheckLimit();
                 List<Map.Entry<ChunkKey, List<Entity>>> overcrowdedChunks = new ArrayList<>();
                 for (Map.Entry<ChunkKey, List<Entity>> entry : chunkEntities.entrySet()) {
                     if (entry.getValue().size() > limit) {
@@ -221,60 +219,60 @@ public class ServerEventHandler {
                                     , entry.getValue().size()))
                             .collect(Collectors.joining("\n")));
 
-                    if (ServerConfig.get().chunkCheckConfig().chunkCheckNotice()) {
+                    if (CommonConfig.get().base().chunk().chunkCheckNotice()) {
                         Map.Entry<ChunkKey, List<Entity>> entityEntryList = overcrowdedChunks.get(0);
                         Entity entity = entityEntryList.getValue().get(0);
                         WorldCoordinate entityCoordinate = new WorldCoordinate(entity);
                         for (ServerPlayer player : server.getPlayerList().getPlayers()) {
-                            String language = AotakeUtils.getPlayerLanguage(player);
+                            String language = Translator.getServerPlayerLanguage(player);
 
-                            Component message = Component.translatable(EnumI18nType.MESSAGE,
-                                    ServerConfig.get().chunkCheckConfig().chunkCheckOnlyNotice()
+                            Component message = AotakeComponent.get().trans(EnumI18nType.FORMAT,
+                                    CommonConfig.get().base().chunk().chunkCheckOnlyNotice()
                                             ? "chunk_check_msg_no"
                                             : "chunk_check_msg_yes"
-                                    , Component.literal(entityCoordinate.toChunkXZString())
-                                            .setHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT
-                                                    , Component.literal(entityCoordinate.getDimensionResourceId()).toTextComponent())
+                                    , AotakeComponent.get().literal(entityCoordinate.chunkXZString())
+                                            .hoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT
+                                                    , AotakeComponent.get().literal(entityCoordinate.dimensionId()).toVanilla())
                                             )
                             );
                             if (player.hasPermissions(1)
                                     && PlayerSweepData.getData(player).isShowSweepResult()
                             ) {
-                                AotakeUtils.sendMessage(player, message
-                                        .setHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT
-                                                , Component.translatable(EnumI18nType.MESSAGE, "chunk_check_msg_hover")
-                                                .toTextComponent(language))
-                                        )
-                                        .setClickEvent(new ClickEvent(ClickEvent.Action.SUGGEST_COMMAND
-                                                , AotakeUtils.genTeleportCommand(entityCoordinate))
-                                        )
-                                        .append(Component.literal("[+]")
-                                                .setColor(EnumMCColor.GREEN.getColor())
-                                                .setHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT
-                                                        , Component.translatable(EnumI18nType.MESSAGE, "click_to_copy_detail")
-                                                        .toTextComponent(language))
+                                MessageUtils.sendNotification(player, message
+                                                .hoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT
+                                                        , AotakeComponent.get().trans(EnumI18nType.WORD, "chunk_check_msg_hover")
+                                                        .toVanilla(language))
                                                 )
-                                                .setClickEvent(new ClickEvent(ClickEvent.Action.COPY_TO_CLIPBOARD
-                                                        , overcrowdedChunks.stream()
-                                                        .map(entry -> String.format("%s, Entities: %s"
-                                                                , formatChunkKey(entry.getKey(), advanced)
-                                                                , entry.getValue().size()))
-                                                        .collect(Collectors.joining("\n")))
+                                                .clickEvent(new ClickEvent(ClickEvent.Action.SUGGEST_COMMAND
+                                                        , AotakeUtils.genTeleportCommand(entityCoordinate))
                                                 )
-                                        )
-                                        .append(Component.literal("[x]")
-                                                .setColor(EnumMCColor.RED.getColor())
-                                                .setHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT
-                                                        , Component.translatable(EnumI18nType.MESSAGE, "not_show_button")
-                                                        .toTextComponent(language))
+                                                .append(AotakeComponent.get().literal("[+]")
+                                                        .color(EnumMCColor.GREEN.getColor())
+                                                        .hoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT
+                                                                , AotakeComponent.get().trans(EnumI18nType.WORD, "click_to_copy_detail")
+                                                                .toVanilla(language))
+                                                        )
+                                                        .clickEvent(new ClickEvent(ClickEvent.Action.COPY_TO_CLIPBOARD
+                                                                , overcrowdedChunks.stream()
+                                                                .map(entry -> String.format("%s, Entities: %s"
+                                                                        , formatChunkKey(entry.getKey(), advanced)
+                                                                        , entry.getValue().size()))
+                                                                .collect(Collectors.joining("\n")))
+                                                        )
                                                 )
-                                                .setClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND
-                                                        , "/" + AotakeUtils.getCommandPrefix() + " config player showSweepResult change")
+                                                .append(AotakeComponent.get().literal("[x]")
+                                                        .color(EnumMCColor.RED.getColor())
+                                                        .hoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT
+                                                                , AotakeComponent.get().trans(EnumI18nType.WORD, "not_show_button")
+                                                                .toVanilla(language))
+                                                        )
+                                                        .clickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND
+                                                                , "/" + AotakeUtils.getCommandPrefix() + " config player showSweepResult change")
+                                                        )
                                                 )
-                                        )
-                                );
+                                        , AotakeNotificationTypes.CHUNK_CHECK_INTERACTIVE);
                             } else {
-                                AotakeUtils.sendActionBarMessage(player, message);
+                                MessageUtils.sendNotification(player, message, EnumPosition.TOP_CENTER, EnumMoveType.AUTO, 5000L, EnumNotificationStyle.NORMAL, EnumNotificationVanillaFallback.ACTION_BAR, AotakeNotificationTypes.CHUNK_CHECK_COMPACT);
                             }
                         }
                     }
@@ -283,16 +281,16 @@ public class ServerEventHandler {
                     overcrowdedChunks.forEach(entry -> {
                         List<Entity> entities = entry.getValue();
                         if (entities.isEmpty()) return;
-                        entities.subList(0, (int) (ServerConfig.get().chunkCheckConfig().chunkCheckRetain() * entities.size())).clear();
+                        entities.subList(0, (int) (CommonConfig.get().base().chunk().chunkCheckRetain() * entities.size())).clear();
                     });
 
-                    AotakeScheduler.schedule(server, 25, () -> {
+                    BaniraScheduler.schedule(server, 25, () -> {
                         try {
                             LOGGER.debug("Chunk sweep started at {}", System.currentTimeMillis());
                             List<Entity> entities = overcrowdedChunks.stream()
                                     .flatMap(entry -> entry.getValue().stream())
                                     .collect(Collectors.toList());
-                            AotakeUtils.sweep(entities, true);
+                            AotakeUtils.sweep(entities, true, true);
                         } catch (Exception e) {
                             LOGGER.error("Failed to sweep entities", e);
                         } finally {
@@ -306,6 +304,15 @@ public class ServerEventHandler {
             } catch (Exception e) {
                 chunkSweepLock.set(false);
                 LOGGER.error("Failed to check chunk entities", e);
+            }
+        }
+
+        // 区块暂存箱过期清理
+        if (now - lastChunkVaultPruneTime >= 60L * 60 * 1000) {
+            lastChunkVaultPruneTime = now;
+            try {
+                ChunkVaultStorage.pruneExpired(server);
+            } catch (Throwable ignored) {
             }
         }
 
@@ -335,10 +342,16 @@ public class ServerEventHandler {
         return String.format("Dimension: %s, Chunk: %s %s", key.dimension(), key.chunkX(), key.chunkZ());
     }
 
-    public static InteractionResultHolder<ItemStack> onPlayerUseItem(Player player, Level world, InteractionHand hand) {
-        if (AotakeSweep.disable()) return InteractionResultHolder.pass(player.getItemInHand(hand));
-        if (!(player instanceof ServerPlayer serverPlayer))
-            return InteractionResultHolder.pass(player.getItemInHand(hand));
+    public static void onPlayerCloned(PlayerEvent.Clone event) {
+        if (event.getEntity() instanceof ServerPlayer newPlayer) {
+            ServerPlayer original = (ServerPlayer) event.getOriginal();
+            original.revive();
+            String lang = CustomConfig.getPlayerLanguage(PlayerUtils.getPlayerUUIDString(original));
+            if (StringUtils.isNotNullOrEmpty(lang)) {
+                CustomConfig.setPlayerLanguage(PlayerUtils.getPlayerUUIDString(newPlayer), lang);
+            }
+        }
+    }
 
         ItemStack stack = player.getItemInHand(hand);
         long tick = serverPlayer.getLevel().getGameTime();
@@ -394,15 +407,17 @@ public class ServerEventHandler {
                         return null;
                     }
                     String playerId = aotake.getString("player");
-                    ServerPlayer target = AotakeUtils.getPlayerByUUID(playerId);
+                    Player targetPlayer = PlayerUtils.getPlayerByUUID(playerId);
+                    ServerPlayer target = targetPlayer instanceof ServerPlayer
+                            ? (ServerPlayer) targetPlayer : null;
                     if (target != null) {
-                        ServerLevel level = AotakeUtils.getWorld(coordinate.getDimension());
+                        ServerLevel level = DimensionUtils.getLevel(coordinate.dimension());
                         if (level == null) {
                             level = player.getLevel();
                         }
-                        target.teleportTo(level, coordinate.getX(), coordinate.getY(), coordinate.getZ(), (float) coordinate.getYaw(), (float) coordinate.getPitch());
+                        target.teleportTo(level, coordinate.x(), coordinate.y(), coordinate.z(), (float) coordinate.yaw(), (float) coordinate.pitch());
                         original.shrink(1);
-                        net.minecraft.network.chat.Component name = AotakeUtils.textComponentFromJson(aotake.getString("name"));
+                        net.minecraft.network.chat.Component name = parseNameFromJson(aotake.getString("name"));
                         if (name != null) {
                             copy.setHoverName(name);
                         } else {
@@ -416,7 +431,7 @@ public class ServerEventHandler {
                             player.addItem(copy);
                         }
                         stopGhost(target);
-                        AotakeUtils.sendActionBarMessage(player, Component.translatable(EnumI18nType.MESSAGE, "entity_released", target.getDisplayName()));
+                        MessageUtils.sendNotification(player, AotakeComponent.get().trans(EnumI18nType.WORD, "entity_released", target.getDisplayName()), EnumPosition.TOP_CENTER, EnumMoveType.AUTO, 2200L, EnumNotificationStyle.NORMAL, EnumNotificationVanillaFallback.ACTION_BAR, AotakeNotificationTypes.ENTITY_TOOL_FEEDBACK);
                         return target;
                     }
                 } else {
@@ -428,14 +443,14 @@ public class ServerEventHandler {
                     ServerLevel level = player.getLevel();
                     Entity entity = EntityType.loadEntityRecursive(entityData, level, e -> e);
                     if (entity != null) {
-                        entity.moveTo(coordinate.getX(), coordinate.getY(), coordinate.getZ(), (float) coordinate.getYaw(), (float) coordinate.getPitch());
+                        entity.moveTo(coordinate.x(), coordinate.y(), coordinate.z(), (float) coordinate.yaw(), (float) coordinate.pitch());
                         boolean spawned = level.addFreshEntity(entity);
                         if (!spawned) {
                             return null;
                         }
                         original.shrink(1);
                         String originalNameJson = aotake.getString("name");
-                        net.minecraft.network.chat.Component name = AotakeUtils.textComponentFromJson(originalNameJson);
+                        net.minecraft.network.chat.Component name = parseNameFromJson(originalNameJson);
                         if (name != null) {
                             copy.setHoverName(name);
                         } else {
@@ -448,7 +463,16 @@ public class ServerEventHandler {
                         if (!copy.isEmpty()) {
                             player.addItem(copy);
                         }
-                        AotakeUtils.sendActionBarMessage(player, Component.translatable(EnumI18nType.MESSAGE, "entity_released", entity.getDisplayName()));
+                        MessageUtils.sendNotification(player, AotakeComponent.get().trans(EnumI18nType.WORD, "entity_released", entity.getDisplayName()), EnumPosition.TOP_CENTER, EnumMoveType.AUTO, 2200L, EnumNotificationStyle.NORMAL, EnumNotificationVanillaFallback.ACTION_BAR, AotakeNotificationTypes.ENTITY_TOOL_FEEDBACK);
+                        if (event instanceof PlayerInteractEvent.EntityInteractSpecific) {
+                            PlayerInteractEvent.EntityInteractSpecific eve = (PlayerInteractEvent.EntityInteractSpecific) event;
+                            eve.setCanceled(true);
+                            eve.setCancellationResult(InteractionResult.SUCCESS);
+                        } else if (event instanceof PlayerInteractEvent.RightClickBlock) {
+                            PlayerInteractEvent.RightClickBlock eve = (PlayerInteractEvent.RightClickBlock) event;
+                            eve.setCanceled(true);
+                            eve.setCancellationResult(InteractionResult.SUCCESS);
+                        }
                         return entity;
                     }
                 }
@@ -457,23 +481,23 @@ public class ServerEventHandler {
         return null;
     }
 
-    public static InteractionResult onRightEntity(Player player, Level world, InteractionHand hand, Entity entity, @Nullable EntityHitResult hitResult) {
-        if (AotakeSweep.disable()) return InteractionResult.PASS;
-        if (!(player instanceof ServerPlayer serverPlayer)) return InteractionResult.PASS;
-        if (hand != InteractionHand.MAIN_HAND) return InteractionResult.PASS;
-        if (entity instanceof EnderDragonPart part) entity = part.parentMob;
-
-        long tick = serverPlayer.getLevel().getGameTime();
-        String uuid = serverPlayer.getStringUUID();
-        Long lastUseTick = lastUseEntityTick.get(uuid);
-        if (lastUseTick != null && lastUseTick == tick) {
-            return InteractionResult.SUCCESS;
-        }
-        lastUseEntityTick.put(uuid, tick);
-        ItemStack original = player.getItemInHand(hand);
-        if (original.isEmpty()) return InteractionResult.PASS;
-        ItemStack copy = original.copy();
-        copy.setCount(1);
+    public static void onRightEntity(PlayerInteractEvent.EntityInteractSpecific event) {
+        if (AotakeSweep.isDisable()) return;
+        if (event.getEntity() instanceof ServerPlayer) {
+            ServerPlayer player = (ServerPlayer) event.getEntity();
+            long tick = player.getLevel().getGameTime();
+            String uuid = player.getStringUUID();
+            Long lastUseTick = lastUseEntityTick.get(uuid);
+            if (lastUseTick != null && lastUseTick == tick) {
+                event.setCanceled(true);
+                event.setCancellationResult(InteractionResult.SUCCESS);
+                return;
+            }
+            lastUseEntityTick.put(uuid, tick);
+            ItemStack original = event.getItemStack();
+            if (original.isEmpty()) return;
+            ItemStack copy = original.copy();
+            copy.setCount(1);
 
         // 检查是否已包含实体
         if (entity instanceof EnderDragonPart part) {
@@ -502,19 +526,19 @@ public class ServerEventHandler {
                     }
                     back.startRiding(entity, true);
                     // 同步客户端乘客信息
-                    AotakeUtils.broadcastPacket(new ClientboundSetPassengersPacket(entity));
+                    PacketUtils.broadcastPacket(new ClientboundSetPassengersPacket(entity));
                     suppressUseItemTick.put(uuid, tick);
                     return InteractionResult.SUCCESS;
                 }
             }
         }
 
-        boolean allowCatch = ServerConfig.get().catchConfig().allowCatchEntity();
-        boolean isCatchItem = ServerConfig.get().catchConfig().catchItem().stream().anyMatch(s -> s.equals(AotakeUtils.getItemRegistryName(original)));
-        CompoundTag aotakeTag = AotakeUtils.getAotakeTag(copy);
-        boolean hasEntityInTag = (!aotakeTag.isEmpty()
-                && (aotakeTag.contains("entity")
-                || aotakeTag.contains("player")));
+            boolean allowCatch = CommonConfig.get().base().entityCatch().allowCatchEntity();
+            boolean isCatchItem = CommonConfig.get().base().entityCatch().catchItem().stream().anyMatch(s -> s.equals(ItemUtils.getItemRegistryString(original)));
+            CompoundTag aotakeTag = AotakeUtils.getAotakeTag(copy);
+            boolean hasEntityInTag = (!aotakeTag.isEmpty()
+                    && (aotakeTag.contains("entity")
+                    || aotakeTag.contains("player")));
 
         if (allowCatch && isCatchItem && player.isCrouching() && !hasEntityInTag) {
             Long lastTick = lastCatchTick.get(uuid);
@@ -528,7 +552,8 @@ public class ServerEventHandler {
 
             CompoundTag aotake = new CompoundTag();
             aotake.putBoolean("byPlayer", true);
-            if (entity instanceof Player targetPlayer) {
+            if (entity instanceof Player) {
+                    Player targetPlayer = (Player) entity;
                 aotake.putString("player", targetPlayer.getStringUUID());
             } else {
                 if (entity.isPassenger()) {
@@ -538,35 +563,66 @@ public class ServerEventHandler {
                 entity.save(entityTag);
                 AotakeUtils.sanitizeCapturedEntityTag(entityTag);
                 aotake.put("entity", entityTag);
-                aotake.putString("entityId", AotakeUtils.getEntityTypeRegistryName(entity));
+                aotake.putString("entityId", EntityUtils.getEntityRegistryString(entity));
             }
             String originalNameText = copy.getHoverName().getString();
-            String originalNameJson = AotakeUtils.getItemCustomNameJson(copy);
+            String originalNameJson = ItemUtils.getItemCustomNameJson(copy);
             aotake.putString("name", originalNameJson);
             AotakeUtils.setAotakeTag(copy, aotake);
-            copy.setHoverName(Component.literal(String.format("%s %s", entity.getDisplayName().getString(), originalNameText)).toChatComponent());
+            copy.setHoverName(AotakeComponent.get().literal(String.format("%s %s", entity.getDisplayName().getString(), originalNameText)).toVanilla());
             player.addItem(copy);
-            if (!(entity instanceof ServerPlayer targetPlayer)) {
+            if (!(entity instanceof ServerPlayer )) {
                 AotakeUtils.removeEntity(entity, true);
             } else {
-                startGhost(targetPlayer, serverPlayer);
+                ServerPlayer targetPlayer = (ServerPlayer) entity;
+                    startGhost(targetPlayer, serverPlayer);
             }
             lastCatchTick.put(uuid, tick);
             suppressUseItemTick.put(uuid, tick);
-            AotakeUtils.sendActionBarMessage(serverPlayer, Component.translatable(EnumI18nType.MESSAGE, "entity_caught"));
+            MessageUtils.sendNotification(serverPlayer, AotakeComponent.get().trans(EnumI18nType.WORD, "entity_caught"), EnumPosition.TOP_CENTER, EnumMoveType.AUTO, 2200L, EnumNotificationStyle.NORMAL, EnumNotificationVanillaFallback.ACTION_BAR, AotakeNotificationTypes.ENTITY_TOOL_FEEDBACK);
             return InteractionResult.SUCCESS;
         }
 
-        return InteractionResult.PASS;
-    }
+    public static void onPlayerUseItem(PlayerEvent event) {
+        if (AotakeSweep.isDisable()) return;
+        if (event.getEntity() == null) return;
+        if (event.getEntity().isCrouching() && CommonConfig.get().base().entityCatch().allowCatchEntity()) {
+            ItemStack item;
+            // 桶装牛奶事件
+            if (event instanceof FillBucketEvent) {
+                item = ((FillBucketEvent) event).getEmptyBucket();
+            }
+            // 使用弓箭事件
+            else if (event instanceof ArrowNockEvent) {
+                item = ((ArrowNockEvent) event).getBow();
+            }
+            // 使用骨粉事件
+            else if (event instanceof BonemealEvent) {
+                item = ((BonemealEvent) event).getStack();
+            }
+            // 其他
+            else {
+                item = null;
+            }
 
+            if (item != null && CommonConfig.get().base().entityCatch().catchItem().stream()
+                    .anyMatch(s -> s.equals(ItemUtils.getItemRegistryString(item)))
+            ) {
+                event.setCanceled(true);
+                event.setResult(Event.Result.DENY);
+            }
+        }
+
+    }
 
     /**
      * 玩家登录事件
      */
-    public static void onPlayerLoggedIn(ServerGamePacketListenerImpl handler, PacketSender sender, MinecraftServer server) {
-        if (AotakeSweep.customConfigStatus().contains(AotakeUtils.getPlayerUUIDString(handler.getPlayer()))) {
-            AotakeUtils.sendPacketToPlayer(new SweepTimeSyncToClient(), handler.getPlayer());
+    public static void onPlayerLoggedIn(PlayerEvent.PlayerLoggedInEvent event) {
+        if (event.getEntity() instanceof ServerPlayer player) {
+            if (PlayerUtils.isRemoteClientModInstalled(player, AotakeSweep.MODID)) {
+                PacketUtils.sendPacketToPlayer(new SweepDataSyncToClient(player), player);
+            }
         }
     }
 
@@ -575,8 +631,14 @@ public class ServerEventHandler {
      */
     public static void onPlayerLoggedOut(ServerGamePacketListenerImpl handler, MinecraftServer server) {
         // 玩家退出服务器时移除mod安装状态
-        AotakeSweep.customConfigStatus().remove(handler.getPlayer().getStringUUID());
-        ghostStates.remove(handler.getPlayer().getStringUUID());
+        if (event.getEntity() instanceof ServerPlayer) {
+            PlayerUtils.removeRemoteClientDataStatus((ServerPlayer) event.getEntity());
+            ghostStates.remove(event.getEntity().getStringUUID());
+        } else {
+            AotakeSweep.getClientServerTime().key(0L).value(0L);
+            AotakeSweep.getSweepTime().key(0L).value(0L);
+            AotakeSweep.setClientCachedPlayerSweepPrefs(true, true);
+        }
     }
 
     private static void startGhost(ServerPlayer target, ServerPlayer holder) {
@@ -589,7 +651,7 @@ public class ServerEventHandler {
         if (StringUtils.isNullOrEmptyEx(state.previousGameMode)) {
             state.previousGameMode = GameType.SURVIVAL.getName();
         }
-        AotakeUtils.executeCommandNoOutput(target, "gamemode spectator", 4);
+        CommandUtils.executeCommandNoOutput(target, "gamemode spectator", 4);
         if (holder != null) {
             sendGhostCamera(target, holder.getId(), false);
             state.lastTargetId = holder.getId();
@@ -602,7 +664,7 @@ public class ServerEventHandler {
         String uuid = target.getStringUUID();
         GhostState state = ghostStates.remove(uuid);
         if (state != null && StringUtils.isNotNullOrEmpty(state.previousGameMode)) {
-            AotakeUtils.executeCommandNoOutput(target, "gamemode " + state.previousGameMode, 4);
+            CommandUtils.executeCommandNoOutput(target, "gamemode " + state.previousGameMode, 4);
         }
         sendGhostCamera(target, -1, true);
     }
@@ -625,7 +687,8 @@ public class ServerEventHandler {
         for (String uuid : scanList) {
             GhostState state = ghostStates.get(uuid);
             if (state == null) continue;
-            ServerPlayer targetPlayer = AotakeUtils.getPlayerByUUID(uuid);
+            Player found = PlayerUtils.getPlayerByUUID(uuid);
+            ServerPlayer targetPlayer = found instanceof ServerPlayer ? (ServerPlayer) found : null;
             if (targetPlayer == null) continue;
             Entity target = targets.get(uuid);
             if (target == null) {
@@ -649,8 +712,8 @@ public class ServerEventHandler {
         if (targets.size() == uuidSet.size()) return targets;
         for (ServerLevel level : server.getAllLevels()) {
             level.getAllEntities().forEach(entity -> {
-                if (entity instanceof ItemEntity) {
-                    String uuid = getCapturedPlayerUuid(((ItemEntity) entity).getItem());
+                if (entity instanceof ItemEntity ie) {
+                    String uuid = getCapturedPlayerUuid(ie.getItem());
                     if (uuid != null && uuidSet.contains(uuid)) {
                         targets.putIfAbsent(uuid, entity);
                     }
@@ -680,7 +743,7 @@ public class ServerEventHandler {
     }
 
     private static void sendGhostCamera(ServerPlayer player, int entityId, boolean reset) {
-        AotakeUtils.sendPacketToPlayer(new GhostCameraToClient(entityId, reset), player);
+        PacketUtils.sendPacketToPlayer(new GhostCameraToClient(entityId, reset), player);
     }
 
     private static void clampGhostMovement(MinecraftServer server) {
@@ -693,7 +756,8 @@ public class ServerEventHandler {
             if (state.lastTargetId < 0) continue;
             if (state.lastClampTick >= 0 && tick - state.lastClampTick < ghostClampInterval) continue;
             state.lastClampTick = tick;
-            ServerPlayer targetPlayer = AotakeUtils.getPlayerByUUID(uuid);
+            Player foundGhost = PlayerUtils.getPlayerByUUID(uuid);
+            ServerPlayer targetPlayer = foundGhost instanceof ServerPlayer ? (ServerPlayer) foundGhost : null;
             if (targetPlayer == null) continue;
             Entity target = findEntityById(server, state.lastTargetId);
             if (target == null) continue;
@@ -758,5 +822,16 @@ public class ServerEventHandler {
         String uuid = getCapturedPlayerUuid(stack);
         if (uuid == null || !uuidSet.contains(uuid)) return;
         targets.putIfAbsent(uuid, holder);
+    }
+
+    private static net.minecraft.network.chat.Component parseNameFromJson(String json) {
+        if (StringUtils.isNullOrEmptyEx(json)) {
+            return null;
+        }
+        try {
+            return net.minecraft.network.chat.Component.Serializer.fromJson(json);
+        } catch (Exception e) {
+            return null;
+        }
     }
 }

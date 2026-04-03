@@ -16,8 +16,12 @@
   "client": [
     "AbstractContainerScreenAccessor",
     "AbstractContainerScreenMixin",
+    "ChestScreenMixin",
+    "ContainerScreenAccessor",
     "ContainerScreenMixin",
     "GuiConditionalHideMixin",
-    "ScreenAccessor"
+    "MinecraftMixin",
+    "ScreenAccessor",
+    "ScreenMixin"
   ]
 }

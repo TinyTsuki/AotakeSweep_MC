@@ -1,11 +1,7 @@
 package xin.vanilla.aotake.mixin;
 
-import com.mojang.blaze3d.systems.RenderSystem;
-import com.mojang.blaze3d.vertex.PoseStack;
-import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiComponent;
+import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.client.gui.screens.inventory.ContainerScreen;
-import net.minecraft.client.renderer.GameRenderer;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.player.Player;
 import org.spongepowered.asm.mixin.Mixin;
@@ -13,55 +9,82 @@ import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+import xin.vanilla.aotake.Identifier;
 import xin.vanilla.aotake.config.ClientConfig;
+import xin.vanilla.aotake.config.DustbinGuiConfig;
 import xin.vanilla.aotake.config.DustbinGuiLayoutCache;
-import xin.vanilla.aotake.enums.EnumI18nType;
-import xin.vanilla.aotake.util.AbstractGuiUtils;
-import xin.vanilla.aotake.util.AotakeUtils;
-import xin.vanilla.aotake.util.Component;
-import xin.vanilla.aotake.util.TextureUtils;
+import xin.vanilla.aotake.enums.EnumDustbinClientUiStyle;
+import xin.vanilla.aotake.screen.DustbinRender;
+import xin.vanilla.banira.client.util.TextureUtils;
+import xin.vanilla.banira.common.data.KeyValue;
 
-@Mixin(ContainerScreen.class)
+@Mixin(AbstractContainerScreen.class)
 public abstract class ContainerScreenMixin {
 
-    @Inject(
-            method = "renderBg",
-            at = @At("HEAD"),
-            cancellable = true
-    )
-    private void aotake$interceptRenderBg(PoseStack stack, float partialTicks, int mouseX, int mouseY, CallbackInfo ci) {
-        Minecraft mc = Minecraft.getInstance();
-        Player player = mc.player;
-        if (player == null) return;
-        ContainerScreen screen = (ContainerScreen) (Object) this;
-        if (!aotake$isDustbinScreen(screen)) return;
-        if (ClientConfig.get().vanillaDustbin()) return;
-        if (!DustbinGuiLayoutCache.valid) return;
+    @Inject(method = "init", at = @At("TAIL"))
+    private void aotake$adjustDustbinLayout(CallbackInfo ci) {
+        AbstractContainerScreen screen = (AbstractContainerScreen) (Object) this;
+        if (!(screen instanceof ContainerScreen)) {
+            DustbinGuiLayoutCache.invalidate();
+            return;
+        }
+        if (!aotake$isDustbinScreen((ContainerScreen) screen)) {
+            DustbinGuiLayoutCache.invalidate();
+            return;
+        }
+        EnumDustbinClientUiStyle ui = ClientConfig.get().dustbin().dustbinUiStyle();
+        if (ui == EnumDustbinClientUiStyle.VANILLA || ui == EnumDustbinClientUiStyle.BANIRA_THEME) {
+            DustbinGuiLayoutCache.invalidate();
+            return;
+        }
 
-        int leftPos = DustbinGuiLayoutCache.leftPos;
-        int topPos = DustbinGuiLayoutCache.topPos;
-        int drawWidth = DustbinGuiLayoutCache.drawWidth;
-        int drawHeight = DustbinGuiLayoutCache.drawHeight;
-        int srcWidth = DustbinGuiLayoutCache.srcWidth;
-        int srcHeight = DustbinGuiLayoutCache.srcHeight;
+        DustbinGuiConfig.reload();
+        ResourceLocation texture = TextureUtils.loadCustomTexture(Identifier.id(), "gui/dustbin_gui.png");
+        KeyValue<Integer, Integer> size = TextureUtils.getTextureSize(texture);
+        int srcW = size.key();
+        int srcH = size.val();
+        if (srcW <= 0 || srcH <= 0) return;
 
-        ResourceLocation texture = TextureUtils.loadCustomTexture(TextureUtils.INTERNAL_THEME_DIR + "dustbin_gui.png");
-        RenderSystem.setShader(GameRenderer::getPositionTexShader);
-        AbstractGuiUtils.bindTexture(texture);
-        AbstractGuiUtils.renderByDepth(stack, 0, (s) -> AbstractGuiUtils.blitByBlend(() ->
-                GuiComponent.blit(s, leftPos, topPos, 0, 0, drawWidth, drawHeight, srcWidth, srcHeight)
-        ));
-        ci.cancel();
+        int screenWidth = screen.width;
+        int screenHeight = screen.height;
+        int[] scaled = aotake$computeScaledSize(screenWidth, screenHeight, srcW, srcH);
+        int drawW = scaled[0];
+        int drawH = scaled[1];
+        int offsetX = DustbinGuiConfig.getXOffset();
+        int offsetY = DustbinGuiConfig.getYOffset();
+
+        int leftPos = (screenWidth - drawW) / 2 + offsetX;
+        int topPos = (screenHeight - drawH) / 2 + offsetY;
+
+        DustbinGuiLayoutCache.set(leftPos, topPos, drawW, drawH, srcW, srcH);
     }
 
     @Unique
     private boolean aotake$isDustbinScreen(ContainerScreen screen) {
-        Player player = Minecraft.getInstance().player;
+        Player player = net.minecraft.client.Minecraft.getInstance().player;
         if (player == null) return false;
-        String title = screen.getTitle().getString();
-        String modTitle = Component.translatable(EnumI18nType.WORD, "title")
-                .toTextComponent(AotakeUtils.getPlayerLanguage(player))
-                .getString();
-        return title.startsWith(modTitle);
+        String t = screen.getTitle().getString();
+        return DustbinRender.isDustbinTitle(t) || DustbinRender.isChunkVaultTitle(t);
+    }
+
+    @Unique
+    private int[] aotake$computeScaledSize(int destW, int destH, int srcW, int srcH) {
+        double scale;
+        switch (DustbinGuiConfig.getScaleMode()) {
+            case WIDTH:
+                scale = destW / (double) srcW;
+                break;
+            case HEIGHT:
+                scale = destH / (double) srcH;
+                break;
+            case NONE:
+                scale = 1.0;
+                break;
+            case FIT:
+            default:
+                scale = Math.min(destW / (double) srcW, destH / (double) srcH);
+                break;
+        }
+        return new int[]{(int) Math.round(srcW * scale), (int) Math.round(srcH * scale)};
     }
 }

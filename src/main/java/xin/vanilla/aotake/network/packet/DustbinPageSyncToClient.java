@@ -7,13 +7,24 @@ import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.resources.ResourceLocation;
 import xin.vanilla.aotake.AotakeSweep;
 import xin.vanilla.aotake.network.AotakePacket;
+import xin.vanilla.aotake.network.NetworkPacket;
+import xin.vanilla.aotake.screen.DustbinRender;
 
 public record DustbinPageSyncToClient(int currentPage, int totalPage) implements AotakePacket {
 
+public class DustbinPageSyncToClient implements NetworkPacket {
+    private final int currentPage;
+    private final int totalPage;
+
+    public DustbinPageSyncToClient(int currentPage, int totalPage) {
+        this.currentPage = currentPage;
+        this.totalPage = totalPage;
+    }
     public static final ResourceLocation ID = AotakeSweep.createIdentifier("dustbin_page_sync");
 
     public DustbinPageSyncToClient(FriendlyByteBuf buf) {
-        this(buf.readInt(), buf.readInt());
+        this.currentPage = buf.readInt();
+        this.totalPage = buf.readInt();
     }
 
     @Override
@@ -35,7 +46,7 @@ public record DustbinPageSyncToClient(int currentPage, int totalPage) implements
     @Environment(EnvType.CLIENT)
     private static final class ClientSide {
         private static void handle(DustbinPageSyncToClient packet) {
-            xin.vanilla.aotake.event.ClientEventHandler.updateDustbinPage(packet.currentPage(), packet.totalPage());
+            DustbinRender.updateDustbinPage(packet.currentPage, packet.totalPage);
         }
     }
 }

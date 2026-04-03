@@ -8,17 +8,22 @@ import net.minecraft.world.level.storage.LevelResource;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import xin.vanilla.aotake.AotakeSweep;
-import xin.vanilla.aotake.config.ServerConfig;
+import xin.vanilla.aotake.config.CommonConfig;
 import xin.vanilla.aotake.data.DropStatistics;
-import xin.vanilla.aotake.util.JsonUtils;
+import xin.vanilla.banira.BaniraCodex;
+import xin.vanilla.banira.common.util.JsonUtils;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * 掉落物统计
@@ -26,11 +31,61 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 public class DropStatisticsStorage {
     private static final Logger LOGGER = LogManager.getLogger();
 
+    private static final Object LEGACY_MIGRATE_LOCK = new Object();
+
     /**
      * 获取当日统计文件的存储路径
      */
     public static Path getStatsDir(MinecraftServer server) {
-        return server.getWorldPath(LevelResource.PLAYER_STATS_DIR).resolve(AotakeSweep.MODID);
+        Path newDir = BaniraCodex.BANIRA_WORLD_DATA_PATH.get().resolve(AotakeSweep.MODID).resolve("drop_stats");
+        if (server != null) {
+            migrateLegacyStatsDirAndDelete(server, newDir);
+        }
+        return newDir;
+    }
+
+    /**
+     * 自原 {@code stats/} 下本 mod 子目录迁移至 Banira世界数据根下的同名子目录，并删除旧目录
+     */
+    private static void migrateLegacyStatsDirAndDelete(MinecraftServer server, Path newDir) {
+        Path oldDir = server.getWorldPath(LevelResource.PLAYER_STATS_DIR).resolve(AotakeSweep.MODID);
+        synchronized (LEGACY_MIGRATE_LOCK) {
+            try {
+                if (!Files.exists(oldDir) || !Files.isDirectory(oldDir)) {
+                    return;
+                }
+                Files.createDirectories(newDir);
+                try (Stream<Path> list = Files.list(oldDir)) {
+                    for (Path oldFile : list.collect(Collectors.toList())) {
+                        if (!Files.isRegularFile(oldFile)) {
+                            continue;
+                        }
+                        String name = oldFile.getFileName().toString();
+                        if (!name.endsWith(".json")) {
+                            continue;
+                        }
+                        Path dest = newDir.resolve(name);
+                        if (!Files.exists(dest)) {
+                            Files.move(oldFile, dest, StandardCopyOption.REPLACE_EXISTING);
+                        } else {
+                            Files.deleteIfExists(oldFile);
+                        }
+                    }
+                }
+                try (Stream<Path> walk = Files.walk(oldDir)) {
+                    walk.sorted(Comparator.reverseOrder()).forEach(p -> {
+                        try {
+                            Files.deleteIfExists(p);
+                        } catch (IOException e) {
+                            LOGGER.warn("Failed to delete legacy stats path {}: {}", p, e.getMessage());
+                        }
+                    });
+                }
+                LOGGER.info("Migrated drop statistics from {} to {} and removed legacy directory", oldDir, newDir);
+            } catch (IOException e) {
+                LOGGER.warn("Failed to migrate drop statistics from {} to {}: {}", oldDir, newDir, e.getMessage());
+            }
+        }
     }
 
     /**
@@ -48,8 +103,8 @@ public class DropStatisticsStorage {
         if (server == null) return result;
 
         try {
-            if (!ServerConfig.get().dustbinConfig().dustbinPersistent()) return result;
-            if (ServerConfig.get().dustbinConfig().dropStatsFileLimit() < 0) return result;
+            if (!CommonConfig.get().base().dustbin().dustbinPersistent()) return result;
+            if (CommonConfig.get().base().dustbin().dropStatsFileLimit() < 0) return result;
         } catch (Throwable ignored) {
         }
 
@@ -57,8 +112,8 @@ public class DropStatisticsStorage {
         if (!Files.exists(file)) return result;
 
         try {
-            String content = Files.readString(file);
-            JsonObject root = JsonUtils.GSON.fromJson(content, JsonObject.class);
+            String content = new String(Files.readAllBytes(file), StandardCharsets.UTF_8);
+            JsonObject root = JsonUtils.parseObject(content);
             if (root == null || !root.has("entries")) return result;
 
             JsonArray entries = root.getAsJsonArray("entries");
@@ -80,8 +135,8 @@ public class DropStatisticsStorage {
         if (server == null) return;
 
         try {
-            if (!ServerConfig.get().dustbinConfig().dustbinPersistent()) return;
-            if (ServerConfig.get().dustbinConfig().dropStatsFileLimit() < 0) return;
+            if (!CommonConfig.get().base().dustbin().dustbinPersistent()) return;
+            if (CommonConfig.get().base().dustbin().dropStatsFileLimit() < 0) return;
         } catch (Throwable ignored) {
         }
 
@@ -103,7 +158,7 @@ public class DropStatisticsStorage {
         root.add("entries", entries);
 
         try {
-            Files.writeString(file, JsonUtils.PRETTY_GSON.toJson(root));
+            Files.write(file, JsonUtils.PRETTY_GSON.toJson(root).getBytes(StandardCharsets.UTF_8));
         } catch (IOException e) {
             LOGGER.warn("Failed to save drop statistics to {}: {}", file, e.getMessage());
         }
@@ -118,7 +173,7 @@ public class DropStatisticsStorage {
     private static void pruneOldFiles(MinecraftServer server) {
         int limit;
         try {
-            limit = ServerConfig.get().dustbinConfig().dropStatsFileLimit();
+            limit = CommonConfig.get().base().dustbin().dropStatsFileLimit();
         } catch (Throwable ignored) {
             return;
         }
@@ -131,7 +186,7 @@ public class DropStatisticsStorage {
             List<Path> files = Files.list(dir)
                     .filter(p -> Files.isRegularFile(p) && p.toString().endsWith(".json"))
                     .sorted(Comparator.comparing(Path::getFileName, Comparator.naturalOrder()))
-                    .toList();
+                    .collect(Collectors.toList());
 
             int toDelete = files.size() - limit;
             if (toDelete <= 0) return;

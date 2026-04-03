@@ -8,7 +8,9 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.Entity;
 import xin.vanilla.aotake.AotakeSweep;
 import xin.vanilla.aotake.network.AotakePacket;
+import xin.vanilla.aotake.network.NetworkPacket;
 
+public record GhostCameraToClient(int entityId, boolean reset) implements NetworkPacket{
 public record GhostCameraToClient(int entityId, boolean reset) implements AotakePacket {
     public static final ResourceLocation ID = AotakeSweep.createIdentifier("ghost_camera");
 
