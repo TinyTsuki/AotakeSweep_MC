@@ -1,6 +1,11 @@
 package xin.vanilla.aotake.enums;
 
-public enum EnumListType {
+import xin.vanilla.aotake.AotakeComponent;
+import xin.vanilla.banira.common.data.Component;
+import xin.vanilla.banira.common.enums.IEnumDescribable;
+import xin.vanilla.banira.common.util.EnumDescriptionHelper;
+
+public enum EnumListType implements IEnumDescribable {
     WHITE,
     BLACK,
     ;
@@ -26,4 +31,8 @@ public enum EnumListType {
         return valueOf(obj) != null;
     }
 
+    @Override
+    public Component enumDescription() {
+        return EnumDescriptionHelper.describeEnum(AotakeComponent.get(), this);
+    }
 }

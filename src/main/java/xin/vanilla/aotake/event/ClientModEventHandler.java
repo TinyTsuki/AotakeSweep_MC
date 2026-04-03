@@ -1,86 +1,44 @@
 package xin.vanilla.aotake.event;
 
-import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.KeyMapping;
-import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.resources.ResourceLocation;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.client.event.AddGuiOverlayLayersEvent;
-import net.minecraftforge.client.event.RegisterKeyMappingsEvent;
-import net.minecraftforge.client.gui.overlay.ForgeLayeredDraw;
-import net.minecraftforge.fml.common.Mod;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 import org.lwjgl.glfw.GLFW;
 import xin.vanilla.aotake.AotakeSweep;
-import xin.vanilla.aotake.screen.ProgressRender;
+import xin.vanilla.aotake.notification.AotakeNotificationTypes;
+import xin.vanilla.banira.client.notification.NotificationTypeRegistry;
+import xin.vanilla.banira.client.util.BaniraKeyBindings;
 
 /**
- * 客户端 Mod事件处理器
+ * 客户端：Banira 键位入队 + {@link xin.vanilla.banira.client.event.BaniraClientEventHub} 回调注册（不在此类上使用 Forge {@code @SubscribeEvent}）
  */
-@Mod.EventBusSubscriber(modid = AotakeSweep.MODID, value = Dist.CLIENT, bus = Mod.EventBusSubscriber.Bus.MOD)
-public class ClientModEventHandler {
-    private static final Logger LOGGER = LogManager.getLogger();
-
-    private static final String CATEGORIES = "key.aotake_sweep.categories";
+public final class ClientModEventHandler {
 
     /**
      * 垃圾箱快捷键
      */
-    public static KeyMapping DUSTBIN_KEY = new KeyMapping("key.aotake_sweep.open_dustbin",
-            GLFW.GLFW_KEY_UNKNOWN, CATEGORIES);
+    public static KeyMapping DUSTBIN_KEY = BaniraKeyBindings.register(AotakeSweep.MODID, "open_dustbin", GLFW.GLFW_KEY_UNKNOWN);
     /**
      * 垃圾箱上页快捷键
      */
-    public static KeyMapping DUSTBIN_PRE_KEY = new KeyMapping("key.aotake_sweep.open_dustbin_pre",
-            GLFW.GLFW_KEY_LEFT, CATEGORIES);
+    public static KeyMapping DUSTBIN_PRE_KEY = BaniraKeyBindings.register(AotakeSweep.MODID, "open_dustbin_pre", GLFW.GLFW_KEY_LEFT);
     /**
      * 垃圾箱下页快捷键
      */
-    public static KeyMapping DUSTBIN_NEXT_KEY = new KeyMapping("key.aotake_sweep.open_dustbin_next",
-            GLFW.GLFW_KEY_RIGHT, CATEGORIES);
+    public static KeyMapping DUSTBIN_NEXT_KEY = BaniraKeyBindings.register(AotakeSweep.MODID, "open_dustbin_next", GLFW.GLFW_KEY_RIGHT);
 
     /**
      * 切换进度条显示按键
      */
-    public static KeyMapping PROGRESS_KEY = new KeyMapping("key.aotake_sweep.progress",
-            GLFW.GLFW_KEY_TAB, CATEGORIES);
+    public static KeyMapping PROGRESS_KEY = BaniraKeyBindings.register(AotakeSweep.MODID, "progress", GLFW.GLFW_KEY_TAB);
+
+    private ClientModEventHandler() {
+    }
 
     /**
-     * 注册键绑定
+     * 由主模组构造函数经 {@link net.minecraftforge.fml.DistExecutor} 在客户端触发类初始化
      */
-    public static void registerKeyBindings(RegisterKeyMappingsEvent event) {
-        // 注册键绑定
-        LOGGER.debug("Registering key bindings");
-        event.register(DUSTBIN_KEY);
-        event.register(DUSTBIN_PRE_KEY);
-        event.register(DUSTBIN_NEXT_KEY);
-        event.register(PROGRESS_KEY);
+    public static void bootstrap() {
+        for (String id : AotakeNotificationTypes.ALL_TYPE_IDS) {
+            NotificationTypeRegistry.register(id);
+        }
     }
-
-    public static void addGuiOverlayLayers(AddGuiOverlayLayersEvent event) {
-        LOGGER.debug("Adding GUI overlay layers");
-        ForgeLayeredDraw layered = event.getLayeredDraw();
-        ResourceLocation stack = ForgeLayeredDraw.PRE_SLEEP_STACK;
-
-        layered.addAbove(
-                stack,
-                AotakeSweep.createIdentifier("progress_layer_above"),
-                ForgeLayeredDraw.EXPERIENCE,
-                (GuiGraphics graphics, DeltaTracker partialTicks) -> ProgressRender.renderProgress(graphics, false)
-        );
-        layered.addBelow(
-                stack,
-                AotakeSweep.createIdentifier("progress_layer_below"),
-                ForgeLayeredDraw.EXPERIENCE,
-                (GuiGraphics graphics, DeltaTracker partialTicks) -> ProgressRender.renderProgress(graphics, true)
-        );
-        layered.addConditionTo(
-                stack,
-                ForgeLayeredDraw.EXPERIENCE,
-                ProgressRender.experienceSupplier
-        );
-
-    }
-
 }
