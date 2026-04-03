@@ -8,10 +8,11 @@ import net.neoforged.api.distmarker.Dist;
 import net.neoforged.api.distmarker.OnlyIn;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
 import org.jetbrains.annotations.NotNull;
-import xin.vanilla.aotake.AotakeSweep;
+import xin.vanilla.aotake.Identifier;
+import xin.vanilla.aotake.network.NetworkPacket;
 
-public record GhostCameraToClient(int entityId, boolean reset) implements CustomPacketPayload {
-    public static final CustomPacketPayload.Type<GhostCameraToClient> TYPE = new CustomPacketPayload.Type<>(AotakeSweep.createIdentifier("ghost_camera"));
+public record GhostCameraToClient(int entityId, boolean reset) implements NetworkPacket {
+    public static final CustomPacketPayload.Type<GhostCameraToClient> TYPE = new CustomPacketPayload.Type<>(Identifier.id().create("ghost_camera"));
     public static final StreamCodec<ByteBuf, GhostCameraToClient> STREAM_CODEC = StreamCodec.of(
             (buf, packet) -> {
                 buf.writeInt(packet.entityId());

@@ -1,160 +1,168 @@
 package xin.vanilla.aotake.screen;
 
-import lombok.Getter;
-import lombok.Setter;
+import com.mojang.blaze3d.vertex.PoseStack;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.resources.ResourceLocation;
-import net.neoforged.neoforge.client.event.RenderGuiLayerEvent;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import org.joml.Quaternionf;
 import xin.vanilla.aotake.AotakeSweep;
+import xin.vanilla.aotake.Identifier;
 import xin.vanilla.aotake.config.ClientConfig;
-import xin.vanilla.aotake.data.Color;
+import xin.vanilla.aotake.enums.EnumProgressBarTextAlignH;
+import xin.vanilla.aotake.enums.EnumProgressBarTextAlignV;
 import xin.vanilla.aotake.enums.EnumProgressBarType;
-import xin.vanilla.aotake.enums.EnumRotationCenter;
-import xin.vanilla.aotake.screen.component.Text;
-import xin.vanilla.aotake.util.AbstractGuiUtils;
-import xin.vanilla.aotake.util.DateUtils;
-import xin.vanilla.aotake.util.StringUtils;
-import xin.vanilla.aotake.util.TextureUtils;
+import xin.vanilla.banira.client.data.FontDrawArgs;
+import xin.vanilla.banira.client.data.TransformArgs;
+import xin.vanilla.banira.client.event.BaniraGuiOverlayEvent;
+import xin.vanilla.banira.client.gui.component.Text;
+import xin.vanilla.banira.client.gui.widget.LabelWidget;
+import xin.vanilla.banira.client.util.AbstractGuiUtils;
+import xin.vanilla.banira.client.util.TextureUtils;
+import xin.vanilla.banira.common.data.Color;
+import xin.vanilla.banira.common.data.KeyValue;
+import xin.vanilla.banira.common.enums.EnumPosition;
+import xin.vanilla.banira.common.util.DateUtils;
+import xin.vanilla.banira.common.util.NumberUtils;
 
 import java.util.Date;
 import java.util.List;
 
-public class ProgressRender {
-    private static final Logger LOGGER = LogManager.getLogger();
+/**
+ * 经验条区域上的扫地倒计时进度条绘制
+ */
+public final class ProgressRender {
 
-    /**
-     * 是否显示进度条
-     */
-    @Getter
-    @Setter
-    public static boolean showProgress = false;
+    private ProgressRender() {
+    }
 
-    public static void renderProgress(RenderGuiLayerEvent event) {
-        // 避免重复渲染
-        if (event instanceof RenderGuiLayerEvent.Post
-                && ((ClientConfig.HIDE_EXPERIENCE_BAR_POLE.get() && ClientConfig.PROGRESS_BAR_DISPLAY_NORMAL.get().contains(EnumProgressBarType.POLE.name()))
-                || (ClientConfig.HIDE_EXPERIENCE_BAR_TEXT.get() && ClientConfig.PROGRESS_BAR_DISPLAY_NORMAL.get().contains(EnumProgressBarType.TEXT.name()))
-                || (ClientConfig.HIDE_EXPERIENCE_BAR_LEAF.get() && ClientConfig.PROGRESS_BAR_DISPLAY_NORMAL.get().contains(EnumProgressBarType.LEAF.name())))
-        ) {
-            return;
-        }
-        GuiGraphics graphics = event.getGuiGraphics();
-        RenderGuiLayerEvent.Pre pre = null;
-        if (event instanceof RenderGuiLayerEvent.Pre) {
-            pre = (RenderGuiLayerEvent.Pre) event;
-        }
+    public static void render(BaniraGuiOverlayEvent.Pre event, boolean showProgressHeld) {
+        render(event.guiGraphics(), showProgressHeld);
+    }
+
+    public static void render(BaniraGuiOverlayEvent.Post event, boolean showProgressHeld) {
+        render(event.guiGraphics(), showProgressHeld);
+    }
+
+    public static boolean shouldHideVanillaExperienceBar(boolean showProgressHeld) {
+        List<EnumProgressBarType> displayList = getDisplayList(showProgressHeld);
+        ClientConfig.ProgressBarLeafView cpl = ClientConfig.get().progressBar().leaf();
+        ClientConfig.ProgressBarPoleView cpp = ClientConfig.get().progressBar().pole();
+        ClientConfig.ProgressBarTextView cpt = ClientConfig.get().progressBar().text();
+        return (cpp.hideExperienceBarPole() && displayList.contains(EnumProgressBarType.POLE))
+                || (cpt.hideExperienceBarText() && displayList.contains(EnumProgressBarType.TEXT))
+                || (cpl.hideExperienceBarLeaf() && displayList.contains(EnumProgressBarType.LEAF));
+    }
+
+    public static boolean shouldRenderProgressOverlay(boolean showProgressHeld) {
+        return !getDisplayList(showProgressHeld).isEmpty();
+    }
+
+    private static List<EnumProgressBarType> getDisplayList(boolean showProgressHeld) {
+        ClientConfig.ProgressBarView cp = ClientConfig.get().progressBar();
+        Minecraft mc = Minecraft.getInstance();
+        boolean hold = showProgressHeld && mc.screen == null;
+        return hold ? cp.progressBarDisplayHold() : cp.progressBarDisplayNormal();
+    }
+
+    public static void render(GuiGraphics guiGraphics, boolean showProgressHeld) {
+        ClientConfig.ProgressBarView cp = ClientConfig.get().progressBar();
+        ClientConfig.ProgressBarLeafView cpl = cp.leaf();
+        ClientConfig.ProgressBarPoleView cpp = cp.pole();
+        ClientConfig.ProgressBarTextView cpt = cp.text();
 
         Minecraft mc = Minecraft.getInstance();
         if (mc.options.hideGui) return;
         if (mc.player == null) return;
-        boolean hold = showProgress && mc.screen == null;
-        List<? extends String> displayList = hold ? ClientConfig.PROGRESS_BAR_DISPLAY_HOLD.get() : ClientConfig.PROGRESS_BAR_DISPLAY_NORMAL.get();
+        PoseStack ms = guiGraphics.pose();
+        boolean hold = showProgressHeld && mc.screen == null;
+        List<EnumProgressBarType> displayList = hold ? cp.progressBarDisplayHold() : cp.progressBarDisplayNormal();
 
-        double scale = ClientConfig.PROGRESS_BAR_TEXT_SIZE.get() / 16.0;
+        double scale = cpt.progressBarTextSize() / 16.0;
 
-        if (displayList.contains(EnumProgressBarType.POLE.name())) {
-            if (ClientConfig.HIDE_EXPERIENCE_BAR_POLE.get() && pre != null) {
-                pre.setCanceled(true);
-            }
-            int width = ClientConfig.PROGRESS_BAR_POLE_WIDTH.get();
-            int height = ClientConfig.PROGRESS_BAR_POLE_HEIGHT.get();
+        if (displayList.contains(EnumProgressBarType.POLE)) {
+            int width = cpp.progressBarPoleWidth();
+            int height = cpp.progressBarPoleHeight();
             int drawX = getPoleX();
             int drawY = getPoleY();
 
-            AbstractGuiUtils.TransformArgs transformArgs = new AbstractGuiUtils.TransformArgs(graphics);
-            transformArgs.setAngle(ClientConfig.PROGRESS_BAR_POLE_ANGLE.get())
-                    .setCenter(EnumRotationCenter.CENTER)
-                    .setX(drawX)
-                    .setY(drawY)
-                    .setWidth(width)
-                    .setHeight(height);
-            AbstractGuiUtils.renderByTransform(transformArgs, (arg) -> {
-                ResourceLocation texture = TextureUtils.loadCustomTexture(TextureUtils.INTERNAL_THEME_DIR + "pole.png");
-                AbstractGuiUtils.blitBlend(graphics, texture, (int) arg.getX(), (int) arg.getY(), 0, 0, (int) arg.getWidth(), (int) arg.getHeight(), (int) arg.getWidth(), (int) arg.getHeight());
-            });
+            TransformArgs transformArgs = new TransformArgs(ms);
+            transformArgs.angle(cpp.progressBarPoleAngle())
+                    .center(EnumPosition.CENTER)
+                    .x(drawX)
+                    .y(drawY)
+                    .width(width)
+                    .height(height);
+            ResourceLocation poleTex = TextureUtils.loadCustomTexture(Identifier.id(), "gui/pole.png");
+            AbstractGuiUtils.renderByTransform(transformArgs, (arg) ->
+                    blitProgressAtlas(ms, poleTex, (int) arg.x(), (int) arg.y(), (int) arg.width(), (int) arg.height()));
         }
 
-        if (displayList.contains(EnumProgressBarType.TEXT.name())) {
-            if (ClientConfig.HIDE_EXPERIENCE_BAR_TEXT.get() && pre != null) {
-                pre.setCanceled(true);
-            }
-            Text time = Text.literal(getText())
-                    .setGraphics(graphics)
-                    .setColor(getTextColor())
-                    .setShadow(true)
-                    .setFont(Minecraft.getInstance().font);
-            AbstractGuiUtils.TransformArgs textTransformArgs = new AbstractGuiUtils.TransformArgs(graphics);
-            textTransformArgs.setScale(scale)
-                    .setAngle(ClientConfig.PROGRESS_BAR_TEXT_ANGLE.get())
-                    .setCenter(EnumRotationCenter.CENTER)
-                    .setX(getTextX())
-                    .setY(getTextY())
-                    .setWidth(getTextWidth())
-                    .setHeight(getTextHeight());
-            AbstractGuiUtils.renderByTransform(textTransformArgs, (arg) -> AbstractGuiUtils.drawString(time
-                    , arg.getX()
-                    , arg.getY()
-            ));
+        if (displayList.contains(EnumProgressBarType.TEXT)) {
+            drawProgressCountdownText(mc, ms, cpt, scale);
         }
 
-        if (displayList.contains(EnumProgressBarType.LEAF.name())) {
-            if (ClientConfig.HIDE_EXPERIENCE_BAR_LEAF.get() && pre != null) {
-                pre.setCanceled(true);
-            }
-            int poleW = ClientConfig.PROGRESS_BAR_POLE_WIDTH.get();
+        if (displayList.contains(EnumProgressBarType.LEAF)) {
+            int poleW = cpp.progressBarPoleWidth();
 
-            int width = ClientConfig.PROGRESS_BAR_LEAF_WIDTH.get();
-            int height = ClientConfig.PROGRESS_BAR_LEAF_HEIGHT.get();
+            int width = cpl.progressBarLeafWidth();
+            int height = cpl.progressBarLeafHeight();
             int rangeWidth = poleW - width;
             int startX = getLeafX();
 
             int drawX = (int) (startX + rangeWidth * getProgress());
             int drawY = getLeafY();
 
-            AbstractGuiUtils.TransformArgs transformArgs = new AbstractGuiUtils.TransformArgs(graphics);
-            transformArgs.setAngle(ClientConfig.PROGRESS_BAR_LEAF_ANGLE.get())
-                    .setCenter(EnumRotationCenter.CENTER)
-                    .setX(drawX)
-                    .setY(drawY)
-                    .setWidth(width)
-                    .setHeight(height);
-            AbstractGuiUtils.renderByTransform(transformArgs, (arg) -> {
-                ResourceLocation texture = TextureUtils.loadCustomTexture(TextureUtils.INTERNAL_THEME_DIR + "leaf.png");
-                AbstractGuiUtils.blitBlend(graphics, texture, (int) arg.getX(), (int) arg.getY(), 0, 0, (int) arg.getWidth(), (int) arg.getHeight(), (int) arg.getWidth(), (int) arg.getHeight());
-            });
+            TransformArgs transformArgs = new TransformArgs(ms);
+            transformArgs.angle(cpl.progressBarLeafAngle())
+                    .center(EnumPosition.CENTER)
+                    .x(drawX)
+                    .y(drawY)
+                    .width(width)
+                    .height(height);
+            ResourceLocation leafTex = TextureUtils.loadCustomTexture(Identifier.id(), "gui/leaf.png");
+            AbstractGuiUtils.renderByTransform(transformArgs, (arg) ->
+                    blitProgressAtlas(ms, leafTex, (int) arg.x(), (int) arg.y(), (int) arg.width(), (int) arg.height()));
         }
     }
 
+    private static void blitProgressAtlas(PoseStack ms, ResourceLocation texture, int x, int y, int destW, int destH) {
+        KeyValue<Integer, Integer> dim = TextureUtils.getTextureSize(texture);
+        int texW = dim.key();
+        int texH = dim.val();
+        if (texW <= 0 || texH <= 0) {
+            return;
+        }
+        AbstractGuiUtils.blitBlend(ms, texture, x, y, destW, destH, 0, 0, texW, texH, texW, texH);
+    }
 
     private static int getLeafX() {
+        ClientConfig.ProgressBarLeafView cpl = ClientConfig.get().progressBar().leaf();
+        ClientConfig.ProgressBarPoleView cpp = ClientConfig.get().progressBar().pole();
         int baseX = getPoleX();
-        int width = ClientConfig.PROGRESS_BAR_POLE_WIDTH.get();
+        int width = cpp.progressBarPoleWidth();
         double x;
-        String xString = ClientConfig.PROGRESS_BAR_LEAF_POSITION.get().split(",")[0];
+        String xString = cpl.progressBarLeafPosition().split(",")[0];
         if (xString.endsWith("%")) {
-            x = StringUtils.toDouble(xString.replace("%", "")) * 0.01d * width;
+            x = NumberUtils.toDouble(xString.replace("%", "")) * 0.01d * width;
         } else {
-            x = StringUtils.toInt(xString);
+            x = NumberUtils.toInt(xString);
         }
-        int quadrant = ClientConfig.PROGRESS_BAR_LEAF_SCREEN_QUADRANT.get();
+        int quadrant = cpl.progressBarLeafScreenQuadrant();
         if (quadrant == 2 || quadrant == 3) {
             x = baseX - x;
         } else {
             x = baseX + x;
         }
-        switch (EnumRotationCenter.valueOf(ClientConfig.PROGRESS_BAR_LEAF_BASE.get())) {
+        switch (cpl.progressBarLeafBase()) {
             case CENTER:
             case TOP_CENTER:
             case BOTTOM_CENTER: {
-                x -= ClientConfig.PROGRESS_BAR_LEAF_WIDTH.get() / 2.0;
+                x -= cpl.progressBarLeafWidth() / 2.0;
             }
             break;
             case TOP_RIGHT:
             case BOTTOM_RIGHT: {
-                x -= ClientConfig.PROGRESS_BAR_LEAF_WIDTH.get();
+                x -= cpl.progressBarLeafWidth();
             }
             break;
         }
@@ -162,29 +170,31 @@ public class ProgressRender {
     }
 
     private static int getLeafY() {
+        ClientConfig.ProgressBarLeafView cpl = ClientConfig.get().progressBar().leaf();
+        ClientConfig.ProgressBarPoleView cpp = ClientConfig.get().progressBar().pole();
         int baseY = getPoleY();
-        int height = ClientConfig.PROGRESS_BAR_POLE_HEIGHT.get();
+        int height = cpp.progressBarPoleHeight();
         double y;
-        String yString = ClientConfig.PROGRESS_BAR_LEAF_POSITION.get().split(",")[1];
+        String yString = cpl.progressBarLeafPosition().split(",")[1];
         if (yString.endsWith("%")) {
-            y = StringUtils.toDouble(yString.replace("%", "")) * 0.01d * height;
+            y = NumberUtils.toDouble(yString.replace("%", "")) * 0.01d * height;
         } else {
-            y = StringUtils.toInt(yString);
+            y = NumberUtils.toInt(yString);
         }
-        int quadrant = ClientConfig.PROGRESS_BAR_LEAF_SCREEN_QUADRANT.get();
+        int quadrant = cpl.progressBarLeafScreenQuadrant();
         if (quadrant == 1 || quadrant == 2) {
             y = baseY - y;
         } else {
             y = baseY + y;
         }
-        switch (EnumRotationCenter.valueOf(ClientConfig.PROGRESS_BAR_LEAF_BASE.get())) {
+        switch (cpl.progressBarLeafBase()) {
             case CENTER: {
-                y -= ClientConfig.PROGRESS_BAR_LEAF_HEIGHT.get() / 2.0;
+                y -= cpl.progressBarLeafHeight() / 2.0;
             }
             break;
             case BOTTOM_LEFT:
             case BOTTOM_RIGHT: {
-                y -= ClientConfig.PROGRESS_BAR_LEAF_HEIGHT.get();
+                y -= cpl.progressBarLeafHeight();
             }
             break;
         }
@@ -192,28 +202,29 @@ public class ProgressRender {
     }
 
     private static int getPoleX() {
+        ClientConfig.ProgressBarPoleView cpp = ClientConfig.get().progressBar().pole();
         int width = Minecraft.getInstance().getWindow().getGuiScaledWidth();
         double x;
-        String xString = ClientConfig.PROGRESS_BAR_POLE_POSITION.get().split(",")[0];
+        String xString = cpp.progressBarPolePosition().split(",")[0];
         if (xString.endsWith("%")) {
-            x = StringUtils.toDouble(xString.replace("%", "")) * 0.01d * width;
+            x = NumberUtils.toDouble(xString.replace("%", "")) * 0.01d * width;
         } else {
-            x = StringUtils.toInt(xString);
+            x = NumberUtils.toInt(xString);
         }
-        int quadrant = ClientConfig.PROGRESS_BAR_POLE_SCREEN_QUADRANT.get();
+        int quadrant = cpp.progressBarPoleScreenQuadrant();
         if (quadrant == 2 || quadrant == 3) {
             x = width - x;
         }
-        switch (EnumRotationCenter.valueOf(ClientConfig.PROGRESS_BAR_POLE_BASE.get())) {
+        switch (cpp.progressBarPoleBase()) {
             case CENTER:
             case TOP_CENTER:
             case BOTTOM_CENTER: {
-                x -= ClientConfig.PROGRESS_BAR_POLE_WIDTH.get() / 2.0;
+                x -= cpp.progressBarPoleWidth() / 2.0;
             }
             break;
             case TOP_RIGHT:
             case BOTTOM_RIGHT: {
-                x -= ClientConfig.PROGRESS_BAR_POLE_WIDTH.get();
+                x -= cpp.progressBarPoleWidth();
             }
             break;
         }
@@ -221,92 +232,124 @@ public class ProgressRender {
     }
 
     private static int getPoleY() {
+        ClientConfig.ProgressBarPoleView cpp = ClientConfig.get().progressBar().pole();
         int height = Minecraft.getInstance().getWindow().getGuiScaledHeight();
         double y;
-        String yString = ClientConfig.PROGRESS_BAR_POLE_POSITION.get().split(",")[1];
+        String yString = cpp.progressBarPolePosition().split(",")[1];
         if (yString.endsWith("%")) {
-            y = StringUtils.toDouble(yString.replace("%", "")) * 0.01d * height;
+            y = NumberUtils.toDouble(yString.replace("%", "")) * 0.01d * height;
         } else {
-            y = StringUtils.toInt(yString);
+            y = NumberUtils.toInt(yString);
         }
-        int quadrant = ClientConfig.PROGRESS_BAR_POLE_SCREEN_QUADRANT.get();
+        int quadrant = cpp.progressBarPoleScreenQuadrant();
         if (quadrant == 1 || quadrant == 2) {
             y = height - y;
         }
-        switch (EnumRotationCenter.valueOf(ClientConfig.PROGRESS_BAR_POLE_BASE.get())) {
+        switch (cpp.progressBarPoleBase()) {
             case CENTER: {
-                y -= ClientConfig.PROGRESS_BAR_POLE_HEIGHT.get() / 2.0;
+                y -= cpp.progressBarPoleHeight() / 2.0;
             }
             break;
             case BOTTOM_LEFT:
             case BOTTOM_RIGHT: {
-                y -= ClientConfig.PROGRESS_BAR_POLE_HEIGHT.get();
+                y -= cpp.progressBarPoleHeight();
             }
             break;
         }
         return (int) y;
     }
 
-    private static int getTextX() {
-        int baseX = getPoleX();
-        int width = ClientConfig.PROGRESS_BAR_POLE_WIDTH.get();
-        double x;
-        String xString = ClientConfig.PROGRESS_BAR_TEXT_POSITION.get().split(",")[0];
-        if (xString.endsWith("%")) {
-            x = StringUtils.toDouble(xString.replace("%", "")) * 0.01d * width;
-        } else {
-            x = StringUtils.toInt(xString);
+    /**
+     * 倒计时文字
+     */
+    private static void drawProgressCountdownText(Minecraft mc, PoseStack stack, ClientConfig.ProgressBarTextView cpt, double scale) {
+        String line = getText();
+        if (line.isEmpty()) {
+            return;
         }
-        int quadrant = ClientConfig.PROGRESS_BAR_TEXT_SCREEN_QUADRANT.get();
-        if (quadrant == 2 || quadrant == 3) {
-            x = baseX - x;
-        } else {
-            x = baseX + x;
+        float lh = mc.font.lineHeight;
+        Color color = getTextColor();
+        Text probe = Text.literal(line).font(mc.font).color(color).shadow(true);
+        FontDrawArgs measureArgs = FontDrawArgs.of(probe).x(0).y(0).inScreen(false).wrap(false).fontSize(lh);
+        KeyValue<Integer, Integer> layout = LabelWidget.calculateLimitedTextSize(measureArgs);
+        int layoutW = layout.key();
+        int layoutH = layout.val();
+
+        double[] anchor = progressTextAnchorScreen(cpt);
+        float ax = (float) anchor[0];
+        float ay = (float) anchor[1];
+        float pivotX = alignPivotX(cpt.progressBarTextAlignH(), layoutW);
+        float pivotY = alignPivotY(cpt.progressBarTextAlignV(), layoutH);
+        float angle = (float) cpt.progressBarTextAngle();
+
+        stack.pushPose();
+        stack.translate(ax, ay, 0);
+        if (Math.abs(angle % 360f) > 1e-3f) {
+            stack.mulPose(new Quaternionf().rotationZ(angle));
         }
-        switch (EnumRotationCenter.valueOf(ClientConfig.PROGRESS_BAR_TEXT_BASE.get())) {
+        stack.scale((float) scale, (float) scale, 1f);
+        stack.translate(-pivotX, -pivotY, 0);
+
+        Text drawText = Text.literal(line).stack(stack).font(mc.font).color(color).shadow(true);
+        LabelWidget.drawLimitedText(FontDrawArgs.of(drawText).x(0).y(0).inScreen(false).wrap(false).fontSize(lh));
+        stack.popPose();
+    }
+
+    private static float alignPivotX(EnumProgressBarTextAlignH h, int layoutWidth) {
+        switch (h) {
             case CENTER:
-            case TOP_CENTER:
-            case BOTTOM_CENTER: {
-                x -= ClientConfig.PROGRESS_BAR_TEXT_SIZE.get() / 16.0 * getTextWidth() / 2.0;
-            }
-            break;
-            case TOP_RIGHT:
-            case BOTTOM_RIGHT: {
-                x -= ClientConfig.PROGRESS_BAR_TEXT_SIZE.get() / 16.0 * getTextWidth();
-            }
-            break;
+                return layoutWidth / 2f;
+            case RIGHT:
+                return layoutWidth;
+            case LEFT:
+            default:
+                return 0f;
         }
-        return (int) x;
     }
 
-    private static int getTextY() {
-        int baseY = getPoleY();
-        int height = ClientConfig.PROGRESS_BAR_POLE_HEIGHT.get();
-        double y;
-        String yString = ClientConfig.PROGRESS_BAR_TEXT_POSITION.get().split(",")[1];
+    private static float alignPivotY(EnumProgressBarTextAlignV v, int layoutHeight) {
+        switch (v) {
+            case CENTER:
+                return layoutHeight / 2f;
+            case BOTTOM:
+                return layoutHeight;
+            case TOP:
+            default:
+                return 0f;
+        }
+    }
+
+    /**
+     * 配置中「相对竹竿」的参考点（屏幕坐标），不含文字尺寸。
+     */
+    private static double[] progressTextAnchorScreen(ClientConfig.ProgressBarTextView cpt) {
+        ClientConfig.ProgressBarPoleView cpp = ClientConfig.get().progressBar().pole();
+        double baseX = getPoleX();
+        double baseY = getPoleY();
+        int poleW = cpp.progressBarPoleWidth();
+        int poleH = cpp.progressBarPoleHeight();
+        String[] parts = cpt.progressBarTextPosition().split(",");
+        if (parts.length < 2) {
+            return new double[]{baseX, baseY};
+        }
+        double relX;
+        String xString = parts[0];
+        if (xString.endsWith("%")) {
+            relX = NumberUtils.toDouble(xString.replace("%", "")) * 0.01d * poleW;
+        } else {
+            relX = NumberUtils.toInt(xString);
+        }
+        double relY;
+        String yString = parts[1];
         if (yString.endsWith("%")) {
-            y = StringUtils.toDouble(yString.replace("%", "")) * 0.01d * height;
+            relY = NumberUtils.toDouble(yString.replace("%", "")) * 0.01d * poleH;
         } else {
-            y = StringUtils.toInt(yString);
+            relY = NumberUtils.toInt(yString);
         }
-        int quadrant = ClientConfig.PROGRESS_BAR_TEXT_SCREEN_QUADRANT.get();
-        if (quadrant == 1 || quadrant == 2) {
-            y = baseY - y;
-        } else {
-            y = baseY + y;
-        }
-        switch (EnumRotationCenter.valueOf(ClientConfig.PROGRESS_BAR_TEXT_BASE.get())) {
-            case CENTER: {
-                y -= ClientConfig.PROGRESS_BAR_TEXT_SIZE.get() / 16.0 * getTextHeight() / 2.0;
-            }
-            break;
-            case BOTTOM_LEFT:
-            case BOTTOM_RIGHT: {
-                y -= ClientConfig.PROGRESS_BAR_TEXT_SIZE.get() / 16.0 * getTextHeight();
-            }
-            break;
-        }
-        return (int) y;
+        int quadrant = cpt.progressBarTextScreenQuadrant();
+        double x = (quadrant == 2 || quadrant == 3) ? baseX - relX : baseX + relX;
+        double y = (quadrant == 1 || quadrant == 2) ? baseY - relY : baseY + relY;
+        return new double[]{x, y};
     }
 
     private static String getText() {
@@ -355,15 +398,7 @@ public class ProgressRender {
         return nextSweepTime;
     }
 
-    private static int getTextWidth() {
-        return AbstractGuiUtils.getStringWidth(Minecraft.getInstance().font, getText());
-    }
-
-    private static int getTextHeight() {
-        return AbstractGuiUtils.getStringHeight(Minecraft.getInstance().font, getText());
-    }
-
     private static Color getTextColor() {
-        return Color.parse(ClientConfig.PROGRESS_BAR_TEXT_COLOR.get(), Color.white());
+        return Color.parse(ClientConfig.get().progressBar().text().progressBarTextColor(), Color.white());
     }
 }

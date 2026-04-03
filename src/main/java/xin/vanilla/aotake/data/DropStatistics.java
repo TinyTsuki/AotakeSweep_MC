@@ -1,15 +1,24 @@
 package xin.vanilla.aotake.data;
 
 import com.google.gson.JsonObject;
+import lombok.Data;
 import lombok.experimental.Accessors;
 import net.minecraft.nbt.CompoundTag;
-import xin.vanilla.aotake.util.JsonUtils;
+import xin.vanilla.banira.common.data.WorldCoordinate;
+import xin.vanilla.banira.common.util.JsonUtils;
 
+@Data
 @Accessors(chain = true)
-public record DropStatistics(WorldCoordinate coordinate, String name, long time, long itemCount, long entityCount) {
+public class DropStatistics {
+    private final WorldCoordinate coordinate;
+    private final String name;
+    private final long time;
+    private final long itemCount;
+    private final long entityCount;
+
     public CompoundTag serializeNBT() {
         CompoundTag tag = new CompoundTag();
-        tag.put("coordinate", coordinate.writeToNBT());
+        tag.put("coordinate", coordinate.toTag());
         tag.putString("name", name);
         tag.putLong("time", time);
         tag.putLong("itemCount", itemCount);
@@ -19,7 +28,7 @@ public record DropStatistics(WorldCoordinate coordinate, String name, long time,
 
     public static DropStatistics deserializeNBT(CompoundTag tag) {
         return new DropStatistics(
-                WorldCoordinate.readFromNBT(tag.getCompound("coordinate"))
+                WorldCoordinate.fromTag(tag.getCompound("coordinate"))
                 , tag.getString("name")
                 , tag.getLong("time")
                 , tag.getLong("itemCount")
@@ -29,7 +38,7 @@ public record DropStatistics(WorldCoordinate coordinate, String name, long time,
 
     public JsonObject toJson() {
         JsonObject json = new JsonObject();
-        json.add("coordinate", JsonUtils.GSON.fromJson(coordinate.toJsonString(), JsonObject.class));
+        json.add("coordinate", JsonUtils.parseObject(coordinate.toJsonString()));
         json.addProperty("name", name);
         json.addProperty("time", time);
         json.addProperty("itemCount", itemCount);
@@ -39,7 +48,7 @@ public record DropStatistics(WorldCoordinate coordinate, String name, long time,
 
     public static DropStatistics fromJson(JsonObject json) {
         WorldCoordinate coordinate = json.has("coordinate")
-                ? WorldCoordinate.fromJsonString(JsonUtils.GSON.toJson(json.getAsJsonObject("coordinate")))
+                ? WorldCoordinate.fromJson(JsonUtils.toString(json.getAsJsonObject("coordinate")))
                 : new WorldCoordinate(0, 0, 0);
         return new DropStatistics(
                 coordinate,

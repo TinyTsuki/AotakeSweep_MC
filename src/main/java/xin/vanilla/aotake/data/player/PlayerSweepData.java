@@ -4,6 +4,10 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Player;
+import xin.vanilla.aotake.AotakeSweep;
+import xin.vanilla.banira.BaniraCodex;
+import xin.vanilla.banira.common.api.ICommandNotify;
+import xin.vanilla.banira.common.player.IPlayerData;
 
 import java.util.Collections;
 import java.util.Map;
@@ -13,7 +17,7 @@ import java.util.WeakHashMap;
 /**
  * 玩家数据
  */
-public final class PlayerSweepData implements IPlayerData<PlayerSweepData> {
+public final class PlayerSweepData implements IPlayerData<PlayerSweepData>, ICommandNotify {
 
     // region override
 
@@ -24,7 +28,7 @@ public final class PlayerSweepData implements IPlayerData<PlayerSweepData> {
     private PlayerSweepData(Player player) {
         this.player = player;
         if (this.player instanceof ServerPlayer) {
-            this.deserializeNBT(PlayerDataManager.instance().getOrCreate(player).copy(), false);
+            this.deserializeNBT(BaniraCodex.playerDataManager.getOrCreate(player.getUUID(), AotakeSweep.MODID).copy(), false);
         }
     }
 
@@ -110,7 +114,7 @@ public final class PlayerSweepData implements IPlayerData<PlayerSweepData> {
     @Override
     public void save() {
         if (this.player instanceof ServerPlayer) {
-            PlayerDataManager.instance().put(player, serializeNBT());
+            BaniraCodex.playerDataManager.put(player.getUUID(), AotakeSweep.MODID, serializeNBT());
         }
     }
 

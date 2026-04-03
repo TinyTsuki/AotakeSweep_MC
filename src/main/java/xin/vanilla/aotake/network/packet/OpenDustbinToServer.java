@@ -1,27 +1,24 @@
 package xin.vanilla.aotake.network.packet;
 
-import io.netty.buffer.ByteBuf;
 import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.server.level.ServerPlayer;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
 import org.jetbrains.annotations.NotNull;
 import xin.vanilla.aotake.AotakeSweep;
+import xin.vanilla.aotake.Identifier;
 import xin.vanilla.aotake.enums.EnumCommandType;
+import xin.vanilla.aotake.network.NetworkPacket;
 import xin.vanilla.aotake.util.AotakeUtils;
+import xin.vanilla.banira.common.util.CommandUtils;
+import xin.vanilla.banira.common.util.PlayerUtils;
+import xin.vanilla.banira.internal.network.BaniraStreamCodecs;
 
-public record OpenDustbinToServer(int offset) implements CustomPacketPayload {
-    public final static CustomPacketPayload.Type<OpenDustbinToServer> TYPE = new CustomPacketPayload.Type<>(AotakeSweep.createIdentifier("open_dustbin"));
-    public final static StreamCodec<ByteBuf, OpenDustbinToServer> STREAM_CODEC = new StreamCodec<>() {
-        public @NotNull OpenDustbinToServer decode(@NotNull ByteBuf byteBuf) {
-            return new OpenDustbinToServer((new FriendlyByteBuf(byteBuf)));
-        }
-
-        public void encode(@NotNull ByteBuf byteBuf, @NotNull OpenDustbinToServer packet) {
-            packet.toBytes(new FriendlyByteBuf(byteBuf));
-        }
-    };
+public record OpenDustbinToServer(int offset) implements NetworkPacket {
+    public final static CustomPacketPayload.Type<OpenDustbinToServer> TYPE = new CustomPacketPayload.Type<>(Identifier.id().create("open_dustbin"));
+    public final static StreamCodec<RegistryFriendlyByteBuf, OpenDustbinToServer> STREAM_CODEC = BaniraStreamCodecs.registryBuf(OpenDustbinToServer::toBytes, OpenDustbinToServer::new);
 
     public OpenDustbinToServer(FriendlyByteBuf buf) {
         this(buf.readInt());
@@ -39,13 +36,13 @@ public record OpenDustbinToServer(int offset) implements CustomPacketPayload {
     public static void handle(OpenDustbinToServer packet, IPayloadContext ctx) {
         ctx.enqueueWork(() -> {
             if (ctx.player() instanceof ServerPlayer player) {
-                String playerUUID = AotakeUtils.getPlayerUUIDString(player);
+                String playerUUID = PlayerUtils.getPlayerUUIDString(player);
                 Integer page = AotakeSweep.getPlayerDustbinPage().getOrDefault(playerUUID, 1);
                 int i = page + packet.offset();
                 if (i > 0 && i <= AotakeUtils.getDustbinTotalPage()) {
                     player.closeContainer();
                 }
-                AotakeUtils.executeCommand(player, String.format("/%s %s"
+                CommandUtils.executeCommand(player, String.format("/%s %s"
                         , AotakeUtils.getCommand(EnumCommandType.DUSTBIN_OPEN)
                         , i
                 ));
