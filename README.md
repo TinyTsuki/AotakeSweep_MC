@@ -1,12 +1,21 @@
+<div align="center">
+
+| [中文](README.md) | [English](README_en.md) | [日本語](README_ja.md) |
+|:---------------:|:-----------------------:|:-------------------:|
+
+<img src="src/main/resources/logo.png"  alt="Aotake Sweep" />
+
 # Aotake Sweep (竹叶清)
 
-![](src/main/resources/logo.png)
+**一个 Minecraft Forge、NeoForge、Fabric 定时扫地 MOD。**
 
-**一个 Minecraft (Neo)Forge 定时扫地 MOD。**
+</div>
+
+---
 
 ## 目录
 
-- [Aotake Sweep](#aotake_sweep)
+- [Aotake Sweep](#aotake-sweep-竹叶清)
     - [目录](#目录)
     - [释义](#释义)
     - [介绍](#介绍)
@@ -24,43 +33,69 @@
 
 ## 介绍
 
-本项目适用于Minecraft (Neo)Forge服务器，实现定时清理掉落物与实体。
-该MOD服务器必装，客户端可选。
+本项目适用于 Minecraft (Neo)Forge 服务器，实现定时清理掉落物与实体。  
+该 MOD 服务器必装，客户端可选。
 
 ## 特性
 
 - **回收策略**：可选择的垃圾回收时溢出处理等策略；
 - **定时清理**：每隔一段时间自动清理掉落物、箭矢等；
 - **手动清理**：允许用指令触发清理，并且可指定维度与范围；
-- **自动清理**：区块内实体(仅能被清扫的)过多时自动触发扫地；
-- **安全清理**：可配置清理白名单与黑名单，可配置忽略方块上的物品
+- **自动清理**：区块内实体 (仅能被清扫的) 过多时自动触发扫地；
+- **安全清理**：可配置清理白名单与黑名单，可配置忽略方块上的物品；
 - **多页垃圾箱**：垃圾箱页数可自定义，不再为容量不够而烦恼；
-- **自定义过滤器**：可根据需求使用[表达式](#实体过滤器)自定义实体过滤器；
-- **很烂的翻译**：文本描述可能存在歧义，或其表达方式不够清晰<del>（不仅仅是英文）</del>；
+- **自定义过滤器**：可根据需求使用 [表达式](#实体过滤器) 自定义实体过滤器；
+- **很烂的翻译**：文本描述可能存在歧义，或其表达方式不够清晰 <del>（不仅仅是英文）</del>；
 - **很烂的代码**：烂代码 + 疏忽的测试 = 一堆难闻的臭虫。
 
 ## TODO
 
-- **热力图**：根据区块、坐标、物品类型统计掉落物掉落频率并生成热力图
+- [ ] **热力图**：根据区块、坐标、物品类型统计掉落物掉落频率并生成热力图
 
 ---
 
 ## 配置说明
 
-您可以在以下路径找到MOD相关配置，详细的信息不再赘述，请参考默认配置文件中的注释
+您可以在以下路径找到 MOD 相关配置，详细的信息不再赘述，请参考 Forge 默认配置文件中的注释。
 
-- 双端通用配置 [`config/aotake_sweep-common.toml`](aotake_sweep-common.toml)
-- 客户端相关配置 [`config/aotake_sweep-client.toml`](aotake_sweep-client.toml)
-- 服务端相关配置 [`world/serverconfig/aotake_sweep-server.toml`](aotake_sweep-server.toml)
+### 通用部分
+
+- 倒计时提示配置 [`config/aotake_sweep-warning.json`](config/aotake_sweep-warning.json)
 - 服务器垃圾箱数据 `world/data/world_trash_data.dat`
-- 香草芯系列MOD通用配置 `config/vanilla.xin/common_config.json`
-- 香草芯系列MOD玩家数据 `world/playerdata/vanilla.xin/*.nbt`
+- 掉落统计 `world/stats/aotake_sweep/*.json`（按日期存储，如 `2025-02-24.json`）
+- 香草芯系列 MOD 通用配置 `config/vanilla.xin/common_config.json`
+- 香草芯系列 MOD 玩家数据 `world/playerdata/vanilla.xin/*.nbt`
+
+### 服务端配置要点（垃圾箱相关）
+
+- **dustbinPersistent**：是否持久化垃圾箱数据
+- **dropStatsFileLimit**：掉落统计文件数量上限（按日期）
+    - `-1`：禁用掉落统计
+    - `0`：不限制
+    - `1`～`3650`：保留最近 N 天的统计文件，超出时删除最旧文件
+
+### Forge
+
+- 双端通用配置 [`config/aotake_sweep-common.toml`](config/forge/aotake_sweep-common.toml)
+- 客户端相关配置 [`config/aotake_sweep-client.toml`](config/forge/aotake_sweep-client.toml)
+- 服务端相关配置 [`world/serverconfig/aotake_sweep-server.toml`](config/forge/aotake_sweep-server.toml)
+
+### NeoForge
+
+- 双端通用配置 [`config/aotake_sweep-common.toml`](config/forge/aotake_sweep-common.toml)
+- 客户端相关配置 [`config/aotake_sweep-client.toml`](config/forge/aotake_sweep-client.toml)
+- 服务端相关配置 [`config/aotake_sweep-server.toml`](config/forge/aotake_sweep-server.toml)
+
+### Fabric
+
+- 客户端相关配置 [`config/aotake_sweep-client.toml`](config/fabric/aotake_sweep-client.toml)
+- 服务端相关配置 [`config/aotake_sweep-server.toml`](config/fabric/aotake_sweep-server.toml)
 
 ---
 
 ## 指令说明
 
-默认配置下，配合前缀`/aotake`食用
+默认配置下，配合前缀 `/aotake` 使用。
 
 - **dustbin**：打开垃圾箱。  
   **参数列表**：
@@ -90,10 +125,10 @@
 - **language**：设置玩家默认语言。  
   **参数列表**：
     1. `<语言>`
-- **config**：修改配置，请勿用该指令修改格式较为复杂的`server`与`common`配置。  
+- **config**：修改配置，请勿用该指令修改格式较为复杂的 `server` 与 `common` 配置。  
   **参数列表**：
     1. `mode <模式>` 将配置文件重置为预置的模式
-    2. `disable <是否禁用MOD>` 临时禁用MOD功能
+    2. `disable <是否禁用MOD>` 临时禁用 MOD 功能
     3. `player <配置项> <配置值>` 修改玩家配置
     4. `server <配置项> <配置值>` 修改服务器配置
     5. `common <配置项> <配置值>` 修改通用配置
@@ -102,88 +137,80 @@
 
 ## 实体过滤器
 
-实体过滤器表达式，为了方便说明，以下会将表达式称为`AotakeEL`，  
+实体过滤器表达式，为了方便说明，以下会将表达式称为 `AotakeEL`。  
 其中支持 AotakeEL 的配置项有：`entityList`、`entityRedlist`、`catchEntity`、`chunkCheckEntityList`。
 
-### 例子：
+### 例子
 
-- #### 实体ID：
-    1. 某个具体的实体，如 箭矢 `minecraft:arrow`
-    2. 某个MOD下所有实体，如 [勤劳跟踪狂](https://github.com/Mafuyu404/DiligentStalker) `diligentstalker:*`
-    3. 任意MOD下的某个实体，如 箭矢 `*:arrow`
-- #### AotakeEL：
-    1. [机械动力](https://github.com/Creators-of-Create/Create) 中正在被鼓风机处理的物品  
-       `clazz, itemClazz, createProcessing = [CreateData.Processing.Time] -> clazz :> itemClazz && createProcessing > 0`
-    2. [冰火传说](https://github.com/AlexModGuy/Ice_and_Fire) 中死亡的冰龙与火龙  
-       `resource, dead = <com.github.alexthe666.iceandfire.entity.EntityDragonBase:MODEL_DEAD> -> (resource == 'iceandfire:fire_dragon' || resource == 'iceandfire:ice_dragon') && dead == true`
+#### 实体 ID
 
-### 说明：
+1. 某个具体的实体，如 箭矢 `minecraft:arrow`
+2. 某个 MOD 下所有实体，如 [勤劳跟踪狂](https://github.com/Mafuyu404/DiligentStalker) `diligentstalker:*`
+3. 任意 MOD 下的某个实体，如 箭矢 `*:arrow`
 
-1. 可以仅由实体ID组成，如 例子 [实体ID](#实体ID)
-2. 实体ID 会自动转换为 AotakeEL，如：
+#### AotakeEL
+
+1. [机械动力](https://github.com/Creators-of-Create/Create) 中正在被鼓风机处理的物品  
+   `clazz, itemClazz, createProcessing = [CreateData.Processing.Time] -> clazz :> itemClazz && createProcessing > 0`
+2. [冰火传说](https://github.com/AlexModGuy/Ice_and_Fire) 中死亡的冰龙与火龙  
+   `resource, dead = <com.github.alexthe666.iceandfire.entity.EntityDragonBase:MODEL_DEAD> -> (resource == 'iceandfire:fire_dragon' || resource == 'iceandfire:ice_dragon') && dead == true`
+3. 从实体根反射读取嵌套字段（与 `<>` 区分：不经过 `DataParameter`）  
+   `t = {persistentData.someKey}, tick -> t != null && tick > 60`
+4. 显式声明类上的反射链（与同步器路径相同类名规则），段之间可用 `.` 或 `:` 混写：  
+   `v = {com.example.Entity:someField:child}`（等价于用 `.` 连接各段，如 `{com.example.Entity.someField.child}`）
+
+### 说明
+
+1. 可以仅由实体 ID 组成，如 [例子](#实体-id)。
+2. 实体 ID 会自动转换为 AotakeEL，如：
     1. `minecraft:arrow` 等同于 `resource -> resource == 'minecraft:arrow'`   
        或 `namespace, path -> namespace == 'minecraft' && path == 'arrow'`
     2. `diligentstalker:*` 等同于 `namespace -> namespace == 'diligentstalker'`
     3. `*:arrow` 等同于 `path -> path == 'arrow'`
-3. AotakeEL格式：`变量声明1, ..., 变量声明n -> 逻辑表达式`，其中：
-    - **变量声明** 有以下格式：
-        1. `内置变量名称`：如 实体ID `resource`
-        2. `自定义变量名称 = '字符串常量'`：如 `modName = 'AotakeSweep'`
-        3. `自定义变量名称 = [实体NBTPath]`：如 [机械动力](https://github.com/Creators-of-Create/Create)
-           中被鼓风机处理的物品的剩余处理时间  
-           `processTime = [CreateData.Processing.Time]`
-        4. `自定义变量名称 = <EntityDataKey>`：如 [冰火传说](https://github.com/AlexModGuy/Ice_and_Fire)
-           中冰龙与火龙的死亡状态  
-           `dead = <com.github.alexthe666.iceandfire.entity.EntityDragonBase:MODEL_DEAD>`  
-           或简写(不推荐) `dead = <MODEL_DEAD>`
-    - **逻辑表达式** 支持的语法：
-        1. `(`、`)`： 括号
-        2. `!`： 逻辑非
-        3. `&&`： 逻辑与
-        4. `||`： 逻辑或
-        5. `=`、`==`： 等于
-        6. `<>`、`!=`： 不等于
-        7. `<`： 小于
-        8. `<=`： 小于等于
-        9. `>`： 大于
-        10. `>=`： 大于等于
-        11. `+`： 加
-        12. `-`： 减
-        13. `*`： 乘
-        14. `/`： 除
-        15. `^`： Math.pow()
-        16. `:>`： rightClass.isAssignableFrom(leftClass)
-        17. `<:`： rightClass.isInstance(leftClass)
-        18. `contains`： left.contains(right)
-        19. `sqrt`： Math.sqrt()
-        20. `pow`： Math.pow()
-        21. `log`： Math.log()
-        22. `sin`： Math.sin()
-        23. `cos`： Math.cos()
-        24. `abs`： Math.abs()
-        25. `random`： Math.random()
-        26. `声明的变量名称`： 如上面例子中的 `modName`、`processTime`
-4. AotakeEL内置变量：
-    1. `namespace`：实体ID的`:`前半部分，一般为MOD ID
-    2. `path`：实体ID的`:`后半部分
-    3. `resource`、`location`、`resourceLocation`：完整的实体ID
-    4. `clazz`：当前实体的 `java.lang.Class` 对象
-    5. `clazzString`：当前实体的 `java.lang.Class` 对象名称
-    6. `itemClazz`：物品实体的 `java.lang.Class` 对象
-    7. `itemClazzString`：物品实体的 `java.lang.Class` 对象名称
-    8. `name`：实体的名称
-    9. `displayName`：实体的显示名称
-    10. `customName`：实体的自定义名称
-    11. `tick`：实体的tick计数
-    12. `num`：若为物品则为物品的数量，否则固定为1
-    13. `dim`、`dimension`：实体所在维度
-    14. `x`：实体所处x坐标
-    15. `y`：实体所处y坐标
-    16. `z`：实体所处z坐标
-    17. `chunkX`：实体所处区块x坐标
-    18. `chunkZ`：实体所处区块z坐标
-    19. `hasOwner`：实体是否被玩家驯服
-    20. `ownerName`：驯服该实体的玩家名称
+3. **AotakeEL 格式**：`变量声明1, ..., 变量声明n -> 逻辑表达式`  
+   逗号、箭头 `->`、等号 `=` 可用前缀 `\` 转义，避免与语法冲突。
+
+#### 变量声明的几种来源
+
+左侧每一项要么是 **`名称 = 右侧`**，要么是 **`名称`（无等号，表示预定义变量）**。右侧形态决定数据来源：
+
+| 来源              | 示例                                                                    | 作用                                                                                                                                                                                                                      |
+|-----------------|-----------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| **预定义**         | `resource`、`tick`、`clazz`                                             | 读取实体常用信息（注册 id、坐标、类对象、驯服等），见下表「内置变量」。**成本最低**。                                                                                                                                                                          |
+| **字面量**         | `tag = 'foo'`、`tag = "bar"`                                           | 提供常量字符串，用于与别的变量比较。几乎无额外开销。                                                                                                                                                                                              |
+| **NBT 路径**      | `t = [SomeMod.Data]` 或 `t = SomeMod.Data`                             | 读 `entity.getPersistentData()` 中路径；数字→`Number`，集合→数组，否则→字符串；无键为 `null`。**成本：NBT 树查找**。                                                                                                                                  |
+| **`<…>` 同步器路径** | `dead = <pkg.Entity:FLAG>`、`v = <:FLAG>`、`v = <:a:b:0>`、`v = <a:b.c>` | 先按 `DataParameter` 从实体数据取值；**若首段不是同步器字段**，则按下方规则做反射回退。链上每一段可为 **字段名、Map 键、List/数组下标**。**成本：`DataParameter` 缓存命中时较低；链式反射/容器逐级访问随深度增加。**                                                                                  |
+| **`{…}` 反射链**   | `x = {field.sub.0}`、`x = {pkg.Entity:field:child}`                    | **不读** `DataParameter`；可选 **声明类全限定名**（解析规则与 `<>` 相同），首字段在该类上对 `entity` 解析，其后为嵌套 walk。无声明类时从 `Entity` 根起；**无类时**段分隔符 **`.` 与 `:` 等价**；含字面分隔符时用 `\.`、`\:`。`Optional` / `OptionalInt` / `Atomic*` 等会规范成标量。**成本：与深层反射链相当。** |
+
+**路径解析（`<>` 与 `{}` 共用）**
+
+- **声明类**：从路径开头起，在每个未转义的 `.` 或 `:` 处截断，取能成功 `Class.forName` 的**最长**前缀作为声明类；其后为字段链。声明类段内只用
+  `.` 包名（与 Java FQN 一致）。
+- **有声明类时**：字段链在余下子串上同时按未转义的 **`.`** 与 **`:`** 切段（可混用）。
+- **`<>` 且无声明类**：为兼容旧配置，**仅**按未转义的 **`:`** 切段；只有一段时**整段保留**（其中的 `.` 视为字段名的一部分，如
+  `<MODEL_DEAD>` 或 `<foo.bar>` 单名）。
+- **`{}` 且无声明类**：整段路径上同时按 **`.`** 与 **`:`** 切段（与「有声明类时的字段链」一致），便于写 `a.b.c` 或 `a:b:c`。
+
+#### 逻辑表达式
+
+支持括号、`!` `&&` `||`、比较与算术、`^`（`Math.pow`）、`:>` / `<:`（类继承/实例判断）、`contains`、以及一组允许的 `Math` 函数（如
+`sqrt`、`abs`、`sin`…）。变量名即左侧声明的名称。
+
+#### 内置变量
+
+`namespace`、`path`、`resource` / `location` / `resourceLocation`、`clazz`、`clazzString`、`itemClazz`、`itemClazzString`、
+`name`、`displayName`、`customName`、`tick`、`num`、`dim` / `dimension`、`x` / `y` / `z`、`chunkX`、`chunkZ`、`hasOwner`、
+`ownerName`。未在此列出的单独标识符在表达式中值为 `null`。
+
+#### 性能与缓存
+
+- **按规则字符串缓存**：每条配置串首次出现时解析为「变量描述 + 表达式 AST」并放入缓存，之后相同字符串**不再解析**。
+- **单次判定复用 Map**：对配置列表逐条尝试时**复用**同一个变量 `HashMap`（`clear` 后写入），减少小对象分配。
+- **路径预解析**：`<>` 与 `{}` 内的路径在**编译缓存时**拆好，不在每个实体上重复 `split`。
+- **`DataParameter` 缓存**：缓存键为 **`实体运行时类 :: 首段键`**，避免不同实体类共用同名静态字段键时取错同步器，也避免在错误类型上解析失败后把
+  `null` 缓存给本应成功的类型。
+- **成本排序（经验性）**：预定义 / 字面量 **<** `DataParameter` 单读 **<** NBT 路径 **≈** 深层反射链（`<>` 链式或 `{}`）。列表中
+  **更轻的规则放前面**可略省 CPU（短路求值：命中即停）。
 
 ---
 

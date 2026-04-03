@@ -5,10 +5,11 @@ import net.minecraft.world.entity.Entity;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.api.distmarker.OnlyIn;
 import net.minecraftforge.network.NetworkEvent;
+import xin.vanilla.aotake.network.NetworkPacket;
 
 import java.util.function.Supplier;
 
-public record GhostCameraToClient(int entityId, boolean reset) {
+public record GhostCameraToClient(int entityId, boolean reset) implements NetworkPacket{
 
     public GhostCameraToClient(FriendlyByteBuf buf) {
         this(buf.readInt(), buf.readBoolean());
