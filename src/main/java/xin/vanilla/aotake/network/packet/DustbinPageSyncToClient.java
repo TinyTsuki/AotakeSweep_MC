@@ -1,26 +1,21 @@
 package xin.vanilla.aotake.network.packet;
 
-import io.netty.buffer.ByteBuf;
 import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.api.distmarker.OnlyIn;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
 import org.jetbrains.annotations.NotNull;
-import xin.vanilla.aotake.AotakeSweep;
+import xin.vanilla.aotake.Identifier;
+import xin.vanilla.aotake.network.NetworkPacket;
+import xin.vanilla.aotake.screen.DustbinRender;
+import xin.vanilla.banira.internal.network.BaniraStreamCodecs;
 
-public record DustbinPageSyncToClient(int currentPage, int totalPage) implements CustomPacketPayload {
-    public final static CustomPacketPayload.Type<DustbinPageSyncToClient> TYPE = new CustomPacketPayload.Type<>(AotakeSweep.createIdentifier("dustbin_page_sync"));
-    public final static StreamCodec<ByteBuf, DustbinPageSyncToClient> STREAM_CODEC = new StreamCodec<>() {
-        public @NotNull DustbinPageSyncToClient decode(@NotNull ByteBuf byteBuf) {
-            return new DustbinPageSyncToClient((new FriendlyByteBuf(byteBuf)));
-        }
-
-        public void encode(@NotNull ByteBuf byteBuf, @NotNull DustbinPageSyncToClient packet) {
-            packet.toBytes(new FriendlyByteBuf(byteBuf));
-        }
-    };
+public record DustbinPageSyncToClient(int currentPage, int totalPage) implements NetworkPacket {
+    public final static CustomPacketPayload.Type<DustbinPageSyncToClient> TYPE = new CustomPacketPayload.Type<>(Identifier.id().create("dustbin_page_sync"));
+    public final static StreamCodec<RegistryFriendlyByteBuf, DustbinPageSyncToClient> STREAM_CODEC = BaniraStreamCodecs.registryBuf(DustbinPageSyncToClient::toBytes, DustbinPageSyncToClient::new);
 
     public DustbinPageSyncToClient(FriendlyByteBuf buf) {
         this(buf.readInt(), buf.readInt());
@@ -43,7 +38,7 @@ public record DustbinPageSyncToClient(int currentPage, int totalPage) implements
     @OnlyIn(Dist.CLIENT)
     private static final class ClientSide {
         private static void handle(DustbinPageSyncToClient packet) {
-            xin.vanilla.aotake.event.ClientGameEventHandler.updateDustbinPage(packet.currentPage(), packet.totalPage());
+            DustbinRender.updateDustbinPage(packet.currentPage(), packet.totalPage());
         }
     }
 }

@@ -9,12 +9,17 @@ import net.minecraft.commands.arguments.DimensionArgument;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
+import xin.vanilla.aotake.AotakeComponent;
+import xin.vanilla.aotake.AotakeLang;
+import xin.vanilla.aotake.AotakeSweep;
 import xin.vanilla.aotake.config.CommonConfig;
+import xin.vanilla.aotake.data.player.PlayerSweepData;
 import xin.vanilla.aotake.enums.EnumCommandType;
-import xin.vanilla.aotake.util.AotakeScheduler;
 import xin.vanilla.aotake.util.AotakeUtils;
-import xin.vanilla.aotake.util.CommandUtils;
-import xin.vanilla.aotake.util.StringUtils;
+import xin.vanilla.banira.common.data.Component;
+import xin.vanilla.banira.common.util.BaniraScheduler;
+import xin.vanilla.banira.common.util.CommandUtils;
+import xin.vanilla.banira.common.util.NumberUtils;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -24,11 +29,15 @@ import java.util.stream.Collectors;
 public class SweepCommand {
     public static LiteralArgumentBuilder<CommandSourceStack> sweep() {
         Command<CommandSourceStack> sweepCommand = context -> {
-            if (CommandUtils.checkModStatus(context)) return 0;
-            CommandUtils.notifyHelp(context);
+            if (CommandUtils.checkModStatus(context, AotakeSweep::isDisable)) return 0;
+            if (context.getSource().getEntity() instanceof ServerPlayer) {
+                ServerPlayer player = context.getSource().getPlayerOrException();
+                Component modName = AotakeComponent.get().trans("key.aotake_sweep.categories").languageCode(AotakeLang.getPlayerLanguage(player));
+                CommandUtils.notifyHelp(context, PlayerSweepData.getData(player), modName, "/" + AotakeUtils.getCommandPrefix());
+            }
             int range = CommandUtils.getIntDefault(context, "range", 0);
             if (range == 0)
-                range = StringUtils.toInt(CommandUtils.replaceResourcePath(CommandUtils.getStringEx(context, "dimension", "")));
+                range = NumberUtils.toInt(CommandUtils.replaceResourcePath(CommandUtils.getStringEx(context, "dimension", "")));
             ServerLevel dimension = CommandUtils.getDimensionDefault(context, "dimension", null);
             List<Entity> entities;
             if (range > 0) {
@@ -42,11 +51,11 @@ public class SweepCommand {
                 entities = AotakeUtils.getAllEntities();
             }
 
-            AotakeScheduler.schedule(context.getSource().getServer(), 1, () -> AotakeUtils.sweep(entities, false));
+            BaniraScheduler.schedule(context.getSource().getServer(), 1, () -> AotakeUtils.sweep(entities, false));
             return 1;
         };
 
-        return Commands.literal(CommonConfig.COMMAND_SWEEP.get())
+        return Commands.literal(CommonConfig.get().command().commandSweep())
                 .requires(source -> AotakeUtils.hasCommandPermission(source, EnumCommandType.SWEEP))
                 .executes(sweepCommand)
                 .then(Commands.argument("dimension", DimensionArgument.dimension())
