@@ -5,10 +5,10 @@ import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import net.minecraft.command.CommandSource;
 import net.minecraft.command.Commands;
 import xin.vanilla.aotake.command.impl.HelpCommand;
-import xin.vanilla.aotake.data.KeyValue;
 import xin.vanilla.aotake.enums.EnumCommandType;
 import xin.vanilla.aotake.util.AotakeUtils;
-import xin.vanilla.aotake.util.StringUtils;
+import xin.vanilla.banira.common.data.KeyValue;
+import xin.vanilla.banira.common.util.StringUtils;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -27,8 +27,8 @@ public class AotakeCommand {
                     return null;
                 })
                 .filter(Objects::nonNull)
-                .filter(command -> !command.getValue().isIgnore())
-                .sorted(Comparator.comparing(command -> command.getValue().getSort()))
+                .filter(command -> !command.value().isIgnore())
+                .sorted(Comparator.comparing(command -> command.value().getSort()))
                 .collect(Collectors.toList());
     }
 

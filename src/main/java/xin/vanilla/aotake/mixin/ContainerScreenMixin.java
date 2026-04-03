@@ -9,14 +9,14 @@ import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+import xin.vanilla.aotake.Identifier;
 import xin.vanilla.aotake.config.ClientConfig;
 import xin.vanilla.aotake.config.DustbinGuiConfig;
 import xin.vanilla.aotake.config.DustbinGuiLayoutCache;
-import xin.vanilla.aotake.data.KeyValue;
-import xin.vanilla.aotake.enums.EnumI18nType;
-import xin.vanilla.aotake.util.AotakeUtils;
-import xin.vanilla.aotake.util.Component;
-import xin.vanilla.aotake.util.TextureUtils;
+import xin.vanilla.aotake.enums.EnumDustbinClientUiStyle;
+import xin.vanilla.aotake.screen.DustbinRender;
+import xin.vanilla.banira.client.util.TextureUtils;
+import xin.vanilla.banira.common.data.KeyValue;
 
 @Mixin(ContainerScreen.class)
 public abstract class ContainerScreenMixin {
@@ -32,16 +32,17 @@ public abstract class ContainerScreenMixin {
             DustbinGuiLayoutCache.invalidate();
             return;
         }
-        if (ClientConfig.VANILLA_DUSTBIN.get()) {
+        EnumDustbinClientUiStyle ui = ClientConfig.get().dustbin().dustbinUiStyle();
+        if (ui == EnumDustbinClientUiStyle.VANILLA || ui == EnumDustbinClientUiStyle.BANIRA_THEME) {
             DustbinGuiLayoutCache.invalidate();
             return;
         }
 
         DustbinGuiConfig.reload();
-        ResourceLocation texture = TextureUtils.loadCustomTexture(TextureUtils.INTERNAL_THEME_DIR + "dustbin_gui.png");
+        ResourceLocation texture = TextureUtils.loadCustomTexture(Identifier.id(), "gui/dustbin_gui.png");
         KeyValue<Integer, Integer> size = TextureUtils.getTextureSize(texture);
-        int srcW = size.getKey();
-        int srcH = size.getValue();
+        int srcW = size.key();
+        int srcH = size.val();
         if (srcW <= 0 || srcH <= 0) return;
 
         int screenWidth = screen.width;
@@ -62,11 +63,8 @@ public abstract class ContainerScreenMixin {
     private boolean aotake$isDustbinScreen(ChestScreen screen) {
         PlayerEntity player = net.minecraft.client.Minecraft.getInstance().player;
         if (player == null) return false;
-        String title = screen.getTitle().getContents();
-        String modTitle = Component.translatable(EnumI18nType.WORD, "title")
-                .toTextComponent(AotakeUtils.getPlayerLanguage(player))
-                .getContents();
-        return title.startsWith(modTitle);
+        String t = screen.getTitle().getContents();
+        return DustbinRender.isDustbinTitle(t) || DustbinRender.isChunkVaultTitle(t);
     }
 
     @Unique

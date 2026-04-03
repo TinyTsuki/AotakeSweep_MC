@@ -8,17 +8,24 @@ import net.minecraft.nbt.INBT;
 import net.minecraft.nbt.NumberNBT;
 import net.minecraft.network.datasync.DataParameter;
 import net.minecraftforge.common.UsernameCache;
+import xin.vanilla.aotake.AotakeComponent;
+import xin.vanilla.banira.common.data.Component;
+import xin.vanilla.banira.common.enums.IEnumDescribable;
+import xin.vanilla.banira.common.util.*;
 
 import javax.annotation.Nullable;
 import java.lang.reflect.Array;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 
 public class EntityFilter {
 
     // 缓存已解析的 filter spec（key 为 convertExpression 后的最终字符串）
     private final Map<String, FilterSpec> filterCache = new ConcurrentHashMap<>();
-    // 缓存已解析的 EntityDataAccessor（key 为 firstPartKey，如 "fieldName" 或 "className:fieldName"）
+    // 缓存已解析的 EntityDataAccessor（无显式类名时 key 含实体类名，避免跨类型错误复用）
     private static final Map<String, DataParameter<?>> accessorCache = new ConcurrentHashMap<>();
     // 缓存已解析的 ACCESSOR_KEY 路径（key 为完整 accessorPath 字符串）
     private static final Map<String, AccessorPath> accessorPathCache = new ConcurrentHashMap<>();
@@ -30,7 +37,7 @@ public class EntityFilter {
     public boolean validEntity(List<? extends String> config, Entity entity) {
         if (CollectionUtils.isNullOrEmpty(config)) return false;
 
-        Map<String, Object> vars = new HashMap<>(16);
+        Map<String, Object> vars = new HashMap<>(24);
 
         for (String raw : config) {
             String fullKey = convertExpression(raw);
@@ -53,12 +60,31 @@ public class EntityFilter {
         String expr = parts.length > 1 ? parts[1].trim() : "";
 
         // parse left into VarDescriptor
-        List<VarDescriptor> descriptors = parseLeftVariables(left);
+        List<VarDescriptor> descriptors = finalizeDescriptors(parseLeftVariables(left));
 
         // construct evaluator
         SafeExpressionEvaluator evaluator = new SafeExpressionEvaluator(expr);
 
         return new FilterSpec(fullKey, evaluator, descriptors);
+    }
+
+    /**
+     * 编译期解析路径，避免每次实体判定时重复 split/parse。
+     */
+    private static List<VarDescriptor> finalizeDescriptors(List<VarDescriptor> raw) {
+        if (raw.isEmpty()) return raw;
+        List<VarDescriptor> out = new ArrayList<>(raw.size());
+        for (VarDescriptor d : raw) {
+            if (d.type == SourceType.ACCESSOR_KEY || d.type == SourceType.FIELD_CHAIN) {
+                boolean fieldChain = d.type == SourceType.FIELD_CHAIN;
+                String cacheKey = (fieldChain ? "F|" : "A|") + d.payload;
+                AccessorPath ap = accessorPathCache.computeIfAbsent(cacheKey, k -> parseEntityPath(d.payload, fieldChain));
+                out.add(new VarDescriptor(d.name, d.type, d.payload, ap));
+            } else {
+                out.add(new VarDescriptor(d.name, d.type, d.payload, null));
+            }
+        }
+        return out;
     }
 
     /**
@@ -80,14 +106,17 @@ public class EntityFilter {
      * VarDescriptor 描述左侧一个变量的来源（预定义 / 字面 / NBT path）
      */
     private static class VarDescriptor {
-        final String name;      // 变量名（左侧的 key）
-        final SourceType type;  // 来源类型
-        final String payload;   // LITERAL: literal value (string), NBT: nbt path, PREDEF: token like "namespace"
+        final String name;               // 变量名（左侧的 key）
+        final SourceType type;           // 来源类型
+        final String payload;            // LITERAL: literal value (string), NBT: nbt path, PREDEF: token like "namespace"
+        @Nullable
+        final AccessorPath accessorPath; // ACCESSOR_KEY / FIELD_CHAIN 编译期解析结果
 
-        VarDescriptor(String name, SourceType type, String payload) {
+        VarDescriptor(String name, SourceType type, String payload, @Nullable AccessorPath accessorPath) {
             this.name = name;
             this.type = type;
             this.payload = payload;
+            this.accessorPath = accessorPath;
         }
 
         public String toString() {
@@ -96,7 +125,7 @@ public class EntityFilter {
     }
 
     /**
-     * 解析后的 ACCESSOR_KEY 路径
+     * 解析后的 {@code <>} / {@code {}} 路径（声明类 + 字段链）
      */
     private static class AccessorPath {
         @Nullable
@@ -109,7 +138,22 @@ public class EntityFilter {
         }
     }
 
-    private enum SourceType {PREDEFINED, LITERAL, ACCESSOR_KEY, NBT_PATH}
+    private enum SourceType implements IEnumDescribable {
+        PREDEFINED,
+        LITERAL,
+        ACCESSOR_KEY,
+        /**
+         * 从实体（或显式声明类上的首段字段）开始的纯反射链；分隔符可为 . 与 :
+         */
+        FIELD_CHAIN,
+        NBT_PATH,
+        ;
+
+        @Override
+        public Component enumDescription() {
+            return EnumDescriptionHelper.describeEnum(AotakeComponent.get(), this);
+        }
+    }
 
     private List<VarDescriptor> parseLeftVariables(String left) {
         if (left == null || left.trim().isEmpty()) return Collections.emptyList();
@@ -128,61 +172,227 @@ public class EntityFilter {
                 // 字面量（单/双引号）
                 if ((rhs.startsWith("'") && rhs.endsWith("'")) || (rhs.startsWith("\"") && rhs.endsWith("\""))) {
                     String literal = rhs.substring(1, rhs.length() - 1);
-                    out.add(new VarDescriptor(name, SourceType.LITERAL, literal));
+                    out.add(new VarDescriptor(name, SourceType.LITERAL, literal, null));
                 }
                 // EntityDataAccessor 路径
                 else if (rhs.startsWith("<") && rhs.endsWith(">")) {
                     String accessorPath = rhs.substring(1, rhs.length() - 1);
-                    out.add(new VarDescriptor(name, SourceType.ACCESSOR_KEY, accessorPath));
+                    out.add(new VarDescriptor(name, SourceType.ACCESSOR_KEY, accessorPath, null));
+                } else if (rhs.startsWith("{") && rhs.endsWith("}")) {
+                    String path = rhs.substring(1, rhs.length() - 1).trim();
+                    out.add(new VarDescriptor(name, SourceType.FIELD_CHAIN, path, null));
                 }
                 // NBT路径
                 else {
                     if (rhs.startsWith("[") && rhs.endsWith("]")) {
                         rhs = rhs.substring(1, rhs.length() - 1);
                     }
-                    out.add(new VarDescriptor(name, SourceType.NBT_PATH, rhs));
+                    out.add(new VarDescriptor(name, SourceType.NBT_PATH, rhs, null));
                 }
             }
             // 预定义变量名称（如 namespace, path, clazz 等）
             else {
-                out.add(new VarDescriptor(name, SourceType.PREDEFINED, name));
+                out.add(new VarDescriptor(name, SourceType.PREDEFINED, name, null));
             }
         }
         return out;
     }
 
     /**
-     * 解析 ACCESSOR_KEY 路径
+     * 解析 {@code <>} 与 {@code {}} 路径。
+     * <ul>
+     *   <li><b>声明类</b>：在每个未转义的 {@code .} / {@code :} 处截断，取能 {@link Class#forName(String)} 的最长前缀为类名，其后为字段链。</li>
+     *   <li><b>有声明类时</b>：字段链对 tail 使用未转义的 {@code .} 与 {@code :} 混切；{@code \\.}、{@code \\:}、{@code \\\\} 转义。</li>
+     *   <li><b>无声明类</b>：{@code fieldChainMode==false}（{@code <>}）仅按未转义的 {@code :} 分段，单段时保留其中的 {@code .}（兼容
+     *       {@code <foo.bar>} 单字段名）；{@code fieldChainMode==true}（{@code {}}）对整段使用 {@code .} 与 {@code :} 混切。</li>
+     * </ul>
      */
-    private static AccessorPath parseAccessorPath(String path) {
-        if (path == null || path.isEmpty()) return null;
-        String[] parts = path.split(":");
-        if (parts.length == 0) return null;
+    @Nullable
+    private static AccessorPath parseEntityPath(String path, boolean fieldChainMode) {
+        if (path == null) return null;
+        path = path.trim();
+        if (path.isEmpty()) return null;
 
-        String className = null;
-        List<String> chain = new ArrayList<>();
-
-        if (parts[0].isEmpty()) {
-            chain.addAll(Arrays.asList(parts).subList(1, parts.length));
-        } else if (parts.length == 1) {
-            chain.add(parts[0]);
-        } else {
-            if (parts[0].contains(".")) {
-                className = parts[0];
-                chain.addAll(Arrays.asList(parts).subList(1, parts.length));
-            } else {
-                Collections.addAll(chain, parts);
-            }
+        int bestExclusiveEnd = -1;
+        for (int i = 0; i < path.length(); i++) {
+            char c = path.charAt(i);
+            if ((c != '.' && c != ':') || !isUnescapedDelimiter(path, i)) continue;
+            String prefix = path.substring(0, i);
+            if (isLoadableClassFqn(prefix)) bestExclusiveEnd = i;
         }
 
+        String className = null;
+        String tail;
+        if (bestExclusiveEnd >= 0) {
+            className = path.substring(0, bestExclusiveEnd);
+            tail = path.substring(bestExclusiveEnd + 1);
+        } else {
+            tail = path;
+        }
+
+        List<String> chain;
+        if (className != null) {
+            chain = splitMixedPathSegments(tail);
+        } else if (fieldChainMode) {
+            chain = splitMixedPathSegments(tail);
+        } else {
+            chain = splitLegacyColonOnlyChain(tail);
+        }
         if (chain.isEmpty()) return null;
-        return new AccessorPath(className, chain);
+        return new AccessorPath(className, Collections.unmodifiableList(chain));
+    }
+
+    /**
+     * 无显式类名时 {@code <>} 的兼容分段：仅 {@code :} 分段；仅一段时整段保留（含 {@code .}）。
+     */
+    private static List<String> splitLegacyColonOnlyChain(String tail) {
+        if (tail == null || tail.isEmpty()) return Collections.emptyList();
+        List<String> raw = new ArrayList<>();
+        StringBuilder cur = new StringBuilder();
+        for (int i = 0; i < tail.length(); i++) {
+            char c = tail.charAt(i);
+            if (c == '\\' && i + 1 < tail.length()) {
+                char n = tail.charAt(i + 1);
+                if (n == ':' || n == '\\') {
+                    cur.append(n);
+                    i++;
+                    continue;
+                }
+            }
+            if (c == ':' && isUnescapedDelimiter(tail, i)) {
+                String t = cur.toString().trim();
+                if (!t.isEmpty()) raw.add(t);
+                cur.setLength(0);
+            } else {
+                cur.append(c);
+            }
+        }
+        String t = cur.toString().trim();
+        if (!t.isEmpty()) raw.add(t);
+        if (raw.isEmpty()) return Collections.emptyList();
+        if (raw.size() == 1) return Collections.singletonList(raw.get(0));
+        return raw;
+    }
+
+    private static boolean isUnescapedDelimiter(String s, int index) {
+        int bs = 0;
+        for (int j = index - 1; j >= 0 && s.charAt(j) == '\\'; j--) {
+            bs++;
+        }
+        return bs % 2 == 0;
+    }
+
+    private static boolean isLoadableClassFqn(String name) {
+        if (name == null || name.isEmpty()) return false;
+        try {
+            Class.forName(name);
+            return true;
+        } catch (ClassNotFoundException | LinkageError ignored) {
+            return false;
+        }
+    }
+
+    /**
+     * 在未转义的 {@code .} 与 {@code :} 处切分；{@code \\} 转义其后一字节。
+     */
+    private static List<String> splitMixedPathSegments(String s) {
+        if (s == null || s.isEmpty()) return Collections.emptyList();
+        List<String> parts = new ArrayList<>();
+        StringBuilder cur = new StringBuilder();
+        for (int i = 0; i < s.length(); i++) {
+            char c = s.charAt(i);
+            if (c == '\\' && i + 1 < s.length()) {
+                char n = s.charAt(i + 1);
+                if (n == '.' || n == ':' || n == '\\') {
+                    cur.append(n);
+                    i++;
+                    continue;
+                }
+            }
+            if ((c == '.' || c == ':') && isUnescapedDelimiter(s, i)) {
+                String t = cur.toString().trim();
+                if (!t.isEmpty()) parts.add(t);
+                cur.setLength(0);
+            } else {
+                cur.append(c);
+            }
+        }
+        String t = cur.toString().trim();
+        if (!t.isEmpty()) parts.add(t);
+        return parts;
+    }
+
+    /**
+     * 从实体起按 {@link AccessorPath} 做反射链（首段可在显式声明类上解析）；用于 {@code {}} 与 {@code <>} 同步器缺失时的回退。
+     */
+    private static Object walkReflectChainFromEntity(Entity entity, AccessorPath ap) {
+        if (ap == null || ap.chain.isEmpty() || entity == null) return null;
+        try {
+            Object cur;
+            int startIdx;
+            if (ap.className != null) {
+                Class<?> decl = FieldUtils.getClass(ap.className);
+                if (decl == null || !decl.isInstance(entity)) {
+                    return null;
+                }
+                cur = FieldUtils.getPrivateFieldValue(decl, entity, ap.chain.get(0), true);
+                startIdx = 1;
+            } else {
+                cur = entity;
+                startIdx = 0;
+            }
+            for (int i = startIdx; i < ap.chain.size(); i++) {
+                if (cur == null) break;
+                cur = resolveSegment(cur, ap.chain.get(i));
+            }
+            return cur;
+        } catch (Throwable ignored) {
+            return null;
+        }
+    }
+
+    private static Object unwrapOptionalChain(@Nullable Object obj) {
+        Object cur = obj;
+        for (int depth = 0; depth < 64 && cur != null; depth++) {
+            if (cur instanceof Optional) {
+                cur = ((Optional<?>) cur).orElse(null);
+            } else {
+                break;
+            }
+        }
+        return cur;
+    }
+
+    /**
+     * 将反射/同步器包装类型转为表达式引擎易用的标量。
+     */
+    private static Object normalizeFieldValue(@Nullable Object v) {
+        if (v == null) return null;
+        v = unwrapOptionalChain(v);
+        if (v == null) return null;
+        if (v instanceof OptionalInt) {
+            OptionalInt oi = (OptionalInt) v;
+            return oi.isPresent() ? oi.getAsInt() : null;
+        }
+        if (v instanceof OptionalLong) {
+            OptionalLong ol = (OptionalLong) v;
+            return ol.isPresent() ? ol.getAsLong() : null;
+        }
+        if (v instanceof OptionalDouble) {
+            OptionalDouble od = (OptionalDouble) v;
+            return od.isPresent() ? od.getAsDouble() : null;
+        }
+        if (v instanceof AtomicInteger) return ((AtomicInteger) v).get();
+        if (v instanceof AtomicLong) return ((AtomicLong) v).get();
+        if (v instanceof AtomicBoolean) return ((AtomicBoolean) v).get();
+        return v;
     }
 
     /**
      * 根据当前对象类型解析下一段
      */
     private static Object resolveSegment(Object obj, String segment) {
+        obj = unwrapOptionalChain(obj);
         if (obj == null) return null;
         try {
             if (obj instanceof Map) {
@@ -271,21 +481,27 @@ public class EntityFilter {
                     varsOut.put(key, d.payload);
                     break;
                 case ACCESSOR_KEY:
-                    AccessorPath ap = accessorPathCache.computeIfAbsent(d.payload, EntityFilter::parseAccessorPath);
+                    AccessorPath ap = d.accessorPath;
                     if (ap == null || ap.chain.isEmpty()) {
                         varsOut.put(key, null);
                         break;
                     }
                     String firstPartKey = ap.className != null ? ap.className + ":" + ap.chain.get(0) : ap.chain.get(0);
-                    DataParameter<?> accessor = accessorCache.computeIfAbsent(firstPartKey, k -> {
-                        String[] split = k.split(":", 2);
-                        DataParameter<?> result;
-                        if (split.length == 1) {
-                            result = (DataParameter<?>) FieldUtils.getPrivateFieldValue(FieldUtils.getClass(entity), entity, split[0], true);
-                        } else {
-                            result = (DataParameter<?>) FieldUtils.getPrivateFieldValue(FieldUtils.getClass(split[0]), entity, split[1]);
+                    String accessorCacheKey = entity.getClass().getName() + "::" + firstPartKey;
+                    DataParameter<?> accessor = accessorCache.computeIfAbsent(accessorCacheKey, k -> {
+                        try {
+                            String[] split = firstPartKey.split(":", 2);
+                            if (split.length == 1) {
+                                return (DataParameter<?>) FieldUtils.getPrivateFieldValue(FieldUtils.getClass(entity), entity, split[0], true);
+                            }
+                            Class<?> decl = FieldUtils.getClass(split[0]);
+                            if (decl == null || !decl.isInstance(entity)) {
+                                return null;
+                            }
+                            return (DataParameter<?>) FieldUtils.getPrivateFieldValue(decl, entity, split[1]);
+                        } catch (Throwable ignored) {
+                            return null;
                         }
-                        return result;
                     });
                     Object value = null;
                     if (accessor != null) {
@@ -293,15 +509,25 @@ public class EntityFilter {
                             value = entity.getEntityData().get(accessor);
                         } catch (Throwable ignored) {
                         }
+                        for (int i = 1; i < ap.chain.size() && value != null; i++) {
+                            value = resolveSegment(value, ap.chain.get(i));
+                        }
+                    } else {
+                        value = walkReflectChainFromEntity(entity, ap);
                     }
-                    for (int i = 1; i < ap.chain.size() && value != null; i++) {
-                        value = resolveSegment(value, ap.chain.get(i));
+                    varsOut.put(key, normalizeFieldValue(value));
+                    break;
+                case FIELD_CHAIN:
+                    AccessorPath fp = d.accessorPath;
+                    if (fp == null || fp.chain.isEmpty()) {
+                        varsOut.put(key, null);
+                        break;
                     }
-                    varsOut.put(key, value);
+                    varsOut.put(key, normalizeFieldValue(walkReflectChainFromEntity(entity, fp)));
                     break;
                 case NBT_PATH:
-                    if (NBTPathUtils.has(entity.getPersistentData(), d.payload)) {
-                        INBT tag = NBTPathUtils.getTagByPath(entity.getPersistentData(), d.payload);
+                    if (NBTUtils.has(entity.getPersistentData(), d.payload)) {
+                        INBT tag = NBTUtils.getTagByPath(entity.getPersistentData(), d.payload);
                         if (tag instanceof NumberNBT) {
                             varsOut.put(key, ((NumberNBT) tag).getAsNumber());
                         } else if (tag instanceof CollectionNBT) {
@@ -319,7 +545,7 @@ public class EntityFilter {
                     switch (d.payload) {
                         case "namespace":
                             if (namespace == null) {
-                                entityType = (entityType == null) ? AotakeUtils.getEntityTypeRegistryName(entity) : entityType;
+                                entityType = (entityType == null) ? EntityUtils.getEntityRegistryString(entity) : entityType;
                                 String[] parts = entityType.split(":", 2);
                                 namespace = parts.length > 0 ? parts[0] : "";
                             }
@@ -327,7 +553,7 @@ public class EntityFilter {
                             break;
                         case "path":
                             if (path == null) {
-                                entityType = (entityType == null) ? AotakeUtils.getEntityTypeRegistryName(entity) : entityType;
+                                entityType = (entityType == null) ? EntityUtils.getEntityRegistryString(entity) : entityType;
                                 String[] parts = entityType.split(":", 2);
                                 path = parts.length > 1 ? parts[1] : "";
                             }
@@ -337,7 +563,7 @@ public class EntityFilter {
                         case "location":
                         case "resourceLocation":
                             if (resourceLocation == null)
-                                resourceLocation = (entityType == null) ? AotakeUtils.getEntityTypeRegistryName(entity) : entityType;
+                                resourceLocation = (entityType == null) ? EntityUtils.getEntityRegistryString(entity) : entityType;
                             varsOut.put(key, resourceLocation);
                             break;
                         case "clazz":
@@ -380,7 +606,7 @@ public class EntityFilter {
                             break;
                         case "dim":
                         case "dimension":
-                            if (dim == null) dim = AotakeUtils.getDimensionRegistryName(entity.level);
+                            if (dim == null) dim = DimensionUtils.getDimensionId(entity.level);
                             varsOut.put(key, dim);
                             break;
                         case "x":

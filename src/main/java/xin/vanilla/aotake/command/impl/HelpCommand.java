@@ -9,16 +9,16 @@ import net.minecraft.command.Commands;
 import net.minecraft.entity.player.ServerPlayerEntity;
 import net.minecraft.util.text.event.ClickEvent;
 import net.minecraft.util.text.event.HoverEvent;
+import xin.vanilla.aotake.AotakeComponent;
 import xin.vanilla.aotake.command.AotakeCommand;
-import xin.vanilla.aotake.config.ServerConfig;
-import xin.vanilla.aotake.data.KeyValue;
+import xin.vanilla.aotake.config.CommonConfig;
 import xin.vanilla.aotake.enums.EnumCommandType;
-import xin.vanilla.aotake.enums.EnumI18nType;
-import xin.vanilla.aotake.enums.EnumMCColor;
 import xin.vanilla.aotake.util.AotakeUtils;
-import xin.vanilla.aotake.util.CommandUtils;
-import xin.vanilla.aotake.util.Component;
-import xin.vanilla.aotake.util.StringUtils;
+import xin.vanilla.banira.common.data.Component;
+import xin.vanilla.banira.common.data.KeyValue;
+import xin.vanilla.banira.common.enums.EnumI18nType;
+import xin.vanilla.banira.common.enums.EnumMCColor;
+import xin.vanilla.banira.common.util.*;
 
 import java.util.Arrays;
 import java.util.Comparator;
@@ -32,31 +32,31 @@ public class HelpCommand {
             int page;
             try {
                 command = StringArgumentType.getString(context, "command");
-                page = StringUtils.toInt(command);
+                page = NumberUtils.toInt(command);
             } catch (IllegalArgumentException ignored) {
                 command = "";
                 page = 1;
             }
             Component helpInfo;
             if (page > 0) {
-                int pages = (int) Math.ceil((double) AotakeCommand.HELP_MESSAGE.size() / ServerConfig.HELP_INFO_NUM_PER_PAGE.get());
-                helpInfo = Component.literal(StringUtils.format(ServerConfig.HELP_HEADER.get() + "\n", page, pages));
-                for (int i = 0; (page - 1) * ServerConfig.HELP_INFO_NUM_PER_PAGE.get() + i < AotakeCommand.HELP_MESSAGE.size() && i < ServerConfig.HELP_INFO_NUM_PER_PAGE.get(); i++) {
-                    KeyValue<String, EnumCommandType> keyValue = AotakeCommand.HELP_MESSAGE.get((page - 1) * ServerConfig.HELP_INFO_NUM_PER_PAGE.get() + i);
+                int pages = (int) Math.ceil((double) AotakeCommand.HELP_MESSAGE.size() / CommonConfig.get().base().common().helpInfoNumPerPage());
+                helpInfo = AotakeComponent.get().literal(StringUtils.format(CommonConfig.get().base().common().helpHeader() + "\n", page, pages));
+                for (int i = 0; (page - 1) * CommonConfig.get().base().common().helpInfoNumPerPage() + i < AotakeCommand.HELP_MESSAGE.size() && i < CommonConfig.get().base().common().helpInfoNumPerPage(); i++) {
+                    KeyValue<String, EnumCommandType> keyValue = AotakeCommand.HELP_MESSAGE.get((page - 1) * CommonConfig.get().base().common().helpInfoNumPerPage() + i);
                     Component commandTips;
-                    if (keyValue.getValue().name().toLowerCase().contains("concise")) {
-                        commandTips = Component.translatable(AotakeUtils.getPlayerLanguage(player), EnumI18nType.COMMAND, "concise", AotakeUtils.getCommand(keyValue.getValue().replaceConcise()));
+                    if (keyValue.val().name().toLowerCase().contains("concise")) {
+                        commandTips = AotakeComponent.get().transLang(Translator.getServerPlayerLanguage(player), EnumI18nType.FORMAT, "concise", AotakeUtils.getCommand(keyValue.val().replaceConcise()));
                     } else {
-                        commandTips = Component.translatable(AotakeUtils.getPlayerLanguage(player), EnumI18nType.COMMAND, keyValue.getValue().name().toLowerCase());
+                        commandTips = AotakeComponent.get().transLang(Translator.getServerPlayerLanguage(player), EnumI18nType.WORD, keyValue.val().name().toLowerCase());
                     }
-                    commandTips.setColor(EnumMCColor.GRAY.getColor());
-                    String com = "/" + keyValue.getKey();
-                    helpInfo.append(Component.literal(com)
-                                    .setClickEvent(new ClickEvent(ClickEvent.Action.SUGGEST_COMMAND, com))
-                                    .setHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT
-                                            , Component.translatable(AotakeUtils.getPlayerLanguage(player), EnumI18nType.MESSAGE, "click_to_suggest").toTextComponent()))
+                    commandTips.color(EnumMCColor.GRAY.getColor());
+                    String com = "/" + keyValue.key();
+                    helpInfo.append(AotakeComponent.get().literal(com)
+                                    .clickEvent(new ClickEvent(ClickEvent.Action.SUGGEST_COMMAND, com))
+                                    .hoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT
+                                            , AotakeComponent.get().transLang(Translator.getServerPlayerLanguage(player), EnumI18nType.WORD, "click_to_suggest").toVanilla()))
                             )
-                            .append(new Component(" -> ").setColor(EnumMCColor.YELLOW.getColor()))
+                            .append(AotakeComponent.get().literal(" -> ").color(EnumMCColor.YELLOW.getColor()))
                             .append(commandTips);
                     if (i != AotakeCommand.HELP_MESSAGE.size() - 1) {
                         helpInfo.append("\n");
@@ -65,54 +65,54 @@ public class HelpCommand {
                 // 添加翻页按钮
                 if (pages > 1) {
                     helpInfo.append("\n");
-                    Component prevButton = Component.literal("<<< ");
+                    Component prevButton = AotakeComponent.get().literal("<<< ");
                     if (page > 1) {
-                        prevButton.setColor(EnumMCColor.AQUA.getColor())
-                                .setClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND,
+                        prevButton.color(EnumMCColor.AQUA.getColor())
+                                .clickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND,
                                         String.format("/%s %s %d", AotakeUtils.getCommandPrefix(), "help", page - 1)))
-                                .setHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT,
-                                        Component.translatable(AotakeUtils.getPlayerLanguage(player), EnumI18nType.MESSAGE, "previous_page").toTextComponent()));
+                                .hoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT,
+                                        AotakeComponent.get().transLang(Translator.getServerPlayerLanguage(player), EnumI18nType.WORD, "previous_page").toVanilla()));
                     } else {
-                        prevButton.setColor(EnumMCColor.DARK_AQUA.getColor());
+                        prevButton.color(EnumMCColor.DARK_AQUA.getColor());
                     }
                     helpInfo.append(prevButton);
 
-                    helpInfo.append(Component.literal(String.format(" %s/%s "
+                    helpInfo.append(AotakeComponent.get().literal(String.format(" %s/%s "
                                     , StringUtils.padOptimizedLeft(page, String.valueOf(pages).length(), " ")
                                     , pages))
-                            .setColor(EnumMCColor.WHITE.getColor()));
+                            .color(EnumMCColor.WHITE.getColor()));
 
-                    Component nextButton = Component.literal(" >>>");
+                    Component nextButton = AotakeComponent.get().literal(" >>>");
                     if (page < pages) {
-                        nextButton.setColor(EnumMCColor.AQUA.getColor())
-                                .setClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND,
+                        nextButton.color(EnumMCColor.AQUA.getColor())
+                                .clickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND,
                                         String.format("/%s %s %d", AotakeUtils.getCommandPrefix(), "help", page + 1)))
-                                .setHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT,
-                                        Component.translatable(AotakeUtils.getPlayerLanguage(player), EnumI18nType.MESSAGE, "next_page").toTextComponent()));
+                                .hoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT,
+                                        AotakeComponent.get().transLang(Translator.getServerPlayerLanguage(player), EnumI18nType.WORD, "next_page").toVanilla()));
                     } else {
-                        nextButton.setColor(EnumMCColor.DARK_AQUA.getColor());
+                        nextButton.color(EnumMCColor.DARK_AQUA.getColor());
                     }
                     helpInfo.append(nextButton);
                 }
             } else {
                 EnumCommandType type = EnumCommandType.valueOf(command);
-                helpInfo = Component.empty();
+                helpInfo = AotakeComponent.get().empty();
                 String com = "/" + AotakeUtils.getCommand(type);
-                helpInfo.append(Component.literal(com)
-                                .setClickEvent(new ClickEvent(ClickEvent.Action.SUGGEST_COMMAND, com))
-                                .setHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT
-                                        , Component.translatable(AotakeUtils.getPlayerLanguage(player), EnumI18nType.MESSAGE, "click_to_suggest").toTextComponent()))
+                helpInfo.append(AotakeComponent.get().literal(com)
+                                .clickEvent(new ClickEvent(ClickEvent.Action.SUGGEST_COMMAND, com))
+                                .hoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT
+                                        , AotakeComponent.get().transLang(Translator.getServerPlayerLanguage(player), EnumI18nType.WORD, "click_to_suggest").toVanilla()))
                         )
                         .append("\n")
-                        .append(Component.translatable(AotakeUtils.getPlayerLanguage(player), EnumI18nType.COMMAND, command.toLowerCase() + "_detail").setColor(EnumMCColor.GRAY.getColor()));
+                        .append(AotakeComponent.get().transLang(Translator.getServerPlayerLanguage(player), EnumI18nType.WORD, command.toLowerCase() + "_detail").color(EnumMCColor.GRAY.getColor()));
             }
-            AotakeUtils.sendMessage(player, helpInfo);
+            MessageUtils.sendMessage(player, helpInfo);
             return 1;
         };
         SuggestionProvider<CommandSource> helpSuggestions = (context, builder) -> {
             String input = CommandUtils.getStringEmpty(context, "command");
             boolean isInputEmpty = StringUtils.isNullOrEmpty(input);
-            int totalPages = (int) Math.ceil((double) AotakeCommand.HELP_MESSAGE.size() / ServerConfig.HELP_INFO_NUM_PER_PAGE.get());
+            int totalPages = (int) Math.ceil((double) AotakeCommand.HELP_MESSAGE.size() / CommonConfig.get().base().common().helpInfoNumPerPage());
             for (int i = 0; i < totalPages && isInputEmpty; i++) {
                 builder.suggest(i + 1);
             }

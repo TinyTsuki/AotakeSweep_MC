@@ -1,9 +1,14 @@
 package xin.vanilla.aotake.enums;
 
+import xin.vanilla.aotake.AotakeComponent;
+import xin.vanilla.banira.common.data.Component;
+import xin.vanilla.banira.common.enums.IEnumDescribable;
+import xin.vanilla.banira.common.util.EnumDescriptionHelper;
+
 /**
  * 垃圾箱溢出时的处理方式
  */
-public enum EnumOverflowMode {
+public enum EnumOverflowMode implements IEnumDescribable {
     /**
      * 保留
      */
@@ -40,4 +45,8 @@ public enum EnumOverflowMode {
         return valueOf(obj) != null;
     }
 
+    @Override
+    public Component enumDescription() {
+        return EnumDescriptionHelper.describeEnum(AotakeComponent.get(), this);
+    }
 }

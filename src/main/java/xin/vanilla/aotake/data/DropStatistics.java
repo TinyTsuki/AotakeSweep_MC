@@ -4,7 +4,8 @@ import com.google.gson.JsonObject;
 import lombok.Data;
 import lombok.experimental.Accessors;
 import net.minecraft.nbt.CompoundNBT;
-import xin.vanilla.aotake.util.JsonUtils;
+import xin.vanilla.banira.common.data.WorldCoordinate;
+import xin.vanilla.banira.common.util.JsonUtils;
 
 @Data
 @Accessors(chain = true)
@@ -17,7 +18,7 @@ public class DropStatistics {
 
     public CompoundNBT serializeNBT() {
         CompoundNBT tag = new CompoundNBT();
-        tag.put("coordinate", coordinate.writeToNBT());
+        tag.put("coordinate", coordinate.toTag());
         tag.putString("name", name);
         tag.putLong("time", time);
         tag.putLong("itemCount", itemCount);
@@ -27,7 +28,7 @@ public class DropStatistics {
 
     public static DropStatistics deserializeNBT(CompoundNBT tag) {
         return new DropStatistics(
-                WorldCoordinate.readFromNBT(tag.getCompound("coordinate"))
+                WorldCoordinate.fromTag(tag.getCompound("coordinate"))
                 , tag.getString("name")
                 , tag.getLong("time")
                 , tag.getLong("itemCount")
@@ -37,7 +38,7 @@ public class DropStatistics {
 
     public JsonObject toJson() {
         JsonObject json = new JsonObject();
-        json.add("coordinate", JsonUtils.GSON.fromJson(coordinate.toJsonString(), JsonObject.class));
+        json.add("coordinate", JsonUtils.parseObject(coordinate.toJsonString()));
         json.addProperty("name", name);
         json.addProperty("time", time);
         json.addProperty("itemCount", itemCount);
@@ -47,7 +48,7 @@ public class DropStatistics {
 
     public static DropStatistics fromJson(JsonObject json) {
         WorldCoordinate coordinate = json.has("coordinate")
-                ? WorldCoordinate.fromJsonString(JsonUtils.GSON.toJson(json.getAsJsonObject("coordinate")))
+                ? WorldCoordinate.fromJson(JsonUtils.toString(json.getAsJsonObject("coordinate")))
                 : new WorldCoordinate(0, 0, 0);
         return new DropStatistics(
                 coordinate,
