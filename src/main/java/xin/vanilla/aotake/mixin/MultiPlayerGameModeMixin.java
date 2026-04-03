@@ -5,7 +5,7 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
-import xin.vanilla.aotake.screen.ProgressRender;
+import xin.vanilla.aotake.event.ClientGameEventHandler;
 
 @Mixin(MultiPlayerGameMode.class)
 public class MultiPlayerGameModeMixin {
@@ -15,7 +15,9 @@ public class MultiPlayerGameModeMixin {
             method = "hasExperience",
             cancellable = true
     )
-    public void hasExperience(CallbackInfoReturnable<Boolean> cir) {
-        cir.setReturnValue(ProgressRender.experienceSupplier.getAsBoolean());
+    public void aotake$hasExperience(CallbackInfoReturnable<Boolean> cir) {
+        if (!cir.getReturnValue() && ClientGameEventHandler.shouldForceExperienceBarOverlay()) {
+            cir.setReturnValue(true);
+        }
     }
 }
