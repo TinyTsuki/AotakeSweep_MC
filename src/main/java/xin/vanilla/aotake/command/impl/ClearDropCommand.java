@@ -12,13 +12,19 @@ import net.minecraft.entity.item.ItemEntity;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.entity.player.ServerPlayerEntity;
 import net.minecraft.world.server.ServerWorld;
+import xin.vanilla.aotake.AotakeComponent;
+import xin.vanilla.aotake.AotakeLang;
 import xin.vanilla.aotake.AotakeSweep;
 import xin.vanilla.aotake.config.CommonConfig;
 import xin.vanilla.aotake.data.SweepResult;
+import xin.vanilla.aotake.data.player.PlayerSweepData;
 import xin.vanilla.aotake.enums.EnumCommandType;
 import xin.vanilla.aotake.util.AotakeUtils;
-import xin.vanilla.aotake.util.CommandUtils;
-import xin.vanilla.aotake.util.StringUtils;
+import xin.vanilla.banira.BaniraCodex;
+import xin.vanilla.banira.common.data.Component;
+import xin.vanilla.banira.common.util.CommandUtils;
+import xin.vanilla.banira.common.util.MessageUtils;
+import xin.vanilla.banira.common.util.NumberUtils;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -29,11 +35,16 @@ import java.util.stream.Collectors;
 public class ClearDropCommand {
     public static LiteralArgumentBuilder<CommandSource> clear() {
         Command<CommandSource> clearDropCommand = context -> {
-            if (CommandUtils.checkModStatus(context)) return 0;
-            CommandUtils.notifyHelp(context);
+            if (CommandUtils.checkModStatus(context, AotakeSweep::isDisable)) return 0;
+            if (context.getSource().getEntity() instanceof ServerPlayerEntity) {
+                ServerPlayerEntity player = context.getSource().getPlayerOrException();
+                Component modName = AotakeComponent.get().trans("key.aotake_sweep.categories").languageCode(AotakeLang.getPlayerLanguage(player));
+                CommandUtils.notifyHelp(context, PlayerSweepData.getData(player), modName, "/" + AotakeUtils.getCommandPrefix());
+            }
+
             int range = CommandUtils.getIntDefault(context, "range", 0);
             if (range == 0)
-                range = StringUtils.toInt(CommandUtils.replaceResourcePath(CommandUtils.getStringEx(context, "dimension", "")));
+                range = NumberUtils.toInt(CommandUtils.replaceResourcePath(CommandUtils.getStringEx(context, "dimension", "")));
             ServerWorld dimension = CommandUtils.getDimensionDefault(context, "dimension", null);
             boolean withEntity = CommandUtils.getBooleanDefault(context, "withEntity", false);
             boolean ignoreFilter = CommandUtils.getBooleanDefault(context, "ignoreFilter", false);
@@ -67,12 +78,12 @@ public class ClearDropCommand {
                 AotakeUtils.removeEntity(entity, false);
             });
 
-            AotakeSweep.getServerInstance().key()
+            BaniraCodex.serverInstance().key()
                     .getPlayerList()
                     .getPlayers()
-                    .forEach(player -> AotakeUtils.sendMessage(player
+                    .forEach(player -> MessageUtils.sendMessage(player
                             , AotakeUtils.getWarningMessage(result.isEmpty() ? "fail" : "success"
-                                    , AotakeUtils.getPlayerLanguage(player)
+                                    , AotakeLang.getPlayerLanguage(player)
                                     , result
                             )
                     ));

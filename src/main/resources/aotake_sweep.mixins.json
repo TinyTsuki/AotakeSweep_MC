@@ -11,8 +11,7 @@
   "client": [
     "ChestScreenMixin",
     "ContainerScreenAccessor",
-    "ContainerScreenMixin",
-    "MinecraftClientMixin"
+    "ContainerScreenMixin"
   ],
   "injectors": {
     "defaultRequire": 1

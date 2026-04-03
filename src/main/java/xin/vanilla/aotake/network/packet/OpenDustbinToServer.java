@@ -6,6 +6,8 @@ import net.minecraftforge.fml.network.NetworkEvent;
 import xin.vanilla.aotake.AotakeSweep;
 import xin.vanilla.aotake.enums.EnumCommandType;
 import xin.vanilla.aotake.util.AotakeUtils;
+import xin.vanilla.banira.common.util.CommandUtils;
+import xin.vanilla.banira.common.util.PlayerUtils;
 
 import java.util.function.Supplier;
 
@@ -28,13 +30,13 @@ public class OpenDustbinToServer {
         ctx.get().enqueueWork(() -> {
             ServerPlayerEntity player = ctx.get().getSender();
             if (player != null) {
-                String playerUUID = AotakeUtils.getPlayerUUIDString(player);
+                String playerUUID = PlayerUtils.getPlayerUUIDString(player);
                 Integer page = AotakeSweep.getPlayerDustbinPage().getOrDefault(playerUUID, 1);
                 int i = page + packet.offset;
                 if (i > 0 && i <= AotakeUtils.getDustbinTotalPage()) {
                     player.closeContainer();
                 }
-                AotakeUtils.executeCommand(player, String.format("/%s %s"
+                CommandUtils.executeCommand(player, String.format("/%s %s"
                         , AotakeUtils.getCommand(EnumCommandType.DUSTBIN_OPEN)
                         , i
                 ));

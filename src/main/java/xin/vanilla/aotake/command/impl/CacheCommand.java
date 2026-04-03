@@ -9,16 +9,21 @@ import net.minecraft.entity.Entity;
 import net.minecraft.entity.player.ServerPlayerEntity;
 import net.minecraft.item.ItemStack;
 import net.minecraft.world.server.ServerWorld;
+import xin.vanilla.aotake.AotakeComponent;
+import xin.vanilla.aotake.AotakeLang;
 import xin.vanilla.aotake.AotakeSweep;
 import xin.vanilla.aotake.config.CommonConfig;
-import xin.vanilla.aotake.data.KeyValue;
-import xin.vanilla.aotake.data.WorldCoordinate;
+import xin.vanilla.aotake.data.player.PlayerSweepData;
 import xin.vanilla.aotake.data.world.WorldTrashData;
 import xin.vanilla.aotake.enums.EnumCommandType;
-import xin.vanilla.aotake.enums.EnumI18nType;
 import xin.vanilla.aotake.util.AotakeUtils;
-import xin.vanilla.aotake.util.CommandUtils;
-import xin.vanilla.aotake.util.Component;
+import xin.vanilla.banira.BaniraCodex;
+import xin.vanilla.banira.common.data.Component;
+import xin.vanilla.banira.common.data.KeyValue;
+import xin.vanilla.banira.common.data.WorldCoordinate;
+import xin.vanilla.banira.common.util.CommandUtils;
+import xin.vanilla.banira.common.util.DimensionUtils;
+import xin.vanilla.banira.common.util.MessageUtils;
 
 import java.util.List;
 
@@ -26,20 +31,24 @@ import java.util.List;
 public class CacheCommand {
     public static LiteralArgumentBuilder<CommandSource> clear() {
         Command<CommandSource> clearCacheCommand = context -> {
-            if (CommandUtils.checkModStatus(context)) return 0;
-            CommandUtils.notifyHelp(context);
+            if (CommandUtils.checkModStatus(context, AotakeSweep::isDisable)) return 0;
+            if (context.getSource().getEntity() instanceof ServerPlayerEntity) {
+                ServerPlayerEntity player = context.getSource().getPlayerOrException();
+                Component modName = AotakeComponent.get().trans("key.aotake_sweep.categories").languageCode(AotakeLang.getPlayerLanguage(player));
+                CommandUtils.notifyHelp(context, PlayerSweepData.getData(player), modName, "/" + AotakeUtils.getCommandPrefix());
+            }
+
             WorldTrashData.get().getDropList().clear();
             WorldTrashData.get().setDirty();
-            Component message = Component.translatable(EnumI18nType.MESSAGE
-                    , "cache_cleared"
+            Component message = AotakeComponent.get().transAuto("cache_cleared"
                     , context.getSource().getEntity() instanceof ServerPlayerEntity
                             ? context.getSource().getPlayerOrException().getDisplayName().getString()
                             : "server"
             );
-            AotakeSweep.getServerInstance().key()
+            BaniraCodex.serverInstance().key()
                     .getPlayerList()
                     .getPlayers()
-                    .forEach(p -> AotakeUtils.sendMessage(p, message));
+                    .forEach(p -> MessageUtils.sendMessage(p, message));
             return 1;
         };
 
@@ -50,37 +59,41 @@ public class CacheCommand {
 
     public static LiteralArgumentBuilder<CommandSource> drop() {
         Command<CommandSource> dropCacheCommand = context -> {
-            if (CommandUtils.checkModStatus(context)) return 0;
-            CommandUtils.notifyHelp(context);
+            if (CommandUtils.checkModStatus(context, AotakeSweep::isDisable)) return 0;
+            if (context.getSource().getEntity() instanceof ServerPlayerEntity) {
+                ServerPlayerEntity player = context.getSource().getPlayerOrException();
+                Component modName = AotakeComponent.get().trans("key.aotake_sweep.categories").languageCode(AotakeLang.getPlayerLanguage(player));
+                CommandUtils.notifyHelp(context, PlayerSweepData.getData(player), modName, "/" + AotakeUtils.getCommandPrefix());
+            }
+
             boolean originalPos = CommandUtils.getBooleanDefault(context, "originalPos", false);
             ServerPlayerEntity player = context.getSource().getPlayerOrException();
             List<KeyValue<WorldCoordinate, ItemStack>> items = WorldTrashData.get().getDropList().snapshot();
             WorldTrashData.get().getDropList().clear();
             items.forEach(kv -> {
-                if (!kv.getValue().isEmpty()) {
+                if (!kv.value().isEmpty()) {
                     WorldCoordinate coordinate;
                     if (originalPos) {
-                        coordinate = kv.getKey();
+                        coordinate = kv.key();
                     } else {
                         coordinate = new WorldCoordinate(player);
                     }
-                    ServerWorld level = AotakeUtils.getWorld(coordinate.getDimension());
-                    Entity entity = AotakeUtils.getEntityFromItem(level, kv.getValue());
-                    entity.moveTo(coordinate.getX(), coordinate.getY(), coordinate.getZ(), (float) coordinate.getYaw(), (float) coordinate.getPitch());
+                    ServerWorld level = DimensionUtils.getLevel(coordinate.dimension());
+                    Entity entity = AotakeUtils.getEntityFromItem(level, kv.value());
+                    entity.moveTo(coordinate.x(), coordinate.y(), coordinate.z(), (float) coordinate.yaw(), (float) coordinate.pitch());
                     level.addFreshEntity(entity);
                 }
             });
             WorldTrashData.get().setDirty();
-            Component message = Component.translatable(EnumI18nType.MESSAGE
-                    , "cache_dropped"
+            Component message = AotakeComponent.get().transAuto("cache_dropped"
                     , context.getSource().getEntity() instanceof ServerPlayerEntity
                             ? context.getSource().getPlayerOrException().getDisplayName().getString()
                             : "server"
             );
-            AotakeSweep.getServerInstance().key()
+            BaniraCodex.serverInstance().key()
                     .getPlayerList()
                     .getPlayers()
-                    .forEach(p -> AotakeUtils.sendMessage(p, message));
+                    .forEach(p -> MessageUtils.sendMessage(p, message));
             return 1;
         };
 

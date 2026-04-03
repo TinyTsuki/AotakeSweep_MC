@@ -8,6 +8,10 @@ import net.minecraft.nbt.INBT;
 import net.minecraft.nbt.NumberNBT;
 import net.minecraft.network.datasync.DataParameter;
 import net.minecraftforge.common.UsernameCache;
+import xin.vanilla.banira.common.util.CollectionUtils;
+import xin.vanilla.banira.common.util.FieldUtils;
+import xin.vanilla.banira.common.util.NBTUtils;
+import xin.vanilla.banira.common.util.SafeExpressionEvaluator;
 
 import javax.annotation.Nullable;
 import java.lang.reflect.Array;
@@ -300,8 +304,8 @@ public class EntityFilter {
                     varsOut.put(key, value);
                     break;
                 case NBT_PATH:
-                    if (NBTPathUtils.has(entity.getPersistentData(), d.payload)) {
-                        INBT tag = NBTPathUtils.getTagByPath(entity.getPersistentData(), d.payload);
+                    if (NBTUtils.has(entity.getPersistentData(), d.payload)) {
+                        INBT tag = NBTUtils.getTagByPath(entity.getPersistentData(), d.payload);
                         if (tag instanceof NumberNBT) {
                             varsOut.put(key, ((NumberNBT) tag).getAsNumber());
                         } else if (tag instanceof CollectionNBT) {

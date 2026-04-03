@@ -9,14 +9,14 @@ import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+import xin.vanilla.aotake.AotakeComponent;
+import xin.vanilla.aotake.Identifier;
 import xin.vanilla.aotake.config.ClientConfig;
 import xin.vanilla.aotake.config.DustbinGuiConfig;
 import xin.vanilla.aotake.config.DustbinGuiLayoutCache;
-import xin.vanilla.aotake.data.KeyValue;
-import xin.vanilla.aotake.enums.EnumI18nType;
 import xin.vanilla.aotake.util.AotakeUtils;
-import xin.vanilla.aotake.util.Component;
-import xin.vanilla.aotake.util.TextureUtils;
+import xin.vanilla.banira.client.util.TextureUtils;
+import xin.vanilla.banira.common.data.KeyValue;
 
 @Mixin(ContainerScreen.class)
 public abstract class ContainerScreenMixin {
@@ -38,10 +38,10 @@ public abstract class ContainerScreenMixin {
         }
 
         DustbinGuiConfig.reload();
-        ResourceLocation texture = TextureUtils.loadCustomTexture(TextureUtils.INTERNAL_THEME_DIR + "dustbin_gui.png");
+        ResourceLocation texture = TextureUtils.loadCustomTexture(Identifier.id(), "textures/gui/dustbin_gui.png");
         KeyValue<Integer, Integer> size = TextureUtils.getTextureSize(texture);
-        int srcW = size.getKey();
-        int srcH = size.getValue();
+        int srcW = size.key();
+        int srcH = size.value();
         if (srcW <= 0 || srcH <= 0) return;
 
         int screenWidth = screen.width;
@@ -63,8 +63,8 @@ public abstract class ContainerScreenMixin {
         PlayerEntity player = net.minecraft.client.Minecraft.getInstance().player;
         if (player == null) return false;
         String title = screen.getTitle().getContents();
-        String modTitle = Component.translatable(EnumI18nType.WORD, "title")
-                .toTextComponent(AotakeUtils.getPlayerLanguage(player))
+        String modTitle = AotakeComponent.get().transAuto("title")
+                .toVanilla(AotakeUtils.getPlayerLanguage(player))
                 .getContents();
         return title.startsWith(modTitle);
     }

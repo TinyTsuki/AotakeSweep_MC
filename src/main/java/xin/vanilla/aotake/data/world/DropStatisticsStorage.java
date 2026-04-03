@@ -8,9 +8,9 @@ import net.minecraft.world.storage.FolderName;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import xin.vanilla.aotake.AotakeSweep;
-import xin.vanilla.aotake.config.ServerConfig;
+import xin.vanilla.aotake.config.CommonConfig;
 import xin.vanilla.aotake.data.DropStatistics;
-import xin.vanilla.aotake.util.JsonUtils;
+import xin.vanilla.banira.common.util.JsonUtils;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -50,8 +50,8 @@ public class DropStatisticsStorage {
         if (server == null) return result;
 
         try {
-            if (Boolean.FALSE.equals(ServerConfig.DUSTBIN_PERSISTENT.get())) return result;
-            if (ServerConfig.DROP_STATS_FILE_LIMIT.get() < 0) return result;
+            if (Boolean.FALSE.equals(CommonConfig.DUSTBIN_PERSISTENT.get())) return result;
+            if (CommonConfig.DROP_STATS_FILE_LIMIT.get() < 0) return result;
         } catch (Throwable ignored) {
         }
 
@@ -60,7 +60,7 @@ public class DropStatisticsStorage {
 
         try {
             String content = new String(Files.readAllBytes(file), StandardCharsets.UTF_8);
-            JsonObject root = JsonUtils.GSON.fromJson(content, JsonObject.class);
+            JsonObject root = JsonUtils.parseObject(content);
             if (root == null || !root.has("entries")) return result;
 
             JsonArray entries = root.getAsJsonArray("entries");
@@ -82,8 +82,8 @@ public class DropStatisticsStorage {
         if (server == null) return;
 
         try {
-            if (Boolean.FALSE.equals(ServerConfig.DUSTBIN_PERSISTENT.get())) return;
-            if (ServerConfig.DROP_STATS_FILE_LIMIT.get() < 0) return;
+            if (Boolean.FALSE.equals(CommonConfig.DUSTBIN_PERSISTENT.get())) return;
+            if (CommonConfig.DROP_STATS_FILE_LIMIT.get() < 0) return;
         } catch (Throwable ignored) {
         }
 
@@ -120,7 +120,7 @@ public class DropStatisticsStorage {
     private static void pruneOldFiles(MinecraftServer server) {
         int limit;
         try {
-            limit = ServerConfig.DROP_STATS_FILE_LIMIT.get();
+            limit = CommonConfig.DROP_STATS_FILE_LIMIT.get();
         } catch (Throwable ignored) {
             return;
         }

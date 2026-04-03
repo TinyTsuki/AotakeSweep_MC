@@ -2,8 +2,6 @@ package xin.vanilla.aotake;
 
 import lombok.Getter;
 import lombok.Setter;
-import net.minecraft.server.MinecraftServer;
-import net.minecraft.util.ResourceLocation;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.RegisterCommandsEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
@@ -11,30 +9,22 @@ import net.minecraftforge.fml.ModLoadingContext;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.config.ModConfig;
 import net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent;
-import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent;
 import net.minecraftforge.fml.event.server.FMLServerStartingEvent;
-import net.minecraftforge.fml.event.server.FMLServerStoppingEvent;
 import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import xin.vanilla.aotake.command.AotakeCommand;
 import xin.vanilla.aotake.config.ClientConfig;
 import xin.vanilla.aotake.config.CommonConfig;
-import xin.vanilla.aotake.config.CustomConfig;
-import xin.vanilla.aotake.config.ServerConfig;
-import xin.vanilla.aotake.data.KeyValue;
-import xin.vanilla.aotake.data.player.PlayerSweepData;
 import xin.vanilla.aotake.event.ClientModEventHandler;
-import xin.vanilla.aotake.network.ModNetworkHandler;
-import xin.vanilla.aotake.util.AotakeScheduler;
-import xin.vanilla.aotake.util.CommandUtils;
+import xin.vanilla.aotake.network.NetworkInit;
 import xin.vanilla.aotake.util.EntityFilter;
 import xin.vanilla.aotake.util.EntitySweeper;
+import xin.vanilla.banira.BaniraCodex;
+import xin.vanilla.banira.common.data.KeyValue;
 
-import java.util.HashSet;
 import java.util.Map;
 import java.util.Random;
-import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 @Mod(AotakeSweep.MODID)
@@ -43,21 +33,8 @@ public class AotakeSweep {
     public final static String DEFAULT_COMMAND_PREFIX = "aotake";
 
     public static final String MODID = "aotake_sweep";
-    public static final String ARTIFACT_ID = "xin.vanilla";
 
     private static final Logger LOGGER = LogManager.getLogger();
-
-    /**
-     * 服务端实例
-     */
-    @Getter
-    private final static KeyValue<MinecraftServer, Boolean> serverInstance = new KeyValue<>(null, true);
-
-    /**
-     * 已安装mod的玩家列表
-     */
-    @Getter
-    private static final Set<String> customConfigStatus = new HashSet<>();
 
     /**
      * 玩家当前浏览的垃圾箱页数
@@ -90,28 +67,21 @@ public class AotakeSweep {
     private static final EntityFilter entityFilter = new EntityFilter();
 
     public AotakeSweep() {
-
         // 注册网络通道
-        ModNetworkHandler.registerPackets();
+        NetworkInit.registerPackets();
 
         // 注册服务器启动和关闭事件
         MinecraftForge.EVENT_BUS.addListener(this::onServerStarting);
-        MinecraftForge.EVENT_BUS.addListener(this::onServerStopping);
 
         // 注册当前实例到事件总线
         MinecraftForge.EVENT_BUS.register(this);
-        // 注册调度器
-        MinecraftForge.EVENT_BUS.register(AotakeScheduler.class);
 
         // 注册配置
         ModLoadingContext.get().registerConfig(ModConfig.Type.COMMON, CommonConfig.COMMON_CONFIG);
-        ModLoadingContext.get().registerConfig(ModConfig.Type.SERVER, ServerConfig.SERVER_CONFIG);
         ModLoadingContext.get().registerConfig(ModConfig.Type.CLIENT, ClientConfig.CLIENT_CONFIG);
 
         // 注册客户端设置事件
         FMLJavaModLoadingContext.get().getModEventBus().addListener(this::onClientSetup);
-        // 注册公共设置事件
-        FMLJavaModLoadingContext.get().getModEventBus().addListener(this::onCommonSetup);
         // 注册配置文件重载事件
         FMLJavaModLoadingContext.get().getModEventBus().addListener(this::onConfigReload);
     }
@@ -125,21 +95,8 @@ public class AotakeSweep {
         ClientModEventHandler.registerKeyBindings();
     }
 
-    /**
-     * 公共设置阶段事件
-     */
-    public void onCommonSetup(final FMLCommonSetupEvent event) {
-        CustomConfig.loadCustomConfig(false);
-    }
-
     private void onServerStarting(FMLServerStartingEvent event) {
         entitySweeper.clear();
-        AotakeSweep.serverInstance.setKey(event.getServer()).setValue(true);
-    }
-
-    private void onServerStopping(FMLServerStoppingEvent event) {
-        AotakeSweep.serverInstance.setValue(false);
-        PlayerSweepData.clear();
     }
 
     @SubscribeEvent
@@ -150,39 +107,11 @@ public class AotakeSweep {
 
     public void onConfigReload(ModConfig.ModConfigEvent event) {
         try {
-            if (event.getConfig().getSpec() == ServerConfig.SERVER_CONFIG && serverInstance.val()) {
+            if (event.getConfig().getSpec() == CommonConfig.COMMON_CONFIG && BaniraCodex.serverInstance().val()) {
                 entityFilter.clear();
-                CommandUtils.configKeyMapCache.clear();
             }
         } catch (Exception ignored) {
         }
     }
-
-    // region 资源ID
-
-    public static ResourceLocation emptyIdentifier() {
-        return createIdentifier("", "");
-    }
-
-    public static ResourceLocation createIdentifier(String path) {
-        return createIdentifier(AotakeSweep.MODID, path);
-    }
-
-    public static ResourceLocation createIdentifier(String namespace, String path) {
-        return new ResourceLocation(namespace, path);
-    }
-
-    public static ResourceLocation parseIdentifier(String location) {
-        return ResourceLocation.tryParse(location);
-    }
-
-    // endregion 资源ID
-
-
-    // region 外部方法
-    public void reloadCustomConfig() {
-        CustomConfig.loadCustomConfig(false);
-    }
-    // endregion 外部方法
 
 }

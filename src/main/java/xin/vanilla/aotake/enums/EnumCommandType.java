@@ -4,16 +4,18 @@ import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import lombok.Getter;
 import net.minecraft.command.CommandSource;
 import xin.vanilla.aotake.command.impl.*;
+import xin.vanilla.banira.command.BaniraCommand;
+import xin.vanilla.banira.common.api.IVirtualPermissionType;
 
 import javax.annotation.Nullable;
 import java.util.function.Supplier;
 
 @Getter
-public enum EnumCommandType {
+public enum EnumCommandType implements IVirtualPermissionType {
     HELP(HelpCommand::help, false, false),
-    LANGUAGE(LanguageCommand::lang, false, false),
+    LANGUAGE(() -> BaniraCommand.LANGUAGE, false, false),
     LANGUAGE_CONCISE(),
-    VIRTUAL_OP(VirtualOpCommand::vop),
+    VIRTUAL_OP(() -> BaniraCommand.VIRTUAL_OP),
     VIRTUAL_OP_CONCISE(),
     DUSTBIN_OPEN(DustbinCommand::open),
     DUSTBIN_OPEN_CONCISE(),

@@ -1,13 +1,8 @@
 package xin.vanilla.aotake.util;
 
-import com.mojang.brigadier.StringReader;
-import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import lombok.NonNull;
-import net.minecraft.block.Block;
 import net.minecraft.block.BlockState;
-import net.minecraft.client.Minecraft;
 import net.minecraft.command.CommandSource;
-import net.minecraft.command.arguments.BlockStateParser;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityType;
 import net.minecraft.entity.item.ItemEntity;
@@ -15,29 +10,24 @@ import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.entity.player.ServerPlayerEntity;
 import net.minecraft.inventory.Inventory;
 import net.minecraft.inventory.container.INamedContainerProvider;
-import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.CompoundNBT;
-import net.minecraft.nbt.CompressedStreamTools;
-import net.minecraft.nbt.JsonToNBT;
-import net.minecraft.network.IPacket;
-import net.minecraft.network.play.server.SChatPacket;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.tileentity.TileEntity;
-import net.minecraft.util.*;
+import net.minecraft.util.ActionResultType;
+import net.minecraft.util.Direction;
+import net.minecraft.util.Hand;
+import net.minecraft.util.ResourceLocation;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.BlockRayTraceResult;
 import net.minecraft.util.math.vector.Vector3d;
-import net.minecraft.util.text.ChatType;
 import net.minecraft.util.text.ITextComponent;
-import net.minecraft.util.text.TranslationTextComponent;
 import net.minecraft.util.text.event.ClickEvent;
 import net.minecraft.util.text.event.HoverEvent;
 import net.minecraft.world.World;
 import net.minecraft.world.server.ServerWorld;
 import net.minecraftforge.common.util.LazyOptional;
 import net.minecraftforge.fml.ModList;
-import net.minecraftforge.fml.network.PacketDistributor;
 import net.minecraftforge.items.CapabilityItemHandler;
 import net.minecraftforge.items.IItemHandler;
 import net.minecraftforge.items.ItemHandlerHelper;
@@ -45,25 +35,30 @@ import net.minecraftforge.items.ItemStackHandler;
 import net.minecraftforge.registries.ForgeRegistries;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import xin.vanilla.aotake.AotakeComponent;
+import xin.vanilla.aotake.AotakeLang;
 import xin.vanilla.aotake.AotakeSweep;
 import xin.vanilla.aotake.config.CommonConfig;
-import xin.vanilla.aotake.config.CustomConfig;
-import xin.vanilla.aotake.config.ServerConfig;
 import xin.vanilla.aotake.config.WarningConfig;
 import xin.vanilla.aotake.data.ChunkKey;
-import xin.vanilla.aotake.data.KeyValue;
 import xin.vanilla.aotake.data.SweepResult;
-import xin.vanilla.aotake.data.WorldCoordinate;
 import xin.vanilla.aotake.data.player.PlayerSweepData;
 import xin.vanilla.aotake.data.world.WorldTrashData;
-import xin.vanilla.aotake.enums.*;
+import xin.vanilla.aotake.enums.EnumCommandType;
+import xin.vanilla.aotake.enums.EnumDustbinMode;
+import xin.vanilla.aotake.enums.EnumListType;
+import xin.vanilla.aotake.enums.EnumSelfCleanMode;
 import xin.vanilla.aotake.event.EventHandlerProxy;
-import xin.vanilla.aotake.mixin.ServerPlayerAccessor;
-import xin.vanilla.aotake.network.ModNetworkHandler;
+import xin.vanilla.aotake.network.NetworkInit;
 import xin.vanilla.aotake.network.packet.DustbinPageSyncToClient;
+import xin.vanilla.banira.BaniraCodex;
+import xin.vanilla.banira.common.data.Component;
+import xin.vanilla.banira.common.data.KeyValue;
+import xin.vanilla.banira.common.data.WorldCoordinate;
+import xin.vanilla.banira.common.enums.EnumMCColor;
+import xin.vanilla.banira.common.util.*;
 
 import javax.annotation.Nullable;
-import java.io.File;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -148,36 +143,36 @@ public class AotakeUtils {
             case CONFIG:
             case VIRTUAL_OP:
             case VIRTUAL_OP_CONCISE:
-                return ServerConfig.PERMISSION_VIRTUAL_OP.get();
+                return CommonConfig.PERMISSION_VIRTUAL_OP.get();
             case DUSTBIN_OPEN:
             case DUSTBIN_OPEN_CONCISE:
-                return ServerConfig.PERMISSION_DUSTBIN_OPEN.get();
+                return CommonConfig.PERMISSION_DUSTBIN_OPEN.get();
             case DUSTBIN_OPEN_OTHER:
             case DUSTBIN_OPEN_OTHER_CONCISE:
-                return ServerConfig.PERMISSION_DUSTBIN_OPEN_OTHER.get();
+                return CommonConfig.PERMISSION_DUSTBIN_OPEN_OTHER.get();
             case DUSTBIN_CLEAR:
             case DUSTBIN_CLEAR_CONCISE:
-                return ServerConfig.PERMISSION_DUSTBIN_CLEAR.get();
+                return CommonConfig.PERMISSION_DUSTBIN_CLEAR.get();
             case DUSTBIN_DROP:
             case DUSTBIN_DROP_CONCISE:
-                return ServerConfig.PERMISSION_DUSTBIN_DROP.get();
+                return CommonConfig.PERMISSION_DUSTBIN_DROP.get();
             case CACHE_CLEAR:
             case CACHE_CLEAR_CONCISE:
-                return ServerConfig.PERMISSION_CACHE_CLEAR.get();
+                return CommonConfig.PERMISSION_CACHE_CLEAR.get();
             case CACHE_DROP:
             case CACHE_DROP_CONCISE:
-                return ServerConfig.PERMISSION_CACHE_DROP.get();
+                return CommonConfig.PERMISSION_CACHE_DROP.get();
             case SWEEP:
             case SWEEP_CONCISE:
-                return ServerConfig.PERMISSION_SWEEP.get();
+                return CommonConfig.PERMISSION_SWEEP.get();
             case CLEAR_DROP:
             case CLEAR_DROP_CONCISE:
-                return ServerConfig.PERMISSION_CLEAR_DROP.get();
+                return CommonConfig.PERMISSION_CLEAR_DROP.get();
             case DELAY_SWEEP:
             case DELAY_SWEEP_CONCISE:
-                return ServerConfig.PERMISSION_DELAY_SWEEP.get();
+                return CommonConfig.PERMISSION_DELAY_SWEEP.get();
             case CATCH_PLAYER:
-                return ServerConfig.PERMISSION_CATCH_PLAYER.get();
+                return CommonConfig.PERMISSION_CATCH_PLAYER.get();
             default:
                 return 0;
         }
@@ -260,212 +255,22 @@ public class AotakeUtils {
         if (ModList.get().isLoaded("narcissus_farewell")) {
             return String.format("/%s %s %s %s safe %s"
                     , CompatNarcissus.getTpCommand()
-                    , coordinate.getXInt()
-                    , coordinate.getYInt()
-                    , coordinate.getZInt()
-                    , coordinate.getDimensionResourceId()
+                    , coordinate.xInt()
+                    , coordinate.yInt()
+                    , coordinate.zInt()
+                    , coordinate.dimensionId()
             );
         } else {
             return String.format("/execute in %s as @s run tp %s %s %s"
-                    , coordinate.getDimensionResourceId()
-                    , coordinate.getXInt()
-                    , coordinate.getYInt()
-                    , coordinate.getZInt()
+                    , coordinate.dimensionId()
+                    , coordinate.xInt()
+                    , coordinate.yInt()
+                    , coordinate.zInt()
             );
         }
     }
 
-    /**
-     * 执行指令
-     */
-    public static boolean executeCommand(@NonNull ServerPlayerEntity player, @NonNull String command, int permission, boolean suppressedOutput) {
-        boolean result = false;
-        try {
-            MinecraftServer server = player.getServer();
-            CommandSource commandSourceStack = player.createCommandSourceStack();
-            if (permission > 0) {
-                commandSourceStack = commandSourceStack.withPermission(permission);
-            }
-            if (suppressedOutput) {
-                commandSourceStack = commandSourceStack.withSuppressedOutput();
-            }
-            result = server.getCommands().performCommand(commandSourceStack, command) > 0;
-        } catch (Exception e) {
-            LOGGER.error("Failed to execute command: {}", command, e);
-        }
-        return result;
-    }
-
-    /**
-     * 执行指令
-     */
-    public static boolean executeCommand(@NonNull ServerPlayerEntity player, @NonNull String command) {
-        return executeCommand(player, command, 0, false);
-    }
-
-    /**
-     * 执行指令
-     */
-    public static boolean executeCommandNoOutput(@NonNull ServerPlayerEntity player, @NonNull String command) {
-        return executeCommandNoOutput(player, command, 0);
-    }
-
-    /**
-     * 执行指令
-     */
-    public static boolean executeCommandNoOutput(@NonNull ServerPlayerEntity player, @NonNull String command, int permission) {
-        return executeCommand(player, command, permission, true);
-    }
-
-    public static void refreshPermission(@NonNull ServerPlayerEntity player) {
-        MinecraftServer server = player.getServer();
-        if (server == null) {
-            server = AotakeSweep.getServerInstance().getKey();
-        }
-        server.getPlayerList().sendPlayerPermissionLevel(player);
-    }
-
     // endregion 指令相关
-
-
-    // region 消息相关
-
-    /**
-     * 广播消息
-     *
-     * @param server  发送者
-     * @param message 消息
-     */
-    public static void broadcastMessage(MinecraftServer server, Component message) {
-        server.getPlayerList().broadcastMessage(new TranslationTextComponent("chat.type.announcement", "Server", message.toChatComponent()), ChatType.SYSTEM, Util.NIL_UUID);
-    }
-
-    /**
-     * 发送消息
-     *
-     * @param player  玩家
-     * @param message 消息
-     */
-    public static void sendMessage(PlayerEntity player, Component message) {
-        player.sendMessage(message.toChatComponent(AotakeUtils.getPlayerLanguage(player)), player.getUUID());
-    }
-
-    /**
-     * 发送翻译消息
-     *
-     * @param player 玩家
-     * @param key    翻译键
-     * @param args   参数
-     */
-    public static void sendTranslatableMessage(PlayerEntity player, String key, Object... args) {
-        player.sendMessage(Component.translatable(key, args).setLanguageCode(AotakeUtils.getPlayerLanguage(player)).toChatComponent(), player.getUUID());
-    }
-
-    /**
-     * 发送翻译消息
-     *
-     * @param source  指令来源
-     * @param success 是否成功
-     * @param key     翻译键
-     * @param args    参数
-     */
-    public static void sendTranslatableMessage(CommandSource source, boolean success, String key, Object... args) {
-        if (source.getEntity() != null && source.getEntity() instanceof ServerPlayerEntity) {
-            try {
-                sendTranslatableMessage(source.getPlayerOrException(), key, args);
-            } catch (CommandSyntaxException ignored) {
-            }
-        } else if (success) {
-            source.sendSuccess(Component.translatable(key, args).setLanguageCode(ServerConfig.DEFAULT_LANGUAGE.get()).toChatComponent(), false);
-        } else {
-            source.sendFailure(Component.translatable(key, args).setLanguageCode(ServerConfig.DEFAULT_LANGUAGE.get()).toChatComponent());
-        }
-    }
-
-    /**
-     * 发送操作栏消息
-     */
-    public static void sendActionBarMessage(ServerPlayerEntity player, Component message) {
-        player.connection.send(new SChatPacket(message.toChatComponent(AotakeUtils.getPlayerLanguage(player)), ChatType.GAME_INFO, player.getUUID()));
-    }
-
-    /**
-     * 广播数据包至所有玩家
-     *
-     * @param packet 数据包
-     */
-    public static void broadcastPacket(IPacket<?> packet) {
-        AotakeSweep.getServerInstance().key().getPlayerList().getPlayers().forEach(player -> player.connection.send(packet));
-    }
-
-    /**
-     * 发送数据包至服务器
-     */
-    public static <MSG> void sendPacketToServer(MSG msg) {
-        ModNetworkHandler.INSTANCE.sendToServer(msg);
-    }
-
-    /**
-     * 发送数据包至玩家
-     */
-    public static <MSG> void sendPacketToPlayer(MSG msg, ServerPlayerEntity player) {
-        ModNetworkHandler.INSTANCE.send(PacketDistributor.PLAYER.with(() -> player), msg);
-    }
-
-    // endregion 消息相关
-
-
-    // region 玩家语言相关
-
-    public static String getPlayerLanguage(@NonNull PlayerEntity player) {
-        try {
-            String language;
-            if (player.isLocalPlayer()) {
-                language = CustomConfig.getPlayerLanguageClient(getPlayerUUIDString(player));
-            } else {
-                language = CustomConfig.getPlayerLanguage(getPlayerUUIDString(player));
-            }
-            return AotakeUtils.getValidLanguage(player, language);
-        } catch (IllegalArgumentException i) {
-            return ServerConfig.DEFAULT_LANGUAGE.get();
-        }
-    }
-
-    public static String getValidLanguage(@Nullable PlayerEntity player, @Nullable String language) {
-        String result;
-        if (StringUtils.isNullOrEmptyEx(language) || "client".equalsIgnoreCase(language)) {
-            if (player instanceof ServerPlayerEntity) {
-                result = AotakeUtils.getServerPlayerLanguage((ServerPlayerEntity) player);
-            } else {
-                result = AotakeUtils.getClientLanguage();
-            }
-        } else if ("server".equalsIgnoreCase(language)) {
-            result = ServerConfig.DEFAULT_LANGUAGE.get();
-        } else {
-            result = language;
-        }
-        return result;
-    }
-
-    public static String getServerPlayerLanguage(ServerPlayerEntity player) {
-        return PlayerLanguageManager.get(player);
-    }
-
-    /**
-     * 复制玩家语言设置
-     *
-     * @param originalPlayer 原始玩家
-     * @param targetPlayer   目标玩家
-     */
-    public static void clonePlayerLanguage(ServerPlayerEntity originalPlayer, ServerPlayerEntity targetPlayer) {
-        ((ServerPlayerAccessor) targetPlayer).language(((ServerPlayerAccessor) originalPlayer).language());
-    }
-
-    public static String getClientLanguage() {
-        return Minecraft.getInstance().getLanguageManager().getSelected().getCode();
-    }
-
-    // endregion 玩家语言相关
 
 
     // region 扫地
@@ -480,7 +285,7 @@ public class AotakeUtils {
     private static void initSafeBlocks() {
         if (SAFE_BLOCKS_STATE == null) {
             SAFE_BLOCKS_STATE = CommonConfig.SAFE_BLOCKS.get().stream()
-                    .map(AotakeUtils::deserializeBlockState)
+                    .map(BlockUtils::deserializeBlockState)
                     .filter(Objects::nonNull)
                     .distinct()
                     .collect(Collectors.toList());
@@ -494,7 +299,7 @@ public class AotakeUtils {
         }
         if (SAFE_BLOCKS_BELOW_STATE == null) {
             SAFE_BLOCKS_BELOW_STATE = CommonConfig.SAFE_BLOCKS_BELOW.get().stream()
-                    .map(AotakeUtils::deserializeBlockState)
+                    .map(BlockUtils::deserializeBlockState)
                     .filter(Objects::nonNull)
                     .distinct()
                     .collect(Collectors.toList());
@@ -508,7 +313,7 @@ public class AotakeUtils {
         }
         if (SAFE_BLOCKS_ABOVE_STATE == null) {
             SAFE_BLOCKS_ABOVE_STATE = CommonConfig.SAFE_BLOCKS_ABOVE.get().stream()
-                    .map(AotakeUtils::deserializeBlockState)
+                    .map(BlockUtils::deserializeBlockState)
                     .filter(Objects::nonNull)
                     .distinct()
                     .collect(Collectors.toList());
@@ -524,7 +329,7 @@ public class AotakeUtils {
 
     public static List<Entity> getAllEntities() {
         List<Entity> entities = new ArrayList<>();
-        KeyValue<MinecraftServer, Boolean> serverInstance = AotakeSweep.getServerInstance();
+        KeyValue<MinecraftServer, Boolean> serverInstance = BaniraCodex.serverInstance();
         if (serverInstance.val()) {
             serverInstance.key().getAllLevels()
                     .forEach(level -> entities.addAll(level.getEntities()
@@ -539,29 +344,29 @@ public class AotakeUtils {
         if (entity != null && !(entity instanceof PlayerEntity)) {
             if (chuck) {
                 // 空列表
-                if (CollectionUtils.isNullOrEmpty(ServerConfig.CHUNK_CHECK_ENTITY_LIST.get())) {
-                    result = EnumListType.WHITE.name().equals(ServerConfig.CHUNK_CHECK_ENTITY_LIST_MODE.get());
+                if (CollectionUtils.isNullOrEmpty(CommonConfig.CHUNK_CHECK_ENTITY_LIST.get())) {
+                    result = EnumListType.WHITE.name().equals(CommonConfig.CHUNK_CHECK_ENTITY_LIST_MODE.get());
                 }
                 // 黑名单模式
-                else if (EnumListType.BLACK.name().equals(ServerConfig.CHUNK_CHECK_ENTITY_LIST_MODE.get())) {
-                    result = AotakeSweep.getEntityFilter().validEntity(ServerConfig.CHUNK_CHECK_ENTITY_LIST.get(), entity);
+                else if (EnumListType.BLACK.name().equals(CommonConfig.CHUNK_CHECK_ENTITY_LIST_MODE.get())) {
+                    result = AotakeSweep.getEntityFilter().validEntity(CommonConfig.CHUNK_CHECK_ENTITY_LIST.get(), entity);
                 }
                 // 白名单模式
                 else {
-                    result = !AotakeSweep.getEntityFilter().validEntity(ServerConfig.CHUNK_CHECK_ENTITY_LIST.get(), entity);
+                    result = !AotakeSweep.getEntityFilter().validEntity(CommonConfig.CHUNK_CHECK_ENTITY_LIST.get(), entity);
                 }
             } else {
                 // 空列表
-                if (CollectionUtils.isNullOrEmpty(ServerConfig.ENTITY_LIST.get())) {
-                    result = EnumListType.WHITE.name().equals(ServerConfig.ENTITY_LIST_MODE.get());
+                if (CollectionUtils.isNullOrEmpty(CommonConfig.ENTITY_LIST.get())) {
+                    result = EnumListType.WHITE.name().equals(CommonConfig.ENTITY_LIST_MODE.get());
                 }
                 // 黑名单模式
-                else if (EnumListType.BLACK.name().equals(ServerConfig.ENTITY_LIST_MODE.get())) {
-                    result = AotakeSweep.getEntityFilter().validEntity(ServerConfig.ENTITY_LIST.get(), entity);
+                else if (EnumListType.BLACK.name().equals(CommonConfig.ENTITY_LIST_MODE.get())) {
+                    result = AotakeSweep.getEntityFilter().validEntity(CommonConfig.ENTITY_LIST.get(), entity);
                 }
                 // 白名单模式
                 else {
-                    result = !AotakeSweep.getEntityFilter().validEntity(ServerConfig.ENTITY_LIST.get(), entity);
+                    result = !AotakeSweep.getEntityFilter().validEntity(CommonConfig.ENTITY_LIST.get(), entity);
                 }
             }
         }
@@ -574,24 +379,24 @@ public class AotakeUtils {
         boolean stateFlag = false;
         if (!SAFE_BLOCKS.isEmpty() || !SAFE_BLOCKS_STATE.isEmpty()) {
             BlockState state = blockStateCache.computeIfAbsent(new KeyValue<>(level, entity.blockPosition())
-                    , pair -> pair.getKey().getBlockState(pair.getValue()));
-            stateFlag = SAFE_BLOCKS.contains(AotakeUtils.getBlockRegistryName(state))
+                    , pair -> pair.key().getBlockState(pair.value()));
+            stateFlag = SAFE_BLOCKS.contains(BlockUtils.getBlockRegistryString(state))
                     || SAFE_BLOCKS_STATE.contains(state);
         }
 
         boolean belowFlag = false;
         if (!SAFE_BLOCKS_BELOW.isEmpty() || !SAFE_BLOCKS_BELOW_STATE.isEmpty()) {
             BlockState below = blockStateCache.computeIfAbsent(new KeyValue<>(level, entity.blockPosition().below())
-                    , pair -> pair.getKey().getBlockState(pair.getValue()));
-            belowFlag = SAFE_BLOCKS_BELOW.contains(AotakeUtils.getBlockRegistryName(below))
+                    , pair -> pair.key().getBlockState(pair.value()));
+            belowFlag = SAFE_BLOCKS_BELOW.contains(BlockUtils.getBlockRegistryString(below))
                     || SAFE_BLOCKS_BELOW_STATE.contains(below);
         }
 
         boolean aboveFlag = false;
         if (!SAFE_BLOCKS_ABOVE.isEmpty() || !SAFE_BLOCKS_ABOVE_STATE.isEmpty()) {
             BlockState above = blockStateCache.computeIfAbsent(new KeyValue<>(level, entity.blockPosition().above())
-                    , pair -> pair.getKey().getBlockState(pair.getValue()));
-            aboveFlag = SAFE_BLOCKS_ABOVE.contains(AotakeUtils.getBlockRegistryName(above))
+                    , pair -> pair.key().getBlockState(pair.value()));
+            aboveFlag = SAFE_BLOCKS_ABOVE.contains(BlockUtils.getBlockRegistryString(above))
                     || SAFE_BLOCKS_ABOVE_STATE.contains(above);
         }
 
@@ -645,7 +450,7 @@ public class AotakeUtils {
         }
 
         LOGGER.debug("Entity safe filter started at {}", System.currentTimeMillis());
-        int typeLimit = ServerConfig.ENTITY_LIST_LIMIT.get();
+        int typeLimit = CommonConfig.ENTITY_LIST_LIMIT.get();
         Set<String> exceededTypes = new HashSet<>();
         for (Map.Entry<String, Integer> entry : nonJunkTypeCounts.entrySet()) {
             if (entry.getValue() > typeLimit) {
@@ -706,7 +511,7 @@ public class AotakeUtils {
      * @param filtered 实体列表是否已过滤
      */
     public static void sweep(List<Entity> entities, boolean filtered) {
-        KeyValue<MinecraftServer, Boolean> serverInstance = AotakeSweep.getServerInstance();
+        KeyValue<MinecraftServer, Boolean> serverInstance = BaniraCodex.serverInstance();
         // 服务器已关闭
         if (!serverInstance.val()) return;
 
@@ -723,8 +528,8 @@ public class AotakeUtils {
 
             // if (CollectionUtils.isNotNullOrEmpty(list)) {
             // 清空旧的物品
-            if (ServerConfig.SELF_CLEAN_MODE.get().contains(EnumSelfCleanMode.SWEEP_CLEAR.name())) {
-                switch (EnumDustbinMode.valueOfOrDefault(ServerConfig.DUSTBIN_MODE.get())) {
+            if (CommonConfig.SELF_CLEAN_MODE.get().contains(EnumSelfCleanMode.SWEEP_CLEAR.name())) {
+                switch (EnumDustbinMode.valueOfOrDefault(CommonConfig.DUSTBIN_MODE.get())) {
                     case VIRTUAL: {
                         clearVirtualDustbin();
                     }
@@ -745,31 +550,31 @@ public class AotakeUtils {
         } catch (Exception e) {
             LOGGER.error(e);
             for (ServerPlayerEntity p : players) {
-                String language = AotakeUtils.getPlayerLanguage(p);
+                String language = AotakeLang.getPlayerLanguage(p);
                 Component msg = getWarningMessage("error", language, null);
                 PlayerSweepData playerData = PlayerSweepData.getData(p);
                 if (playerData.isShowSweepResult()) {
-                    AotakeUtils.sendMessage(p, Component.empty()
+                    MessageUtils.sendMessage(p, AotakeComponent.get().empty()
                             .append(msg)
-                            .append(Component.literal("[x]")
-                                    .setColor(EnumMCColor.RED.getColor())
-                                    .setHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT
-                                            , Component.translatable(EnumI18nType.MESSAGE, "not_show_button")
-                                            .toTextComponent(language))
+                            .append(AotakeComponent.get().literal("[x]")
+                                    .color(EnumMCColor.RED.getColor())
+                                    .hoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT
+                                            , AotakeComponent.get().transAuto("not_show_button")
+                                            .toVanilla(language))
                                     )
-                                    .setClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND
+                                    .clickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND
                                             , "/" + AotakeUtils.getCommandPrefix() + " config player showSweepResult change")
                                     )
                             )
                     );
                 } else {
-                    AotakeUtils.sendActionBarMessage(p, msg);
+                    MessageUtils.sendActionBarMessage(p, msg);
                 }
                 if (playerData.isEnableWarningVoice()) {
                     String voice = getWarningVoice("error");
                     float volume = CommonConfig.SWEEP_WARNING_VOICE_VOLUME.get() / 100f;
                     if (StringUtils.isNotNullOrEmpty(voice)) {
-                        AotakeUtils.executeCommandNoOutput(p, String.format("playsound %s voice @s ~ ~ ~ %s", voice, volume));
+                        CommandUtils.executeCommandNoOutput(p, String.format("playsound %s voice @s ~ ~ ~ %s", voice, volume));
                     }
                 }
             }
@@ -784,8 +589,8 @@ public class AotakeUtils {
     }
 
     private static void clearDustbinBlock() {
-        for (String pos : ServerConfig.DUSTBIN_BLOCK_POSITIONS.get()) {
-            WorldCoordinate coordinate = WorldCoordinate.fromSimpleString(pos);
+        for (String pos : CommonConfig.DUSTBIN_BLOCK_POSITIONS.get()) {
+            WorldCoordinate coordinate = WorldCoordinate.fromString(pos);
             if (coordinate != null) {
                 IItemHandler handler = getBlockItemHandler(coordinate);
                 if (handler != null) {
@@ -884,11 +689,11 @@ public class AotakeUtils {
             Map<String, List<String>> group = getActiveWarnGroup();
             String text = CollectionUtils.getRandomElement(group.get(key));
             if (StringUtils.isNotNullOrEmpty(text) && text.startsWith("message.aotake_sweep.")) {
-                text = I18nUtils.getTranslation(text, lang);
+                text = AotakeLang.get().getTranslation(text, lang);
             }
-            if (StringUtils.toInt(key) > 0) {
+            if (NumberUtils.toInt(key) > 0) {
                 if (StringUtils.isNullOrEmpty(text)) {
-                    text = Component.translatable(EnumI18nType.MESSAGE, "cleanup_will_start", key).toTextComponent(lang).getString();
+                    text = AotakeComponent.get().transAuto("cleanup_will_start", key).toVanilla(lang).getString();
                 } else {
                     text = StringUtils.format(text, key);
                 }
@@ -901,7 +706,7 @@ public class AotakeUtils {
                     .replaceAll("\\[recycledItemCount]", String.valueOf(result.getRecycledItemCount()))
                     .replaceAll("\\[recycledEntityCount]", String.valueOf(result.getRecycledEntityCount()));
 
-            msg = Component.literal(text);
+            msg = AotakeComponent.get().literal(text);
             msg.appendArg(key);
         } catch (Exception ignored) {
         }
@@ -959,12 +764,12 @@ public class AotakeUtils {
     public static int dustbin(@NonNull ServerPlayerEntity player, int page) {
         int result = 0;
         int vPage = CommonConfig.DUSTBIN_PAGE_LIMIT.get();
-        int bPage = ServerConfig.DUSTBIN_BLOCK_POSITIONS.get().size();
+        int bPage = CommonConfig.DUSTBIN_BLOCK_POSITIONS.get().size();
         int totalPage = getDustbinTotalPage();
         if (totalPage <= 0) {
-            AotakeUtils.sendMessage(player, Component.translatable(EnumI18nType.MESSAGE, "dustbin_page_empty"));
+            MessageUtils.sendMessage(player, AotakeComponent.get().transAuto("dustbin_page_empty"));
         } else {
-            switch (EnumDustbinMode.valueOfOrDefault(ServerConfig.DUSTBIN_MODE.get())) {
+            switch (EnumDustbinMode.valueOfOrDefault(CommonConfig.DUSTBIN_MODE.get())) {
                 case VIRTUAL: {
                     result = openVirtualDustbin(player, page);
                 }
@@ -997,8 +802,8 @@ public class AotakeUtils {
         }
 
         if (result > 0) {
-            AotakeSweep.getPlayerDustbinPage().put(AotakeUtils.getPlayerUUIDString(player), page);
-            AotakeUtils.sendPacketToPlayer(new DustbinPageSyncToClient(page, totalPage), player);
+            AotakeSweep.getPlayerDustbinPage().put(PlayerUtils.getPlayerUUIDString(player), page);
+            PacketUtils.sendPacketToPlayer(NetworkInit.INSTANCE, new DustbinPageSyncToClient(page, totalPage), player);
         }
         return result;
     }
@@ -1008,17 +813,17 @@ public class AotakeUtils {
         if (trashContainer == null) return 0;
         int result = player.openMenu(trashContainer).orElse(0);
 
-        if (result > 0) AotakeSweep.getPlayerDustbinPage().put(AotakeUtils.getPlayerUUIDString(player), page);
+        if (result > 0) AotakeSweep.getPlayerDustbinPage().put(PlayerUtils.getPlayerUUIDString(player), page);
         return result;
     }
 
     private static int openDustbinBlock(@NonNull ServerPlayerEntity player, int page) {
         int result = 0;
-        List<? extends String> positions = ServerConfig.DUSTBIN_BLOCK_POSITIONS.get();
+        List<? extends String> positions = CommonConfig.DUSTBIN_BLOCK_POSITIONS.get();
         if (CollectionUtils.isNotNullOrEmpty(positions) && positions.size() >= page) {
-            WorldCoordinate coordinate = WorldCoordinate.fromSimpleString(positions.get(page - 1));
+            WorldCoordinate coordinate = WorldCoordinate.fromString(positions.get(page - 1));
 
-            Direction direction = coordinate.getDirection();
+            Direction direction = coordinate.direction();
             if (direction == null) direction = Direction.UP;
             // 命中点：方块中心或面上
             Vector3d center = coordinate.toVector3d().add(0.5, 0.5, 0.5);
@@ -1033,7 +838,7 @@ public class AotakeUtils {
             }
         }
 
-        if (result > 0) AotakeSweep.getPlayerDustbinPage().put(AotakeUtils.getPlayerUUIDString(player), page);
+        if (result > 0) AotakeSweep.getPlayerDustbinPage().put(PlayerUtils.getPlayerUUIDString(player), page);
         return result;
     }
 
@@ -1050,8 +855,8 @@ public class AotakeUtils {
 
     public static void clearDustbinBlock(int page) {
         if (page == 0) {
-            for (String pos : ServerConfig.DUSTBIN_BLOCK_POSITIONS.get()) {
-                WorldCoordinate coordinate = WorldCoordinate.fromSimpleString(pos);
+            for (String pos : CommonConfig.DUSTBIN_BLOCK_POSITIONS.get()) {
+                WorldCoordinate coordinate = WorldCoordinate.fromString(pos);
                 if (coordinate != null) {
                     IItemHandler handler = AotakeUtils.getBlockItemHandler(coordinate);
                     if (handler != null) {
@@ -1062,7 +867,7 @@ public class AotakeUtils {
                 }
             }
         } else {
-            WorldCoordinate coordinate = WorldCoordinate.fromSimpleString(ServerConfig.DUSTBIN_BLOCK_POSITIONS.get().get(page - 1));
+            WorldCoordinate coordinate = WorldCoordinate.fromString(CommonConfig.DUSTBIN_BLOCK_POSITIONS.get().get(page - 1));
             if (coordinate != null) {
                 IItemHandler handler = AotakeUtils.getBlockItemHandler(coordinate);
                 if (handler != null) {
@@ -1097,8 +902,8 @@ public class AotakeUtils {
 
     public static void dropDustbinBlock(ServerPlayerEntity player, int page) {
         if (page == 0) {
-            for (String pos : ServerConfig.DUSTBIN_BLOCK_POSITIONS.get()) {
-                WorldCoordinate coordinate = WorldCoordinate.fromSimpleString(pos);
+            for (String pos : CommonConfig.DUSTBIN_BLOCK_POSITIONS.get()) {
+                WorldCoordinate coordinate = WorldCoordinate.fromString(pos);
                 if (coordinate != null) {
                     IItemHandler handler = AotakeUtils.getBlockItemHandler(coordinate);
                     if (handler != null) {
@@ -1114,7 +919,7 @@ public class AotakeUtils {
                 }
             }
         } else {
-            WorldCoordinate coordinate = WorldCoordinate.fromSimpleString(ServerConfig.DUSTBIN_BLOCK_POSITIONS.get().get(page - 1));
+            WorldCoordinate coordinate = WorldCoordinate.fromString(CommonConfig.DUSTBIN_BLOCK_POSITIONS.get().get(page - 1));
             if (coordinate != null) {
                 IItemHandler handler = AotakeUtils.getBlockItemHandler(coordinate);
                 if (handler != null) {
@@ -1133,21 +938,21 @@ public class AotakeUtils {
 
     public static int getDustbinTotalPage() {
         int result = 0;
-        switch (EnumDustbinMode.valueOfOrDefault(ServerConfig.DUSTBIN_MODE.get())) {
+        switch (EnumDustbinMode.valueOfOrDefault(CommonConfig.DUSTBIN_MODE.get())) {
             case VIRTUAL: {
                 result = CommonConfig.DUSTBIN_PAGE_LIMIT.get();
             }
             break;
             case BLOCK: {
-                result = ServerConfig.DUSTBIN_BLOCK_POSITIONS.get().size();
+                result = CommonConfig.DUSTBIN_BLOCK_POSITIONS.get().size();
             }
             break;
             case VIRTUAL_BLOCK: {
-                result = CommonConfig.DUSTBIN_PAGE_LIMIT.get() + ServerConfig.DUSTBIN_BLOCK_POSITIONS.get().size();
+                result = CommonConfig.DUSTBIN_PAGE_LIMIT.get() + CommonConfig.DUSTBIN_BLOCK_POSITIONS.get().size();
             }
             break;
             case BLOCK_VIRTUAL: {
-                result = ServerConfig.DUSTBIN_BLOCK_POSITIONS.get().size() + CommonConfig.DUSTBIN_PAGE_LIMIT.get();
+                result = CommonConfig.DUSTBIN_BLOCK_POSITIONS.get().size() + CommonConfig.DUSTBIN_PAGE_LIMIT.get();
             }
             break;
         }
@@ -1158,26 +963,6 @@ public class AotakeUtils {
 
 
     // region nbt文件读写
-
-    public static CompoundNBT readCompressed(File file) {
-        try {
-            return CompressedStreamTools.readCompressed(file);
-        } catch (Exception e) {
-            LOGGER.error("Failed to read compressed file: {}", file.getAbsolutePath(), e);
-            return new CompoundNBT();
-        }
-    }
-
-    public static boolean writeCompressed(CompoundNBT tag, File file) {
-        boolean result = false;
-        try {
-            CompressedStreamTools.writeCompressed(tag, file);
-            result = true;
-        } catch (Exception e) {
-            LOGGER.error("Failed to write compressed file: {}", file.getAbsolutePath(), e);
-        }
-        return result;
-    }
 
     public static boolean hasAotakeTag(ItemStack item) {
         if (item == null) return false;
@@ -1237,93 +1022,12 @@ public class AotakeUtils {
     // region 杂项
 
     /**
-     * 获取指定维度的世界实例
-     */
-    public static ServerWorld getWorld(RegistryKey<World> dimension) {
-        return AotakeSweep.getServerInstance().key().getLevel(dimension);
-    }
-
-    /**
-     * 反序列化方块状态
-     */
-    public static BlockState deserializeBlockState(String block) {
-        try {
-            return new BlockStateParser(new StringReader(block), false).parse(true).getState();
-        } catch (Exception e) {
-            LOGGER.error("Invalid unsafe block: {}", block, e);
-            return null;
-        }
-    }
-
-    /**
-     * 获取方块注册ID
-     */
-    @NonNull
-    public static String getBlockRegistryName(@NonNull BlockState blockState) {
-        return getBlockRegistryName(blockState.getBlock());
-    }
-
-    /**
-     * 获取方块注册ID
-     */
-    @NonNull
-    public static String getBlockRegistryName(@NonNull Block block) {
-        ResourceLocation location = ForgeRegistries.BLOCKS.getKey(block);
-        if (location == null) location = block.getRegistryName();
-        return location == null ? "" : location.toString();
-    }
-
-    /**
-     * 反序列化ItemStack
-     */
-    public static ItemStack deserializeItemStack(@NonNull String item) {
-        ItemStack itemStack;
-        try {
-            itemStack = ItemStack.of(JsonToNBT.parseTag(item));
-        } catch (Exception e) {
-            itemStack = null;
-            LOGGER.error("Invalid unsafe item: {}", item, e);
-        }
-        return itemStack;
-    }
-
-    /**
-     * 反序列化Item
-     */
-    public static Item deserializeItem(@NonNull String item) {
-        ItemStack itemStack = deserializeItemStack(item);
-        if (itemStack != null) {
-            return itemStack.getItem();
-        } else {
-            return null;
-        }
-    }
-
-    /**
-     * 获取物品注册ID
-     */
-    @NonNull
-    public static String getItemRegistryName(@NonNull ItemStack itemStack) {
-        return getItemRegistryName(itemStack.getItem());
-    }
-
-    /**
-     * 获取物品注册ID
-     */
-    @NonNull
-    public static String getItemRegistryName(@NonNull Item item) {
-        ResourceLocation location = ForgeRegistries.ITEMS.getKey(item);
-        if (location == null) location = item.getRegistryName();
-        return location == null ? "" : location.toString();
-    }
-
-    /**
      * 获取实体类型注册ID
      */
     @NonNull
     public static String getEntityTypeRegistryName(@NonNull Entity entity) {
         if (entity instanceof ItemEntity) {
-            return getItemRegistryName(((ItemEntity) entity).getItem());
+            return ItemUtils.getItemRegistryString(((ItemEntity) entity).getItem());
         }
         EntityType<?> entityType = entity.getType();
         ResourceLocation location = ForgeRegistries.ENTITIES.getKey(entityType);
@@ -1352,12 +1056,8 @@ public class AotakeUtils {
         return result;
     }
 
-    public static String getPlayerUUIDString(@NonNull PlayerEntity player) {
-        return player.getUUID().toString();
-    }
-
     public static ServerPlayerEntity getPlayerByUUID(String uuid) {
-        return AotakeSweep.getServerInstance().key().getPlayerList().getPlayer(UUID.fromString(uuid));
+        return BaniraCodex.serverInstance().key().getPlayerList().getPlayer(UUID.fromString(uuid));
     }
 
     /**
@@ -1365,7 +1065,7 @@ public class AotakeUtils {
      */
     public static ItemStack addItemToBlock(ItemStack stack, WorldCoordinate coordinate) {
         if (stack == null || stack.isEmpty()) return ItemStack.EMPTY;
-        ServerWorld level = AotakeSweep.getServerInstance().key().getLevel(coordinate.getDimension());
+        ServerWorld level = BaniraCodex.serverInstance().key().getLevel(coordinate.dimension());
         if (level == null) return stack;
 
         BlockPos pos = coordinate.toBlockPos();
@@ -1375,7 +1075,7 @@ public class AotakeUtils {
         if (te == null) return stack;
 
         try {
-            LazyOptional<IItemHandler> capOpt = te.getCapability(CapabilityItemHandler.ITEM_HANDLER_CAPABILITY, coordinate.getDirection());
+            LazyOptional<IItemHandler> capOpt = te.getCapability(CapabilityItemHandler.ITEM_HANDLER_CAPABILITY, coordinate.direction());
             if (capOpt.isPresent()) {
                 if (capOpt.isPresent()) {
                     IItemHandler handler = capOpt.orElse(new ItemStackHandler());
@@ -1394,7 +1094,7 @@ public class AotakeUtils {
      * 获取指定的方块容器
      */
     public static IItemHandler getBlockItemHandler(WorldCoordinate coordinate) {
-        ServerWorld level = AotakeSweep.getServerInstance().key().getLevel(coordinate.getDimension());
+        ServerWorld level = BaniraCodex.serverInstance().key().getLevel(coordinate.dimension());
         if (level == null) return null;
 
         BlockPos pos = coordinate.toBlockPos();
@@ -1404,7 +1104,7 @@ public class AotakeUtils {
         if (te == null) return null;
 
         try {
-            LazyOptional<IItemHandler> capOpt = te.getCapability(CapabilityItemHandler.ITEM_HANDLER_CAPABILITY, coordinate.getDirection());
+            LazyOptional<IItemHandler> capOpt = te.getCapability(CapabilityItemHandler.ITEM_HANDLER_CAPABILITY, coordinate.direction());
             if (capOpt.isPresent()) {
                 if (capOpt.isPresent()) {
                     return capOpt.orElse(new ItemStackHandler());

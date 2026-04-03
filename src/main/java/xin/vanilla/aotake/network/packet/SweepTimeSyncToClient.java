@@ -4,7 +4,7 @@ import lombok.Getter;
 import net.minecraft.network.PacketBuffer;
 import net.minecraftforge.fml.network.NetworkEvent;
 import xin.vanilla.aotake.AotakeSweep;
-import xin.vanilla.aotake.config.ServerConfig;
+import xin.vanilla.aotake.config.CommonConfig;
 import xin.vanilla.aotake.event.EventHandlerProxy;
 
 import java.util.function.Supplier;
@@ -30,7 +30,7 @@ public class SweepTimeSyncToClient {
     public SweepTimeSyncToClient() {
         this.currentTime = System.currentTimeMillis();
         this.nextSweepTime = EventHandlerProxy.getNextSweepTime();
-        this.sweepInterval = ServerConfig.SWEEP_INTERVAL.get();
+        this.sweepInterval = CommonConfig.SWEEP_INTERVAL.get();
     }
 
     public SweepTimeSyncToClient(PacketBuffer buf) {
@@ -47,8 +47,8 @@ public class SweepTimeSyncToClient {
 
     public static void handle(SweepTimeSyncToClient packet, Supplier<NetworkEvent.Context> ctx) {
         ctx.get().enqueueWork(() -> {
-            AotakeSweep.getClientServerTime().setKey(System.currentTimeMillis()).setValue(packet.getCurrentTime());
-            AotakeSweep.getSweepTime().setKey(packet.getSweepInterval()).setValue(packet.getNextSweepTime());
+            AotakeSweep.getClientServerTime().key(System.currentTimeMillis()).value(packet.getCurrentTime());
+            AotakeSweep.getSweepTime().key(packet.getSweepInterval()).value(packet.getNextSweepTime());
         });
         ctx.get().setPacketHandled(true);
     }
