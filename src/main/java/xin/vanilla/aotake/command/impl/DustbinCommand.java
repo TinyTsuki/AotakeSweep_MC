@@ -10,14 +10,21 @@ import net.minecraft.commands.Commands;
 import net.minecraft.commands.arguments.EntityArgument;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.SimpleContainer;
+import xin.vanilla.aotake.AotakeComponent;
+import xin.vanilla.aotake.AotakeLang;
 import xin.vanilla.aotake.AotakeSweep;
 import xin.vanilla.aotake.config.CommonConfig;
-import xin.vanilla.aotake.config.ServerConfig;
+import xin.vanilla.aotake.data.player.PlayerSweepData;
 import xin.vanilla.aotake.data.world.WorldTrashData;
 import xin.vanilla.aotake.enums.EnumCommandType;
-import xin.vanilla.aotake.enums.EnumDustbinMode;
-import xin.vanilla.aotake.enums.EnumI18nType;
-import xin.vanilla.aotake.util.*;
+import xin.vanilla.aotake.notification.AotakeNotificationTypes;
+import xin.vanilla.aotake.util.AotakeUtils;
+import xin.vanilla.banira.BaniraCodex;
+import xin.vanilla.banira.common.data.Component;
+import xin.vanilla.banira.common.util.CollectionUtils;
+import xin.vanilla.banira.common.util.CommandUtils;
+import xin.vanilla.banira.common.util.MessageUtils;
+import xin.vanilla.banira.common.util.Translator;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -42,12 +49,22 @@ public class DustbinCommand {
 
     public static LiteralArgumentBuilder<CommandSourceStack> open() {
         Command<CommandSourceStack> openDustbinCommand = context -> {
-            if (CommandUtils.checkModStatus(context)) return 0;
-            CommandUtils.notifyHelp(context);
+            if (CommandUtils.checkModStatus(context, AotakeSweep::isDisable)) return 0;
+            if (context.getSource().getEntity() instanceof ServerPlayer) {
+                ServerPlayer player = context.getSource().getPlayerOrException();
+                Component modName = AotakeComponent.get().trans("key.aotake_sweep.categories").languageCode(AotakeLang.getPlayerLanguage(player));
+                CommandUtils.notifyHelp(context, PlayerSweepData.getData(player), modName, "/" + AotakeUtils.getCommandPrefix());
+            }
+
 
             int totalPage = AotakeUtils.getDustbinTotalPage();
             if (totalPage <= 0) {
-                AotakeUtils.sendTranslatableMessage(context.getSource(), false, I18nUtils.getKey(EnumI18nType.MESSAGE, "dustbin_page_empty"));
+                Component empty = AotakeComponent.get().transAuto("dustbin_page_empty");
+                if (context.getSource().getEntity() instanceof ServerPlayer) {
+                    MessageUtils.sendNotification(context.getSource().getPlayerOrException(), empty, AotakeNotificationTypes.DUSTBIN);
+                } else {
+                    context.getSource().sendFailure(empty.toVanilla(Translator.getServerLanguage()));
+                }
                 return 0;
             }
 
@@ -69,7 +86,7 @@ public class DustbinCommand {
             return 1;
         };
 
-        return Commands.literal(CommonConfig.COMMAND_DUSTBIN_OPEN.get())
+        return Commands.literal(CommonConfig.get().command().commandDustbinOpen())
                 .requires(source -> AotakeUtils.hasCommandPermission(source, EnumCommandType.DUSTBIN_OPEN))
                 .executes(openDustbinCommand)
                 .then(Commands.argument("page", IntegerArgumentType.integer(1))
@@ -93,19 +110,28 @@ public class DustbinCommand {
 
     public static LiteralArgumentBuilder<CommandSourceStack> clear() {
         Command<CommandSourceStack> clearDustbinCommand = context -> {
-            if (CommandUtils.checkModStatus(context)) return 0;
-            CommandUtils.notifyHelp(context);
+            if (CommandUtils.checkModStatus(context, AotakeSweep::isDisable)) return 0;
+            if (context.getSource().getEntity() instanceof ServerPlayer) {
+                ServerPlayer player = context.getSource().getPlayerOrException();
+                Component modName = AotakeComponent.get().trans("key.aotake_sweep.categories").languageCode(AotakeLang.getPlayerLanguage(player));
+                CommandUtils.notifyHelp(context, PlayerSweepData.getData(player), modName, "/" + AotakeUtils.getCommandPrefix());
+            }
 
             int totalPage = AotakeUtils.getDustbinTotalPage();
             if (totalPage <= 0) {
-                AotakeUtils.sendTranslatableMessage(context.getSource(), false, I18nUtils.getKey(EnumI18nType.MESSAGE, "dustbin_page_empty"));
+                Component empty = AotakeComponent.get().transAuto("dustbin_page_empty");
+                if (context.getSource().getEntity() instanceof ServerPlayer) {
+                    MessageUtils.sendNotification(context.getSource().getPlayerOrException(), empty, AotakeNotificationTypes.DUSTBIN);
+                } else {
+                    context.getSource().sendFailure(empty.toVanilla(Translator.getServerLanguage()));
+                }
                 return 0;
             }
 
             int page = CommandUtils.getIntDefault(context, "page", 0);
-            int vPage = CommonConfig.DUSTBIN_PAGE_LIMIT.get();
-            int bPage = ServerConfig.DUSTBIN_BLOCK_POSITIONS.get().size();
-            switch (EnumDustbinMode.valueOfOrDefault(ServerConfig.DUSTBIN_MODE.get())) {
+            int vPage = CommonConfig.get().base().dustbin().dustbinPageLimit();
+            int bPage = CommonConfig.get().base().dustbin().dustbinBlockPositions().size();
+            switch (CommonConfig.get().base().dustbin().dustbinBlockMode()) {
                 case VIRTUAL: {
                     AotakeUtils.clearVirtualDustbin(page);
                 }
@@ -141,20 +167,19 @@ public class DustbinCommand {
                 }
                 break;
             }
-            Component message = Component.translatable(EnumI18nType.MESSAGE
-                    , "dustbin_cleared"
+            Component message = AotakeComponent.get().transAuto("dustbin_cleared"
                     , page == 0 ? "" : String.format(" %s ", page)
                     , context.getSource().getEntity() instanceof ServerPlayer
                             ? context.getSource().getPlayerOrException().getDisplayName().getString()
                             : "server"
             );
-            AotakeSweep.getServerInstance().key()
+            BaniraCodex.serverInstance().key()
                     .getPlayerList()
                     .getPlayers()
-                    .forEach(p -> AotakeUtils.sendMessage(p, message));
+                    .forEach(p -> MessageUtils.sendNotification(p, message, AotakeNotificationTypes.DUSTBIN));
             return 1;
         };
-        return Commands.literal(CommonConfig.COMMAND_DUSTBIN_CLEAR.get())
+        return Commands.literal(CommonConfig.get().command().commandDustbinClear())
                 .requires(source -> AotakeUtils.hasCommandPermission(source, EnumCommandType.DUSTBIN_CLEAR))
                 .executes(clearDustbinCommand)
                 .then(Commands.argument("page", IntegerArgumentType.integer(1))
@@ -165,20 +190,24 @@ public class DustbinCommand {
 
     public static LiteralArgumentBuilder<CommandSourceStack> drop() {
         Command<CommandSourceStack> dropDustbinCommand = context -> {
-            if (CommandUtils.checkModStatus(context)) return 0;
-            CommandUtils.notifyHelp(context);
+            if (CommandUtils.checkModStatus(context, AotakeSweep::isDisable)) return 0;
+            if (context.getSource().getEntity() instanceof ServerPlayer) {
+                ServerPlayer player = context.getSource().getPlayerOrException();
+                Component modName = AotakeComponent.get().trans("key.aotake_sweep.categories").languageCode(AotakeLang.getPlayerLanguage(player));
+                CommandUtils.notifyHelp(context, PlayerSweepData.getData(player), modName, "/" + AotakeUtils.getCommandPrefix());
+            }
 
             ServerPlayer player = context.getSource().getPlayerOrException();
             int totalPage = AotakeUtils.getDustbinTotalPage();
             if (totalPage <= 0) {
-                AotakeUtils.sendTranslatableMessage(player, I18nUtils.getKey(EnumI18nType.MESSAGE, "dustbin_page_empty"));
+                MessageUtils.sendNotification(player, AotakeComponent.get().transAuto("dustbin_page_empty"), AotakeNotificationTypes.DUSTBIN);
                 return 0;
             }
 
             int page = CommandUtils.getIntDefault(context, "page", 0);
-            int vPage = CommonConfig.DUSTBIN_PAGE_LIMIT.get();
-            int bPage = ServerConfig.DUSTBIN_BLOCK_POSITIONS.get().size();
-            switch (EnumDustbinMode.valueOfOrDefault(ServerConfig.DUSTBIN_MODE.get())) {
+            int vPage = CommonConfig.get().base().dustbin().dustbinPageLimit();
+            int bPage = CommonConfig.get().base().dustbin().dustbinBlockPositions().size();
+            switch (CommonConfig.get().base().dustbin().dustbinBlockMode()) {
                 case VIRTUAL: {
                     AotakeUtils.dropVirtualDustbin(player, page);
                 }
@@ -214,20 +243,19 @@ public class DustbinCommand {
                 }
                 break;
             }
-            Component message = Component.translatable(EnumI18nType.MESSAGE
-                    , "dustbin_dropped"
+            Component message = AotakeComponent.get().transAuto("dustbin_dropped"
                     , page == 0 ? "" : String.format(" %s ", page)
                     , context.getSource().getEntity() instanceof ServerPlayer
                             ? context.getSource().getPlayerOrException().getDisplayName().getString()
                             : "server"
             );
-            AotakeSweep.getServerInstance().key()
+            BaniraCodex.serverInstance().key()
                     .getPlayerList()
                     .getPlayers()
-                    .forEach(p -> AotakeUtils.sendMessage(p, message));
+                    .forEach(p -> MessageUtils.sendNotification(p, message, AotakeNotificationTypes.DUSTBIN));
             return 1;
         };
-        return Commands.literal(CommonConfig.COMMAND_DUSTBIN_DROP.get())
+        return Commands.literal(CommonConfig.get().command().commandDustbinDrop())
                 .requires(source -> AotakeUtils.hasCommandPermission(source, EnumCommandType.DUSTBIN_DROP))
                 .executes(dropDustbinCommand)
                 .then(Commands.argument("page", IntegerArgumentType.integer(1))
