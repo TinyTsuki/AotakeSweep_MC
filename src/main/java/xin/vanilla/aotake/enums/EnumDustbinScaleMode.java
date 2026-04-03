@@ -1,9 +1,14 @@
 package xin.vanilla.aotake.enums;
 
+import xin.vanilla.aotake.AotakeComponent;
+import xin.vanilla.banira.common.data.Component;
+import xin.vanilla.banira.common.enums.IEnumDescribable;
+import xin.vanilla.banira.common.util.EnumDescriptionHelper;
+
 /**
  * 垃圾箱 GUI 纹理缩放模式
  */
-public enum EnumDustbinScaleMode {
+public enum EnumDustbinScaleMode implements IEnumDescribable {
     /**
      * 以宽度为基准缩放，高度按比例
      */
@@ -23,11 +28,14 @@ public enum EnumDustbinScaleMode {
 
     private static final EnumDustbinScaleMode[] VALUES = values();
 
-    public static EnumDustbinScaleMode fromString(String name) {
-        if (name == null || name.isEmpty()) return FIT;
-        String upper = name.toUpperCase().trim();
-        for (EnumDustbinScaleMode mode : VALUES) {
-            if (mode.name().equals(upper)) return mode;
+    public static EnumDustbinScaleMode valueOf(Object obj) {
+        if (obj instanceof EnumDustbinScaleMode) return (EnumDustbinScaleMode) obj;
+        if (obj instanceof String) {
+            for (EnumDustbinScaleMode value : values()) {
+                if (value.name().equalsIgnoreCase((String) obj)) {
+                    return value;
+                }
+            }
         }
         return FIT;
     }
@@ -39,5 +47,10 @@ public enum EnumDustbinScaleMode {
             if (mode.name().equals(upper)) return true;
         }
         return false;
+    }
+
+    @Override
+    public Component enumDescription() {
+        return EnumDescriptionHelper.describeEnum(AotakeComponent.get(), this);
     }
 }

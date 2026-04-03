@@ -5,13 +5,13 @@
   "compatibilityLevel": "JAVA_8",
   "refmap": "aotake_sweep.refmap.json",
   "mixins": [
-    "ServerPlayerAccessor",
-    "ServerPlayerMixin"
   ],
   "client": [
-    "AbstractContainerScreenAccessor",
-    "AbstractContainerScreenMixin",
-    "ContainerScreenMixin"
+    "ChestScreenMixin",
+    "ContainerScreenAccessor",
+    "ContainerScreenMixin",
+    "MinecraftMixin",
+    "ScreenMixin"
   ],
   "injectors": {
     "defaultRequire": 1

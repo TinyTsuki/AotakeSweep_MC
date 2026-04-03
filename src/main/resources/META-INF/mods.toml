@@ -6,7 +6,7 @@ logoFile = "logo.png"
     modId = "${mod_id}"
     version = "${mod_version}"
     displayName = "${mod_name}"
-    updateJSONURL = "https://update.mc.vanilla.xin/${mod_id}/forge/${minecraft_version}" #optional
+    updateJSONURL = "https://update.mc.vanilla.xin/${mod_id}/${loader_type}/${minecraft_version}"
     displayURL = "https://mc.vanilla.xin/${mod_id}"
     authors = "${mod_authors}"
     description = '''${mod_description}'''
@@ -21,6 +21,12 @@ logoFile = "logo.png"
     modId = "minecraft"
     mandatory = true
     versionRange = "${minecraft_version_range}"
+    ordering = "NONE"
+    side = "BOTH"
+[[dependencies."${mod_id}"]]
+    modId = "banira_codex"
+    mandatory = true
+    versionRange = "${banira_version_range}"
     ordering = "NONE"
     side = "BOTH"
 [[dependencies."${mod_id}"]]
