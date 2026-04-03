@@ -1,53 +1,44 @@
 package xin.vanilla.aotake.event;
 
 import net.minecraft.client.KeyMapping;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.fml.common.Mod;
-import net.minecraftforge.fmlclient.registry.ClientRegistry;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 import org.lwjgl.glfw.GLFW;
 import xin.vanilla.aotake.AotakeSweep;
+import xin.vanilla.aotake.notification.AotakeNotificationTypes;
+import xin.vanilla.banira.client.notification.NotificationTypeRegistry;
+import xin.vanilla.banira.client.util.BaniraKeyBindings;
 
 /**
- * 客户端 Mod事件处理器
+ * 客户端：Banira 键位入队 + {@link xin.vanilla.banira.client.event.BaniraClientEventHub} 回调注册（不在此类上使用 Forge {@code @SubscribeEvent}）
  */
-@Mod.EventBusSubscriber(modid = AotakeSweep.MODID, value = Dist.CLIENT, bus = Mod.EventBusSubscriber.Bus.MOD)
-public class ClientModEventHandler {
-    private static final Logger LOGGER = LogManager.getLogger();
-
-    private static final String CATEGORIES = "key.aotake_sweep.categories";
+public final class ClientModEventHandler {
 
     /**
      * 垃圾箱快捷键
      */
-    public static KeyMapping DUSTBIN_KEY = new KeyMapping("key.aotake_sweep.open_dustbin",
-            GLFW.GLFW_KEY_UNKNOWN, CATEGORIES);
+    public static KeyMapping DUSTBIN_KEY = BaniraKeyBindings.register(AotakeSweep.MODID, "open_dustbin", GLFW.GLFW_KEY_UNKNOWN);
     /**
      * 垃圾箱上页快捷键
      */
-    public static KeyMapping DUSTBIN_PRE_KEY = new KeyMapping("key.aotake_sweep.open_dustbin_pre",
-            GLFW.GLFW_KEY_LEFT, CATEGORIES);
+    public static KeyMapping DUSTBIN_PRE_KEY = BaniraKeyBindings.register(AotakeSweep.MODID, "open_dustbin_pre", GLFW.GLFW_KEY_LEFT);
     /**
      * 垃圾箱下页快捷键
      */
-    public static KeyMapping DUSTBIN_NEXT_KEY = new KeyMapping("key.aotake_sweep.open_dustbin_next",
-            GLFW.GLFW_KEY_RIGHT, CATEGORIES);
+    public static KeyMapping DUSTBIN_NEXT_KEY = BaniraKeyBindings.register(AotakeSweep.MODID, "open_dustbin_next", GLFW.GLFW_KEY_RIGHT);
 
     /**
      * 切换进度条显示按键
      */
-    public static KeyMapping PROGRESS_KEY = new KeyMapping("key.aotake_sweep.progress",
-            GLFW.GLFW_KEY_TAB, CATEGORIES);
+    public static KeyMapping PROGRESS_KEY = BaniraKeyBindings.register(AotakeSweep.MODID, "progress", GLFW.GLFW_KEY_TAB);
 
-    /**
-     * 注册键绑定
-     */
-    public static void registerKeyBindings() {
-        ClientRegistry.registerKeyBinding(DUSTBIN_KEY);
-        ClientRegistry.registerKeyBinding(DUSTBIN_PRE_KEY);
-        ClientRegistry.registerKeyBinding(DUSTBIN_NEXT_KEY);
-        ClientRegistry.registerKeyBinding(PROGRESS_KEY);
+    private ClientModEventHandler() {
     }
 
+    /**
+     * 由主模组构造函数经 {@link net.minecraftforge.fml.DistExecutor} 在客户端触发类初始化
+     */
+    public static void bootstrap() {
+        for (String id : AotakeNotificationTypes.ALL_TYPE_IDS) {
+            NotificationTypeRegistry.register(id);
+        }
+    }
 }

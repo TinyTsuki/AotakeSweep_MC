@@ -5,11 +5,14 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraftforge.fmllegacy.network.NetworkEvent;
 import xin.vanilla.aotake.AotakeSweep;
 import xin.vanilla.aotake.enums.EnumCommandType;
+import xin.vanilla.aotake.network.NetworkPacket;
 import xin.vanilla.aotake.util.AotakeUtils;
+import xin.vanilla.banira.common.util.CommandUtils;
+import xin.vanilla.banira.common.util.PlayerUtils;
 
 import java.util.function.Supplier;
 
-public record ClearDustbinToServer(boolean all, boolean cache) {
+public record ClearDustbinToServer(boolean all, boolean cache) implements NetworkPacket{
 
     public ClearDustbinToServer(FriendlyByteBuf buf) {
         this(buf.readBoolean(), buf.readBoolean());
@@ -24,17 +27,17 @@ public record ClearDustbinToServer(boolean all, boolean cache) {
         ctx.get().enqueueWork(() -> {
             ServerPlayer player = ctx.get().getSender();
             if (player != null) {
-                String playerUUID = AotakeUtils.getPlayerUUIDString(player);
+                String playerUUID = PlayerUtils.getPlayerUUIDString(player);
                 int page = AotakeSweep.getPlayerDustbinPage().getOrDefault(playerUUID, 1);
                 // 缓存区
                 if (packet.cache()) {
-                    AotakeUtils.executeCommand(player, String.format("/%s"
+                    CommandUtils.executeCommand(player, String.format("/%s"
                             , AotakeUtils.getCommand(EnumCommandType.CACHE_CLEAR))
                     );
                 }
                 // 垃圾箱
                 else {
-                    AotakeUtils.executeCommand(player, String.format("/%s%s"
+                    CommandUtils.executeCommand(player, String.format("/%s%s"
                             , AotakeUtils.getCommand(EnumCommandType.DUSTBIN_CLEAR)
                             , packet.all() ? "" : " " + page)
                     );

@@ -4,13 +4,23 @@ import net.minecraft.network.FriendlyByteBuf;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.api.distmarker.OnlyIn;
 import net.minecraftforge.fmllegacy.network.NetworkEvent;
+import xin.vanilla.aotake.network.NetworkPacket;
+import xin.vanilla.aotake.screen.DustbinRender;
 
 import java.util.function.Supplier;
 
-public record DustbinPageSyncToClient(int currentPage, int totalPage) {
+public class DustbinPageSyncToClient implements NetworkPacket {
+    private final int currentPage;
+    private final int totalPage;
+
+    public DustbinPageSyncToClient(int currentPage, int totalPage) {
+        this.currentPage = currentPage;
+        this.totalPage = totalPage;
+    }
 
     public DustbinPageSyncToClient(FriendlyByteBuf buf) {
-        this(buf.readInt(), buf.readInt());
+        this.currentPage = buf.readInt();
+        this.totalPage = buf.readInt();
     }
 
     public void toBytes(FriendlyByteBuf buf) {
@@ -26,7 +36,7 @@ public record DustbinPageSyncToClient(int currentPage, int totalPage) {
     @OnlyIn(Dist.CLIENT)
     private static final class ClientSide {
         private static void handle(DustbinPageSyncToClient packet) {
-            xin.vanilla.aotake.event.ClientGameEventHandler.updateDustbinPage(packet.currentPage, packet.totalPage);
+            DustbinRender.updateDustbinPage(packet.currentPage, packet.totalPage);
         }
     }
 }
