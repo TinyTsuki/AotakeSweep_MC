@@ -8,15 +8,9 @@ import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.gui.screen.inventory.ChestScreen;
 import net.minecraft.client.gui.widget.button.Button;
 import net.minecraft.util.ResourceLocation;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.client.event.ClientPlayerNetworkEvent;
 import net.minecraftforge.client.event.GuiScreenEvent;
 import net.minecraftforge.client.event.RenderGameOverlayEvent;
 import net.minecraftforge.event.TickEvent;
-import net.minecraftforge.event.entity.player.PlayerEvent;
-import net.minecraftforge.event.entity.player.PlayerInteractEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import xin.vanilla.aotake.AotakeComponent;
@@ -34,6 +28,7 @@ import xin.vanilla.aotake.network.packet.OpenDustbinToServer;
 import xin.vanilla.aotake.util.AotakeUtils;
 import xin.vanilla.banira.client.data.FontDrawArgs;
 import xin.vanilla.banira.client.data.TransformArgs;
+import xin.vanilla.banira.client.event.BaniraClientEventHub;
 import xin.vanilla.banira.client.gui.component.Text;
 import xin.vanilla.banira.client.gui.widget.LabelWidget;
 import xin.vanilla.banira.client.gui.widget.TooltipWidget;
@@ -46,7 +41,6 @@ import xin.vanilla.banira.common.data.KeyValue;
 import xin.vanilla.banira.common.enums.EnumI18nType;
 import xin.vanilla.banira.common.enums.EnumMCColor;
 import xin.vanilla.banira.common.enums.EnumPosition;
-import xin.vanilla.banira.common.network.packet.ModLoadedToBoth;
 import xin.vanilla.banira.common.util.*;
 
 import java.util.Date;
@@ -54,17 +48,17 @@ import java.util.List;
 import java.util.function.Consumer;
 
 /**
- * 客户端 Game事件处理器
+ * 客户端 Game 逻辑；通过 {@link BaniraClientEventHub} 订阅，在 {@link xin.vanilla.aotake.AotakeSweep.ClientProxy} 中注册。
  */
-@Mod.EventBusSubscriber(modid = AotakeSweep.MODID, value = Dist.CLIENT, bus = Mod.EventBusSubscriber.Bus.FORGE)
-public class ClientGameEventHandler {
+public final class ClientGameEventHandler {
     private static final Logger LOGGER = LogManager.getLogger();
 
-    private static final String THEME_TEXTURE_DIR = "textures/gui/theme/";
-
-    @SubscribeEvent
-    public static void onPlayerLoggedOut(ClientPlayerNetworkEvent.LoggedOutEvent event) {
-        LOGGER.debug("Client: Player logged out.");
+    public static void register() {
+        BaniraClientEventHub.Player.onClientLoggedOut(player -> LOGGER.debug("Client: Player logged out."));
+        BaniraClientEventHub.Client.onClientTick(ClientGameEventHandler::onClientTick);
+        BaniraClientEventHub.Client.onGuiScreen(ClientGameEventHandler::onRenderScreen);
+        BaniraClientEventHub.Client.onRenderOverlayPre(ClientGameEventHandler::onRenderOverlayPre);
+        BaniraClientEventHub.Client.onRenderOverlayPost(ClientGameEventHandler::onRenderOverlayPost);
     }
 
     private static long lastTime = 0;
@@ -87,99 +81,23 @@ public class ClientGameEventHandler {
     }
 
     /**
-     * 客户端Tick事件
+     * 客户端 Tick（{@link BaniraClientEventHub} 仅在 Phase.END 分发）
      */
-    @SubscribeEvent
-    public static void onClientTick(TickEvent.ClientTickEvent event) {
-        if (event.phase == TickEvent.Phase.END) {
-            if (Minecraft.getInstance().screen == null) {
-                if (ClientModEventHandler.DUSTBIN_KEY.isDown() && System.currentTimeMillis() - lastTime > 100) {
+    private static void onClientTick(TickEvent.ClientTickEvent event) {
+        if (Minecraft.getInstance().screen == null) {
+            if (ClientModEventHandler.DUSTBIN_KEY.isDown() && System.currentTimeMillis() - lastTime > 100) {
+                lastTime = System.currentTimeMillis();
+                PacketUtils.sendPacketToServer(NetworkInit.INSTANCE, new OpenDustbinToServer(0));
+            }
+            if (ClientConfig.get().progressBar().progressBarKeyApplyMode()) {
+                if (ClientModEventHandler.PROGRESS_KEY.isDown() && System.currentTimeMillis() - lastTime > 100) {
                     lastTime = System.currentTimeMillis();
-                    PacketUtils.sendPacketToServer(NetworkInit.INSTANCE, new OpenDustbinToServer(0));
+                    showProgress = !showProgress;
                 }
-                if (ClientConfig.get().progressBar().progressBarKeyApplyMode()) {
-                    if (ClientModEventHandler.PROGRESS_KEY.isDown() && System.currentTimeMillis() - lastTime > 100) {
-                        lastTime = System.currentTimeMillis();
-                        showProgress = !showProgress;
-                    }
-                } else {
-                    showProgress = ClientModEventHandler.PROGRESS_KEY.isDown();
-                }
+            } else {
+                showProgress = ClientModEventHandler.PROGRESS_KEY.isDown();
             }
         }
-    }
-
-    /**
-     * 服务端Tick事件
-     */
-    @SubscribeEvent
-    public static void onServerTick(TickEvent.ServerTickEvent event) {
-        EventHandlerProxy.onServerTick(event);
-    }
-
-    /**
-     * 世界Tick事件
-     */
-    @SubscribeEvent
-    public static void onWorldTick(TickEvent.WorldTickEvent event) {
-        EventHandlerProxy.onWorldTick(event);
-    }
-
-    /**
-     * 玩家死亡后重生或者从末地回主世界
-     */
-    @SubscribeEvent
-    public static void onPlayerCloned(PlayerEvent.Clone event) {
-        EventHandlerProxy.onPlayerCloned(event);
-    }
-
-    /**
-     * 玩家事件
-     */
-    @SubscribeEvent
-    public static void onPlayerEvent(PlayerEvent event) {
-        if (event instanceof PlayerEvent.Clone) return;
-        EventHandlerProxy.onPlayerUseItem(event);
-    }
-
-    /**
-     * 玩家使用物品
-     */
-    @SubscribeEvent
-    public static void onPlayerUseItem(PlayerInteractEvent.RightClickItem event) {
-        EventHandlerProxy.onPlayerUseItem(event);
-    }
-
-    /**
-     * 玩家右键方块事件
-     */
-    @SubscribeEvent
-    public static void onRightBlock(PlayerInteractEvent.RightClickBlock event) {
-        EventHandlerProxy.onRightBlock(event);
-    }
-
-    /**
-     * 玩家右键实体事件
-     */
-    @SubscribeEvent
-    public static void onRightEntity(PlayerInteractEvent.EntityInteractSpecific event) {
-        EventHandlerProxy.onRightEntity(event);
-    }
-
-    /**
-     * 玩家登录事件
-     */
-    @SubscribeEvent
-    public static void onPlayerLoggedIn(PlayerEvent.PlayerLoggedInEvent event) {
-        EventHandlerProxy.onPlayerLoggedIn(event);
-    }
-
-    /**
-     * 玩家登出事件
-     */
-    @SubscribeEvent
-    public static void onPlayerLoggedOut(PlayerEvent.PlayerLoggedOutEvent event) {
-        EventHandlerProxy.onPlayerLoggedOut(event);
     }
 
     private static final Component TITLE = AotakeComponent.get().trans(EnumI18nType.WORD, "title");
@@ -188,8 +106,7 @@ public class ClientGameEventHandler {
     private static Button dustbinPrevButton;
     private static Button dustbinNextButton;
 
-    @SubscribeEvent
-    public static void onRenderScreen(GuiScreenEvent event) {
+    private static void onRenderScreen(GuiScreenEvent event) {
         Screen screen = event.getGui();
         Minecraft mc = Minecraft.getInstance();
         if (screen instanceof ChestScreen
@@ -337,7 +254,7 @@ public class ClientGameEventHandler {
                             h += 2;
                         }
 
-                        AbstractGuiUtils.blitBlend(ms, TextureUtils.loadCustomTexture(Identifier.id(), THEME_TEXTURE_DIR + "clear_cache.png"), x, y, 0, 0, 0, w, h, w, h);
+                        AbstractGuiUtils.blitBlend(ms, TextureUtils.loadCustomTexture(Identifier.id(), "gui/clear_cache.png"), x, y, 0, 0, 0, w, h, w, h);
 
                         if (hover) {
                             TooltipWidget.drawPopupMessage(ms,
@@ -365,7 +282,7 @@ public class ClientGameEventHandler {
                                 h += 2;
                             }
 
-                            AbstractGuiUtils.blitBlend(ms, TextureUtils.loadCustomTexture(Identifier.id(), THEME_TEXTURE_DIR + "clear_all.png"), x, y, 0, 0, 0, w, h, w, h);
+                            AbstractGuiUtils.blitBlend(ms, TextureUtils.loadCustomTexture(Identifier.id(), "gui/clear_all.png"), x, y, 0, 0, 0, w, h, w, h);
 
                             if (hover) {
                                 TooltipWidget.drawPopupMessage(ms,
@@ -393,7 +310,7 @@ public class ClientGameEventHandler {
                                 h += 2;
                             }
 
-                            AbstractGuiUtils.blitBlend(ms, TextureUtils.loadCustomTexture(Identifier.id(), THEME_TEXTURE_DIR + "clear_page.png"), x, y, 0, 0, 0, w, h, w, h);
+                            AbstractGuiUtils.blitBlend(ms, TextureUtils.loadCustomTexture(Identifier.id(), "gui/clear_page.png"), x, y, 0, 0, 0, w, h, w, h);
 
                             if (hover) {
                                 TooltipWidget.drawPopupMessage(ms,
@@ -421,7 +338,7 @@ public class ClientGameEventHandler {
                             h += 2;
                         }
 
-                        AbstractGuiUtils.blitBlend(ms, TextureUtils.loadCustomTexture(Identifier.id(), THEME_TEXTURE_DIR + "refresh.png"), x, y, 0, 0, 0, w, h, w, h);
+                        AbstractGuiUtils.blitBlend(ms, TextureUtils.loadCustomTexture(Identifier.id(), "gui/refresh.png"), x, y, 0, 0, 0, w, h, w, h);
 
                         if (hover) {
                             TooltipWidget.drawPopupMessage(ms,
@@ -452,7 +369,7 @@ public class ClientGameEventHandler {
                         }
 
                         RenderSystem.color4f(1.0F, 1.0F, 1.0F, canPrev ? 1.0F : 0.5F);
-                        AbstractGuiUtils.blitBlend(ms, TextureUtils.loadCustomTexture(Identifier.id(), THEME_TEXTURE_DIR + "up.png"), x, y, 0, 0, 0, w, h, w, h);
+                        AbstractGuiUtils.blitBlend(ms, TextureUtils.loadCustomTexture(Identifier.id(), "gui/up.png"), x, y, 0, 0, 0, w, h, w, h);
                         RenderSystem.color4f(1.0F, 1.0F, 1.0F, 1.0F);
 
                         if (hover) {
@@ -484,7 +401,7 @@ public class ClientGameEventHandler {
                         }
 
                         RenderSystem.color4f(1.0F, 1.0F, 1.0F, canNext ? 1.0F : 0.5F);
-                        AbstractGuiUtils.blitBlend(ms, TextureUtils.loadCustomTexture(Identifier.id(), THEME_TEXTURE_DIR + "down.png"), x, y, 0, 0, 0, w, h, w, h);
+                        AbstractGuiUtils.blitBlend(ms, TextureUtils.loadCustomTexture(Identifier.id(), "gui/down.png"), x, y, 0, 0, 0, w, h, w, h);
                         RenderSystem.color4f(1.0F, 1.0F, 1.0F, 1.0F);
 
                         if (hover) {
@@ -531,15 +448,13 @@ public class ClientGameEventHandler {
         }
     }
 
-    @SubscribeEvent
-    public static void onRenderOverlayPre(RenderGameOverlayEvent.Pre event) {
+    private static void onRenderOverlayPre(RenderGameOverlayEvent.Pre event) {
         if (event.getType() == RenderGameOverlayEvent.ElementType.EXPERIENCE) {
             renderProgress(event);
         }
     }
 
-    @SubscribeEvent
-    public static void onRenderOverlayPost(RenderGameOverlayEvent.Post event) {
+    private static void onRenderOverlayPost(RenderGameOverlayEvent.Post event) {
         if (event.getType() == RenderGameOverlayEvent.ElementType.EXPERIENCE) {
             renderProgress(event);
         }
@@ -585,7 +500,7 @@ public class ClientGameEventHandler {
                     .width(width)
                     .height(height);
             AbstractGuiUtils.renderByTransform(transformArgs, (arg) ->
-                    AbstractGuiUtils.blitBlend(ms, TextureUtils.loadCustomTexture(Identifier.id(), THEME_TEXTURE_DIR + "pole.png"),
+                    AbstractGuiUtils.blitBlend(ms, TextureUtils.loadCustomTexture(Identifier.id(), "gui/pole.png"),
                             (int) arg.x(), (int) arg.y(), 0, 0, 0, (int) arg.width(), (int) arg.height(), (int) arg.width(), (int) arg.height()));
         }
 
@@ -633,17 +548,10 @@ public class ClientGameEventHandler {
                     .width(width)
                     .height(height);
             AbstractGuiUtils.renderByTransform(transformArgs, (arg) -> {
-                ResourceLocation texture = TextureUtils.loadCustomTexture(Identifier.id(), THEME_TEXTURE_DIR + "leaf.png");
+                ResourceLocation texture = TextureUtils.loadCustomTexture(Identifier.id(), "gui/leaf.png");
                 AbstractGuiUtils.blitBlend(ms, texture, (int) arg.x(), (int) arg.y(), 0, 0, 0, (int) arg.width(), (int) arg.height(), (int) arg.width(), (int) arg.height());
             });
         }
-    }
-
-    @SubscribeEvent
-    public static void onPlayerLoggedIn(ClientPlayerNetworkEvent.LoggedInEvent event) {
-        LOGGER.debug("Client: Player logged in.");
-        // 通知服务器客户端已加载mod
-        PacketUtils.sendPacketToServer(NetworkInit.INSTANCE, new ModLoadedToBoth(AotakeSweep.MODID));
     }
 
     private static int getLeafX() {

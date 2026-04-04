@@ -1,71 +1,40 @@
 package xin.vanilla.aotake.event;
 
 import net.minecraft.client.settings.KeyBinding;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.client.registry.ClientRegistry;
-import net.minecraftforge.fml.common.Mod;
-import net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 import org.lwjgl.glfw.GLFW;
-import xin.vanilla.aotake.AotakeComponent;
 import xin.vanilla.aotake.AotakeSweep;
-import xin.vanilla.aotake.config.ClientConfig;
-import xin.vanilla.banira.client.gui.ConfigEditorScreen;
-import xin.vanilla.banira.client.gui.quickaction.QuickActionRegistry;
-import xin.vanilla.banira.common.config.ForgeConfigAdapter;
-import xin.vanilla.banira.common.enums.EnumI18nType;
+import xin.vanilla.banira.client.event.BaniraClientEventHub;
+import xin.vanilla.banira.client.util.BaniraKeyBindings;
 
 /**
- * 客户端 Mod事件处理器
+ * 客户端：Banira 键位入队 + {@link BaniraClientEventHub} 回调注册（不在此类上使用 Forge {@code @SubscribeEvent}）
  */
-@Mod.EventBusSubscriber(modid = AotakeSweep.MODID, value = Dist.CLIENT, bus = Mod.EventBusSubscriber.Bus.MOD)
-public class ClientModEventHandler {
-    private static final Logger LOGGER = LogManager.getLogger();
-
-    private static final String CATEGORIES = "key.aotake_sweep.categories";
+public final class ClientModEventHandler {
 
     /**
      * 垃圾箱快捷键
      */
-    public static KeyBinding DUSTBIN_KEY = new KeyBinding("key.aotake_sweep.open_dustbin",
-            GLFW.GLFW_KEY_UNKNOWN, CATEGORIES);
+    public static KeyBinding DUSTBIN_KEY = BaniraKeyBindings.register(AotakeSweep.MODID, "open_dustbin", GLFW.GLFW_KEY_UNKNOWN);
     /**
      * 垃圾箱上页快捷键
      */
-    public static KeyBinding DUSTBIN_PRE_KEY = new KeyBinding("key.aotake_sweep.open_dustbin_pre",
-            GLFW.GLFW_KEY_LEFT, CATEGORIES);
+    public static KeyBinding DUSTBIN_PRE_KEY = BaniraKeyBindings.register(AotakeSweep.MODID, "open_dustbin_pre", GLFW.GLFW_KEY_LEFT);
     /**
      * 垃圾箱下页快捷键
      */
-    public static KeyBinding DUSTBIN_NEXT_KEY = new KeyBinding("key.aotake_sweep.open_dustbin_next",
-            GLFW.GLFW_KEY_RIGHT, CATEGORIES);
+    public static KeyBinding DUSTBIN_NEXT_KEY = BaniraKeyBindings.register(AotakeSweep.MODID, "open_dustbin_next", GLFW.GLFW_KEY_RIGHT);
 
     /**
      * 切换进度条显示按键
      */
-    public static KeyBinding PROGRESS_KEY = new KeyBinding("key.aotake_sweep.progress",
-            GLFW.GLFW_KEY_TAB, CATEGORIES);
+    public static KeyBinding PROGRESS_KEY = BaniraKeyBindings.register(AotakeSweep.MODID, "progress", GLFW.GLFW_KEY_TAB);
+
+    private ClientModEventHandler() {
+    }
 
     /**
-     * 注册键绑定
+     * 由主模组构造函数经 {@link net.minecraftforge.fml.DistExecutor} 在客户端触发类初始化
      */
-    public static void registerKeyBindings() {
-        ClientRegistry.registerKeyBinding(DUSTBIN_KEY);
-        ClientRegistry.registerKeyBinding(DUSTBIN_PRE_KEY);
-        ClientRegistry.registerKeyBinding(DUSTBIN_NEXT_KEY);
-        ClientRegistry.registerKeyBinding(PROGRESS_KEY);
+    public static void bootstrap() {
     }
-
-    @SubscribeEvent
-    public static void onClientSetup(FMLClientSetupEvent event) {
-        LOGGER.debug("Registering key bindings");
-        registerKeyBindings();
-        QuickActionRegistry.get().registerListOnly(
-                AotakeSweep.MODID + ":quick_aotake_client_config",
-                AotakeComponent.get().trans(EnumI18nType.WORD, "word.aotake_sweep.client_config_editor"),
-                ctx -> ConfigEditorScreen.open(ForgeConfigAdapter.getHolder(ClientConfig.class), ctx.currentScreen()));
-    }
-
 }

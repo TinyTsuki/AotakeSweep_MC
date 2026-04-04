@@ -20,7 +20,7 @@
   "word.aotake_sweep.delay_sweep": "Postpone the next scheduled sweep time",
   "word.aotake_sweep.edit_client_config": "Edit Client config",
   "word.aotake_sweep.edit_common_config": "Edit Common config",
-  "word.aotake_sweep.edit_player_config": "Edit player config",
+  "word.aotake_sweep.edit_player_config": "Edit Player config",
   "word.aotake_sweep.language_detail": "Set the player's default language. server -> Use the server's default language; client -> Use the client's current language.\nParameters:\n <language>",
   "word.aotake_sweep.virtual_op_detail": "Grant a specified player permission to use certain commands.\nParameters:\n <operation> <player> [<command type list>]",
   "word.aotake_sweep.dustbin_open_detail": "Open Dustbin.\nParameters:\n [<page>] [<players>]",
