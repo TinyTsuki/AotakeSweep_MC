@@ -18,12 +18,15 @@
   "word.aotake_sweep.sweep": "Manual Sweep",
   "word.aotake_sweep.clear_drop": "Clear Drops",
   "word.aotake_sweep.delay_sweep": "Postpone the next scheduled sweep time",
+  "word.aotake_sweep.edit_client_config": "Edit Client config",
+  "word.aotake_sweep.edit_common_config": "Edit Common config",
+  "word.aotake_sweep.edit_player_config": "Edit player config",
   "word.aotake_sweep.language_detail": "Set the player's default language. server -> Use the server's default language; client -> Use the client's current language.\nParameters:\n <language>",
   "word.aotake_sweep.virtual_op_detail": "Grant a specified player permission to use certain commands.\nParameters:\n <operation> <player> [<command type list>]",
   "word.aotake_sweep.dustbin_open_detail": "Open Dustbin.\nParameters:\n [<page>] [<players>]",
   "word.aotake_sweep.dustbin_clear_detail": "Clear Dustbin.\nParameters:\n [<page>]",
   "word.aotake_sweep.dustbin_drop_detail": "Drop Dustbin Items.\nParameters:\n [<page>]",
-  "word.aotake_sweep.cache_clear_detail": "Clear Cache Items���",
+  "word.aotake_sweep.cache_clear_detail": "Clear Cache Items.",
   "word.aotake_sweep.cache_drop_detail": "Drop Cache Items.\nParameters:\n [<return dropped items to their original location>]",
   "word.aotake_sweep.sweep_detail": "Manual Sweep.\nParameters:\n 1. [<dimension>]\n 2. [<range>]",
   "word.aotake_sweep.clear_drop_detail": "Clear Drops.\nParameters:\n 1. [<dimension>] [<withEntity>] [ignoreEntityFilter]\n 3. [<range>] [withEntity] [ignoreEntityFilter]",
@@ -42,7 +45,6 @@
   "word.aotake_sweep.command_disabled": "§eThe command is disabled!",
   "word.aotake_sweep.cleanup_started": "§r§eCleaned up [itemCount] items and [entityCount] entities.",
   "word.aotake_sweep.cleanup_error": "An error occurred while cleaning up, check the server logs for details.",
-  "word.aotake_sweep.mod_disabled": "§cMOD has been temporarily disabled.",
   "word.aotake_sweep.chunk_check_msg_hover": "Click to autocomplete teleport command",
   "word.aotake_sweep.entity_caught": "Entity caught!",
   "word.aotake_sweep.entity_released": "Entity released!",
@@ -73,6 +75,6 @@
   "format.aotake_sweep.next_sweep_time_set": "§eNext sweep time was set by '%s§e' to occur in %s§e seconds.",
   "format.aotake_sweep.config_key_absent": "§cConfig modification failed: '%s§c' does not exist.",
   "format.aotake_sweep.config_value_parse_error": "§cConfig modification failed: Failed to parse '%s§c'.",
-  "format.aotake_sweep.config_value_set_error": "§cConfig modification failed: '%s§c' ��� '%s§c'.",
-  "format.aotake_sweep.config_value_set_success": "§2Config modification successful: '%s§2' ��� '%s§2'."
+  "format.aotake_sweep.config_value_set_error": "§cConfig modification failed: '%s§c' → '%s§c'.",
+  "format.aotake_sweep.config_value_set_success": "§2Config modification successful: '%s§2' → '%s§2'."
 }

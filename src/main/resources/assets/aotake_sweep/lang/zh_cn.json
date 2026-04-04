@@ -18,6 +18,9 @@
   "word.aotake_sweep.sweep": "手动触发扫地",
   "word.aotake_sweep.clear_drop": "清理掉落物",
   "word.aotake_sweep.delay_sweep": "延后下次清理的触发时间",
+  "word.aotake_sweep.edit_client_config": "编辑客户端配置",
+  "word.aotake_sweep.edit_common_config": "编辑服务端配置",
+  "word.aotake_sweep.edit_player_config": "编辑玩家配置",
   "word.aotake_sweep.language_detail": "设置玩家默认语言，server->使用服务器默认语言，client->使用客户端当前语言。\n参数列表：\n <language>",
   "word.aotake_sweep.virtual_op_detail": "给某个玩家添加使用某个指令的权限。\n参数列表：\n <操作> <玩家> [<指令类型列表>]",
   "word.aotake_sweep.dustbin_open_detail": "打开垃圾箱。\n参数列表：\n [<页数>] [<玩家>]",
@@ -46,7 +49,6 @@
   "word.aotake_sweep.entity_caught": "实体已捕获！",
   "word.aotake_sweep.entity_released": "实体已释放！",
   "word.aotake_sweep.dustbin_page_empty": "§c服务器未启用垃圾箱。",
-  "word.aotake_sweep.mod_disabled": "§cMOD已被临时禁用。",
   "format.aotake_sweep.sweep_interval": "服务器扫地间隔被设置为：%s毫秒。",
   "format.aotake_sweep.chunk_check_interval": "实体过多检测间隔被设置为：%s毫秒。",
   "format.aotake_sweep.chunk_check_limit": "实体过多检测阈值被设置为：%s。",
@@ -73,5 +75,6 @@
   "format.aotake_sweep.server_default_language": "服务器默认语言被设置为：%s。",
   "format.aotake_sweep.player_default_language": "玩家默认语言被设置为：%s。",
   "format.aotake_sweep.cleanup_will_start": "§r§e清理将会在§r§e%s§r§e秒后开始。",
-  "format.aotake_sweep.concise": "详见%s"
+  "format.aotake_sweep.concise": "详见%s",
+  "format.aotake_sweep.notify_help": "Welcome to AotakeSweep! Use the command '%s' to view the help message."
 }
