@@ -9,7 +9,9 @@
   "client": [
     "ChestScreenMixin",
     "ContainerScreenAccessor",
-    "ContainerScreenMixin"
+    "ContainerScreenMixin",
+    "MinecraftMixin",
+    "ScreenMixin"
   ],
   "injectors": {
     "defaultRequire": 1

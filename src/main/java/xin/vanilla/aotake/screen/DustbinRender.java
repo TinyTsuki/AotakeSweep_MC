@@ -32,10 +32,8 @@ import xin.vanilla.banira.common.data.Component;
 import xin.vanilla.banira.common.data.KeyValue;
 import xin.vanilla.banira.common.enums.EnumI18nType;
 import xin.vanilla.banira.common.enums.EnumMCColor;
-import xin.vanilla.banira.common.util.BaniraScheduler;
 import xin.vanilla.banira.common.util.PacketUtils;
 import xin.vanilla.banira.common.util.StringUtils;
-import xin.vanilla.banira.common.util.Translator;
 
 import java.util.function.Consumer;
 
@@ -44,11 +42,13 @@ import java.util.function.Consumer;
  */
 public final class DustbinRender {
 
-    private static final Component TITLE = AotakeComponent.get().trans(EnumI18nType.WORD, "title");
     private static final InputStateManager mouseHelper = InputStateManager.instance();
 
-    private static final KeyValue<Double, Double> mousePos = new KeyValue<>(-1D, -1D);
-    private static int mouseRestoreTicks = 0;
+    /**
+     * 翻页/刷新前记录的光标
+     */
+    private static final KeyValue<Double, Double> pendingMouseRaw = new KeyValue<>(-1D, -1D);
+
     private static int dustbinPage = -1;
     private static int dustbinTotalPage = -1;
     private static Button dustbinPrevButton;
@@ -72,28 +72,51 @@ public final class DustbinRender {
         dustbinTotalPage = totalPage;
     }
 
+    /**
+     * 在发送会触发垃圾箱界面重建的 {@link OpenDustbinToServer} 之前调用，记录当前光标
+     */
+    private static void queueCursorRestoreBeforeContainerRefresh() {
+        KeyValue<Double, Double> cur = InputStateManager.getRawCursorPos();
+        pendingMouseRaw.key(cur.key()).value(cur.val());
+    }
+
+    private static boolean isOurDustbinChestScreen(Screen screen, Minecraft mc) {
+        return screen instanceof ChestScreen
+                && mc.player != null
+                && isDustbinTitle(screen.getTitle().getContents());
+    }
+
+    /**
+     * 打开非垃圾箱界面时丢弃待恢复坐标
+     */
+    public static void abandonPendingCursorRestore() {
+        if (pendingMouseRaw.key() >= 0) {
+            pendingMouseRaw.key(-1D).val(-1D);
+        }
+    }
+
+    /**
+     * 若存在待恢复坐标则消费并写入
+     */
+    public static void tryConsumePendingCursorRaw() {
+        if (pendingMouseRaw.key() < 0) {
+            return;
+        }
+        double rx = pendingMouseRaw.key();
+        double ry = pendingMouseRaw.val();
+        pendingMouseRaw.key(-1D).val(-1D);
+        InputStateManager.setMouseRawPos(rx, ry);
+    }
+
     public static void handleGuiScreen(GuiScreenEvent event) {
         Screen screen = event.getGui();
         Minecraft mc = Minecraft.getInstance();
-        if (!(screen instanceof ChestScreen)
-                || mc.player == null
-                || !screen.getTitle().getContents()
-                .startsWith(TITLE.toVanilla(Translator.getClientLanguage()).getContents())) {
+        if (!isOurDustbinChestScreen(screen, mc)) {
+            abandonPendingCursorRestore();
             return;
         }
 
         if (event instanceof GuiScreenEvent.InitGuiEvent.Post) {
-            for (int i = 0; i < 20; i++) {
-                BaniraScheduler.schedule(i, () -> {
-                    if (mousePos.key() > -1 && mousePos.val() > -1 && mouseRestoreTicks > 0) {
-                        InputStateManager.setMouseRawPos(mousePos);
-                        mouseRestoreTicks--;
-                        if (mouseRestoreTicks <= 0) {
-                            mousePos.key(-1D).val(-1D);
-                        }
-                    }
-                });
-            }
             if (ClientConfig.get().dustbin().vanillaDustbin()) {
                 GuiScreenEvent.InitGuiEvent.Post eve = (GuiScreenEvent.InitGuiEvent.Post) event;
                 ClientPlayerEntity player = mc.player;
@@ -143,7 +166,10 @@ public final class DustbinRender {
                                 , baseY + 21 * (yOffset++)
                                 , 20, 20
                                 , AotakeComponent.get().literal("↻")
-                                , button -> PacketUtils.sendPacketToServer(NetworkInit.INSTANCE, new OpenDustbinToServer(0))
+                                , button -> {
+                                    queueCursorRestoreBeforeContainerRefresh();
+                                    PacketUtils.sendPacketToServer(NetworkInit.INSTANCE, new OpenDustbinToServer(0));
+                                }
                                 , AotakeComponent.get().trans(EnumI18nType.WORD, "refresh_page")
                         )
                 );
@@ -151,7 +177,10 @@ public final class DustbinRender {
                         , baseY + 21 * (yOffset++)
                         , 20, 20
                         , AotakeComponent.get().literal("▲")
-                        , button -> PacketUtils.sendPacketToServer(NetworkInit.INSTANCE, new OpenDustbinToServer(-1))
+                        , button -> {
+                            queueCursorRestoreBeforeContainerRefresh();
+                            PacketUtils.sendPacketToServer(NetworkInit.INSTANCE, new OpenDustbinToServer(-1));
+                        }
                         , AotakeComponent.get().trans(EnumI18nType.WORD, "previous_page")
                 );
                 prevButton.active = canPrev;
@@ -161,7 +190,10 @@ public final class DustbinRender {
                         , baseY + 21 * (yOffset++)
                         , 20, 20
                         , AotakeComponent.get().literal("▼")
-                        , button -> PacketUtils.sendPacketToServer(NetworkInit.INSTANCE, new OpenDustbinToServer(1))
+                        , button -> {
+                            queueCursorRestoreBeforeContainerRefresh();
+                            PacketUtils.sendPacketToServer(NetworkInit.INSTANCE, new OpenDustbinToServer(1));
+                        }
                         , AotakeComponent.get().trans(EnumI18nType.WORD, "next_page")
                 );
                 nextButton.active = canNext;
@@ -316,9 +348,7 @@ public final class DustbinRender {
                     }
 
                     if (mouseHelper.isLeftPressedInRect(x, y, w, h)) {
-                        KeyValue<Double, Double> cursorPos = InputStateManager.getRawCursorPos();
-                        mousePos.key(cursorPos.key()).value(cursorPos.val());
-                        mouseRestoreTicks = 20;
+                        queueCursorRestoreBeforeContainerRefresh();
                         PacketUtils.sendPacketToServer(NetworkInit.INSTANCE, new OpenDustbinToServer(0));
                     }
                 }
@@ -348,9 +378,7 @@ public final class DustbinRender {
                     }
 
                     if (canPrev && mouseHelper.isLeftPressedInRect(x, y, w, h)) {
-                        KeyValue<Double, Double> cursorPos = InputStateManager.getRawCursorPos();
-                        mousePos.key(cursorPos.key()).value(cursorPos.val());
-                        mouseRestoreTicks = 20;
+                        queueCursorRestoreBeforeContainerRefresh();
                         PacketUtils.sendPacketToServer(NetworkInit.INSTANCE, new OpenDustbinToServer(-1));
                     }
                 }
@@ -380,9 +408,7 @@ public final class DustbinRender {
                     }
 
                     if (canNext && mouseHelper.isLeftPressedInRect(x, y, w, h)) {
-                        KeyValue<Double, Double> cursorPos = InputStateManager.getRawCursorPos();
-                        mousePos.key(cursorPos.key()).value(cursorPos.val());
-                        mouseRestoreTicks = 20;
+                        queueCursorRestoreBeforeContainerRefresh();
                         PacketUtils.sendPacketToServer(NetworkInit.INSTANCE, new OpenDustbinToServer(1));
                     }
                 }
@@ -398,17 +424,13 @@ public final class DustbinRender {
             } else if (keyEvent.getKeyCode() == ClientModEventHandler.DUSTBIN_PRE_KEY.getKey().getValue()) {
                 if (System.currentTimeMillis() - lastDustbinScreenKeyTime > 200) {
                     lastDustbinScreenKeyTime = System.currentTimeMillis();
-                    KeyValue<Double, Double> cursorPos = InputStateManager.getRawCursorPos();
-                    mousePos.key(cursorPos.key()).value(cursorPos.val());
-                    mouseRestoreTicks = 20;
+                    queueCursorRestoreBeforeContainerRefresh();
                     PacketUtils.sendPacketToServer(NetworkInit.INSTANCE, new OpenDustbinToServer(-1));
                 }
             } else if (keyEvent.getKeyCode() == ClientModEventHandler.DUSTBIN_NEXT_KEY.getKey().getValue()) {
                 if (System.currentTimeMillis() - lastDustbinScreenKeyTime > 200) {
                     lastDustbinScreenKeyTime = System.currentTimeMillis();
-                    KeyValue<Double, Double> cursorPos = InputStateManager.getRawCursorPos();
-                    mousePos.key(cursorPos.key()).value(cursorPos.val());
-                    mouseRestoreTicks = 20;
+                    queueCursorRestoreBeforeContainerRefresh();
                     PacketUtils.sendPacketToServer(NetworkInit.INSTANCE, new OpenDustbinToServer(1));
                 }
             }
