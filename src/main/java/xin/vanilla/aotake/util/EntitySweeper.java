@@ -165,7 +165,7 @@ public class EntitySweeper {
 
         String typeKey = (entity instanceof ItemEntity)
                 ? ItemUtils.getItemRegistryString(((ItemEntity) entity).getItem())
-                : AotakeUtils.getEntityTypeRegistryName(entity);
+                : EntityUtils.getEntityRegistryString(entity);
 
         ItemStack itemToRecycle = null;
 
@@ -197,8 +197,8 @@ public class EntitySweeper {
                 entity.save(entityTag);
                 AotakeUtils.sanitizeCapturedEntityTag(entityTag);
                 aotake.put("entity", entityTag);
-                aotake.putString("entityId", AotakeUtils.getEntityTypeRegistryName(entity));
-                aotake.putString("name", AotakeUtils.getItemCustomNameJson(itemToRecycle));
+                aotake.putString("entityId", EntityUtils.getEntityRegistryString(entity));
+                aotake.putString("name", ItemUtils.getItemCustomNameJson(itemToRecycle));
                 tag.put(AotakeSweep.MODID, aotake);
 
                 result.setRecycledEntityCount(1);

@@ -17,11 +17,9 @@ import net.minecraft.tileentity.TileEntity;
 import net.minecraft.util.ActionResultType;
 import net.minecraft.util.Direction;
 import net.minecraft.util.Hand;
-import net.minecraft.util.ResourceLocation;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.BlockRayTraceResult;
 import net.minecraft.util.math.vector.Vector3d;
-import net.minecraft.util.text.ITextComponent;
 import net.minecraft.util.text.event.ClickEvent;
 import net.minecraft.util.text.event.HoverEvent;
 import net.minecraft.world.World;
@@ -32,7 +30,6 @@ import net.minecraftforge.items.CapabilityItemHandler;
 import net.minecraftforge.items.IItemHandler;
 import net.minecraftforge.items.ItemHandlerHelper;
 import net.minecraftforge.items.ItemStackHandler;
-import net.minecraftforge.registries.ForgeRegistries;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import xin.vanilla.aotake.AotakeComponent;
@@ -224,28 +221,14 @@ public class AotakeUtils {
      * 判断是否拥有指令权限
      */
     public static boolean hasCommandPermission(CommandSource source, EnumCommandType type) {
-        return source.hasPermission(getCommandPermissionLevel(type)) || hasVirtualPermission(source.getEntity(), type);
+        return source.hasPermission(getCommandPermissionLevel(type)) || CommandUtils.hasVirtualPermission(source.getEntity(), type);
     }
 
     /**
      * 判断是否拥有指令权限
      */
     public static boolean hasCommandPermission(PlayerEntity player, EnumCommandType type) {
-        return player.hasPermissions(getCommandPermissionLevel(type)) || hasVirtualPermission(player, type);
-    }
-
-    /**
-     * 判断是否拥有指令权限
-     */
-    public static boolean hasVirtualPermission(Entity source, EnumCommandType type) {
-        // 若为玩家
-        if (source instanceof PlayerEntity) {
-            return VirtualPermissionManager.getVirtualPermission((PlayerEntity) source).stream()
-                    .filter(Objects::nonNull)
-                    .anyMatch(s -> s.replaceConcise() == type.replaceConcise());
-        } else {
-            return false;
-        }
+        return player.hasPermissions(getCommandPermissionLevel(type)) || CommandUtils.hasVirtualPermission(player, type);
     }
 
     /**
@@ -443,7 +426,7 @@ public class AotakeUtils {
             boolean junk = isJunkEntity(entity, chuck);
             junkCache.put(entity, junk);
             if (!junk) {
-                String type = getEntityTypeRegistryName(entity);
+                String type = EntityUtils.getEntityRegistryString(entity);
                 typeCache.put(entity, type);
                 nonJunkTypeCounts.merge(type, 1, Integer::sum);
             }
@@ -475,7 +458,7 @@ public class AotakeUtils {
             if (!junk && !exceededTypes.isEmpty()) {
                 String type = typeCache.get(entity);
                 if (type == null) {
-                    type = getEntityTypeRegistryName(entity);
+                    type = EntityUtils.getEntityRegistryString(entity);
                     typeCache.put(entity, type);
                 }
                 exceededType = exceededTypes.contains(type);
@@ -1022,45 +1005,6 @@ public class AotakeUtils {
     // region 杂项
 
     /**
-     * 获取实体类型注册ID
-     */
-    @NonNull
-    public static String getEntityTypeRegistryName(@NonNull Entity entity) {
-        if (entity instanceof ItemEntity) {
-            return ItemUtils.getItemRegistryString(((ItemEntity) entity).getItem());
-        }
-        EntityType<?> entityType = entity.getType();
-        ResourceLocation location = ForgeRegistries.ENTITIES.getKey(entityType);
-        if (location == null) location = entityType.getRegistryName();
-        return location == null ? AotakeSweep.emptyIdentifier().toString() : location.toString();
-    }
-
-    public static String getItemCustomNameJson(@NonNull ItemStack itemStack) {
-        String result = "";
-        CompoundNBT compoundnbt = itemStack.getTagElement("display");
-        if (compoundnbt != null && compoundnbt.contains("Name", 8)) {
-            result = compoundnbt.getString("Name");
-        }
-        return result;
-    }
-
-    public static ITextComponent textComponentFromJson(String json) {
-        ITextComponent result = null;
-        if (StringUtils.isNotNullOrEmpty(json)) {
-            try {
-                result = ITextComponent.Serializer.fromJson(json);
-            } catch (Exception e) {
-                LOGGER.error("Invalid unsafe item name: {}", json, e);
-            }
-        }
-        return result;
-    }
-
-    public static ServerPlayerEntity getPlayerByUUID(String uuid) {
-        return BaniraCodex.serverInstance().key().getPlayerList().getPlayer(UUID.fromString(uuid));
-    }
-
-    /**
      * 将物品添加到指定的方块容器
      */
     public static ItemStack addItemToBlock(ItemStack stack, WorldCoordinate coordinate) {
@@ -1114,10 +1058,6 @@ public class AotakeUtils {
         }
 
         return null;
-    }
-
-    public static String getDimensionRegistryName(World world) {
-        return world.dimension().location().toString();
     }
 
     public static <T> List<T> singleList(T value) {
