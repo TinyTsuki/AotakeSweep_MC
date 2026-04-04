@@ -25,6 +25,7 @@ import xin.vanilla.banira.client.data.FontDrawArgs;
 import xin.vanilla.banira.client.gui.component.Text;
 import xin.vanilla.banira.client.gui.widget.TooltipWidget;
 import xin.vanilla.banira.client.util.AbstractGuiUtils;
+import xin.vanilla.banira.client.util.ClientThemeManager;
 import xin.vanilla.banira.client.util.InputStateManager;
 import xin.vanilla.banira.client.util.TextureUtils;
 import xin.vanilla.banira.common.data.Component;
@@ -226,8 +227,8 @@ public final class DustbinRender {
                     if (hover) {
                         TooltipWidget.drawPopupMessage(ms,
                                 FontDrawArgs.ofPopo(new Text(AotakeComponent.get().trans(EnumI18nType.WORD, "clear_cache")).stack(ms))
-                                        .x(mouseX).y(mouseY).popupUseTexture(false),
-                                null, null);
+                                        .x(mouseX).y(mouseY),
+                                ClientThemeManager.getEffectiveTheme(), null);
                     }
 
                     if (mouseHelper.isLeftPressedInRect(x, y, w, h)) {
@@ -254,8 +255,8 @@ public final class DustbinRender {
                         if (hover) {
                             TooltipWidget.drawPopupMessage(ms,
                                     FontDrawArgs.ofPopo(new Text(AotakeComponent.get().trans(EnumI18nType.WORD, "clear_all_dustbin")).stack(ms))
-                                            .x(mouseX).y(mouseY).popupUseTexture(false),
-                                    null, null);
+                                            .x(mouseX).y(mouseY),
+                                    ClientThemeManager.getEffectiveTheme(), null);
                         }
 
                         if (mouseHelper.isLeftPressedInRect(x, y, w, h)) {
@@ -282,8 +283,8 @@ public final class DustbinRender {
                         if (hover) {
                             TooltipWidget.drawPopupMessage(ms,
                                     FontDrawArgs.ofPopo(new Text(AotakeComponent.get().trans(EnumI18nType.WORD, "clear_cur_dustbin")).stack(ms))
-                                            .x(mouseX).y(mouseY).popupUseTexture(false),
-                                    null, null);
+                                            .x(mouseX).y(mouseY),
+                                    ClientThemeManager.getEffectiveTheme(), null);
                         }
 
                         if (mouseHelper.isLeftPressedInRect(x, y, w, h)) {
@@ -310,8 +311,8 @@ public final class DustbinRender {
                     if (hover) {
                         TooltipWidget.drawPopupMessage(ms,
                                 FontDrawArgs.ofPopo(new Text(AotakeComponent.get().trans(EnumI18nType.WORD, "refresh_page")).stack(ms))
-                                        .x(mouseX).y(mouseY).popupUseTexture(false),
-                                null, null);
+                                        .x(mouseX).y(mouseY),
+                                ClientThemeManager.getEffectiveTheme(), null);
                     }
 
                     if (mouseHelper.isLeftPressedInRect(x, y, w, h)) {
@@ -342,8 +343,8 @@ public final class DustbinRender {
                     if (hover) {
                         TooltipWidget.drawPopupMessage(ms,
                                 FontDrawArgs.ofPopo(new Text(AotakeComponent.get().trans(EnumI18nType.WORD, "previous_page")).stack(ms))
-                                        .x(mouseX).y(mouseY).popupUseTexture(false),
-                                null, null);
+                                        .x(mouseX).y(mouseY),
+                                ClientThemeManager.getEffectiveTheme(), null);
                     }
 
                     if (canPrev && mouseHelper.isLeftPressedInRect(x, y, w, h)) {
@@ -374,8 +375,8 @@ public final class DustbinRender {
                     if (hover) {
                         TooltipWidget.drawPopupMessage(ms,
                                 FontDrawArgs.ofPopo(new Text(AotakeComponent.get().trans(EnumI18nType.WORD, "next_page")).stack(ms))
-                                        .x(mouseX).y(mouseY).popupUseTexture(false),
-                                null, null);
+                                        .x(mouseX).y(mouseY),
+                                ClientThemeManager.getEffectiveTheme(), null);
                     }
 
                     if (canNext && mouseHelper.isLeftPressedInRect(x, y, w, h)) {
