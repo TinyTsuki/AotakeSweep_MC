@@ -15,6 +15,7 @@ import xin.vanilla.banira.client.gui.widget.LabelWidget;
 import xin.vanilla.banira.client.util.AbstractGuiUtils;
 import xin.vanilla.banira.client.util.TextureUtils;
 import xin.vanilla.banira.common.data.Color;
+import xin.vanilla.banira.common.data.KeyValue;
 import xin.vanilla.banira.common.enums.EnumPosition;
 import xin.vanilla.banira.common.util.DateUtils;
 import xin.vanilla.banira.common.util.NumberUtils;
@@ -68,9 +69,9 @@ public final class ProgressRender {
                     .y(drawY)
                     .width(width)
                     .height(height);
+            ResourceLocation poleTex = TextureUtils.loadCustomTexture(Identifier.id(), "gui/pole.png");
             AbstractGuiUtils.renderByTransform(transformArgs, (arg) ->
-                    AbstractGuiUtils.blitBlend(ms, TextureUtils.loadCustomTexture(Identifier.id(), "gui/pole.png"),
-                            (int) arg.x(), (int) arg.y(), 0, 0, 0, (int) arg.width(), (int) arg.height(), (int) arg.width(), (int) arg.height()));
+                    blitProgressAtlas(ms, poleTex, (int) arg.x(), (int) arg.y(), (int) arg.width(), (int) arg.height()));
         }
 
         if (displayList.contains(EnumProgressBarType.TEXT.name())) {
@@ -116,11 +117,23 @@ public final class ProgressRender {
                     .y(drawY)
                     .width(width)
                     .height(height);
-            AbstractGuiUtils.renderByTransform(transformArgs, (arg) -> {
-                ResourceLocation texture = TextureUtils.loadCustomTexture(Identifier.id(), "gui/leaf.png");
-                AbstractGuiUtils.blitBlend(ms, texture, (int) arg.x(), (int) arg.y(), 0, 0, 0, (int) arg.width(), (int) arg.height(), (int) arg.width(), (int) arg.height());
-            });
+            ResourceLocation leafTex = TextureUtils.loadCustomTexture(Identifier.id(), "gui/leaf.png");
+            AbstractGuiUtils.renderByTransform(transformArgs, (arg) ->
+                    blitProgressAtlas(ms, leafTex, (int) arg.x(), (int) arg.y(), (int) arg.width(), (int) arg.height()));
         }
+    }
+
+    /**
+     * 进度条贴图需传入<strong>纹理文件真实宽高</strong>参与 UV；误把屏幕绘制宽高当作纹理尺寸会导致采样错误（竹竿呈细线等）。
+     */
+    private static void blitProgressAtlas(MatrixStack ms, ResourceLocation texture, int x, int y, int destW, int destH) {
+        KeyValue<Integer, Integer> dim = TextureUtils.getTextureSize(texture);
+        int texW = dim.key();
+        int texH = dim.val();
+        if (texW <= 0 || texH <= 0) {
+            return;
+        }
+        AbstractGuiUtils.blitBlend(ms, texture, x, y, destW, destH, 0, 0, texW, texH, texW, texH);
     }
 
     private static int getLeafX() {
