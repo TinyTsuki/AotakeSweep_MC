@@ -10,13 +10,12 @@ import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
-import xin.vanilla.aotake.AotakeComponent;
 import xin.vanilla.aotake.Identifier;
 import xin.vanilla.aotake.config.ClientConfig;
 import xin.vanilla.aotake.config.DustbinGuiLayoutCache;
+import xin.vanilla.aotake.screen.DustbinRender;
 import xin.vanilla.banira.client.util.AbstractGuiUtils;
 import xin.vanilla.banira.client.util.TextureUtils;
-import xin.vanilla.banira.common.util.Translator;
 
 @Mixin(ChestScreen.class)
 public abstract class ChestScreenMixin {
@@ -42,7 +41,7 @@ public abstract class ChestScreenMixin {
         int srcWidth = DustbinGuiLayoutCache.srcWidth;
         int srcHeight = DustbinGuiLayoutCache.srcHeight;
 
-        ResourceLocation texture = TextureUtils.loadCustomTexture(Identifier.id(), "textures/gui/dustbin_gui.png");
+        ResourceLocation texture = TextureUtils.loadCustomTexture(Identifier.id(), "gui/dustbin_gui.png");
         AbstractGuiUtils.renderByDepth(stack, 0, (s) ->
                 AbstractGuiUtils.blitBlend(s, texture, leftPos, topPos, 0, 0, drawWidth, drawHeight, srcWidth, srcHeight)
         );
@@ -53,10 +52,6 @@ public abstract class ChestScreenMixin {
     private boolean aotake$isDustbinScreen(ChestScreen screen) {
         PlayerEntity player = Minecraft.getInstance().player;
         if (player == null) return false;
-        String title = screen.getTitle().getContents();
-        String modTitle = AotakeComponent.get().transAuto("title")
-                .toVanilla(Translator.getClientLanguage())
-                .getContents();
-        return title.startsWith(modTitle);
+        return DustbinRender.isDustbinTitle(screen.getTitle().getContents());
     }
 }

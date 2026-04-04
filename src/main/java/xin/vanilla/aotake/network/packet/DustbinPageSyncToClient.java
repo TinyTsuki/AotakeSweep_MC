@@ -4,6 +4,7 @@ import net.minecraft.network.PacketBuffer;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.api.distmarker.OnlyIn;
 import net.minecraftforge.fml.network.NetworkEvent;
+import xin.vanilla.aotake.screen.DustbinRender;
 
 import java.util.function.Supplier;
 
@@ -34,7 +35,7 @@ public class DustbinPageSyncToClient {
     @OnlyIn(Dist.CLIENT)
     private static final class ClientSide {
         private static void handle(DustbinPageSyncToClient packet) {
-            xin.vanilla.aotake.event.ClientGameEventHandler.updateDustbinPage(packet.currentPage, packet.totalPage);
+            DustbinRender.updateDustbinPage(packet.currentPage, packet.totalPage);
         }
     }
 }
