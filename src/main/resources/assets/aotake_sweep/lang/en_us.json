@@ -4,6 +4,7 @@
   "key.aotake_sweep.open_dustbin_pre": "Dustbin Previous Page",
   "key.aotake_sweep.open_dustbin_next": "Dustbin Next Page",
   "key.aotake_sweep.progress": "Show progress bar",
+  "word.aotake_sweep.client_config_editor": "Aotake Sweep client config",
   "itemGroup.aotake_sweep": "Aotake Sweep",
   "word.aotake_sweep.title": "Aotake",
   "word.aotake_sweep.help": "[<page>|<type>] Query command help information",
@@ -22,7 +23,7 @@
   "word.aotake_sweep.dustbin_open_detail": "Open Dustbin.\nParameters:\n [<page>] [<players>]",
   "word.aotake_sweep.dustbin_clear_detail": "Clear Dustbin.\nParameters:\n [<page>]",
   "word.aotake_sweep.dustbin_drop_detail": "Drop Dustbin Items.\nParameters:\n [<page>]",
-  "word.aotake_sweep.cache_clear_detail": "Clear Cache Items。",
+  "word.aotake_sweep.cache_clear_detail": "Clear Cache Items���",
   "word.aotake_sweep.cache_drop_detail": "Drop Cache Items.\nParameters:\n [<return dropped items to their original location>]",
   "word.aotake_sweep.sweep_detail": "Manual Sweep.\nParameters:\n 1. [<dimension>]\n 2. [<range>]",
   "word.aotake_sweep.clear_drop_detail": "Clear Drops.\nParameters:\n 1. [<dimension>] [<withEntity>] [ignoreEntityFilter]\n 3. [<range>] [withEntity] [ignoreEntityFilter]",
@@ -72,6 +73,6 @@
   "format.aotake_sweep.next_sweep_time_set": "§eNext sweep time was set by '%s§e' to occur in %s§e seconds.",
   "format.aotake_sweep.config_key_absent": "§cConfig modification failed: '%s§c' does not exist.",
   "format.aotake_sweep.config_value_parse_error": "§cConfig modification failed: Failed to parse '%s§c'.",
-  "format.aotake_sweep.config_value_set_error": "§cConfig modification failed: '%s§c' → '%s§c'.",
-  "format.aotake_sweep.config_value_set_success": "§2Config modification successful: '%s§2' → '%s§2'."
+  "format.aotake_sweep.config_value_set_error": "§cConfig modification failed: '%s§c' ��� '%s§c'.",
+  "format.aotake_sweep.config_value_set_success": "§2Config modification successful: '%s§2' ��� '%s§2'."
 }

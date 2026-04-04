@@ -2,12 +2,20 @@ package xin.vanilla.aotake.event;
 
 import net.minecraft.client.settings.KeyBinding;
 import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.client.registry.ClientRegistry;
 import net.minecraftforge.fml.common.Mod;
+import net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.lwjgl.glfw.GLFW;
+import xin.vanilla.aotake.AotakeComponent;
 import xin.vanilla.aotake.AotakeSweep;
+import xin.vanilla.aotake.config.ClientConfig;
+import xin.vanilla.banira.client.gui.ConfigEditorScreen;
+import xin.vanilla.banira.client.gui.quickaction.QuickActionRegistry;
+import xin.vanilla.banira.common.config.ForgeConfigAdapter;
+import xin.vanilla.banira.common.enums.EnumI18nType;
 
 /**
  * 客户端 Mod事件处理器
@@ -48,6 +56,16 @@ public class ClientModEventHandler {
         ClientRegistry.registerKeyBinding(DUSTBIN_PRE_KEY);
         ClientRegistry.registerKeyBinding(DUSTBIN_NEXT_KEY);
         ClientRegistry.registerKeyBinding(PROGRESS_KEY);
+    }
+
+    @SubscribeEvent
+    public static void onClientSetup(FMLClientSetupEvent event) {
+        LOGGER.debug("Registering key bindings");
+        registerKeyBindings();
+        QuickActionRegistry.get().registerListOnly(
+                AotakeSweep.MODID + ":quick_aotake_client_config",
+                AotakeComponent.get().trans(EnumI18nType.WORD, "word.aotake_sweep.client_config_editor"),
+                ctx -> ConfigEditorScreen.open(ForgeConfigAdapter.getHolder(ClientConfig.class), ctx.currentScreen()));
     }
 
 }

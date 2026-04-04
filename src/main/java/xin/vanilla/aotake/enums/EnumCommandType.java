@@ -3,6 +3,7 @@ package xin.vanilla.aotake.enums;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import lombok.Getter;
 import net.minecraft.command.CommandSource;
+import xin.vanilla.aotake.AotakeSweep;
 import xin.vanilla.aotake.command.impl.*;
 import xin.vanilla.banira.command.BaniraCommand;
 import xin.vanilla.banira.common.api.IVirtualPermissionType;
@@ -81,6 +82,28 @@ public enum EnumCommandType implements IVirtualPermissionType {
     public int getSort() {
         return this.ordinal();
     }
+
+    // region IVirtualPermissionType
+    @Override
+    public String modId() {
+        return AotakeSweep.MODID;
+    }
+
+    @Override
+    public String id() {
+        return this.replaceConcise().name();
+    }
+
+    @Override
+    public boolean op() {
+        return this.op;
+    }
+
+    @Override
+    public int sort() {
+        return getSort();
+    }
+    // endregion
 
     public EnumCommandType replaceConcise() {
         if (this.name().endsWith("_CONCISE")) {

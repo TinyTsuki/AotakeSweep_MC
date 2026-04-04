@@ -22,7 +22,6 @@ import xin.vanilla.banira.common.data.Component;
 import xin.vanilla.banira.common.util.*;
 
 import java.util.Date;
-import java.util.Map;
 
 @SuppressWarnings("resource")
 public class DelayCommand {
@@ -36,22 +35,19 @@ public class DelayCommand {
             }
 
             Date current = new Date();
-            long delay = CommandUtils.getLongDefault(context, "seconds", CommonConfig.SWEEP_INTERVAL.get() / 1000);
+            long delay = CommandUtils.getLongDefault(context, "seconds", CommonConfig.get().base().sweep().sweepInterval() / 1000);
             if (delay > 0) {
                 EventHandlerProxy.setNextSweepTime(current.getTime() + delay * 1000);
             } else {
                 long nextSweepTime = EventHandlerProxy.getNextSweepTime() + delay * 1000;
                 if (nextSweepTime < current.getTime())
-                    nextSweepTime = current.getTime() + CommonConfig.SWEEP_INTERVAL.get();
+                    nextSweepTime = current.getTime() + CommonConfig.get().base().sweep().sweepInterval();
                 EventHandlerProxy.setNextSweepTime(nextSweepTime);
             }
-            // 给已安装mod玩家同步扫地倒计时
-            for (Map.Entry<String, Boolean> entry : PlayerUtils.remoteClientModInstalled().entrySet()) {
-                if (entry.getValue()) continue;
-                ServerPlayerEntity player = AotakeUtils.getPlayerByUUID(entry.getKey());
-                if (player != null) {
-                    PacketUtils.sendPacketToPlayer(NetworkInit.INSTANCE, new SweepTimeSyncToClient(), player);
-                }
+            // 给已声明客户端 mod 且尚未完成数据同步的玩家同步扫地倒计时
+            for (ServerPlayerEntity player : BaniraCodex.serverInstance().key().getPlayerList().getPlayers()) {
+                if (PlayerUtils.isPlayerDataSynced(player, AotakeSweep.MODID)) continue;
+                PacketUtils.sendPacketToPlayer(NetworkInit.INSTANCE, new SweepTimeSyncToClient(), player);
             }
             long seconds = (EventHandlerProxy.getNextSweepTime() - current.getTime()) / 1000;
             Component message = AotakeComponent.get().transAuto("next_sweep_time_set"
@@ -70,12 +66,12 @@ public class DelayCommand {
             return 1;
         };
 
-        return Commands.literal(CommonConfig.COMMAND_DELAY_SWEEP.get())
+        return Commands.literal(CommonConfig.get().command().commandDelaySweep())
                 .requires(source -> AotakeUtils.hasCommandPermission(source, EnumCommandType.DELAY_SWEEP))
                 .executes(delaySweepCommand)
                 .then(Commands.argument("seconds", LongArgumentType.longArg())
                         .suggests((context, builder) -> {
-                            builder.suggest((int) (CommonConfig.SWEEP_INTERVAL.get() / 1000));
+                            builder.suggest((int) (CommonConfig.get().base().sweep().sweepInterval() / 1000));
                             return builder.buildFuture();
                         })
                         .executes(delaySweepCommand)

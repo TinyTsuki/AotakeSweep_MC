@@ -30,7 +30,7 @@ public class SweepTimeSyncToClient {
     public SweepTimeSyncToClient() {
         this.currentTime = System.currentTimeMillis();
         this.nextSweepTime = EventHandlerProxy.getNextSweepTime();
-        this.sweepInterval = CommonConfig.SWEEP_INTERVAL.get();
+        this.sweepInterval = CommonConfig.get().base().sweep().sweepInterval();
     }
 
     public SweepTimeSyncToClient(PacketBuffer buf) {

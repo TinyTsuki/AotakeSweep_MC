@@ -9,7 +9,6 @@ import net.minecraft.client.gui.screen.inventory.ChestScreen;
 import net.minecraft.client.gui.widget.button.Button;
 import net.minecraft.util.ResourceLocation;
 import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.client.event.ClientChatEvent;
 import net.minecraftforge.client.event.ClientPlayerNetworkEvent;
 import net.minecraftforge.client.event.GuiScreenEvent;
 import net.minecraftforge.client.event.RenderGameOverlayEvent;
@@ -20,22 +19,39 @@ import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import xin.vanilla.aotake.AotakeComponent;
 import xin.vanilla.aotake.AotakeSweep;
+import xin.vanilla.aotake.Identifier;
 import xin.vanilla.aotake.config.ClientConfig;
 import xin.vanilla.aotake.config.DustbinGuiConfig;
 import xin.vanilla.aotake.config.DustbinGuiLayoutCache;
-import xin.vanilla.aotake.data.Color;
-import xin.vanilla.aotake.data.KeyValue;
-import xin.vanilla.aotake.enums.*;
+import xin.vanilla.aotake.enums.EnumCommandType;
+import xin.vanilla.aotake.enums.EnumProgressBarType;
 import xin.vanilla.aotake.mixin.ContainerScreenAccessor;
+import xin.vanilla.aotake.network.NetworkInit;
 import xin.vanilla.aotake.network.packet.ClearDustbinToServer;
-import xin.vanilla.aotake.network.packet.ModLoadedToBoth;
 import xin.vanilla.aotake.network.packet.OpenDustbinToServer;
-import xin.vanilla.aotake.screen.component.Text;
-import xin.vanilla.aotake.util.*;
+import xin.vanilla.aotake.util.AotakeUtils;
+import xin.vanilla.banira.client.data.FontDrawArgs;
+import xin.vanilla.banira.client.data.TransformArgs;
+import xin.vanilla.banira.client.gui.component.Text;
+import xin.vanilla.banira.client.gui.widget.LabelWidget;
+import xin.vanilla.banira.client.gui.widget.TooltipWidget;
+import xin.vanilla.banira.client.util.AbstractGuiUtils;
+import xin.vanilla.banira.client.util.InputStateManager;
+import xin.vanilla.banira.client.util.TextureUtils;
+import xin.vanilla.banira.common.data.Color;
+import xin.vanilla.banira.common.data.Component;
+import xin.vanilla.banira.common.data.KeyValue;
+import xin.vanilla.banira.common.enums.EnumI18nType;
+import xin.vanilla.banira.common.enums.EnumMCColor;
+import xin.vanilla.banira.common.enums.EnumPosition;
+import xin.vanilla.banira.common.network.packet.ModLoadedToBoth;
+import xin.vanilla.banira.common.util.*;
 
 import java.util.Date;
 import java.util.List;
+import java.util.function.Consumer;
 
 /**
  * 客户端 Game事件处理器
@@ -44,33 +60,7 @@ import java.util.List;
 public class ClientGameEventHandler {
     private static final Logger LOGGER = LogManager.getLogger();
 
-    @SubscribeEvent
-    public static void onClientChat(ClientChatEvent event) {
-        String commandPrefix = "/" + AotakeUtils.getCommandPrefix() + " config client";
-        String message = event.getMessage();
-        if (!message.startsWith(commandPrefix)) return;
-        Minecraft mc = Minecraft.getInstance();
-        try {
-            if (mc.gui != null) {
-                mc.gui.getChat().addRecentChat(message);
-            }
-        } catch (Exception ignored) {
-        }
-        event.setCanceled(true);
-        ClientPlayerEntity player = mc.player;
-        if (player == null) return;
-        String args = message.substring(commandPrefix.length()).trim();
-        if (StringUtils.isNullOrEmptyEx(args)) {
-            AotakeUtils.sendMessage(player, Component.literal(commandPrefix + " <configKey> <configValue>"));
-            return;
-        }
-        String[] parts = args.split("\\s+", 2);
-        if (parts.length < 2) {
-            AotakeUtils.sendMessage(player, Component.literal(commandPrefix + " <configKey> <configValue>"));
-            return;
-        }
-        CommandUtils.executeModifyConfigClient(ClientConfig.class, player, parts[0], parts[1]);
-    }
+    private static final String THEME_TEXTURE_DIR = "textures/gui/theme/";
 
     @SubscribeEvent
     public static void onPlayerLoggedOut(ClientPlayerNetworkEvent.LoggedOutEvent event) {
@@ -105,9 +95,9 @@ public class ClientGameEventHandler {
             if (Minecraft.getInstance().screen == null) {
                 if (ClientModEventHandler.DUSTBIN_KEY.isDown() && System.currentTimeMillis() - lastTime > 100) {
                     lastTime = System.currentTimeMillis();
-                    AotakeUtils.sendPacketToServer(new OpenDustbinToServer(0));
+                    PacketUtils.sendPacketToServer(NetworkInit.INSTANCE, new OpenDustbinToServer(0));
                 }
-                if (ClientConfig.PROGRESS_BAR_KEY_APPLY_MODE.get()) {
+                if (ClientConfig.get().progressBar().progressBarKeyApplyMode()) {
                     if (ClientModEventHandler.PROGRESS_KEY.isDown() && System.currentTimeMillis() - lastTime > 100) {
                         lastTime = System.currentTimeMillis();
                         showProgress = !showProgress;
@@ -192,9 +182,9 @@ public class ClientGameEventHandler {
         EventHandlerProxy.onPlayerLoggedOut(event);
     }
 
-    private static final Component TITLE = Component.translatable(EnumI18nType.WORD, "title");
+    private static final Component TITLE = AotakeComponent.get().trans(EnumI18nType.WORD, "title");
 
-    private static final MouseHelper mouseHelper = new MouseHelper();
+    private static final InputStateManager mouseHelper = InputStateManager.instance();
     private static Button dustbinPrevButton;
     private static Button dustbinNextButton;
 
@@ -205,21 +195,21 @@ public class ClientGameEventHandler {
         if (screen instanceof ChestScreen
                 && mc.player != null
                 && screen.getTitle().getContents()
-                .startsWith(TITLE.toTextComponent(AotakeUtils.getPlayerLanguage(mc.player)).getContents())
+                .startsWith(TITLE.toVanilla(Translator.getClientLanguage()).getContents())
         ) {
             if (event instanceof GuiScreenEvent.InitGuiEvent.Post) {
                 for (int i = 0; i < 20; i++) {
-                    AotakeScheduler.schedule(i, () -> {
+                    BaniraScheduler.schedule(i, () -> {
                         if (mousePos.key() > -1 && mousePos.val() > -1 && mouseRestoreTicks > 0) {
-                            MouseHelper.setMouseRawPos(mousePos);
+                            InputStateManager.setMouseRawPos(mousePos);
                             mouseRestoreTicks--;
                             if (mouseRestoreTicks <= 0) {
-                                mousePos.setKey(-1D).setValue(-1D);
+                                mousePos.key(-1D).val(-1D);
                             }
                         }
                     });
                 }
-                if (ClientConfig.VANILLA_DUSTBIN.get()) {
+                if (ClientConfig.get().dustbin().vanillaDustbin()) {
                     GuiScreenEvent.InitGuiEvent.Post eve = (GuiScreenEvent.InitGuiEvent.Post) event;
                     ClientPlayerEntity player = mc.player;
                     ContainerScreenAccessor accessor = (ContainerScreenAccessor) screen;
@@ -234,67 +224,67 @@ public class ClientGameEventHandler {
                     }
                     if (AotakeUtils.hasCommandPermission(player, EnumCommandType.CACHE_CLEAR)) {
                         eve.addWidget(
-                                AbstractGuiUtils.newButton(baseX - 21
+                                newButton(baseX - 21
                                         , baseY + 21 * (yOffset++)
                                         , 20, 20
-                                        , Component.literal("✕").setColor(EnumMCColor.RED.getColor())
-                                        , button -> AotakeUtils.sendPacketToServer(new ClearDustbinToServer(true, true))
-                                        , Component.translatable(EnumI18nType.MESSAGE, "clear_cache")
+                                        , AotakeComponent.get().literal("✕").color(EnumMCColor.RED.getColor())
+                                        , button -> PacketUtils.sendPacketToServer(NetworkInit.INSTANCE, new ClearDustbinToServer(true, true))
+                                        , AotakeComponent.get().trans(EnumI18nType.WORD, "clear_cache")
                                 )
                         );
                     }
                     if (AotakeUtils.hasCommandPermission(player, EnumCommandType.DUSTBIN_CLEAR)) {
                         eve.addWidget(
-                                AbstractGuiUtils.newButton(baseX - 21
+                                newButton(baseX - 21
                                         , baseY + 21 * (yOffset++)
                                         , 20, 20
-                                        , Component.literal("✕").setColor(EnumMCColor.RED.getColor())
-                                        , button -> AotakeUtils.sendPacketToServer(new ClearDustbinToServer(true, false))
-                                        , Component.translatable(EnumI18nType.MESSAGE, "clear_all_dustbin")
+                                        , AotakeComponent.get().literal("✕").color(EnumMCColor.RED.getColor())
+                                        , button -> PacketUtils.sendPacketToServer(NetworkInit.INSTANCE, new ClearDustbinToServer(true, false))
+                                        , AotakeComponent.get().trans(EnumI18nType.WORD, "clear_all_dustbin")
                                 )
                         );
                         eve.addWidget(
-                                AbstractGuiUtils.newButton(baseX - 21
+                                newButton(baseX - 21
                                         , baseY + 21 * (yOffset++)
                                         , 20, 20
-                                        , Component.literal("✕").setColor(EnumMCColor.YELLOW.getColor())
-                                        , button -> AotakeUtils.sendPacketToServer(new ClearDustbinToServer(false, false))
-                                        , Component.translatable(EnumI18nType.MESSAGE, "clear_cur_dustbin")
+                                        , AotakeComponent.get().literal("✕").color(EnumMCColor.YELLOW.getColor())
+                                        , button -> PacketUtils.sendPacketToServer(NetworkInit.INSTANCE, new ClearDustbinToServer(false, false))
+                                        , AotakeComponent.get().trans(EnumI18nType.WORD, "clear_cur_dustbin")
                                 )
                         );
                     }
                     eve.addWidget(
-                            AbstractGuiUtils.newButton(baseX - 21
+                            newButton(baseX - 21
                                     , baseY + 21 * (yOffset++)
                                     , 20, 20
-                                    , Component.literal("↻")
-                                    , button -> AotakeUtils.sendPacketToServer(new OpenDustbinToServer(0))
-                                    , Component.translatable(EnumI18nType.MESSAGE, "refresh_page")
+                                    , AotakeComponent.get().literal("↻")
+                                    , button -> PacketUtils.sendPacketToServer(NetworkInit.INSTANCE, new OpenDustbinToServer(0))
+                                    , AotakeComponent.get().trans(EnumI18nType.WORD, "refresh_page")
                             )
                     );
-                    Button prevButton = AbstractGuiUtils.newButton(baseX - 21
+                    Button prevButton = newButton(baseX - 21
                             , baseY + 21 * (yOffset++)
                             , 20, 20
-                            , Component.literal("▲")
-                            , button -> AotakeUtils.sendPacketToServer(new OpenDustbinToServer(-1))
-                            , Component.translatable(EnumI18nType.MESSAGE, "previous_page")
+                            , AotakeComponent.get().literal("▲")
+                            , button -> PacketUtils.sendPacketToServer(NetworkInit.INSTANCE, new OpenDustbinToServer(-1))
+                            , AotakeComponent.get().trans(EnumI18nType.WORD, "previous_page")
                     );
                     prevButton.active = canPrev;
                     dustbinPrevButton = prevButton;
                     eve.addWidget(prevButton);
-                    Button nextButton = AbstractGuiUtils.newButton(baseX - 21
+                    Button nextButton = newButton(baseX - 21
                             , baseY + 21 * (yOffset++)
                             , 20, 20
-                            , Component.literal("▼")
-                            , button -> AotakeUtils.sendPacketToServer(new OpenDustbinToServer(1))
-                            , Component.translatable(EnumI18nType.MESSAGE, "next_page")
+                            , AotakeComponent.get().literal("▼")
+                            , button -> PacketUtils.sendPacketToServer(NetworkInit.INSTANCE, new OpenDustbinToServer(1))
+                            , AotakeComponent.get().trans(EnumI18nType.WORD, "next_page")
                     );
                     nextButton.active = canNext;
                     dustbinNextButton = nextButton;
                     eve.addWidget(nextButton);
                 }
             } else if (event instanceof GuiScreenEvent.DrawScreenEvent.Post) {
-                if (ClientConfig.VANILLA_DUSTBIN.get()) {
+                if (ClientConfig.get().dustbin().vanillaDustbin()) {
                     boolean canPrev = true;
                     boolean canNext = true;
                     if (dustbinPage > 0 && dustbinTotalPage > 0) {
@@ -308,12 +298,11 @@ public class ClientGameEventHandler {
                         dustbinNextButton.active = canNext;
                     }
                 }
-                if (!ClientConfig.VANILLA_DUSTBIN.get()) {
+                if (!ClientConfig.get().dustbin().vanillaDustbin()) {
                     GuiScreenEvent.DrawScreenEvent.Post eve = (GuiScreenEvent.DrawScreenEvent.Post) event;
                     ClientPlayerEntity player = mc.player;
                     int mouseX = eve.getMouseX();
                     int mouseY = eve.getMouseY();
-                    mouseHelper.tick(mouseX, mouseY);
 
                     MatrixStack ms = eve.getMatrixStack();
                     int baseW = 16;
@@ -341,29 +330,24 @@ public class ClientGameEventHandler {
                         int y = baseY + (h + 1) * (yOffset++);
                         boolean hover = mouseHelper.isHoverInRect(x, y, w, h);
 
-                        if (mouseHelper.isLeftPressing() && hover) {
+                        if (mouseHelper.isPressingLeftEx() && hover) {
                             x--;
                             y--;
                             w += 2;
                             h += 2;
                         }
 
-                        AbstractGuiUtils.bindTexture(TextureUtils.loadCustomTexture(TextureUtils.INTERNAL_THEME_DIR + "clear_cache.png"));
-                        AbstractGuiUtils.blitBlend(ms, x, y, 0, 0, w, h, w, h);
+                        AbstractGuiUtils.blitBlend(ms, TextureUtils.loadCustomTexture(Identifier.id(), THEME_TEXTURE_DIR + "clear_cache.png"), x, y, 0, 0, 0, w, h, w, h);
 
                         if (hover) {
-                            AbstractGuiUtils.drawPopupMessage(Text.empty()
-                                            .setText(Component.translatable(EnumI18nType.MESSAGE, "clear_cache"))
-                                            .setMatrixStack(ms)
-                                    , mouseX
-                                    , mouseY
-                                    , screen.width
-                                    , screen.height
-                            );
+                            TooltipWidget.drawPopupMessage(ms,
+                                    FontDrawArgs.ofPopo(new Text(AotakeComponent.get().trans(EnumI18nType.WORD, "clear_cache")).stack(ms))
+                                            .x(mouseX).y(mouseY).popupUseTexture(false),
+                                    null, null);
                         }
 
                         if (mouseHelper.isLeftPressedInRect(x, y, w, h)) {
-                            AotakeUtils.sendPacketToServer(new ClearDustbinToServer(true, true));
+                            PacketUtils.sendPacketToServer(NetworkInit.INSTANCE, new ClearDustbinToServer(true, true));
                         }
                     }
                     if (AotakeUtils.hasCommandPermission(player, EnumCommandType.DUSTBIN_CLEAR)) {
@@ -374,29 +358,24 @@ public class ClientGameEventHandler {
                             int y = baseY + (h + 1) * (yOffset++);
                             boolean hover = mouseHelper.isHoverInRect(x, y, w, h);
 
-                            if (mouseHelper.isLeftPressing() && hover) {
+                            if (mouseHelper.isPressingLeftEx() && hover) {
                                 x--;
                                 y--;
                                 w += 2;
                                 h += 2;
                             }
 
-                            AbstractGuiUtils.bindTexture(TextureUtils.loadCustomTexture(TextureUtils.INTERNAL_THEME_DIR + "clear_all.png"));
-                            AbstractGuiUtils.blitBlend(ms, x, y, 0, 0, w, h, w, h);
+                            AbstractGuiUtils.blitBlend(ms, TextureUtils.loadCustomTexture(Identifier.id(), THEME_TEXTURE_DIR + "clear_all.png"), x, y, 0, 0, 0, w, h, w, h);
 
                             if (hover) {
-                                AbstractGuiUtils.drawPopupMessage(Text.empty()
-                                                .setText(Component.translatable(EnumI18nType.MESSAGE, "clear_all_dustbin"))
-                                                .setMatrixStack(ms)
-                                        , mouseX
-                                        , mouseY
-                                        , screen.width
-                                        , screen.height
-                                );
+                                TooltipWidget.drawPopupMessage(ms,
+                                        FontDrawArgs.ofPopo(new Text(AotakeComponent.get().trans(EnumI18nType.WORD, "clear_all_dustbin")).stack(ms))
+                                                .x(mouseX).y(mouseY).popupUseTexture(false),
+                                        null, null);
                             }
 
                             if (mouseHelper.isLeftPressedInRect(x, y, w, h)) {
-                                AotakeUtils.sendPacketToServer(new ClearDustbinToServer(true, false));
+                                PacketUtils.sendPacketToServer(NetworkInit.INSTANCE, new ClearDustbinToServer(true, false));
                             }
                         }
 
@@ -407,29 +386,24 @@ public class ClientGameEventHandler {
                             int y = baseY + (h + 1) * (yOffset++);
                             boolean hover = mouseHelper.isHoverInRect(x, y, w, h);
 
-                            if (mouseHelper.isLeftPressing() && hover) {
+                            if (mouseHelper.isPressingLeftEx() && hover) {
                                 x--;
                                 y--;
                                 w += 2;
                                 h += 2;
                             }
 
-                            AbstractGuiUtils.bindTexture(TextureUtils.loadCustomTexture(TextureUtils.INTERNAL_THEME_DIR + "clear_page.png"));
-                            AbstractGuiUtils.blitBlend(ms, x, y, 0, 0, w, h, w, h);
+                            AbstractGuiUtils.blitBlend(ms, TextureUtils.loadCustomTexture(Identifier.id(), THEME_TEXTURE_DIR + "clear_page.png"), x, y, 0, 0, 0, w, h, w, h);
 
                             if (hover) {
-                                AbstractGuiUtils.drawPopupMessage(Text.empty()
-                                                .setText(Component.translatable(EnumI18nType.MESSAGE, "clear_cur_dustbin"))
-                                                .setMatrixStack(ms)
-                                        , mouseX
-                                        , mouseY
-                                        , screen.width
-                                        , screen.height
-                                );
+                                TooltipWidget.drawPopupMessage(ms,
+                                        FontDrawArgs.ofPopo(new Text(AotakeComponent.get().trans(EnumI18nType.WORD, "clear_cur_dustbin")).stack(ms))
+                                                .x(mouseX).y(mouseY).popupUseTexture(false),
+                                        null, null);
                             }
 
                             if (mouseHelper.isLeftPressedInRect(x, y, w, h)) {
-                                AotakeUtils.sendPacketToServer(new ClearDustbinToServer(false, false));
+                                PacketUtils.sendPacketToServer(NetworkInit.INSTANCE, new ClearDustbinToServer(false, false));
                             }
                         }
                     }
@@ -440,32 +414,27 @@ public class ClientGameEventHandler {
                         int y = baseY + (h + 1) * (yOffset++);
                         boolean hover = mouseHelper.isHoverInRect(x, y, w, h);
 
-                        if (mouseHelper.isLeftPressing() && hover) {
+                        if (mouseHelper.isPressingLeftEx() && hover) {
                             x--;
                             y--;
                             w += 2;
                             h += 2;
                         }
 
-                        AbstractGuiUtils.bindTexture(TextureUtils.loadCustomTexture(TextureUtils.INTERNAL_THEME_DIR + "refresh.png"));
-                        AbstractGuiUtils.blitBlend(ms, x, y, 0, 0, w, h, w, h);
+                        AbstractGuiUtils.blitBlend(ms, TextureUtils.loadCustomTexture(Identifier.id(), THEME_TEXTURE_DIR + "refresh.png"), x, y, 0, 0, 0, w, h, w, h);
 
                         if (hover) {
-                            AbstractGuiUtils.drawPopupMessage(Text.empty()
-                                            .setText(Component.translatable(EnumI18nType.MESSAGE, "refresh_page"))
-                                            .setMatrixStack(ms)
-                                    , mouseX
-                                    , mouseY
-                                    , screen.width
-                                    , screen.height
-                            );
+                            TooltipWidget.drawPopupMessage(ms,
+                                    FontDrawArgs.ofPopo(new Text(AotakeComponent.get().trans(EnumI18nType.WORD, "refresh_page")).stack(ms))
+                                            .x(mouseX).y(mouseY).popupUseTexture(false),
+                                    null, null);
                         }
 
                         if (mouseHelper.isLeftPressedInRect(x, y, w, h)) {
-                            KeyValue<Double, Double> cursorPos = MouseHelper.getRawCursorPos();
-                            mousePos.setKey(cursorPos.getKey()).setValue(cursorPos.getValue());
+                            KeyValue<Double, Double> cursorPos = InputStateManager.getRawCursorPos();
+                            mousePos.key(cursorPos.key()).value(cursorPos.val());
                             mouseRestoreTicks = 20;
-                            AotakeUtils.sendPacketToServer(new OpenDustbinToServer(0));
+                            PacketUtils.sendPacketToServer(NetworkInit.INSTANCE, new OpenDustbinToServer(0));
                         }
                     }
                     {
@@ -475,34 +444,29 @@ public class ClientGameEventHandler {
                         int y = baseY + (h + 1) * (yOffset++);
                         boolean hover = canPrev && mouseHelper.isHoverInRect(x, y, w, h);
 
-                        if (mouseHelper.isLeftPressing() && hover) {
+                        if (mouseHelper.isPressingLeftEx() && hover) {
                             x--;
                             y--;
                             w += 2;
                             h += 2;
                         }
 
-                        AbstractGuiUtils.bindTexture(TextureUtils.loadCustomTexture(TextureUtils.INTERNAL_THEME_DIR + "up.png"));
                         RenderSystem.color4f(1.0F, 1.0F, 1.0F, canPrev ? 1.0F : 0.5F);
-                        AbstractGuiUtils.blitBlend(ms, x, y, 0, 0, w, h, w, h);
+                        AbstractGuiUtils.blitBlend(ms, TextureUtils.loadCustomTexture(Identifier.id(), THEME_TEXTURE_DIR + "up.png"), x, y, 0, 0, 0, w, h, w, h);
                         RenderSystem.color4f(1.0F, 1.0F, 1.0F, 1.0F);
 
                         if (hover) {
-                            AbstractGuiUtils.drawPopupMessage(Text.empty()
-                                            .setText(Component.translatable(EnumI18nType.MESSAGE, "previous_page"))
-                                            .setMatrixStack(ms)
-                                    , mouseX
-                                    , mouseY
-                                    , screen.width
-                                    , screen.height
-                            );
+                            TooltipWidget.drawPopupMessage(ms,
+                                    FontDrawArgs.ofPopo(new Text(AotakeComponent.get().trans(EnumI18nType.WORD, "previous_page")).stack(ms))
+                                            .x(mouseX).y(mouseY).popupUseTexture(false),
+                                    null, null);
                         }
 
                         if (canPrev && mouseHelper.isLeftPressedInRect(x, y, w, h)) {
-                            KeyValue<Double, Double> cursorPos = MouseHelper.getRawCursorPos();
-                            mousePos.setKey(cursorPos.getKey()).setValue(cursorPos.getValue());
+                            KeyValue<Double, Double> cursorPos = InputStateManager.getRawCursorPos();
+                            mousePos.key(cursorPos.key()).value(cursorPos.val());
                             mouseRestoreTicks = 20;
-                            AotakeUtils.sendPacketToServer(new OpenDustbinToServer(-1));
+                            PacketUtils.sendPacketToServer(NetworkInit.INSTANCE, new OpenDustbinToServer(-1));
                         }
                     }
                     {
@@ -512,34 +476,29 @@ public class ClientGameEventHandler {
                         int y = baseY + (h + 1) * (yOffset++);
                         boolean hover = canNext && mouseHelper.isHoverInRect(x, y, w, h);
 
-                        if (mouseHelper.isLeftPressing() && hover) {
+                        if (mouseHelper.isPressingLeftEx() && hover) {
                             x--;
                             y--;
                             w += 2;
                             h += 2;
                         }
 
-                        AbstractGuiUtils.bindTexture(TextureUtils.loadCustomTexture(TextureUtils.INTERNAL_THEME_DIR + "down.png"));
                         RenderSystem.color4f(1.0F, 1.0F, 1.0F, canNext ? 1.0F : 0.5F);
-                        AbstractGuiUtils.blitBlend(ms, x, y, 0, 0, w, h, w, h);
+                        AbstractGuiUtils.blitBlend(ms, TextureUtils.loadCustomTexture(Identifier.id(), THEME_TEXTURE_DIR + "down.png"), x, y, 0, 0, 0, w, h, w, h);
                         RenderSystem.color4f(1.0F, 1.0F, 1.0F, 1.0F);
 
                         if (hover) {
-                            AbstractGuiUtils.drawPopupMessage(Text.empty()
-                                            .setText(Component.translatable(EnumI18nType.MESSAGE, "next_page"))
-                                            .setMatrixStack(ms)
-                                    , mouseX
-                                    , mouseY
-                                    , screen.width
-                                    , screen.height
-                            );
+                            TooltipWidget.drawPopupMessage(ms,
+                                    FontDrawArgs.ofPopo(new Text(AotakeComponent.get().trans(EnumI18nType.WORD, "next_page")).stack(ms))
+                                            .x(mouseX).y(mouseY).popupUseTexture(false),
+                                    null, null);
                         }
 
                         if (canNext && mouseHelper.isLeftPressedInRect(x, y, w, h)) {
-                            KeyValue<Double, Double> cursorPos = MouseHelper.getRawCursorPos();
-                            mousePos.setKey(cursorPos.getKey()).setValue(cursorPos.getValue());
+                            KeyValue<Double, Double> cursorPos = InputStateManager.getRawCursorPos();
+                            mousePos.key(cursorPos.key()).value(cursorPos.val());
                             mouseRestoreTicks = 20;
-                            AotakeUtils.sendPacketToServer(new OpenDustbinToServer(1));
+                            PacketUtils.sendPacketToServer(NetworkInit.INSTANCE, new OpenDustbinToServer(1));
                         }
                     }
                 }
@@ -554,18 +513,18 @@ public class ClientGameEventHandler {
                 } else if (keyEvent.getKeyCode() == ClientModEventHandler.DUSTBIN_PRE_KEY.getKey().getValue()) {
                     if (System.currentTimeMillis() - lastTime > 200) {
                         lastTime = System.currentTimeMillis();
-                        KeyValue<Double, Double> cursorPos = MouseHelper.getRawCursorPos();
-                        mousePos.setKey(cursorPos.getKey()).setValue(cursorPos.getValue());
+                        KeyValue<Double, Double> cursorPos = InputStateManager.getRawCursorPos();
+                        mousePos.key(cursorPos.key()).value(cursorPos.val());
                         mouseRestoreTicks = 20;
-                        AotakeUtils.sendPacketToServer(new OpenDustbinToServer(-1));
+                        PacketUtils.sendPacketToServer(NetworkInit.INSTANCE, new OpenDustbinToServer(-1));
                     }
                 } else if (keyEvent.getKeyCode() == ClientModEventHandler.DUSTBIN_NEXT_KEY.getKey().getValue()) {
                     if (System.currentTimeMillis() - lastTime > 200) {
                         lastTime = System.currentTimeMillis();
-                        KeyValue<Double, Double> cursorPos = MouseHelper.getRawCursorPos();
-                        mousePos.setKey(cursorPos.getKey()).setValue(cursorPos.getValue());
+                        KeyValue<Double, Double> cursorPos = InputStateManager.getRawCursorPos();
+                        mousePos.key(cursorPos.key()).value(cursorPos.val());
                         mouseRestoreTicks = 20;
-                        AotakeUtils.sendPacketToServer(new OpenDustbinToServer(1));
+                        PacketUtils.sendPacketToServer(NetworkInit.INSTANCE, new OpenDustbinToServer(1));
                     }
                 }
             }
@@ -587,11 +546,15 @@ public class ClientGameEventHandler {
     }
 
     private static void renderProgress(RenderGameOverlayEvent event) {
+        ClientConfig.ProgressBarView cp = ClientConfig.get().progressBar();
+        ClientConfig.ProgressBarLeafView cpl = cp.leaf();
+        ClientConfig.ProgressBarPoleView cpp = cp.pole();
+        ClientConfig.ProgressBarTextView cpt = cp.text();
         // 避免重复渲染
         if (event instanceof RenderGameOverlayEvent.Post
-                && ((ClientConfig.HIDE_EXPERIENCE_BAR_POLE.get() && ClientConfig.PROGRESS_BAR_DISPLAY_NORMAL.get().contains(EnumProgressBarType.POLE.name()))
-                || (ClientConfig.HIDE_EXPERIENCE_BAR_TEXT.get() && ClientConfig.PROGRESS_BAR_DISPLAY_NORMAL.get().contains(EnumProgressBarType.TEXT.name()))
-                || (ClientConfig.HIDE_EXPERIENCE_BAR_LEAF.get() && ClientConfig.PROGRESS_BAR_DISPLAY_NORMAL.get().contains(EnumProgressBarType.LEAF.name())))
+                && ((cpp.hideExperienceBarPole() && cp.progressBarDisplayNormal().contains(EnumProgressBarType.POLE.name()))
+                || (cpt.hideExperienceBarText() && cp.progressBarDisplayNormal().contains(EnumProgressBarType.TEXT.name()))
+                || (cpl.hideExperienceBarLeaf() && cp.progressBarDisplayNormal().contains(EnumProgressBarType.LEAF.name())))
         ) {
             return;
         }
@@ -601,80 +564,77 @@ public class ClientGameEventHandler {
         if (mc.player == null) return;
         MatrixStack ms = event.getMatrixStack();
         boolean hold = showProgress && mc.screen == null;
-        List<? extends String> displayList = hold ? ClientConfig.PROGRESS_BAR_DISPLAY_HOLD.get() : ClientConfig.PROGRESS_BAR_DISPLAY_NORMAL.get();
+        List<? extends String> displayList = hold ? cp.progressBarDisplayHold() : cp.progressBarDisplayNormal();
 
-        double scale = ClientConfig.PROGRESS_BAR_TEXT_SIZE.get() / 16.0;
+        double scale = cpt.progressBarTextSize() / 16.0;
 
         if (displayList.contains(EnumProgressBarType.POLE.name())) {
-            if (ClientConfig.HIDE_EXPERIENCE_BAR_POLE.get()) {
+            if (cpp.hideExperienceBarPole()) {
                 event.setCanceled(true);
             }
-            int width = ClientConfig.PROGRESS_BAR_POLE_WIDTH.get();
-            int height = ClientConfig.PROGRESS_BAR_POLE_HEIGHT.get();
+            int width = cpp.progressBarPoleWidth();
+            int height = cpp.progressBarPoleHeight();
             int drawX = getPoleX();
             int drawY = getPoleY();
 
-            AbstractGuiUtils.TransformArgs transformArgs = new AbstractGuiUtils.TransformArgs(ms);
-            transformArgs.setAngle(ClientConfig.PROGRESS_BAR_POLE_ANGLE.get())
-                    .setCenter(EnumRotationCenter.CENTER)
-                    .setX(drawX)
-                    .setY(drawY)
-                    .setWidth(width)
-                    .setHeight(height);
-            AbstractGuiUtils.renderByTransform(transformArgs, (arg) -> {
-                AbstractGuiUtils.bindTexture(TextureUtils.loadCustomTexture(TextureUtils.INTERNAL_THEME_DIR + "pole.png"));
-                AbstractGuiUtils.blitBlend(ms, (int) arg.getX(), (int) arg.getY(), 0, 0, (int) arg.getWidth(), (int) arg.getHeight(), (int) arg.getWidth(), (int) arg.getHeight());
-            });
+            TransformArgs transformArgs = new TransformArgs(ms);
+            transformArgs.angle(cpp.progressBarPoleAngle())
+                    .center(EnumPosition.CENTER)
+                    .x(drawX)
+                    .y(drawY)
+                    .width(width)
+                    .height(height);
+            AbstractGuiUtils.renderByTransform(transformArgs, (arg) ->
+                    AbstractGuiUtils.blitBlend(ms, TextureUtils.loadCustomTexture(Identifier.id(), THEME_TEXTURE_DIR + "pole.png"),
+                            (int) arg.x(), (int) arg.y(), 0, 0, 0, (int) arg.width(), (int) arg.height(), (int) arg.width(), (int) arg.height()));
         }
 
         if (displayList.contains(EnumProgressBarType.TEXT.name())) {
-            if (ClientConfig.HIDE_EXPERIENCE_BAR_TEXT.get()) {
+            if (cpt.hideExperienceBarText()) {
                 event.setCanceled(true);
             }
-            Text time = Text.literal(getText())
-                    .setMatrixStack(ms)
-                    .setColor(getTextColor())
-                    .setShadow(true)
-                    .setFont(Minecraft.getInstance().font);
-            AbstractGuiUtils.TransformArgs textTransformArgs = new AbstractGuiUtils.TransformArgs(ms);
-            textTransformArgs.setScale(scale)
-                    .setAngle(ClientConfig.PROGRESS_BAR_TEXT_ANGLE.get())
-                    .setCenter(EnumRotationCenter.CENTER)
-                    .setX(getTextX())
-                    .setY(getTextY())
-                    .setWidth(getTextWidth())
-                    .setHeight(getTextHeight());
-            AbstractGuiUtils.renderByTransform(textTransformArgs, (arg) -> AbstractGuiUtils.drawString(time
-                    , arg.getX()
-                    , arg.getY()
-            ));
+            TransformArgs textTransformArgs = new TransformArgs(ms);
+            textTransformArgs.scale(scale)
+                    .angle(cpt.progressBarTextAngle())
+                    .center(EnumPosition.CENTER)
+                    .x(getTextX())
+                    .y(getTextY())
+                    .width(getTextWidth())
+                    .height(getTextHeight());
+            AbstractGuiUtils.renderByTransform(textTransformArgs, (arg) -> {
+                Text time = Text.literal(getText())
+                        .stack(arg.stack())
+                        .color(getTextColor())
+                        .shadow(true)
+                        .font(Minecraft.getInstance().font);
+                LabelWidget.drawLimitedText(FontDrawArgs.of(time).x(arg.x()).y(arg.y()).inScreen(false));
+            });
         }
 
         if (displayList.contains(EnumProgressBarType.LEAF.name())) {
-            if (ClientConfig.HIDE_EXPERIENCE_BAR_LEAF.get()) {
+            if (cpl.hideExperienceBarLeaf()) {
                 event.setCanceled(true);
             }
-            int poleW = ClientConfig.PROGRESS_BAR_POLE_WIDTH.get();
+            int poleW = cpp.progressBarPoleWidth();
 
-            int width = ClientConfig.PROGRESS_BAR_LEAF_WIDTH.get();
-            int height = ClientConfig.PROGRESS_BAR_LEAF_HEIGHT.get();
+            int width = cpl.progressBarLeafWidth();
+            int height = cpl.progressBarLeafHeight();
             int rangeWidth = poleW - width;
             int startX = getLeafX();
 
             int drawX = (int) (startX + rangeWidth * getProgress());
             int drawY = getLeafY();
 
-            AbstractGuiUtils.TransformArgs transformArgs = new AbstractGuiUtils.TransformArgs(ms);
-            transformArgs.setAngle(ClientConfig.PROGRESS_BAR_LEAF_ANGLE.get())
-                    .setCenter(EnumRotationCenter.CENTER)
-                    .setX(drawX)
-                    .setY(drawY)
-                    .setWidth(width)
-                    .setHeight(height);
+            TransformArgs transformArgs = new TransformArgs(ms);
+            transformArgs.angle(cpl.progressBarLeafAngle())
+                    .center(EnumPosition.CENTER)
+                    .x(drawX)
+                    .y(drawY)
+                    .width(width)
+                    .height(height);
             AbstractGuiUtils.renderByTransform(transformArgs, (arg) -> {
-                ResourceLocation texture = TextureUtils.loadCustomTexture(TextureUtils.INTERNAL_THEME_DIR + "leaf.png");
-                AbstractGuiUtils.bindTexture(texture);
-                AbstractGuiUtils.blitBlend(ms, (int) arg.getX(), (int) arg.getY(), 0, 0, (int) arg.getWidth(), (int) arg.getHeight(), (int) arg.getWidth(), (int) arg.getHeight());
+                ResourceLocation texture = TextureUtils.loadCustomTexture(Identifier.id(), THEME_TEXTURE_DIR + "leaf.png");
+                AbstractGuiUtils.blitBlend(ms, texture, (int) arg.x(), (int) arg.y(), 0, 0, 0, (int) arg.width(), (int) arg.height(), (int) arg.width(), (int) arg.height());
             });
         }
     }
@@ -683,35 +643,37 @@ public class ClientGameEventHandler {
     public static void onPlayerLoggedIn(ClientPlayerNetworkEvent.LoggedInEvent event) {
         LOGGER.debug("Client: Player logged in.");
         // 通知服务器客户端已加载mod
-        AotakeUtils.sendPacketToServer(new ModLoadedToBoth());
+        PacketUtils.sendPacketToServer(NetworkInit.INSTANCE, new ModLoadedToBoth(AotakeSweep.MODID));
     }
 
     private static int getLeafX() {
+        ClientConfig.ProgressBarLeafView cpl = ClientConfig.get().progressBar().leaf();
+        ClientConfig.ProgressBarPoleView cpp = ClientConfig.get().progressBar().pole();
         int baseX = getPoleX();
-        int width = ClientConfig.PROGRESS_BAR_POLE_WIDTH.get();
+        int width = cpp.progressBarPoleWidth();
         double x;
-        String xString = ClientConfig.PROGRESS_BAR_LEAF_POSITION.get().split(",")[0];
+        String xString = cpl.progressBarLeafPosition().split(",")[0];
         if (xString.endsWith("%")) {
-            x = StringUtils.toDouble(xString.replace("%", "")) * 0.01d * width;
+            x = NumberUtils.toDouble(xString.replace("%", "")) * 0.01d * width;
         } else {
-            x = StringUtils.toInt(xString);
+            x = NumberUtils.toInt(xString);
         }
-        int quadrant = ClientConfig.PROGRESS_BAR_LEAF_SCREEN_QUADRANT.get();
+        int quadrant = cpl.progressBarLeafScreenQuadrant();
         if (quadrant == 2 || quadrant == 3) {
             x = baseX - x;
         } else {
             x = baseX + x;
         }
-        switch (EnumRotationCenter.valueOf(ClientConfig.PROGRESS_BAR_LEAF_BASE.get())) {
+        switch (EnumPosition.valueOf(cpl.progressBarLeafBase())) {
             case CENTER:
             case TOP_CENTER:
             case BOTTOM_CENTER: {
-                x -= ClientConfig.PROGRESS_BAR_LEAF_WIDTH.get() / 2.0;
+                x -= cpl.progressBarLeafWidth() / 2.0;
             }
             break;
             case TOP_RIGHT:
             case BOTTOM_RIGHT: {
-                x -= ClientConfig.PROGRESS_BAR_LEAF_WIDTH.get();
+                x -= cpl.progressBarLeafWidth();
             }
             break;
         }
@@ -719,29 +681,31 @@ public class ClientGameEventHandler {
     }
 
     private static int getLeafY() {
+        ClientConfig.ProgressBarLeafView cpl = ClientConfig.get().progressBar().leaf();
+        ClientConfig.ProgressBarPoleView cpp = ClientConfig.get().progressBar().pole();
         int baseY = getPoleY();
-        int height = ClientConfig.PROGRESS_BAR_POLE_HEIGHT.get();
+        int height = cpp.progressBarPoleHeight();
         double y;
-        String yString = ClientConfig.PROGRESS_BAR_LEAF_POSITION.get().split(",")[1];
+        String yString = cpl.progressBarLeafPosition().split(",")[1];
         if (yString.endsWith("%")) {
-            y = StringUtils.toDouble(yString.replace("%", "")) * 0.01d * height;
+            y = NumberUtils.toDouble(yString.replace("%", "")) * 0.01d * height;
         } else {
-            y = StringUtils.toInt(yString);
+            y = NumberUtils.toInt(yString);
         }
-        int quadrant = ClientConfig.PROGRESS_BAR_LEAF_SCREEN_QUADRANT.get();
+        int quadrant = cpl.progressBarLeafScreenQuadrant();
         if (quadrant == 1 || quadrant == 2) {
             y = baseY - y;
         } else {
             y = baseY + y;
         }
-        switch (EnumRotationCenter.valueOf(ClientConfig.PROGRESS_BAR_LEAF_BASE.get())) {
+        switch (EnumPosition.valueOf(cpl.progressBarLeafBase())) {
             case CENTER: {
-                y -= ClientConfig.PROGRESS_BAR_LEAF_HEIGHT.get() / 2.0;
+                y -= cpl.progressBarLeafHeight() / 2.0;
             }
             break;
             case BOTTOM_LEFT:
             case BOTTOM_RIGHT: {
-                y -= ClientConfig.PROGRESS_BAR_LEAF_HEIGHT.get();
+                y -= cpl.progressBarLeafHeight();
             }
             break;
         }
@@ -749,28 +713,29 @@ public class ClientGameEventHandler {
     }
 
     private static int getPoleX() {
+        ClientConfig.ProgressBarPoleView cpp = ClientConfig.get().progressBar().pole();
         int width = Minecraft.getInstance().getWindow().getGuiScaledWidth();
         double x;
-        String xString = ClientConfig.PROGRESS_BAR_POLE_POSITION.get().split(",")[0];
+        String xString = cpp.progressBarPolePosition().split(",")[0];
         if (xString.endsWith("%")) {
-            x = StringUtils.toDouble(xString.replace("%", "")) * 0.01d * width;
+            x = NumberUtils.toDouble(xString.replace("%", "")) * 0.01d * width;
         } else {
-            x = StringUtils.toInt(xString);
+            x = NumberUtils.toInt(xString);
         }
-        int quadrant = ClientConfig.PROGRESS_BAR_POLE_SCREEN_QUADRANT.get();
+        int quadrant = cpp.progressBarPoleScreenQuadrant();
         if (quadrant == 2 || quadrant == 3) {
             x = width - x;
         }
-        switch (EnumRotationCenter.valueOf(ClientConfig.PROGRESS_BAR_POLE_BASE.get())) {
+        switch (EnumPosition.valueOf(cpp.progressBarPoleBase())) {
             case CENTER:
             case TOP_CENTER:
             case BOTTOM_CENTER: {
-                x -= ClientConfig.PROGRESS_BAR_POLE_WIDTH.get() / 2.0;
+                x -= cpp.progressBarPoleWidth() / 2.0;
             }
             break;
             case TOP_RIGHT:
             case BOTTOM_RIGHT: {
-                x -= ClientConfig.PROGRESS_BAR_POLE_WIDTH.get();
+                x -= cpp.progressBarPoleWidth();
             }
             break;
         }
@@ -778,26 +743,27 @@ public class ClientGameEventHandler {
     }
 
     private static int getPoleY() {
+        ClientConfig.ProgressBarPoleView cpp = ClientConfig.get().progressBar().pole();
         int height = Minecraft.getInstance().getWindow().getGuiScaledHeight();
         double y;
-        String yString = ClientConfig.PROGRESS_BAR_POLE_POSITION.get().split(",")[1];
+        String yString = cpp.progressBarPolePosition().split(",")[1];
         if (yString.endsWith("%")) {
-            y = StringUtils.toDouble(yString.replace("%", "")) * 0.01d * height;
+            y = NumberUtils.toDouble(yString.replace("%", "")) * 0.01d * height;
         } else {
-            y = StringUtils.toInt(yString);
+            y = NumberUtils.toInt(yString);
         }
-        int quadrant = ClientConfig.PROGRESS_BAR_POLE_SCREEN_QUADRANT.get();
+        int quadrant = cpp.progressBarPoleScreenQuadrant();
         if (quadrant == 1 || quadrant == 2) {
             y = height - y;
         }
-        switch (EnumRotationCenter.valueOf(ClientConfig.PROGRESS_BAR_POLE_BASE.get())) {
+        switch (EnumPosition.valueOf(cpp.progressBarPoleBase())) {
             case CENTER: {
-                y -= ClientConfig.PROGRESS_BAR_POLE_HEIGHT.get() / 2.0;
+                y -= cpp.progressBarPoleHeight() / 2.0;
             }
             break;
             case BOTTOM_LEFT:
             case BOTTOM_RIGHT: {
-                y -= ClientConfig.PROGRESS_BAR_POLE_HEIGHT.get();
+                y -= cpp.progressBarPoleHeight();
             }
             break;
         }
@@ -805,31 +771,33 @@ public class ClientGameEventHandler {
     }
 
     private static int getTextX() {
+        ClientConfig.ProgressBarTextView cpt = ClientConfig.get().progressBar().text();
+        ClientConfig.ProgressBarPoleView cpp = ClientConfig.get().progressBar().pole();
         int baseX = getPoleX();
-        int width = ClientConfig.PROGRESS_BAR_POLE_WIDTH.get();
+        int width = cpp.progressBarPoleWidth();
         double x;
-        String xString = ClientConfig.PROGRESS_BAR_TEXT_POSITION.get().split(",")[0];
+        String xString = cpt.progressBarTextPosition().split(",")[0];
         if (xString.endsWith("%")) {
-            x = StringUtils.toDouble(xString.replace("%", "")) * 0.01d * width;
+            x = NumberUtils.toDouble(xString.replace("%", "")) * 0.01d * width;
         } else {
-            x = StringUtils.toInt(xString);
+            x = NumberUtils.toInt(xString);
         }
-        int quadrant = ClientConfig.PROGRESS_BAR_TEXT_SCREEN_QUADRANT.get();
+        int quadrant = cpt.progressBarTextScreenQuadrant();
         if (quadrant == 2 || quadrant == 3) {
             x = baseX - x;
         } else {
             x = baseX + x;
         }
-        switch (EnumRotationCenter.valueOf(ClientConfig.PROGRESS_BAR_TEXT_BASE.get())) {
+        switch (EnumPosition.valueOf(cpt.progressBarTextBase())) {
             case CENTER:
             case TOP_CENTER:
             case BOTTOM_CENTER: {
-                x -= ClientConfig.PROGRESS_BAR_TEXT_SIZE.get() / 16.0 * getTextWidth() / 2.0;
+                x -= cpt.progressBarTextSize() / 16.0 * getTextWidth() / 2.0;
             }
             break;
             case TOP_RIGHT:
             case BOTTOM_RIGHT: {
-                x -= ClientConfig.PROGRESS_BAR_TEXT_SIZE.get() / 16.0 * getTextWidth();
+                x -= cpt.progressBarTextSize() / 16.0 * getTextWidth();
             }
             break;
         }
@@ -837,29 +805,31 @@ public class ClientGameEventHandler {
     }
 
     private static int getTextY() {
+        ClientConfig.ProgressBarTextView cpt = ClientConfig.get().progressBar().text();
+        ClientConfig.ProgressBarPoleView cpp = ClientConfig.get().progressBar().pole();
         int baseY = getPoleY();
-        int height = ClientConfig.PROGRESS_BAR_POLE_HEIGHT.get();
+        int height = cpp.progressBarPoleHeight();
         double y;
-        String yString = ClientConfig.PROGRESS_BAR_TEXT_POSITION.get().split(",")[1];
+        String yString = cpt.progressBarTextPosition().split(",")[1];
         if (yString.endsWith("%")) {
-            y = StringUtils.toDouble(yString.replace("%", "")) * 0.01d * height;
+            y = NumberUtils.toDouble(yString.replace("%", "")) * 0.01d * height;
         } else {
-            y = StringUtils.toInt(yString);
+            y = NumberUtils.toInt(yString);
         }
-        int quadrant = ClientConfig.PROGRESS_BAR_TEXT_SCREEN_QUADRANT.get();
+        int quadrant = cpt.progressBarTextScreenQuadrant();
         if (quadrant == 1 || quadrant == 2) {
             y = baseY - y;
         } else {
             y = baseY + y;
         }
-        switch (EnumRotationCenter.valueOf(ClientConfig.PROGRESS_BAR_TEXT_BASE.get())) {
+        switch (EnumPosition.valueOf(cpt.progressBarTextBase())) {
             case CENTER: {
-                y -= ClientConfig.PROGRESS_BAR_TEXT_SIZE.get() / 16.0 * getTextHeight() / 2.0;
+                y -= cpt.progressBarTextSize() / 16.0 * getTextHeight() / 2.0;
             }
             break;
             case BOTTOM_LEFT:
             case BOTTOM_RIGHT: {
-                y -= ClientConfig.PROGRESS_BAR_TEXT_SIZE.get() / 16.0 * getTextHeight();
+                y -= cpt.progressBarTextSize() / 16.0 * getTextHeight();
             }
             break;
         }
@@ -921,7 +891,14 @@ public class ClientGameEventHandler {
     }
 
     private static Color getTextColor() {
-        return Color.parse(ClientConfig.PROGRESS_BAR_TEXT_COLOR.get(), Color.white());
+        return Color.parse(ClientConfig.get().progressBar().text().progressBarTextColor(), Color.white());
+    }
+
+    private static Button newButton(int x, int y, int width, int height,
+                                    Component label,
+                                    Consumer<Button> onPress,
+                                    Component tooltip) {
+        return new Button(x, y, width, height, label.toVanilla(), onPress::accept);
     }
 
 }

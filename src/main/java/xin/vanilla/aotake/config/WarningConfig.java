@@ -9,9 +9,9 @@ import lombok.experimental.Accessors;
 import net.minecraftforge.fml.loading.FMLPaths;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import xin.vanilla.aotake.util.CollectionUtils;
-import xin.vanilla.aotake.util.JsonUtils;
-import xin.vanilla.aotake.util.StringUtils;
+import xin.vanilla.banira.common.util.CollectionUtils;
+import xin.vanilla.banira.common.util.JsonUtils;
+import xin.vanilla.banira.common.util.StringUtils;
 
 import java.io.File;
 import java.io.RandomAccessFile;
@@ -349,7 +349,7 @@ public class WarningConfig {
 
     private static WarningContentLoadResult loadWarningContentGroups(WarningConfigRaw raw, boolean allowLegacy) {
         String contentRaw = raw.contentRaw();
-        String legacy = CommonConfig.SWEEP_WARNING_CONTENT.get();
+        String legacy = CommonConfig.get().base().sweep().sweepWarningContent();
         if (StringUtils.isNotNullOrEmpty(contentRaw)) {
             WarningContentParseResult parsed = parseWarningContent(contentRaw);
             boolean writeFile = raw.needSave() || parsed.needUpgrade() || CollectionUtils.isNullOrEmpty(parsed.groups());
@@ -364,7 +364,7 @@ public class WarningConfig {
 
     private static WarningContentLoadResult loadWarningVoiceGroups(WarningConfigRaw raw, boolean allowLegacy) {
         String voiceRaw = raw.voiceRaw();
-        String legacy = CommonConfig.SWEEP_WARNING_VOICE.get();
+        String legacy = CommonConfig.get().base().sweep().sweepWarningVoice();
         if (StringUtils.isNotNullOrEmpty(voiceRaw)) {
             WarningContentParseResult parsed = parseWarningVoice(voiceRaw);
             boolean writeFile = raw.needSave() || parsed.needUpgrade() || CollectionUtils.isNullOrEmpty(parsed.groups());
@@ -400,15 +400,15 @@ public class WarningConfig {
     }
 
     private static void clearLegacyWarningContent() {
-        if (StringUtils.isNotNullOrEmpty(CommonConfig.SWEEP_WARNING_CONTENT.get())) {
-            CommonConfig.SWEEP_WARNING_CONTENT.set("");
+        if (StringUtils.isNotNullOrEmpty(CommonConfig.get().base().sweep().sweepWarningContent())) {
+            CommonConfig.get().base().sweep().sweepWarningContent("");
             CommonConfig.save();
         }
     }
 
     private static void clearLegacyWarningVoice() {
-        if (StringUtils.isNotNullOrEmpty(CommonConfig.SWEEP_WARNING_VOICE.get())) {
-            CommonConfig.SWEEP_WARNING_VOICE.set("");
+        if (StringUtils.isNotNullOrEmpty(CommonConfig.get().base().sweep().sweepWarningVoice())) {
+            CommonConfig.get().base().sweep().sweepWarningVoice("");
             CommonConfig.save();
         }
     }

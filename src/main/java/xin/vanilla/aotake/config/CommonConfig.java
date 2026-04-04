@@ -1,1103 +1,761 @@
 package xin.vanilla.aotake.config;
 
+import lombok.AccessLevel;
+import lombok.Getter;
+import lombok.Setter;
+import lombok.experimental.Accessors;
 import net.minecraft.entity.EntityType;
 import net.minecraft.item.Items;
-import net.minecraftforge.common.ForgeConfigSpec;
+import net.minecraftforge.fml.config.ModConfig;
 import xin.vanilla.aotake.AotakeSweep;
+import xin.vanilla.aotake.config.access.CommonConfigAccess;
 import xin.vanilla.aotake.enums.*;
 import xin.vanilla.aotake.util.AotakeUtils;
-
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-
-public class CommonConfig {
-
-    public static final ForgeConfigSpec COMMON_CONFIG;
-
-
-    // region 基础设置
-
-    /**
-     * 垃圾箱页数限制
-     */
-    public static final ForgeConfigSpec.IntValue DUSTBIN_PAGE_LIMIT;
-    /**
-     * 缓存区物品限制
-     */
-    public static final ForgeConfigSpec.IntValue CACHE_LIMIT;
-
-    /**
-     * 服务器没人时是否打扫
-     */
-    public static final ForgeConfigSpec.BooleanValue SWEEP_WHEN_NO_PLAYER;
-
-    /**
-     * 打扫前提示内容
-     */
-    public static final ForgeConfigSpec.ConfigValue<String> SWEEP_WARNING_CONTENT;
-
-    /**
-     * 打扫前提示语音
-     */
-    public static final ForgeConfigSpec.ConfigValue<String> SWEEP_WARNING_VOICE;
-
-    /**
-     * 打扫前提示语音音量
-     */
-    public static final ForgeConfigSpec.IntValue SWEEP_WARNING_VOICE_VOLUME;
-
-    /**
-     * 实体处于该方块中时不会被清理
-     */
-    public static final ForgeConfigSpec.ConfigValue<List<? extends String>> SAFE_BLOCKS;
-
-    /**
-     * 实体处于该方块上时不会被清理
-     */
-    public static final ForgeConfigSpec.ConfigValue<List<? extends String>> SAFE_BLOCKS_BELOW;
-
-    /**
-     * 实体处于该方块下时不会被清理
-     */
-    public static final ForgeConfigSpec.ConfigValue<List<? extends String>> SAFE_BLOCKS_ABOVE;
-
-    /**
-     * 处于安全方块的实体超过指定数量也进行清理
-     */
-    public static final ForgeConfigSpec.IntValue SAFE_BLOCKS_ENTITY_LIMIT;
-
-    /**
-     * 帮助指令信息头部内容
-     */
-    public static final ForgeConfigSpec.ConfigValue<String> HELP_HEADER;
-
-    /**
-     * 帮助信息每页显示的数量
-     */
-    public static final ForgeConfigSpec.IntValue HELP_INFO_NUM_PER_PAGE;
-
-    /**
-     * 服务器默认语言
-     */
-    public static final ForgeConfigSpec.ConfigValue<String> DEFAULT_LANGUAGE;
-
-
-    /**
-     * 扫地间隔(毫秒)
-     */
-    public static final ForgeConfigSpec.LongValue SWEEP_INTERVAL;
-
-
-    /**
-     * 实体名单
-     */
-    public static final ForgeConfigSpec.ConfigValue<List<? extends String>> ENTITY_LIST;
-
-    /**
-     * 实体名单应用模式
-     */
-    public static final ForgeConfigSpec.ConfigValue<String> ENTITY_LIST_MODE;
-
-    /**
-     * 黑白名单实体超过指定数量也进行清理
-     */
-    public static final ForgeConfigSpec.IntValue ENTITY_LIST_LIMIT;
-
-    /**
-     * 仅清理不回收的实体
-     */
-    public static final ForgeConfigSpec.ConfigValue<List<? extends String>> ENTITY_REDLIST;
-
-
-    /**
-     * 区块实体过多检测间隔(毫秒)
-     */
-    public static final ForgeConfigSpec.LongValue CHUNK_CHECK_INTERVAL;
-
-    /**
-     * 区块实体过多检测阈值
-     */
-    public static final ForgeConfigSpec.IntValue CHUNK_CHECK_LIMIT;
-
-    /**
-     * 区块实体清理时保留的实体比例
-     */
-    public static final ForgeConfigSpec.DoubleValue CHUNK_CHECK_RETAIN;
-
-    /**
-     * 区块实体过多提示
-     */
-    public static final ForgeConfigSpec.BooleanValue CHUNK_CHECK_NOTICE;
-
-    /**
-     * 区块实体过多检测模式
-     */
-    public static final ForgeConfigSpec.ConfigValue<String> CHUNK_CHECK_MODE;
-
-    /**
-     * 区块检测实体名单
-     */
-    public static final ForgeConfigSpec.ConfigValue<List<? extends String>> CHUNK_CHECK_ENTITY_LIST;
-
-    /**
-     * 区块检测实体名单应用模式
-     */
-    public static final ForgeConfigSpec.ConfigValue<String> CHUNK_CHECK_ENTITY_LIST_MODE;
-
-    /**
-     * 只检测不清理
-     */
-    public static final ForgeConfigSpec.BooleanValue CHUNK_CHECK_ONLY_NOTICE;
-
-
-    /**
-     * 清理时允许被捕获的实体
-     */
-    public static final ForgeConfigSpec.ConfigValue<List<? extends String>> CATCH_ENTITY;
-
-    /**
-     * 是否允许玩家使用物品捕获实体
-     */
-    public static final ForgeConfigSpec.ConfigValue<Boolean> ALLOW_CATCH_ENTITY;
-
-    /**
-     * 使用以下物品捕获被清理的实体
-     */
-    public static final ForgeConfigSpec.ConfigValue<List<? extends String>> CATCH_ITEM;
-
-
-    /**
-     * 自清洁间隔
-     */
-    public static final ForgeConfigSpec.LongValue SELF_CLEAN_INTERVAL;
-
-    /**
-     * 垃圾箱自清洁方式
-     */
-    public static final ForgeConfigSpec.ConfigValue<List<? extends String>> SELF_CLEAN_MODE;
-
-    /**
-     * 垃圾箱溢出时的处理方式
-     */
-    public static final ForgeConfigSpec.ConfigValue<String> DUSTBIN_OVERFLOW_MODE;
-
-    /**
-     * 垃圾箱持久化
-     */
-    public static final ForgeConfigSpec.BooleanValue DUSTBIN_PERSISTENT;
-
-    /**
-     * 掉落统计文件数量上限
-     */
-    public static final ForgeConfigSpec.IntValue DROP_STATS_FILE_LIMIT;
-
-    /**
-     * 垃圾箱方块位置
-     */
-    public static final ForgeConfigSpec.ConfigValue<List<? extends String>> DUSTBIN_BLOCK_POSITIONS;
-    /**
-     * 垃圾箱应用模式
-     */
-    public static final ForgeConfigSpec.ConfigValue<String> DUSTBIN_MODE;
-
-
-    /**
-     * 每tick清理实体上限
-     */
-    public static final ForgeConfigSpec.IntValue SWEEP_ENTITY_LIMIT;
-
-    /**
-     * 每批次清理间隔tick
-     */
-    public static final ForgeConfigSpec.IntValue SWEEP_ENTITY_INTERVAL;
-
-    /**
-     * 每次清理的批次上限
-     */
-    public static final ForgeConfigSpec.IntValue SWEEP_BATCH_LIMIT;
-
-    // endregion 基础设置
-
-
-    // region 自定义指令
-
-    /**
-     * 命令前缀
-     */
-    public static final ForgeConfigSpec.ConfigValue<String> COMMAND_PREFIX;
-
-    /**
-     * 设置语言
-     */
-    public static final ForgeConfigSpec.ConfigValue<String> COMMAND_LANGUAGE;
-
-    /**
-     * 设置虚拟权限
-     */
-    public static final ForgeConfigSpec.ConfigValue<String> COMMAND_VIRTUAL_OP;
-
-    /**
-     * 打开垃圾箱
-     */
-    public static final ForgeConfigSpec.ConfigValue<String> COMMAND_DUSTBIN_OPEN;
-
-    /**
-     * 清空垃圾箱
-     */
-    public static final ForgeConfigSpec.ConfigValue<String> COMMAND_DUSTBIN_CLEAR;
-
-    /**
-     * 将垃圾箱物品掉落到世界
-     */
-    public static final ForgeConfigSpec.ConfigValue<String> COMMAND_DUSTBIN_DROP;
-
-    /**
-     * 清空缓存
-     */
-    public static final ForgeConfigSpec.ConfigValue<String> COMMAND_CACHE_CLEAR;
-
-    /**
-     * 将缓存内物品掉落至世界
-     */
-    public static final ForgeConfigSpec.ConfigValue<String> COMMAND_CACHE_DROP;
-
-    /**
-     * 触发扫地
-     */
-    public static final ForgeConfigSpec.ConfigValue<String> COMMAND_SWEEP;
-
-    /**
-     * 清除掉落物
-     */
-    public static final ForgeConfigSpec.ConfigValue<String> COMMAND_CLEAR_DROP;
-
-    /**
-     * 延迟本次清理
-     */
-    public static final ForgeConfigSpec.ConfigValue<String> COMMAND_DELAY_SWEEP;
-
-    // endregion 自定义指令
-
-
-    // region 简化指令
-
-    /**
-     * 设置语言
-     */
-    public static final ForgeConfigSpec.BooleanValue CONCISE_LANGUAGE;
-
-    /**
-     * 设置虚拟权限
-     */
-    public static final ForgeConfigSpec.BooleanValue CONCISE_VIRTUAL_OP;
-
-    /**
-     * 打开垃圾箱
-     */
-    public static final ForgeConfigSpec.BooleanValue CONCISE_DUSTBIN_OPEN;
-
-    /**
-     * 清空垃圾箱
-     */
-    public static final ForgeConfigSpec.BooleanValue CONCISE_DUSTBIN_CLEAR;
-
-    /**
-     * 将垃圾箱物品掉落到世界
-     */
-    public static final ForgeConfigSpec.BooleanValue CONCISE_DUSTBIN_DROP;
-
-    /**
-     * 清空缓存
-     */
-    public static final ForgeConfigSpec.BooleanValue CONCISE_CACHE_CLEAR;
-
-    /**
-     * 将缓存内物品掉落至世界
-     */
-    public static final ForgeConfigSpec.BooleanValue CONCISE_CACHE_DROP;
-
-    /**
-     * 触发扫地
-     */
-    public static final ForgeConfigSpec.BooleanValue CONCISE_SWEEP;
-
-    /**
-     * 清除掉落物
-     */
-    public static final ForgeConfigSpec.BooleanValue CONCISE_CLEAR_DROP;
-
-    /**
-     * 延迟本次清理
-     */
-    public static final ForgeConfigSpec.BooleanValue CONCISE_DELAY_SWEEP;
-
-    // endregion 简化指令
-
-
-    // region 指令权限
-
-    /**
-     * 设置虚拟权限指令所需的权限等级
-     */
-    public static final ForgeConfigSpec.IntValue PERMISSION_VIRTUAL_OP;
-
-    /**
-     * 打开垃圾箱指令所需的权限等级
-     */
-    public static final ForgeConfigSpec.IntValue PERMISSION_DUSTBIN_OPEN;
-
-    /**
-     * 为他人打开垃圾箱指令所需的权限等级
-     */
-    public static final ForgeConfigSpec.IntValue PERMISSION_DUSTBIN_OPEN_OTHER;
-
-    /**
-     * 清空垃圾箱指令所需的权限等级
-     */
-    public static final ForgeConfigSpec.IntValue PERMISSION_DUSTBIN_CLEAR;
-
-    /**
-     * 将垃圾箱物品掉落到世界指令所需的权限等级
-     */
-    public static final ForgeConfigSpec.IntValue PERMISSION_DUSTBIN_DROP;
-
-    /**
-     * 清空缓存指令所需的权限等级
-     */
-    public static final ForgeConfigSpec.IntValue PERMISSION_CACHE_CLEAR;
-
-    /**
-     * 将缓存内物品掉落至世界指令所需的权限等级
-     */
-    public static final ForgeConfigSpec.IntValue PERMISSION_CACHE_DROP;
-
-    /**
-     * 触发扫地指令所需的权限等级
-     */
-    public static final ForgeConfigSpec.IntValue PERMISSION_SWEEP;
-
-    /**
-     * 清除掉落物指令所需的权限等级
-     */
-    public static final ForgeConfigSpec.IntValue PERMISSION_CLEAR_DROP;
-
-    /**
-     * 延迟本次清理指令所需的权限等级
-     */
-    public static final ForgeConfigSpec.IntValue PERMISSION_DELAY_SWEEP;
-
-    /**
-     * 使用物品捕获玩家的权限等级
-     */
-    public static final ForgeConfigSpec.IntValue PERMISSION_CATCH_PLAYER;
-
-    // endregion 指令权限
-
-
-    static {
-        ForgeConfigSpec.Builder COMMON_BUILDER = new ForgeConfigSpec.Builder();
-
-        // 定义基础设置
-        {
-            COMMON_BUILDER.comment("Base Settings", "基础设置").push("base");
-
-            // 垃圾箱与缓存区
-            {
-                COMMON_BUILDER.comment("Dustbin and Cache", "垃圾箱与缓存区").push("dustbin");
-
-                // 垃圾箱页数限制
-                DUSTBIN_PAGE_LIMIT = COMMON_BUILDER
-                        .comment("The maximum number of pages in the virtual dustbin."
-                                , "虚拟垃圾箱页数限制。")
-                        .defineInRange("dustbinPageLimit", 2, 0, 16 * 16 * 16 * 16);
-
-                // 缓存区物品限制
-                CACHE_LIMIT = COMMON_BUILDER
-                        .comment("The maximum number of items in the cache."
-                                , "缓存区物品限制。")
-                        .defineInRange("cacheLimit", 5000, 1, Integer.MAX_VALUE);
-
-                COMMON_BUILDER.pop();
-            }
-
-            // 定时清理
-            {
-                COMMON_BUILDER.comment("Regularly Sweep", "定时清理").push("sweep");
-
-                // 服务器没人时是否打扫
-                SWEEP_WHEN_NO_PLAYER = COMMON_BUILDER
-                        .comment("Whether to enable automatic sweeping when there are no players on the server."
-                                , "服务器没人时是否启用自动打扫。")
-                        .define("sweepWhenNoPlayer", false);
-
-                // 打扫前提示内容
-                SWEEP_WARNING_CONTENT = COMMON_BUILDER
-                        .comment("Notification message. This configuration option is no longer used. Please modify config/aotake_sweep-warning.json."
-                                , "Optional variables when 'success': [entityCount], [itemCount], [recycledItemCount], [recycledEntityCount]"
-                                , "提示内容。已不再使用该配置项，请修改 config/aotake_sweep-warning.json。"
-                                , "success时可选变量：[entityCount], [itemCount], [recycledItemCount], [recycledEntityCount]")
-                        .define("sweepWarningContent", "");
-
-                // 打扫前提示语音
-                SWEEP_WARNING_VOICE = COMMON_BUILDER
-                        .comment("Notification sounds, separated by commas. This configuration option is no longer used. Please modify config/aotake_sweep-warning.json."
-                                , "提示语音。已不再使用该配置项，请修改 config/aotake_sweep-warning.json。")
-                        .define("sweepWarningVoice", "");
-
-                // 打扫前提示语音音量
-                SWEEP_WARNING_VOICE_VOLUME = COMMON_BUILDER
-                        .comment("The volume of the notification sound."
-                                , "提示语音音量。")
-                        .defineInRange("sweepWarningVoiceVolume", 33, 0, 100);
-
-                COMMON_BUILDER.pop();
-            }
-
-            // 安全方块
-            {
-                COMMON_BUILDER.comment("Safe Blocks", "安全方块").push("safe");
-
-                // 实体处于该方块中时不会被清理
-                SAFE_BLOCKS = COMMON_BUILDER
-                        .comment("Entities will not be cleaned up if they are in these blocks."
-                                , "Allow blocks with states, such as: minecraft:lava[level=0], immersiveengineering:conveyor_basic."
-                                , "实体处于该方块中时不会被清理。"
-                                , "支持带状态的方块id，如：minecraft:lava[level=0]、immersiveengineering:conveyor_basic")
-                        .defineList("safeBlocks", new ArrayList<>(), o -> o instanceof String);
-
-                // 实体处于该方块上时不会被清理
-                SAFE_BLOCKS_BELOW = COMMON_BUILDER
-                        .comment("Entities will not be cleaned up if they are on these blocks."
-                                , "Allow blocks with states, such as: minecraft:lava[level=0]."
-                                , "实体处于该方块上时不会被清理。"
-                                , "支持带状态的方块id，如：minecraft:lava[level=0]")
-                        .defineList("safeBlocksBelow", new ArrayList<>()
-                                , o -> o instanceof String);
-
-                // 实体处于该方块下时不会被清理
-                SAFE_BLOCKS_ABOVE = COMMON_BUILDER
-                        .comment("Entities will not be cleaned up if they are below these blocks."
-                                , "Allow blocks with states, such as: minecraft:lava[level=0]."
-                                , "实体处于该方块下时不会被清理。"
-                                , "支持带状态的方块id，如：minecraft:lava[level=0]")
-                        .defineList("safeBlocksAbove", new ArrayList<>()
-                                , o -> o instanceof String);
-
-                // 处于安全方块的实体超过指定数量也进行清理
-                SAFE_BLOCKS_ENTITY_LIMIT = COMMON_BUILDER
-                        .comment("Entities located within safe blocks will still be cleared if their count in a single chunk exceeds the specified limit."
-                                , "即使实体处于安全方块，若其数量在单个区块中超过指定值，也将被清理。")
-                        .defineInRange("safeBlocksEntityLimit", 250, 1, Integer.MAX_VALUE);
-
-                COMMON_BUILDER.pop();
-            }
-
-
-            // 通用基础配置
-            {
-                COMMON_BUILDER.comment("Common Settings", "通用配置").push("common");
-
-                // 帮助指令信息头部内容
-                HELP_HEADER = COMMON_BUILDER
-                        .comment("The header content of the help command.",
-                                "帮助指令信息头部内容。")
-                        .define("helpHeader", "-----==== Aotake Sweep Help (%d/%d) ====-----");
-
-                // 帮助信息每页显示的数量
-                HELP_INFO_NUM_PER_PAGE = COMMON_BUILDER
-                        .comment("The number of help information displayed per page.",
-                                "每页显示的帮助信息数量。")
-                        .defineInRange("helpInfoNumPerPage", 5, 1, 9999);
-
-                // 服务器默认语言
-                DEFAULT_LANGUAGE = COMMON_BUILDER
-                        .comment("The default language of the server."
-                                , "服务器默认语言。")
-                        .define("defaultLanguage", "en_us");
-
-                COMMON_BUILDER.pop();
-            }
-
-            // 定时清理
-            {
-                COMMON_BUILDER.comment("Regularly Sweep", "定时清理").push("sweep");
-
-                // 扫地间隔(毫秒)
-                SWEEP_INTERVAL = COMMON_BUILDER
-                        .comment("The interval of sweeping (in milliseconds)."
-                                , "扫地间隔(毫秒)。")
-                        .defineInRange("sweepInterval", 10 * 60 * 1000, 0L, 7 * 24 * 60 * 60 * 1000);
-
-                // 实体名单
-                ENTITY_LIST = COMMON_BUILDER
-                        .comment("The entity list, the following entities will be cleaned up according to the entityListMode."
-                                , "实体名单，与配置 entityListMode 共同决定列表中的实体是否清理。")
-                        .defineList("entityList", new ArrayList<String>() {{
-                                    add(EntityType.ARROW.getRegistryName().toString());
-                                    add(EntityType.SPECTRAL_ARROW.getRegistryName().toString());
-                                    add(EntityType.EXPERIENCE_ORB.getRegistryName().toString());
-                                    add("tick, clazz, itemClazz, createProcessing = [CreateData.Processing.Time]" +
-                                            " -> " +
-                                            "tick >= 5 && clazz :> itemClazz && (createProcessing <= 0 || createProcessing == null)");
-                                }}, o -> o instanceof String
-                        );
-
-                // 实体名单应用模式
-                ENTITY_LIST_MODE = COMMON_BUILDER
-                        .comment("The application mode of the entity list:"
-                                , "BLACK: Blacklist, only the entities listed will be cleaned up;"
-                                , "WHITE: Whitelist, all entities except those listed will be cleaned up."
-                                , "实体名单应用模式："
-                                , "BLACK：黑名单，仅会清理列表中列出的实体；"
-                                , "WHITE：白名单，将会清理列表中未列出的所有实体。")
-                        .define("entityListMode", EnumListType.BLACK.name(), EnumListType::isValid);
-
-                // 实体名单超过指定数量也进行清理
-                ENTITY_LIST_LIMIT = COMMON_BUILDER
-                        .comment("Even if an entity is on the whitelist or not on the blacklist, it will still be removed if the total number of that entity type on the server exceeds the specified limit."
-                                , "即使是白名单内的实体，或不是黑名单中的实体，该实体类型只要在服务器中数量超过指定上限，也会被清理。")
-                        .defineInRange("entityListLimit", 250, 1, Integer.MAX_VALUE);
-
-                // 仅清理不回收的实体
-                ENTITY_REDLIST = COMMON_BUILDER
-                        .comment("The entity redlist for cleaning up items, the following items will only be cleaned and not recycled."
-                                , "实体清理红名单，以下实体将只会被清理而不会被回收。")
-                        .defineList("entityRedlist", new ArrayList<>()
-                                , o -> o instanceof String);
-
-                COMMON_BUILDER.pop();
-            }
-
-            // 区块实体过多检测
-            {
-                COMMON_BUILDER.comment("Chunk Check", "区块实体过多检测").push("chunk");
-
-                // 区块实体过多检测间隔(毫秒)
-                CHUNK_CHECK_INTERVAL = COMMON_BUILDER
-                        .comment("The interval for detecting excessive entities in a chunk (in milliseconds), 0 to disable."
-                                , "区块实体过多检测间隔(毫秒)，0为禁用。")
-                        .defineInRange("chunkCheckInterval", 5 * 1000, 0L, 7 * 24 * 60 * 60 * 1000);
-
-                // 区块实体过多检测阈值
-                CHUNK_CHECK_LIMIT = COMMON_BUILDER
-                        .comment("The threshold for detecting excessive entities in a chunk."
-                                , "区块实体过多检测阈值。")
-                        .defineInRange("chunkCheckLimit", 250, 1, Integer.MAX_VALUE);
-
-                // 区块实体过多检测保留的实体比例
-                CHUNK_CHECK_RETAIN = COMMON_BUILDER
-                        .comment("The ratio of entities to retain during entity overload cleanup in a chunk. "
-                                , "By default, half of the detection threshold is retained to prevent excessive loss from clearing everything. "
-                                , "The retention behavior is affected by chunkCheckMode."
-                                , "区块实体过多检测清理时保留的实体比例，默认保留检测阈值的一半，避免全部清理而导致损失过大，保留方式受chunkCheckMode影响。")
-                        .defineInRange("chunkCheckRetain", 0.5, 0, 1);
-
-                // 区块实体过多提示
-                CHUNK_CHECK_NOTICE = COMMON_BUILDER
-                        .comment("Show warning when too many entities in a chunk."
-                                , "区块内实体过多时的是否进行提示。")
-                        .define("chunkCheckNotice", true);
-
-                // 区块实体过多检测模式
-                CHUNK_CHECK_MODE = COMMON_BUILDER
-                        .comment("The check mode for detecting excessive entities in a chunk:"
-                                , "DEFAULT: Cleanup is triggered when the total number of entities in the chunk exceeds the threshold;"
-                                , "ADVANCED: Cleanup is triggered when a specific type of entity in the chunk exceeds the threshold."
-                                , "区块内实体过多检测模式："
-                                , "DEFAULT：区块内所有实体超过阈值触发清理；"
-                                , "ADVANCED：区块内某个类型实体超过阈值触发清理。")
-                        .define("chunkCheckMode", EnumChunkCheckMode.ADVANCED.name(), EnumChunkCheckMode::isValid);
-
-                // 区块检测实体名单
-                CHUNK_CHECK_ENTITY_LIST = COMMON_BUILDER
-                        .comment("The entity list of chunk check, the following entities will be cleaned up according to the chunkCheckEntityListMode."
-                                , "区块检测实体名单，与配置 chunkCheckEntityListMode 共同决定列表中的实体是否清理。")
-                        .defineList("chunkCheckEntityList", new ArrayList<String>() {{
-                                    add("customName, hasOwner, createProcessing = [CreateData.Processing.Time]" +
-                                            " -> " +
-                                            "customName != null || hasOwner || createProcessing > 0");
-                                }}, o -> o instanceof String
-                        );
-
-                // 区块检测实体名单应用模式
-                CHUNK_CHECK_ENTITY_LIST_MODE = COMMON_BUILDER
-                        .comment("The application mode of the entity list of chunk check:"
-                                , "BLACK: Blacklist, only the entities listed will be cleaned up;"
-                                , "WHITE: Whitelist, all entities except those listed will be cleaned up."
-                                , "区块检测实体名单应用模式："
-                                , "BLACK：黑名单，仅会清理列表中列出的实体；"
-                                , "WHITE：白名单，将会清理列表中未列出的所有实体。")
-                        .define("chunkCheckEntityListMode", EnumListType.WHITE.name(), EnumListType::isValid);
-
-                // 只检测不清理
-                CHUNK_CHECK_ONLY_NOTICE = COMMON_BUILDER
-                        .comment("Only notice when too many entities in a chunk."
-                                , "区块内实体过多时的是否仅进行提示。")
-                        .define("chunkCheckOnlyNotice", false);
-
-                COMMON_BUILDER.pop();
-            }
-
-            // 实体捕获
-            {
-                COMMON_BUILDER.comment("Catch Entity", "实体捕获").push("catch");
-
-                // 清理时允许被捕获的实体
-                CATCH_ENTITY = COMMON_BUILDER
-                        .comment("The entity that can be captured when cleaned up."
-                                , "清理时允许被捕获的实体。")
-                        .defineList("catchEntity", new ArrayList<>()
-                                , o -> o instanceof String);
-
-                // 是否允许玩家使用物品捕获实体
-                ALLOW_CATCH_ENTITY = COMMON_BUILDER
-                        .comment("Whether to allow players to use items to capture entities."
-                                , "是否允许玩家使用物品捕获实体。")
-                        .define("allowCatchEntity", false);
-
-                // 使用以下物品捕获被清理的实体
-                CATCH_ITEM = COMMON_BUILDER
-                        .comment("The item used to capture the entity being cleaned up."
-                                , "使用以下物品捕获被清理的实体。")
-                        .defineList("catchItem", new ArrayList<String>() {{
-                            add(Items.SNOWBALL.getRegistryName().toString());
-                            add(Items.GLASS_BOTTLE.getRegistryName().toString());
-                            add(Items.MUSIC_DISC_13.getRegistryName().toString());
-                        }}, o -> o instanceof String);
-
-                COMMON_BUILDER.pop();
-            }
-
-            // 垃圾箱
-            {
-                COMMON_BUILDER.comment("Dustbin", "垃圾箱").push("dustbin");
-
-                // 自清洁间隔(毫秒)
-                SELF_CLEAN_INTERVAL = COMMON_BUILDER
-                        .comment("The interval of self-cleaning (in milliseconds)."
-                                , "自清洁间隔(毫秒)。")
-                        .defineInRange("selfCleanInterval", 60 * 60 * 1000, 0L, 7 * 24 * 60 * 60 * 1000);
-
-                // 垃圾箱自清洁模式
-                SELF_CLEAN_MODE = COMMON_BUILDER
-                        .comment("The self-cleaning mode of the dustbin."
-                                , "NONE: No self-cleaning mode enabled;"
-                                , "SWEEP_CLEAR: Clear the dustbin before sweeping;"
-                                , "SWEEP_DELETE: Randomly delete items in the dustbin during sweeping;"
-                                , "SCHEDULED_CLEAR: Scheduled clearing of the dustbin;"
-                                , "SCHEDULED_DELETE: Scheduled random deletion of items in the dustbin."
-                                , "垃圾箱自清洁模式。"
-                                , "NONE：不启用自清洁模式；"
-                                , "SWEEP_CLEAR：在扫地前清空垃圾箱；"
-                                , "SWEEP_DELETE：在扫地时随机删除垃圾箱内物品；"
-                                , "SCHEDULED_CLEAR：定时清空垃圾箱；"
-                                , "SCHEDULED_DELETE：定时随机删除垃圾箱内物品。")
-                        .defineList("selfCleanMode", new ArrayList<String>() {{
-                            add(EnumSelfCleanMode.NONE.name());
-                        }}, EnumSelfCleanMode::isValid);
-
-                // 垃圾箱溢出时的处理方式
-                DUSTBIN_OVERFLOW_MODE = COMMON_BUILDER
-                        .comment("The handling method when the dustbin overflows."
-                                , "KEEP: Store to cache and fill in empty space in the dustbin when opening it;"
-                                , "REMOVE: Remove the overflowing items;"
-                                , "REPLACE: Randomly replace items in the dustbin with overflowing items."
-                                , "垃圾箱溢出时的处理方式。"
-                                , "KEEP：储存至缓存，并在打开垃圾箱时填充至垃圾箱的空位；"
-                                , "REMOVE：移除溢出物品；"
-                                , "REPLACE：将垃圾箱中的物品随机替换为溢出的物品。")
-                        .define("dustbinOverflowMode", EnumOverflowMode.KEEP.name(), EnumOverflowMode::isValid);
-
-                // 垃圾箱持久化
-                DUSTBIN_PERSISTENT = COMMON_BUILDER
-                        .comment("Whether to persistently store dustbin items to server files."
-                                , "是否将垃圾箱物品持久化存储至服务器文件。若未启用持久化，服务器关闭后垃圾箱内物品将会丢失。")
-                        .define("dustbinPersistent", true);
-
-                // 掉落统计文件数量上限
-                DROP_STATS_FILE_LIMIT = COMMON_BUILDER
-                        .comment("Maximum number of drop statistics files (by date) to keep. Older files will be deleted when exceeded. -1 = disabled, 0 = unlimited."
-                                , "掉落统计文件数量上限（按日期），超出时删除最旧的文件。-1=禁用，0=不限制。")
-                        .defineInRange("dropStatsFileLimit", 15, -1, 3650);
-
-                // 垃圾箱方块位置
-                DUSTBIN_BLOCK_POSITIONS = COMMON_BUILDER
-                        .comment("The position of the dustbin block, format: dimension, x, y, z, side"
-                                , "dimension: dimension ID, such as minecraft:overworld"
-                                , "x, y, z: coordinates"
-                                , "side: side of the block, can be empty. optional values: DOWN, UP, NORTH, SOUTH, WEST, EAST"
-                                , "垃圾箱方块位置，格式： dimension, x, y, z, side"
-                                , "dimension: 维度ID，如minecraft:overworld"
-                                , "x, y, z: 坐标"
-                                , "side: 方块面，可为空。可选值：DOWN、UP、NORTH、SOUTH、WEST、EAST")
-                        .defineList("dustbinBlockPositions", new ArrayList<>(), o -> o instanceof String);
-
-                // 垃圾箱应用模式
-                DUSTBIN_MODE = COMMON_BUILDER
-                        .comment("Dustbin Block Application Mode."
-                                , "When using a dustbin block, you may encounter issues such as being unable to open the container via command or unable to empty the dustbin."
-                                , "Please make sure the dustbin block is a valid container."
-                                , "When using the open dustbin command, it will simulate the player right-clicking the center of the specified face of the block."
-                                , "VIRTUAL: Only virtual dustbin;"
-                                , "BLOCK: Only dustbin block;"
-                                , "VIRTUAL_BLOCK: Virtual dustbin and dustbin block are enabled, and virtual dustbin is preferred;"
-                                , "BLOCK_VIRTUAL: Dustbin block and virtual dustbin are enabled, and dustbin block is preferred."
-                                , "垃圾箱方块应用模式。使用垃圾箱方块时，可能会出现无法使用指令打开容器页面、无法清空垃圾箱等情况。请确保垃圾箱方块是正常的容器，使用打开垃圾箱指令时会模拟玩家右键方块指定面的中间。"
-                                , "VIRTUAL：仅虚拟垃圾箱；"
-                                , "BLOCK：仅垃圾箱方块；"
-                                , "VIRTUAL_BLOCK：虚拟垃圾箱和垃圾箱方块同时启用，且优先使用虚拟垃圾箱；"
-                                , "BLOCK_VIRTUAL：垃圾箱方块和虚拟垃圾箱同时启用，且优先使用垃圾箱方块。")
-                        .define("dustbinBlockMode", EnumDustbinMode.VIRTUAL.name(), EnumDustbinMode::isValid);
-
-
-                COMMON_BUILDER.pop();
-            }
-
-            // 分批次清理
-            {
-                COMMON_BUILDER.comment("Batch", "批次").push("batch");
-
-                // 每tick清理实体上限
-                SWEEP_ENTITY_LIMIT = COMMON_BUILDER
-                        .comment("The maximum number of entities to clean up per tick, prevents server lag caused by removing too many entities at once."
-                                , "每tick清理实体上限，避免单次清理过多实体导致服务器卡顿。")
-                        .defineInRange("sweepEntityLimit", 500, 1, Integer.MAX_VALUE);
-
-                // 每批次清理间隔tick
-                SWEEP_ENTITY_INTERVAL = COMMON_BUILDER
-                        .comment("The interval between sweeps in ticks."
-                                , "每批次清理间隔tick。")
-                        .defineInRange("sweepEntityInterval", 2, 1, Integer.MAX_VALUE);
-
-                // 每次清理的批次上限
-                SWEEP_BATCH_LIMIT = COMMON_BUILDER
-                        .comment("The maximum number of batches per cleanup, prevents excessive batching that could slow down the cleanup process."
-                                , "This setting takes priority over sweepEntityLimit."
-                                , "每次清理的批次上限，避免单次清理分批次过多导致清理过慢，该配置项优先级大于sweepEntityLimit。")
-                        .defineInRange("sweepBatchLimit", 10, 1, Integer.MAX_VALUE);
-
-                COMMON_BUILDER.pop();
-            }
-
-            COMMON_BUILDER.pop();
-        }
-
-
-        // 定义自定义指令配置
-        {
-            COMMON_BUILDER.comment("Custom Command Settings, don't add prefix '/'", "自定义指令，请勿添加前缀'/'").push("command");
-
-            // 命令前缀
-            COMMAND_PREFIX = COMMON_BUILDER
-                    .comment("The prefix of the command, please only use English characters and underscores, otherwise it may cause problems.",
-                            "指令前缀，请仅使用英文字母及下划线，否则可能会出现问题。")
-                    .define("commandPrefix", AotakeSweep.DEFAULT_COMMAND_PREFIX);
-
-            // 设置语言
-            COMMAND_LANGUAGE = COMMON_BUILDER
-                    .comment("This command is used to set the language."
-                            , "设置语言的指令。")
-                    .define("commandLanguage", "language");
-
-
-            // 设置虚拟权限
-            COMMAND_VIRTUAL_OP = COMMON_BUILDER
-                    .comment("The command to set virtual permission."
-                            , "设置虚拟权限的指令。")
-                    .define("commandVirtualOp", "opv");
-
-            // 打开垃圾箱
-            COMMAND_DUSTBIN_OPEN = COMMON_BUILDER
-                    .comment("The command to open the dustbin."
-                            , "打开垃圾箱的指令。")
-                    .define("commandDustbinOpen", "dustbin");
-
-            // 清空垃圾箱
-            COMMAND_DUSTBIN_CLEAR = COMMON_BUILDER
-                    .comment("The command to clear the dustbin."
-                            , "清空垃圾箱的指令。")
-                    .define("commandDustbinClear", "cleardustbin");
-
-            // 将垃圾箱物品掉落到世界
-            COMMAND_DUSTBIN_DROP = COMMON_BUILDER
-                    .comment("The command to drop dustbin items into the world."
-                            , "将垃圾箱物品掉落到世界的指令。")
-                    .define("commandDustbinDrop", "dropdustbin");
-
-            // 清空缓存
-            COMMAND_CACHE_CLEAR = COMMON_BUILDER
-                    .comment("The command to clear the cache."
-                            , "清空缓存的指令。")
-                    .define("commandCacheClear", "clearcache");
-
-            // 将缓存内物品掉落至世界
-            COMMAND_CACHE_DROP = COMMON_BUILDER
-                    .comment("The command to drop cache items into the world."
-                            , "将缓存内物品掉落至世界的指令。")
-                    .define("commandCacheDrop", "dropcache");
-
-            // 触发扫地
-            COMMAND_SWEEP = COMMON_BUILDER
-                    .comment("The command to trigger sweeping."
-                            , "触发扫地的指令。")
-                    .define("commandSweep", "sweep");
-
-            // 清除掉落物
-            COMMAND_CLEAR_DROP = COMMON_BUILDER
-                    .comment("The command to clear dropped items."
-                            , "清除掉落物的指令。")
-                    .define("commandClearDrop", "killitem");
-
-            // 延迟本次清理
-            COMMAND_DELAY_SWEEP = COMMON_BUILDER
-                    .comment("The command to delay the current sweep."
-                            , "延迟本次清理的指令。")
-                    .define("commandDelaySweep", "delay");
-
-            COMMON_BUILDER.pop();
-        }
-
-
-        // 定义简化指令
-        {
-            COMMON_BUILDER.comment("Concise Command Settings", "简化指令").push("concise");
-
-            CONCISE_LANGUAGE = COMMON_BUILDER
-                    .comment("Enable or disable the concise version of the 'Set the language' command.",
-                            "是否启用无前缀版本的 '设置语言' 指令。")
-                    .define("conciseLanguage", false);
-
-            CONCISE_VIRTUAL_OP = COMMON_BUILDER
-                    .comment("Enable or disable the concise version of the 'Set virtual permission' command.",
-                            "是否启用无前缀版本的 '设置虚拟权限' 指令。")
-                    .define("conciseVirtualOp", false);
-
-            CONCISE_DUSTBIN_OPEN = COMMON_BUILDER
-                    .comment("Enable or disable the concise version of the 'Open dustbin' command.",
-                            "是否启用无前缀版本的 '打开垃圾箱' 指令。")
-                    .define("conciseDustbinOpen", false);
-
-            CONCISE_DUSTBIN_CLEAR = COMMON_BUILDER
-                    .comment("Enable or disable the concise version of the 'Clear dustbin' command.",
-                            "是否启用无前缀版本的 '清空垃圾箱' 指令。")
-                    .define("conciseDustbinClear", false);
-
-            CONCISE_DUSTBIN_DROP = COMMON_BUILDER
-                    .comment("Enable or disable the concise version of the 'Drop dustbin items' command.",
-                            "是否启用无前缀版本的 '将垃圾箱物品掉落到世界' 指令。")
-                    .define("conciseDustbinDrop", false);
-
-            CONCISE_CACHE_CLEAR = COMMON_BUILDER
-                    .comment("Enable or disable the concise version of the 'Clear cache' command.",
-                            "是否启用无前缀版本的 '清空缓存' 指令。")
-                    .define("conciseCacheClear", false);
-
-            CONCISE_CACHE_DROP = COMMON_BUILDER
-                    .comment("Enable or disable the concise version of the 'Drop cache items' command.",
-                            "是否启用无前缀版本的 '将缓存内物品掉落至世界' 指令。")
-                    .define("conciseCacheDrop", false);
-
-            CONCISE_SWEEP = COMMON_BUILDER
-                    .comment("Enable or disable the concise version of the 'Trigger sweep' command.",
-                            "是否启用无前缀版本的 '触发扫地' 指令。")
-                    .define("conciseSweep", false);
-
-            CONCISE_CLEAR_DROP = COMMON_BUILDER
-                    .comment("Enable or disable the concise version of the 'Clear dropped items' command.",
-                            "是否启用无前缀版本的 '清除掉落物' 指令。")
-                    .define("conciseClearDrop", true);
-
-            CONCISE_DELAY_SWEEP = COMMON_BUILDER
-                    .comment("Enable or disable the concise version of the 'Delay sweep' command.",
-                            "是否启用无前缀版本的 '延迟本次清理' 指令。")
-                    .define("conciseDelaySweep", false);
-
-            COMMON_BUILDER.pop();
-
-        }
-
-
-        // 定义指令权限
-        {
-            COMMON_BUILDER.comment("Command Permission", "指令权限").push("permission");
-
-            PERMISSION_VIRTUAL_OP = COMMON_BUILDER
-                    .comment("The permission level required to use the 'Set virtual permission' command, and also used as the permission level for modifying server configuration."
-                            , "设置虚拟权限指令所需的权限等级，同时用于控制使用'修改服务器配置指令'的权限。")
-                    .defineInRange("permissionVirtualOp", 4, 0, 4);
-
-            PERMISSION_DUSTBIN_OPEN = COMMON_BUILDER
-                    .comment("The permission level required to use the 'Open dustbin' command."
-                            , "打开垃圾箱指令所需的权限等级。")
-                    .defineInRange("permissionDustbinOpen", 0, 0, 4);
-
-            PERMISSION_DUSTBIN_OPEN_OTHER = COMMON_BUILDER
-                    .comment("The permission level required to use the 'Open dustbin for others' command."
-                            , "为他人打开垃圾箱指令所需的权限等级。")
-                    .defineInRange("permissionDustbinOpenOther", 2, 0, 4);
-
-            PERMISSION_DUSTBIN_CLEAR = COMMON_BUILDER
-                    .comment("The permission level required to use the 'Clear dustbin' command."
-                            , "清空垃圾箱指令所需的权限等级。")
-                    .defineInRange("permissionDustbinClear", 1, 0, 4);
-
-            PERMISSION_DUSTBIN_DROP = COMMON_BUILDER
-                    .comment("The permission level required to use the 'Drop dustbin items' command."
-                            , "将垃圾箱物品掉落到世界指令所需的权限等级。")
-                    .defineInRange("permissionDustbinDrop", 1, 0, 4);
-
-            PERMISSION_CACHE_CLEAR = COMMON_BUILDER
-                    .comment("The permission level required to use the 'Clear cache' command."
-                            , "清空缓存指令所需的权限等级。")
-                    .defineInRange("permissionCacheClear", 1, 0, 4);
-
-            PERMISSION_CACHE_DROP = COMMON_BUILDER
-                    .comment("The permission level required to use the 'Drop cache items' command."
-                            , "将缓存内物品掉落至世界指令所需的权限等级。")
-                    .defineInRange("permissionCacheDrop", 1, 0, 4);
-
-            PERMISSION_SWEEP = COMMON_BUILDER
-                    .comment("The permission level required to use the 'Trigger sweep' command."
-                            , "触发扫地指令所需的权限等级。")
-                    .defineInRange("permissionSweep", 0, 0, 4);
-
-            PERMISSION_CLEAR_DROP = COMMON_BUILDER
-                    .comment("The permission level required to use the 'Clear dropped items' command."
-                            , "清除掉落物指令所需的权限等级。")
-                    .defineInRange("permissionClearDrop", 1, 0, 4);
-
-            PERMISSION_DELAY_SWEEP = COMMON_BUILDER
-                    .comment("The permission level required to use the 'Delay sweep' command."
-                            , "延迟本次清理指令所需的权限等级。")
-                    .defineInRange("permissionDelaySweep", 1, 0, 4);
-
-            PERMISSION_CATCH_PLAYER = COMMON_BUILDER
-                    .comment("The permission level required to catch player."
-                            , "延迟本次清理指令所需的权限等级。")
-                    .defineInRange("permissionCatchPlayer", 3, 0, 4);
-
-            COMMON_BUILDER.pop();
-        }
-
-        COMMON_CONFIG = COMMON_BUILDER.build();
+import xin.vanilla.banira.common.config.ConfigData;
+import xin.vanilla.banira.common.config.ConfigHolder;
+import xin.vanilla.banira.common.config.ForgeConfigAdapter;
+import xin.vanilla.banira.common.config.annotation.Config;
+import xin.vanilla.banira.common.config.annotation.ConfigEntry;
+
+import java.util.*;
+
+/**
+ * 通用配置
+ */
+@Config(name = AotakeSweep.MODID + "-common", type = ModConfig.Type.COMMON)
+public class CommonConfig implements ConfigData {
+
+    @Getter(AccessLevel.NONE)
+    @Setter(AccessLevel.NONE)
+    @ConfigEntry.Gui.CollapsibleObject
+    @ConfigEntry.Gui.Tooltip(zh_cn = "基础：垃圾箱、扫地、安全方块、区块检测等", en_us = "Base: dustbin, sweep, safe blocks, chunk check, …")
+    private BaseCategory base = new BaseCategory();
+
+    @Getter(AccessLevel.NONE)
+    @Setter(AccessLevel.NONE)
+    @ConfigEntry.Gui.CollapsibleObject
+    @ConfigEntry.Gui.Tooltip(zh_cn = "自定义指令名（勿加 /）", en_us = "Custom command names (no leading /)")
+    private CommandCategory command = new CommandCategory();
+
+    @Getter(AccessLevel.NONE)
+    @Setter(AccessLevel.NONE)
+    @ConfigEntry.Gui.CollapsibleObject
+    @ConfigEntry.Gui.Tooltip(zh_cn = "无前缀简短指令开关", en_us = "Concise (no-prefix) command toggles")
+    private ConciseCategory concise = new ConciseCategory();
+
+    @Getter(AccessLevel.NONE)
+    @Setter(AccessLevel.NONE)
+    @ConfigEntry.Gui.CollapsibleObject
+    @ConfigEntry.Gui.Tooltip(zh_cn = "各指令所需权限等级", en_us = "Permission levels for commands")
+    private PermissionCategory permission = new PermissionCategory();
+
+    public CommonConfig() {
     }
 
+    public static RootView get() {
+        return CommonConfigAccess.root(ForgeConfigAdapter.getHolder(CommonConfig.class));
+    }
 
     public static void save() {
-        COMMON_CONFIG.save();
+        ConfigHolder h = ForgeConfigAdapter.getHolder(CommonConfig.class);
+        if (h != null) {
+            h.save();
+        }
     }
 
-    /**
-     * 重置服务器配置文件
-     */
-    private static void resetConfig() {
-        DUSTBIN_PAGE_LIMIT.set(2);
-        CACHE_LIMIT.set(5000);
+    public interface RootView {
+        BaseView base();
 
-        SWEEP_WHEN_NO_PLAYER.set(false);
-        SWEEP_WARNING_CONTENT.set("");
-        SWEEP_WARNING_VOICE.set("");
+        CommandView command();
 
-        SAFE_BLOCKS.set(new ArrayList<>());
-        SAFE_BLOCKS_BELOW.set(new ArrayList<>());
-        SAFE_BLOCKS_ABOVE.set(new ArrayList<>());
-        SAFE_BLOCKS_ENTITY_LIMIT.set(250);
+        ConciseView concise();
 
-        HELP_HEADER.set("-----==== Aotake Sweep Help (%d/%d) ====-----");
-        HELP_INFO_NUM_PER_PAGE.set(5);
-        DEFAULT_LANGUAGE.set("en_us");
+        PermissionView permission();
 
-        SWEEP_INTERVAL.set(10 * 60 * 1000L);
+        ConfigHolder holder();
+    }
 
-        ENTITY_LIST.set(new ArrayList<String>() {{
-            add(EntityType.ARROW.getRegistryName().toString());
-            add(EntityType.SPECTRAL_ARROW.getRegistryName().toString());
-            add(EntityType.EXPERIENCE_ORB.getRegistryName().toString());
-            add("tick, clazz, itemClazz, createProcessing = CreateData.Processing.Time" +
-                    " -> " +
-                    "tick >= 5 && clazz :> itemClazz && (createProcessing <= 0 || createProcessing == null)");
-        }});
-        ENTITY_LIST_MODE.set(EnumListType.WHITE.name());
-        ENTITY_LIST_LIMIT.set(250);
-        ENTITY_REDLIST.set(new ArrayList<>());
+    public interface BaseView {
+        DustbinView dustbin();
 
-        CHUNK_CHECK_INTERVAL.set(5 * 1000L);
-        CHUNK_CHECK_LIMIT.set(250);
-        CHUNK_CHECK_RETAIN.set(0.5);
-        CHUNK_CHECK_NOTICE.set(true);
-        CHUNK_CHECK_MODE.set(EnumChunkCheckMode.ADVANCED.name());
-        CHUNK_CHECK_ENTITY_LIST.set(new ArrayList<String>() {{
-            add("customName, hasOwner, createProcessing = CreateData.Processing.Time" +
-                    " -> " +
-                    "customName != null || hasOwner || createProcessing > 0");
-        }});
-        CHUNK_CHECK_ENTITY_LIST_MODE.set(EnumListType.WHITE.name());
-        CHUNK_CHECK_ONLY_NOTICE.set(false);
+        SweepView sweep();
 
-        CATCH_ENTITY.set(new ArrayList<>());
-        ALLOW_CATCH_ENTITY.set(false);
-        CATCH_ITEM.set(new ArrayList<String>() {{
-            add(Items.SNOWBALL.getRegistryName().toString());
-            add(Items.GLASS_BOTTLE.getRegistryName().toString());
-            add(Items.MUSIC_DISC_13.getRegistryName().toString());
-        }});
+        SafeView safe();
 
-        SELF_CLEAN_INTERVAL.set(60 * 60 * 1000L);
-        SELF_CLEAN_MODE.set(new ArrayList<String>() {{
-            add(EnumSelfCleanMode.NONE.name());
-        }});
-        DUSTBIN_OVERFLOW_MODE.set(EnumOverflowMode.KEEP.name());
-        DUSTBIN_PERSISTENT.set(true);
-        DROP_STATS_FILE_LIMIT.set(15);
-        DUSTBIN_BLOCK_POSITIONS.set(new ArrayList<>());
-        DUSTBIN_MODE.set(EnumDustbinMode.VIRTUAL.name());
-        SWEEP_ENTITY_LIMIT.set(500);
-        SWEEP_ENTITY_INTERVAL.set(2);
-        SWEEP_BATCH_LIMIT.set(10);
+        CommonSettingsView common();
 
-        COMMAND_PREFIX.set(AotakeSweep.DEFAULT_COMMAND_PREFIX);
-        COMMAND_LANGUAGE.set("language");
-        COMMAND_VIRTUAL_OP.set("opv");
-        COMMAND_DUSTBIN_OPEN.set("dustbin");
-        COMMAND_DUSTBIN_CLEAR.set("cleardustbin");
-        COMMAND_DUSTBIN_DROP.set("dropdustbin");
-        COMMAND_CACHE_CLEAR.set("clearcache");
-        COMMAND_CACHE_DROP.set("dropcache");
-        COMMAND_SWEEP.set("sweep");
-        COMMAND_CLEAR_DROP.set("killitem");
-        COMMAND_DELAY_SWEEP.set("delay");
+        ChunkView chunk();
 
-        CONCISE_LANGUAGE.set(false);
-        CONCISE_VIRTUAL_OP.set(false);
-        CONCISE_DUSTBIN_OPEN.set(false);
-        CONCISE_DUSTBIN_CLEAR.set(false);
-        CONCISE_DUSTBIN_DROP.set(false);
-        CONCISE_CACHE_CLEAR.set(false);
-        CONCISE_CACHE_DROP.set(false);
-        CONCISE_SWEEP.set(false);
-        CONCISE_CLEAR_DROP.set(true);
-        CONCISE_DELAY_SWEEP.set(false);
+        EntityCatchView entityCatch();
 
-        PERMISSION_VIRTUAL_OP.set(4);
-        PERMISSION_DUSTBIN_OPEN.set(0);
-        PERMISSION_DUSTBIN_OPEN_OTHER.set(2);
-        PERMISSION_DUSTBIN_CLEAR.set(1);
-        PERMISSION_DUSTBIN_DROP.set(1);
-        PERMISSION_CACHE_CLEAR.set(1);
-        PERMISSION_CACHE_DROP.set(1);
-        PERMISSION_SWEEP.set(0);
-        PERMISSION_CLEAR_DROP.set(1);
-        PERMISSION_DELAY_SWEEP.set(1);
-        PERMISSION_CATCH_PLAYER.set(3);
+        BatchView batch();
+    }
+
+    public interface DustbinView {
+        int dustbinPageLimit();
+
+        DustbinView dustbinPageLimit(int value);
+
+        int cacheLimit();
+
+        DustbinView cacheLimit(int value);
+
+        long selfCleanInterval();
+
+        DustbinView selfCleanInterval(long value);
+
+        List<String> selfCleanMode();
+
+        DustbinView selfCleanMode(List<String> value);
+
+        String dustbinOverflowMode();
+
+        DustbinView dustbinOverflowMode(String value);
+
+        boolean dustbinPersistent();
+
+        DustbinView dustbinPersistent(boolean value);
+
+        int dropStatsFileLimit();
+
+        DustbinView dropStatsFileLimit(int value);
+
+        List<String> dustbinBlockPositions();
+
+        DustbinView dustbinBlockPositions(List<String> value);
+
+        String dustbinBlockMode();
+
+        DustbinView dustbinBlockMode(String value);
+    }
+
+    public interface SweepView {
+        boolean sweepWhenNoPlayer();
+
+        SweepView sweepWhenNoPlayer(boolean value);
+
+        String sweepWarningContent();
+
+        SweepView sweepWarningContent(String value);
+
+        String sweepWarningVoice();
+
+        SweepView sweepWarningVoice(String value);
+
+        int sweepWarningVoiceVolume();
+
+        SweepView sweepWarningVoiceVolume(int value);
+
+        long sweepInterval();
+
+        SweepView sweepInterval(long value);
+
+        List<String> entityList();
+
+        SweepView entityList(List<String> value);
+
+        String entityListMode();
+
+        SweepView entityListMode(String value);
+
+        int entityListLimit();
+
+        SweepView entityListLimit(int value);
+
+        List<String> entityRedlist();
+
+        SweepView entityRedlist(List<String> value);
+    }
+
+    public interface SafeView {
+        List<String> safeBlocks();
+
+        SafeView safeBlocks(List<String> value);
+
+        List<String> safeBlocksBelow();
+
+        SafeView safeBlocksBelow(List<String> value);
+
+        List<String> safeBlocksAbove();
+
+        SafeView safeBlocksAbove(List<String> value);
+
+        int safeBlocksEntityLimit();
+
+        SafeView safeBlocksEntityLimit(int value);
+    }
+
+    public interface CommonSettingsView {
+        String helpHeader();
+
+        CommonSettingsView helpHeader(String value);
+
+        int helpInfoNumPerPage();
+
+        CommonSettingsView helpInfoNumPerPage(int value);
+
+        String defaultLanguage();
+
+        CommonSettingsView defaultLanguage(String value);
+    }
+
+    public interface ChunkView {
+        long chunkCheckInterval();
+
+        ChunkView chunkCheckInterval(long value);
+
+        int chunkCheckLimit();
+
+        ChunkView chunkCheckLimit(int value);
+
+        double chunkCheckRetain();
+
+        ChunkView chunkCheckRetain(double value);
+
+        boolean chunkCheckNotice();
+
+        ChunkView chunkCheckNotice(boolean value);
+
+        String chunkCheckMode();
+
+        ChunkView chunkCheckMode(String value);
+
+        List<String> chunkCheckEntityList();
+
+        ChunkView chunkCheckEntityList(List<String> value);
+
+        String chunkCheckEntityListMode();
+
+        ChunkView chunkCheckEntityListMode(String value);
+
+        boolean chunkCheckOnlyNotice();
+
+        ChunkView chunkCheckOnlyNotice(boolean value);
+    }
+
+    public interface EntityCatchView {
+        List<String> catchEntity();
+
+        EntityCatchView catchEntity(List<String> value);
+
+        boolean allowCatchEntity();
+
+        EntityCatchView allowCatchEntity(boolean value);
+
+        List<String> catchItem();
+
+        EntityCatchView catchItem(List<String> value);
+    }
+
+    public interface BatchView {
+        int sweepEntityLimit();
+
+        BatchView sweepEntityLimit(int value);
+
+        int sweepEntityInterval();
+
+        BatchView sweepEntityInterval(int value);
+
+        int sweepBatchLimit();
+
+        BatchView sweepBatchLimit(int value);
+    }
+
+    public interface CommandView {
+        String commandPrefix();
+
+        CommandView commandPrefix(String value);
+
+        String commandLanguage();
+
+        CommandView commandLanguage(String value);
+
+        String commandVirtualOp();
+
+        CommandView commandVirtualOp(String value);
+
+        String commandDustbinOpen();
+
+        CommandView commandDustbinOpen(String value);
+
+        String commandDustbinClear();
+
+        CommandView commandDustbinClear(String value);
+
+        String commandDustbinDrop();
+
+        CommandView commandDustbinDrop(String value);
+
+        String commandCacheClear();
+
+        CommandView commandCacheClear(String value);
+
+        String commandCacheDrop();
+
+        CommandView commandCacheDrop(String value);
+
+        String commandSweep();
+
+        CommandView commandSweep(String value);
+
+        String commandClearDrop();
+
+        CommandView commandClearDrop(String value);
+
+        String commandDelaySweep();
+
+        CommandView commandDelaySweep(String value);
+    }
+
+    public interface ConciseView {
+        boolean conciseLanguage();
+
+        ConciseView conciseLanguage(boolean value);
+
+        boolean conciseVirtualOp();
+
+        ConciseView conciseVirtualOp(boolean value);
+
+        boolean conciseDustbinOpen();
+
+        ConciseView conciseDustbinOpen(boolean value);
+
+        boolean conciseDustbinClear();
+
+        ConciseView conciseDustbinClear(boolean value);
+
+        boolean conciseDustbinDrop();
+
+        ConciseView conciseDustbinDrop(boolean value);
+
+        boolean conciseCacheClear();
+
+        ConciseView conciseCacheClear(boolean value);
+
+        boolean conciseCacheDrop();
+
+        ConciseView conciseCacheDrop(boolean value);
+
+        boolean conciseSweep();
+
+        ConciseView conciseSweep(boolean value);
+
+        boolean conciseClearDrop();
+
+        ConciseView conciseClearDrop(boolean value);
+
+        boolean conciseDelaySweep();
+
+        ConciseView conciseDelaySweep(boolean value);
+    }
+
+    public interface PermissionView {
+        int permissionVirtualOp();
+
+        PermissionView permissionVirtualOp(int value);
+
+        int permissionDustbinOpen();
+
+        PermissionView permissionDustbinOpen(int value);
+
+        int permissionDustbinOpenOther();
+
+        PermissionView permissionDustbinOpenOther(int value);
+
+        int permissionDustbinClear();
+
+        PermissionView permissionDustbinClear(int value);
+
+        int permissionDustbinDrop();
+
+        PermissionView permissionDustbinDrop(int value);
+
+        int permissionCacheClear();
+
+        PermissionView permissionCacheClear(int value);
+
+        int permissionCacheDrop();
+
+        PermissionView permissionCacheDrop(int value);
+
+        int permissionSweep();
+
+        PermissionView permissionSweep(int value);
+
+        int permissionClearDrop();
+
+        PermissionView permissionClearDrop(int value);
+
+        int permissionDelaySweep();
+
+        PermissionView permissionDelaySweep(int value);
+
+        int permissionCatchPlayer();
+
+        PermissionView permissionCatchPlayer(int value);
+    }
+
+    @Getter
+    @Setter
+    @Accessors(chain = true, fluent = true)
+    public static class BaseCategory {
+        @ConfigEntry.Gui.CollapsibleObject
+        @ConfigEntry.Gui.Tooltip(zh_cn = "虚拟垃圾箱页数、缓存上限、自清洁、溢出、持久化、方块垃圾箱等。",
+                en_us = "Virtual dustbin pages, cache cap, self-clean, overflow, persistence, block dustbins.")
+        private DustbinSection dustbin = new DustbinSection();
+
+        @ConfigEntry.Gui.CollapsibleObject
+        @ConfigEntry.Gui.Tooltip(zh_cn = "定时扫地间隔、实体名单、提示音量等（文案/语音已迁移至 warning JSON 的项仅作兼容）。",
+                en_us = "Sweep interval, entity lists, warning volume (legacy text/voice fields kept for compatibility).")
+        private SweepSection sweep = new SweepSection();
+
+        @ConfigEntry.Gui.CollapsibleObject
+        @ConfigEntry.Gui.Tooltip(zh_cn = "安全方块：处于其内/上/下的实体可豁免清理及数量上限。",
+                en_us = "Safe blocks: entities inside/on/below may be exempt; per-chunk cap override.")
+        private SafeSection safe = new SafeSection();
+
+        @ConfigEntry.Gui.CollapsibleObject
+        @ConfigEntry.Gui.Tooltip(zh_cn = "帮助分页标题格式、每页条数、服务器默认语言代码。", en_us = "Help header format, lines per page, default language code.")
+        private CommonHelpSection common = new CommonHelpSection();
+
+        @ConfigEntry.Gui.CollapsibleObject
+        @ConfigEntry.Gui.Tooltip(zh_cn = "单区块实体过多检测：间隔、阈值、保留比例、模式与名单。", en_us = "Per-chunk entity overload: interval, threshold, retain ratio, mode, lists.")
+        private ChunkSection chunk = new ChunkSection();
+
+        @ConfigEntry.Gui.CollapsibleObject
+        @ConfigEntry.Gui.Tooltip(zh_cn = "实体捕获（原 TOML 节 catch；现路径 base.entityCatch）。",
+                en_us = "Entity catch (formerly toml section catch; path base.entityCatch).")
+        private EntityCatchSection entityCatch = new EntityCatchSection();
+
+        @ConfigEntry.Gui.CollapsibleObject
+        @ConfigEntry.Gui.Tooltip(zh_cn = "分批次清理：每 tick 上限、批次间隔与批次数量上限。", en_us = "Batched cleanup: per-tick limit, tick gap between batches, max batches.")
+        private BatchSection batch = new BatchSection();
+    }
+
+    @Getter
+    @Setter
+    @Accessors(chain = true, fluent = true)
+    public static class DustbinSection {
+        @ConfigEntry.Gui.Tooltip(zh_cn = "虚拟垃圾箱最大页数。", en_us = "Maximum pages for the virtual dustbin.")
+        @ConfigEntry.BoundedDiscrete(min = 0, max = 16 * 16 * 16 * 16)
+        private int dustbinPageLimit = 2;
+
+        @ConfigEntry.Gui.Tooltip(zh_cn = "缓存区（溢出暂存等）最大物品数量。", en_us = "Max items in the overflow/cache buffer.")
+        @ConfigEntry.BoundedDiscrete(min = 1)
+        private int cacheLimit = 5000;
+
+        @ConfigEntry.Gui.Tooltip(zh_cn = "垃圾箱自清洁间隔（毫秒）。", en_us = "Self-clean interval for the dustbin (ms).")
+        @ConfigEntry.BoundedLong(min = 0L, max = 7L * 24 * 60 * 60 * 1000)
+        private long selfCleanInterval = 60L * 60 * 1000;
+
+        @ConfigEntry.Gui.Tooltip(zh_cn = "自清洁模式列表：NONE、SWEEP_CLEAR、SWEEP_DELETE、SCHEDULED_CLEAR、SCHEDULED_DELETE。",
+                en_us = "Self-clean modes: NONE, SWEEP_CLEAR, SWEEP_DELETE, SCHEDULED_CLEAR, SCHEDULED_DELETE.")
+        private List<String> selfCleanMode = new ArrayList<>(Arrays.asList(EnumSelfCleanMode.NONE.name()));
+
+        @ConfigEntry.Gui.Tooltip(zh_cn = "垃圾箱满溢时：KEEP / REMOVE / REPLACE。", en_us = "When dustbin overflows: KEEP, REMOVE, or REPLACE.")
+        private String dustbinOverflowMode = EnumOverflowMode.KEEP.name();
+
+        @ConfigEntry.Gui.Tooltip(zh_cn = "是否将垃圾箱持久化到磁盘（关闭则关服后丢失）。", en_us = "Persist dustbin to disk (off = lost after restart).")
+        private boolean dustbinPersistent = true;
+
+        @ConfigEntry.Gui.Tooltip(zh_cn = "掉落统计按日期保留文件数。-1 禁用，0 不限制。", en_us = "Max drop-stat files by date; -1 off, 0 unlimited.")
+        @ConfigEntry.BoundedDiscrete(min = -1, max = 3650)
+        private int dropStatsFileLimit = 15;
+
+        @ConfigEntry.Gui.Tooltip(zh_cn = "方块垃圾箱坐标列表：dimension, x, y, z, side（可选 DOWN/UP/NORTH/SOUTH/WEST/EAST）。",
+                en_us = "Block dustbin positions: dimension, x, y, z, optional side face.")
+        private List<String> dustbinBlockPositions = new ArrayList<>();
+
+        @ConfigEntry.Gui.Tooltip(zh_cn = "垃圾箱模式：VIRTUAL / BLOCK / VIRTUAL_BLOCK / BLOCK_VIRTUAL。", en_us = "Dustbin mode: VIRTUAL, BLOCK, VIRTUAL_BLOCK, BLOCK_VIRTUAL.")
+        private String dustbinBlockMode = EnumDustbinMode.VIRTUAL.name();
+    }
+
+    @Getter
+    @Setter
+    @Accessors(chain = true, fluent = true)
+    public static class SweepSection {
+        @ConfigEntry.Gui.Tooltip(zh_cn = "服务器无玩家时是否仍执行自动扫地。", en_us = "Run auto-sweep when no players are online.")
+        private boolean sweepWhenNoPlayer = false;
+
+        @ConfigEntry.Gui.Tooltip(zh_cn = "已废弃：请改用 config/aotake_sweep-warning.json。", en_us = "Deprecated; use config/aotake_sweep-warning.json.")
+        private String sweepWarningContent = "";
+
+        @ConfigEntry.Gui.Tooltip(zh_cn = "已废弃：请改用 config/aotake_sweep-warning.json。", en_us = "Deprecated; use config/aotake_sweep-warning.json.")
+        private String sweepWarningVoice = "";
+
+        @ConfigEntry.Gui.Tooltip(zh_cn = "提示音效音量 0–100。", en_us = "Warning sound volume 0–100.")
+        @ConfigEntry.BoundedDiscrete(max = 100)
+        private int sweepWarningVoiceVolume = 33;
+
+        @ConfigEntry.Gui.Tooltip(zh_cn = "自动扫地周期间隔（毫秒）。", en_us = "Auto-sweep interval (ms).")
+        @ConfigEntry.BoundedLong(max = 7L * 24 * 60 * 60 * 1000)
+        private long sweepInterval = 10L * 60 * 1000;
+
+        @ConfigEntry.Gui.Tooltip(zh_cn = "实体过滤规则/ID 列表（与 entityListMode 配合）。", en_us = "Entity filter rules / ids (used with entityListMode).")
+        private List<String> entityList = defaultEntityList();
+
+        @ConfigEntry.Gui.Tooltip(zh_cn = "名单模式：BLACK 仅清列表内；WHITE 清列表外。", en_us = "List mode: BLACK clean listed only; WHITE clean unlisted.")
+        private String entityListMode = EnumListType.BLACK.name();
+
+        @ConfigEntry.Gui.Tooltip(zh_cn = "单类型实体全服超过该数量时仍强制清理。", en_us = "Global per-type cap; still clean when count exceeds this.")
+        @ConfigEntry.BoundedDiscrete(min = 1)
+        private int entityListLimit = 250;
+
+        @ConfigEntry.Gui.Tooltip(zh_cn = "红名单：仅清理、不回收的实体规则/ID。", en_us = "Redlist: entities to clean without recycling.")
+        private List<String> entityRedlist = new ArrayList<>();
+    }
+
+    @Getter
+    @Setter
+    @Accessors(chain = true, fluent = true)
+    public static class SafeSection {
+        @ConfigEntry.Gui.Tooltip(zh_cn = "实体处于这些方块「内部」时不清理（支持带状态，如 minecraft:lava[level=0]）。",
+                en_us = "Skip cleanup when entity is inside these blocks (supports block states).")
+        private List<String> safeBlocks = new ArrayList<>();
+
+        @ConfigEntry.Gui.Tooltip(zh_cn = "实体站在这些方块上时不清理。", en_us = "Skip cleanup when standing on these blocks.")
+        private List<String> safeBlocksBelow = new ArrayList<>();
+
+        @ConfigEntry.Gui.Tooltip(zh_cn = "实体位于这些方块下方时不清理。", en_us = "Skip cleanup when below these blocks.")
+        private List<String> safeBlocksAbove = new ArrayList<>();
+
+        @ConfigEntry.Gui.Tooltip(zh_cn = "即使在安全方块内，单区块该实体数超过此值仍会清理。", en_us = "Even in safe blocks, clean if per-chunk count exceeds this.")
+        @ConfigEntry.BoundedDiscrete(min = 1)
+        private int safeBlocksEntityLimit = 250;
+    }
+
+    @Getter
+    @Setter
+    @Accessors(chain = true, fluent = true)
+    public static class CommonHelpSection {
+        @ConfigEntry.Gui.Tooltip(zh_cn = "帮助指令分页标题，%d/%d 为当前页/总页。", en_us = "Help header format string; %d/%d = page/total.")
+        private String helpHeader = "-----==== Aotake Sweep Help (%d/%d) ====-----";
+
+        @ConfigEntry.Gui.Tooltip(zh_cn = "帮助每页显示的条目数。", en_us = "Help lines per page.")
+        @ConfigEntry.BoundedDiscrete(min = 1, max = 9999)
+        private int helpInfoNumPerPage = 5;
+
+        @ConfigEntry.Gui.Tooltip(zh_cn = "服务器默认语言代码（如 en_us、zh_cn）。", en_us = "Server default language code (e.g. en_us, zh_cn).")
+        private String defaultLanguage = "en_us";
+    }
+
+    @Getter
+    @Setter
+    @Accessors(chain = true, fluent = true)
+    public static class ChunkSection {
+        @ConfigEntry.Gui.Tooltip(zh_cn = "区块实体检测间隔（毫秒），0 关闭。", en_us = "Chunk entity check interval (ms); 0 disables.")
+        @ConfigEntry.BoundedLong(min = 0L, max = 7L * 24 * 60 * 60 * 1000)
+        private long chunkCheckInterval = 5L * 1000;
+
+        @ConfigEntry.Gui.Tooltip(zh_cn = "触发清理的实体数量阈值。", en_us = "Entity count threshold to trigger cleanup.")
+        @ConfigEntry.BoundedDiscrete(min = 1, max = Integer.MAX_VALUE)
+        private int chunkCheckLimit = 250;
+
+        @ConfigEntry.Gui.Tooltip(zh_cn = "清理后保留实体比例（0–1），具体行为受 chunkCheckMode 影响。",
+                en_us = "Fraction of entities to retain after cleanup (0–1); interacts with chunkCheckMode.")
+        @ConfigEntry.BoundedDouble(min = 0.0, max = 1.0)
+        private double chunkCheckRetain = 0.5;
+
+        @ConfigEntry.Gui.Tooltip(zh_cn = "区块实体过多时是否向玩家发提示。", en_us = "Broadcast warning when chunk is overloaded.")
+        private boolean chunkCheckNotice = true;
+
+        @ConfigEntry.Gui.Tooltip(zh_cn = "DEFAULT：总实体超阈值；ADVANCED：单类型超阈值。", en_us = "DEFAULT: total count; ADVANCED: per-type count.")
+        private String chunkCheckMode = EnumChunkCheckMode.ADVANCED.name();
+
+        @ConfigEntry.Gui.Tooltip(zh_cn = "区块检测用的实体规则/名单（与 chunkCheckEntityListMode 配合）。",
+                en_us = "Entity rules/list for chunk check (with chunkCheckEntityListMode).")
+        private List<String> chunkCheckEntityList = defaultChunkCheckEntityList();
+
+        @ConfigEntry.Gui.Tooltip(zh_cn = "区块名单模式：BLACK / WHITE。", en_us = "Chunk list mode: BLACK or WHITE.")
+        private String chunkCheckEntityListMode = EnumListType.WHITE.name();
+
+        @ConfigEntry.Gui.Tooltip(zh_cn = "仅提示、不执行清理。", en_us = "Notice only; do not clean.")
+        private boolean chunkCheckOnlyNotice = false;
+    }
+
+    @Getter
+    @Setter
+    @Accessors(chain = true, fluent = true)
+    public static class EntityCatchSection {
+        @ConfigEntry.Gui.Tooltip(zh_cn = "允许在清理时被「捕获」的实体规则/ID。", en_us = "Entities that may be caught during cleanup.")
+        private List<String> catchEntity = new ArrayList<>();
+
+        @ConfigEntry.Gui.Tooltip(zh_cn = "是否允许玩家用物品交互捕获实体。", en_us = "Allow players to catch entities using items.")
+        private boolean allowCatchEntity = false;
+
+        @ConfigEntry.Gui.Tooltip(zh_cn = "可用作捕获工具的物品 ID 列表。", en_us = "Item ids usable as catch tools.")
+        private List<String> catchItem = defaultCatchItem();
+    }
+
+    @Getter
+    @Setter
+    @Accessors(chain = true, fluent = true)
+    public static class BatchSection {
+        @ConfigEntry.Gui.Tooltip(zh_cn = "每个游戏刻最多移除的实体数，防止卡顿。", en_us = "Max entities removed per tick to reduce lag.")
+        @ConfigEntry.BoundedDiscrete(min = 1)
+        private int sweepEntityLimit = 500;
+
+        @ConfigEntry.Gui.Tooltip(zh_cn = "批次之间的间隔（tick）。", en_us = "Ticks between batches.")
+        @ConfigEntry.BoundedDiscrete(min = 1)
+        private int sweepEntityInterval = 2;
+
+        @ConfigEntry.Gui.Tooltip(zh_cn = "单次清理最多跑几批（优先级高于每刻上限）。", en_us = "Max batches per cleanup run (overrides per-tick cap).")
+        @ConfigEntry.BoundedDiscrete(min = 1)
+        private int sweepBatchLimit = 10;
+    }
+
+    @Getter
+    @Setter
+    @Accessors(chain = true, fluent = true)
+    public static class CommandCategory {
+        @ConfigEntry.Gui.Tooltip(zh_cn = "主指令前缀，仅字母与下划线。", en_us = "Root command prefix; letters and underscores only.")
+        private String commandPrefix = AotakeSweep.DEFAULT_COMMAND_PREFIX;
+
+        @ConfigEntry.Gui.Tooltip(zh_cn = "设置语言子命令名。", en_us = "Subcommand name for /prefix language.")
+        private String commandLanguage = "language";
+
+        @ConfigEntry.Gui.Tooltip(zh_cn = "虚拟权限子命令名。", en_us = "Subcommand name for virtual OP.")
+        private String commandVirtualOp = "opv";
+
+        @ConfigEntry.Gui.Tooltip(zh_cn = "打开垃圾箱子命令名。", en_us = "Subcommand to open dustbin.")
+        private String commandDustbinOpen = "dustbin";
+
+        @ConfigEntry.Gui.Tooltip(zh_cn = "清空垃圾箱子命令名。", en_us = "Subcommand to clear dustbin.")
+        private String commandDustbinClear = "cleardustbin";
+
+        @ConfigEntry.Gui.Tooltip(zh_cn = "掉落垃圾箱物品子命令名。", en_us = "Subcommand to drop dustbin items.")
+        private String commandDustbinDrop = "dropdustbin";
+
+        @ConfigEntry.Gui.Tooltip(zh_cn = "清空缓存子命令名。", en_us = "Subcommand to clear cache.")
+        private String commandCacheClear = "clearcache";
+
+        @ConfigEntry.Gui.Tooltip(zh_cn = "掉落缓存物品子命令名。", en_us = "Subcommand to drop cache items.")
+        private String commandCacheDrop = "dropcache";
+
+        @ConfigEntry.Gui.Tooltip(zh_cn = "手动触发扫底子命令名。", en_us = "Subcommand to trigger sweep.")
+        private String commandSweep = "sweep";
+
+        @ConfigEntry.Gui.Tooltip(zh_cn = "清除掉落物子命令名。", en_us = "Subcommand to clear ground items.")
+        private String commandClearDrop = "killitem";
+
+        @ConfigEntry.Gui.Tooltip(zh_cn = "延迟本次清理子命令名。", en_us = "Subcommand to delay next sweep.")
+        private String commandDelaySweep = "delay";
+    }
+
+    @Getter
+    @Setter
+    @Accessors(chain = true, fluent = true)
+    public static class ConciseCategory {
+        @ConfigEntry.Gui.Tooltip(zh_cn = "允许无前缀执行「设置语言」。", en_us = "Allow no-prefix alias for language command.")
+        private boolean conciseLanguage = false;
+
+        @ConfigEntry.Gui.Tooltip(zh_cn = "允许无前缀执行「虚拟权限」。", en_us = "Allow no-prefix alias for virtual OP.")
+        private boolean conciseVirtualOp = false;
+
+        @ConfigEntry.Gui.Tooltip(zh_cn = "允许无前缀打开垃圾箱。", en_us = "Allow no-prefix open dustbin.")
+        private boolean conciseDustbinOpen = false;
+
+        @ConfigEntry.Gui.Tooltip(zh_cn = "允许无前缀清空垃圾箱。", en_us = "Allow no-prefix clear dustbin.")
+        private boolean conciseDustbinClear = false;
+
+        @ConfigEntry.Gui.Tooltip(zh_cn = "允许无前缀掉落垃圾箱。", en_us = "Allow no-prefix drop dustbin.")
+        private boolean conciseDustbinDrop = false;
+
+        @ConfigEntry.Gui.Tooltip(zh_cn = "允许无前缀清空缓存。", en_us = "Allow no-prefix clear cache.")
+        private boolean conciseCacheClear = false;
+
+        @ConfigEntry.Gui.Tooltip(zh_cn = "允许无前缀掉落缓存。", en_us = "Allow no-prefix drop cache.")
+        private boolean conciseCacheDrop = false;
+
+        @ConfigEntry.Gui.Tooltip(zh_cn = "允许无前缀触发扫地。", en_us = "Allow no-prefix sweep.")
+        private boolean conciseSweep = false;
+
+        @ConfigEntry.Gui.Tooltip(zh_cn = "允许无前缀清除掉落物。", en_us = "Allow no-prefix clear drops.")
+        private boolean conciseClearDrop = true;
+
+        @ConfigEntry.Gui.Tooltip(zh_cn = "允许无前缀延迟清理。", en_us = "Allow no-prefix delay sweep.")
+        private boolean conciseDelaySweep = false;
+    }
+
+    @Getter
+    @Setter
+    @Accessors(chain = true, fluent = true)
+    public static class PermissionCategory {
+        @ConfigEntry.Gui.Tooltip(zh_cn = "虚拟权限 / 修改配置相关所需权限等级（0–4）。", en_us = "Permission level for virtual OP / config (0–4).")
+        @ConfigEntry.BoundedDiscrete(min = 0, max = 4)
+        private int permissionVirtualOp = 4;
+
+        @ConfigEntry.Gui.Tooltip(zh_cn = "打开垃圾箱所需权限等级。", en_us = "Level to open own dustbin.")
+        @ConfigEntry.BoundedDiscrete(min = 0, max = 4)
+        private int permissionDustbinOpen = 0;
+
+        @ConfigEntry.Gui.Tooltip(zh_cn = "为他人打开垃圾箱所需权限等级。", en_us = "Level to open dustbin for others.")
+        @ConfigEntry.BoundedDiscrete(min = 0, max = 4)
+        private int permissionDustbinOpenOther = 2;
+
+        @ConfigEntry.Gui.Tooltip(zh_cn = "清空垃圾箱所需权限等级。", en_us = "Level to clear dustbin.")
+        @ConfigEntry.BoundedDiscrete(min = 0, max = 4)
+        private int permissionDustbinClear = 1;
+
+        @ConfigEntry.Gui.Tooltip(zh_cn = "掉落垃圾箱所需权限等级。", en_us = "Level to drop dustbin items.")
+        @ConfigEntry.BoundedDiscrete(min = 0, max = 4)
+        private int permissionDustbinDrop = 1;
+
+        @ConfigEntry.Gui.Tooltip(zh_cn = "清空缓存所需权限等级。", en_us = "Level to clear cache.")
+        @ConfigEntry.BoundedDiscrete(min = 0, max = 4)
+        private int permissionCacheClear = 1;
+
+        @ConfigEntry.Gui.Tooltip(zh_cn = "掉落缓存所需权限等级。", en_us = "Level to drop cache.")
+        @ConfigEntry.BoundedDiscrete(min = 0, max = 4)
+        private int permissionCacheDrop = 1;
+
+        @ConfigEntry.Gui.Tooltip(zh_cn = "手动扫地所需权限等级。", en_us = "Level to run sweep.")
+        @ConfigEntry.BoundedDiscrete(min = 0, max = 4)
+        private int permissionSweep = 0;
+
+        @ConfigEntry.Gui.Tooltip(zh_cn = "清除掉落物所需权限等级。", en_us = "Level to clear item entities.")
+        @ConfigEntry.BoundedDiscrete(min = 0, max = 4)
+        private int permissionClearDrop = 1;
+
+        @ConfigEntry.Gui.Tooltip(zh_cn = "延迟清理所需权限等级。", en_us = "Level to delay sweep.")
+        @ConfigEntry.BoundedDiscrete(min = 0, max = 4)
+        private int permissionDelaySweep = 1;
+
+        @ConfigEntry.Gui.Tooltip(zh_cn = "用物品捕获玩家所需权限等级。", en_us = "Level to catch players with items.")
+        @ConfigEntry.BoundedDiscrete(min = 0, max = 4)
+        private int permissionCatchPlayer = 3;
+    }
+
+    private static List<String> defaultEntityList() {
+        List<String> l = new ArrayList<>();
+        l.add(EntityType.ARROW.getRegistryName().toString());
+        l.add(EntityType.SPECTRAL_ARROW.getRegistryName().toString());
+        l.add(EntityType.EXPERIENCE_ORB.getRegistryName().toString());
+        l.add("tick, clazz, itemClazz, createProcessing = [CreateData.Processing.Time]"
+                + " -> "
+                + "tick >= 5 && clazz :> itemClazz && (createProcessing <= 0 || createProcessing == null)");
+        return l;
+    }
+
+    private static List<String> defaultChunkCheckEntityList() {
+        List<String> l = new ArrayList<>();
+        l.add("customName, hasOwner, createProcessing = [CreateData.Processing.Time]"
+                + " -> "
+                + "customName != null || hasOwner || createProcessing > 0");
+        return l;
+    }
+
+    private static List<String> defaultCatchItem() {
+        return new ArrayList<>(Arrays.asList(
+                Items.SNOWBALL.getRegistryName().toString(),
+                Items.GLASS_BOTTLE.getRegistryName().toString(),
+                Items.MUSIC_DISC_13.getRegistryName().toString()
+        ));
     }
 
     public static void resetConfigWithMode0() {
-        resetConfig();
-
-        COMMON_CONFIG.save();
-
+        applyResetDefaults();
+        save();
         Map<String, List<String>> group = WarningConfig.buildDefaultWarnGroup();
         List<Map<String, List<String>>> groups = new ArrayList<>();
         groups.add(group);
@@ -1106,10 +764,8 @@ public class CommonConfig {
     }
 
     public static void resetConfigWithMode1() {
-        resetConfig();
-
-        COMMON_CONFIG.save();
-
+        applyResetDefaults();
+        save();
         Map<String, List<String>> group = new LinkedHashMap<>();
         group.put("error", AotakeUtils.singleList("清理过程中发生了异常，请检查服务器异常日志。"));
         group.put("fail", AotakeUtils.singleList("§r§e世界很干净。"));
@@ -1129,10 +785,8 @@ public class CommonConfig {
     }
 
     public static void resetConfigWithMode2() {
-        resetConfig();
-
-        COMMON_CONFIG.save();
-
+        applyResetDefaults();
+        save();
         Map<String, List<String>> group = new LinkedHashMap<>();
         group.put("error", AotakeUtils.singleList("An error occurred while cleaning up, check the server logs for details."));
         group.put("fail", AotakeUtils.singleList("§r§eCleaned up nothing."));
@@ -1151,4 +805,99 @@ public class CommonConfig {
         AotakeUtils.clearWarns();
     }
 
+    private static void applyResetDefaults() {
+        RootView c = get();
+        c.base().dustbin()
+                .dustbinPageLimit(2)
+                .cacheLimit(5000)
+                .selfCleanInterval(60L * 60 * 1000)
+                .selfCleanMode(new ArrayList<>(Arrays.asList(EnumSelfCleanMode.NONE.name())))
+                .dustbinOverflowMode(EnumOverflowMode.KEEP.name())
+                .dustbinPersistent(true)
+                .dropStatsFileLimit(15)
+                .dustbinBlockPositions(new ArrayList<>())
+                .dustbinBlockMode(EnumDustbinMode.VIRTUAL.name());
+        c.base().sweep()
+                .sweepWhenNoPlayer(false)
+                .sweepWarningContent("")
+                .sweepWarningVoice("")
+                .sweepWarningVoiceVolume(33)
+                .sweepInterval(10L * 60 * 1000)
+                .entityList(defaultEntityListReset())
+                .entityListMode(EnumListType.WHITE.name())
+                .entityListLimit(250)
+                .entityRedlist(new ArrayList<>());
+        c.base().safe()
+                .safeBlocks(new ArrayList<>())
+                .safeBlocksBelow(new ArrayList<>())
+                .safeBlocksAbove(new ArrayList<>())
+                .safeBlocksEntityLimit(250);
+        c.base().common()
+                .helpHeader("-----==== Aotake Sweep Help (%d/%d) ====-----")
+                .helpInfoNumPerPage(5)
+                .defaultLanguage("en_us");
+        c.base().chunk()
+                .chunkCheckInterval(5L * 1000)
+                .chunkCheckLimit(250)
+                .chunkCheckRetain(0.5)
+                .chunkCheckNotice(true)
+                .chunkCheckMode(EnumChunkCheckMode.ADVANCED.name())
+                .chunkCheckEntityList(defaultChunkCheckEntityList())
+                .chunkCheckEntityListMode(EnumListType.WHITE.name())
+                .chunkCheckOnlyNotice(false);
+        c.base().entityCatch()
+                .catchEntity(new ArrayList<>())
+                .allowCatchEntity(false)
+                .catchItem(defaultCatchItem());
+        c.base().batch()
+                .sweepEntityLimit(500)
+                .sweepEntityInterval(2)
+                .sweepBatchLimit(10);
+        c.command()
+                .commandPrefix(AotakeSweep.DEFAULT_COMMAND_PREFIX)
+                .commandLanguage("language")
+                .commandVirtualOp("opv")
+                .commandDustbinOpen("dustbin")
+                .commandDustbinClear("cleardustbin")
+                .commandDustbinDrop("dropdustbin")
+                .commandCacheClear("clearcache")
+                .commandCacheDrop("dropcache")
+                .commandSweep("sweep")
+                .commandClearDrop("killitem")
+                .commandDelaySweep("delay");
+        c.concise()
+                .conciseLanguage(false)
+                .conciseVirtualOp(false)
+                .conciseDustbinOpen(false)
+                .conciseDustbinClear(false)
+                .conciseDustbinDrop(false)
+                .conciseCacheClear(false)
+                .conciseCacheDrop(false)
+                .conciseSweep(false)
+                .conciseClearDrop(true)
+                .conciseDelaySweep(false);
+        c.permission()
+                .permissionVirtualOp(4)
+                .permissionDustbinOpen(0)
+                .permissionDustbinOpenOther(2)
+                .permissionDustbinClear(1)
+                .permissionDustbinDrop(1)
+                .permissionCacheClear(1)
+                .permissionCacheDrop(1)
+                .permissionSweep(0)
+                .permissionClearDrop(1)
+                .permissionDelaySweep(1)
+                .permissionCatchPlayer(3);
+    }
+
+    private static List<String> defaultEntityListReset() {
+        List<String> l = new ArrayList<>();
+        l.add(EntityType.ARROW.getRegistryName().toString());
+        l.add(EntityType.SPECTRAL_ARROW.getRegistryName().toString());
+        l.add(EntityType.EXPERIENCE_ORB.getRegistryName().toString());
+        l.add("tick, clazz, itemClazz, createProcessing = CreateData.Processing.Time"
+                + " -> "
+                + "tick >= 5 && clazz :> itemClazz && (createProcessing <= 0 || createProcessing == null)");
+        return l;
+    }
 }

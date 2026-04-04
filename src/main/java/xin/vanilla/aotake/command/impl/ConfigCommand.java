@@ -4,21 +4,21 @@ import com.mojang.brigadier.arguments.BoolArgumentType;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
-import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import net.minecraft.command.CommandSource;
 import net.minecraft.command.Commands;
 import net.minecraft.entity.player.ServerPlayerEntity;
+import xin.vanilla.aotake.AotakeComponent;
+import xin.vanilla.aotake.AotakeLang;
 import xin.vanilla.aotake.AotakeSweep;
-import xin.vanilla.aotake.config.ClientConfig;
 import xin.vanilla.aotake.config.CommonConfig;
-import xin.vanilla.aotake.config.ServerConfig;
 import xin.vanilla.aotake.data.player.PlayerSweepData;
 import xin.vanilla.aotake.enums.EnumCommandType;
-import xin.vanilla.aotake.enums.EnumI18nType;
 import xin.vanilla.aotake.util.AotakeUtils;
-import xin.vanilla.aotake.util.CommandUtils;
-import xin.vanilla.aotake.util.Component;
-import xin.vanilla.aotake.util.I18nUtils;
+import xin.vanilla.banira.common.config.ForgeConfigAdapter;
+import xin.vanilla.banira.common.enums.EnumI18nType;
+import xin.vanilla.banira.common.util.CommandUtils;
+import xin.vanilla.banira.common.util.MessageUtils;
+import xin.vanilla.banira.common.util.Translator;
 
 public class ConfigCommand {
     public static LiteralArgumentBuilder<CommandSource> config() {
@@ -39,26 +39,22 @@ public class ConfigCommand {
                                     String lang = CommandUtils.getLanguage(source);
                                     switch (mode) {
                                         case 0:
-                                            ServerConfig.resetConfigWithMode0();
                                             CommonConfig.resetConfigWithMode0();
                                             break;
                                         case 1:
-                                            ServerConfig.resetConfigWithMode1();
                                             CommonConfig.resetConfigWithMode1();
                                             break;
                                         case 2:
-                                            ServerConfig.resetConfigWithMode2();
                                             CommonConfig.resetConfigWithMode2();
                                             break;
                                         default: {
                                             throw new IllegalArgumentException("Mode " + mode + " does not exist");
                                         }
                                     }
-                                    Component component = Component.translatable(lang, EnumI18nType.MESSAGE, "server_config_mode", mode);
-                                    source.sendSuccess(component.toChatComponent(lang), false);
+                                    source.sendSuccess(AotakeComponent.get().transLang(lang, EnumI18nType.FORMAT, "server_config_mode", mode).toChat(lang), false);
 
                                     // 更新权限信息
-                                    source.getServer().getPlayerList().getPlayers().forEach(AotakeUtils::refreshPermission);
+                                    source.getServer().getPlayerList().getPlayers().forEach(CommandUtils::refreshPermission);
                                     return 1;
                                 })
                         )
@@ -69,11 +65,11 @@ public class ConfigCommand {
                         .then(Commands.argument("disable", BoolArgumentType.bool())
                                 .executes(context -> {
                                     AotakeSweep.setDisable(BoolArgumentType.getBool(context, "disable"));
-                                    AotakeUtils.broadcastMessage(context.getSource().getServer()
-                                            , Component.translatable(EnumI18nType.MESSAGE
+                                    MessageUtils.broadcastMessage(context.getSource().getServer()
+                                            , AotakeComponent.get().trans(EnumI18nType.FORMAT
                                                     , "mod_status"
-                                                    , Component.translatable(EnumI18nType.KEY, "categories")
-                                                    , I18nUtils.enabled(ServerConfig.DEFAULT_LANGUAGE.get(), !AotakeSweep.isDisable())
+                                                    , AotakeComponent.get().trans(EnumI18nType.PLAIN, "key.aotake_sweep.categories")
+                                                    , AotakeLang.get().enabled(CommonConfig.get().base().common().defaultLanguage(), !AotakeSweep.isDisable())
                                             )
                                     );
                                     return 1;
@@ -86,16 +82,19 @@ public class ConfigCommand {
                         .then(Commands.argument("configKey", StringArgumentType.word())
                                 .suggests((context, builder) -> {
                                     String input = CommandUtils.getStringEmpty(context, "configKey");
-                                    CommandUtils.configKeySuggestion(ServerConfig.class, builder, input);
+                                    CommandUtils.configKeySuggestion(
+                                            ForgeConfigAdapter.getHolder(CommonConfig.class), builder, input);
                                     return builder.buildFuture();
                                 })
                                 .then(Commands.argument("configValue", StringArgumentType.word())
                                         .suggests((context, builder) -> {
                                             String configKey = StringArgumentType.getString(context, "configKey");
-                                            CommandUtils.configValueSuggestion(ServerConfig.class, builder, configKey);
+                                            CommandUtils.configValueSuggestion(
+                                                    ForgeConfigAdapter.getHolder(CommonConfig.class), builder, configKey);
                                             return builder.buildFuture();
                                         })
-                                        .executes(context -> CommandUtils.executeModifyConfig(ServerConfig.class, context))
+                                        .executes(context -> CommandUtils.executeModifyConfig(
+                                                ForgeConfigAdapter.getHolder(CommonConfig.class), context))
                                 )
                         )
                 )// endregion 修改server配置
@@ -105,43 +104,22 @@ public class ConfigCommand {
                         .then(Commands.argument("configKey", StringArgumentType.word())
                                 .suggests((context, builder) -> {
                                     String input = CommandUtils.getStringEmpty(context, "configKey");
-                                    CommandUtils.configKeySuggestion(CommonConfig.class, builder, input);
+                                    CommandUtils.configKeySuggestion(
+                                            ForgeConfigAdapter.getHolder(CommonConfig.class), builder, input);
                                     return builder.buildFuture();
                                 })
                                 .then(Commands.argument("configValue", StringArgumentType.word())
                                         .suggests((context, builder) -> {
                                             String configKey = StringArgumentType.getString(context, "configKey");
-                                            CommandUtils.configValueSuggestion(CommonConfig.class, builder, configKey);
+                                            CommandUtils.configValueSuggestion(
+                                                    ForgeConfigAdapter.getHolder(CommonConfig.class), builder, configKey);
                                             return builder.buildFuture();
                                         })
-                                        .executes(context -> CommandUtils.executeModifyConfig(CommonConfig.class, context))
+                                        .executes(context -> CommandUtils.executeModifyConfig(
+                                                ForgeConfigAdapter.getHolder(CommonConfig.class), context))
                                 )
                         )
                 )// endregion 修改common配置
-                // region 修改client配置
-                .then(Commands.literal("client")
-                        .requires(source -> {
-                            try {
-                                return AotakeSweep.getCustomConfigStatus().contains(AotakeUtils.getPlayerUUIDString(source.getPlayerOrException()));
-                            } catch (CommandSyntaxException e) {
-                                return false;
-                            }
-                        })
-                        .then(Commands.argument("configKey", StringArgumentType.word())
-                                .suggests((context, builder) -> {
-                                    String input = CommandUtils.getStringEmpty(context, "configKey");
-                                    CommandUtils.configKeySuggestion(ClientConfig.class, builder, input);
-                                    return builder.buildFuture();
-                                })
-                                .then(Commands.argument("configValue", StringArgumentType.word())
-                                        .suggests((context, builder) -> {
-                                            String configKey = StringArgumentType.getString(context, "configKey");
-                                            CommandUtils.configValueSuggestion(ClientConfig.class, builder, configKey);
-                                            return builder.buildFuture();
-                                        })
-                                )
-                        )
-                )// endregion 修改client配置
                 // region 修改玩家配置
                 .then(Commands.literal("player")
                         .then(Commands.literal("showSweepResult")
@@ -154,17 +132,18 @@ public class ConfigCommand {
                                             return suggestion.buildFuture();
                                         })
                                         .executes(context -> {
-                                            if (CommandUtils.checkModStatus(context)) return 0;
-                                            CommandUtils.notifyHelp(context);
-                                            String show = CommandUtils.getStringDefault(context, "show", "change");
                                             ServerPlayerEntity player = context.getSource().getPlayerOrException();
+                                            if (CommandUtils.checkModStatus(context, AotakeSweep::isDisable))
+                                                return 0;
+                                            CommandUtils.notifyHelp(context, PlayerSweepData.getData(player), AotakeComponent.get().trans(EnumI18nType.WORD, "title"), String.format("/%s help", AotakeUtils.getCommandPrefix()));
+                                            String show = CommandUtils.getStringDefault(context, "show", "change");
                                             PlayerSweepData data = PlayerSweepData.getData(player);
                                             boolean r = "change".equalsIgnoreCase(show) ? !data.isShowSweepResult() : Boolean.parseBoolean(show);
                                             data.setShowSweepResult(r);
-                                            AotakeUtils.sendMessage(player
-                                                    , Component.translatable(EnumI18nType.MESSAGE
+                                            MessageUtils.sendMessage(player
+                                                    , AotakeComponent.get().trans(EnumI18nType.FORMAT
                                                             , "show_sweep_result"
-                                                            , I18nUtils.enabled(AotakeUtils.getPlayerLanguage(player), r)
+                                                            , AotakeLang.get().enabled(Translator.getServerPlayerLanguage(player), r)
                                                             , String.format("/%s config player showSweepResult [<status>]", AotakeUtils.getCommandPrefix())
                                                     )
                                             );
@@ -183,17 +162,18 @@ public class ConfigCommand {
                                             return suggestion.buildFuture();
                                         })
                                         .executes(context -> {
-                                            if (CommandUtils.checkModStatus(context)) return 0;
-                                            CommandUtils.notifyHelp(context);
-                                            String enable = CommandUtils.getStringDefault(context, "enable", "change");
                                             ServerPlayerEntity player = context.getSource().getPlayerOrException();
+                                            if (CommandUtils.checkModStatus(context, AotakeSweep::isDisable))
+                                                return 0;
+                                            CommandUtils.notifyHelp(context, PlayerSweepData.getData(player), AotakeComponent.get().trans(EnumI18nType.WORD, "title"), String.format("/%s help", AotakeUtils.getCommandPrefix()));
+                                            String enable = CommandUtils.getStringDefault(context, "enable", "change");
                                             PlayerSweepData data = PlayerSweepData.getData(player);
                                             boolean r = "change".equalsIgnoreCase(enable) ? !data.isEnableWarningVoice() : Boolean.parseBoolean(enable);
                                             data.setEnableWarningVoice(r);
-                                            AotakeUtils.sendMessage(player
-                                                    , Component.translatable(EnumI18nType.MESSAGE
-                                                            , "enable_warning_voice"
-                                                            , I18nUtils.enabled(AotakeUtils.getPlayerLanguage(player), r)
+                                            MessageUtils.sendMessage(player
+                                                    , AotakeComponent.get().trans(EnumI18nType.FORMAT
+                                                            , "warning_voice"
+                                                            , AotakeLang.get().enabled(Translator.getServerPlayerLanguage(player), r)
                                                             , String.format("/%s config player enableWarningVoice [<status>]", AotakeUtils.getCommandPrefix())
                                                     )
                                             );

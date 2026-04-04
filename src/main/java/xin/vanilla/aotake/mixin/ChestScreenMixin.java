@@ -14,9 +14,9 @@ import xin.vanilla.aotake.AotakeComponent;
 import xin.vanilla.aotake.Identifier;
 import xin.vanilla.aotake.config.ClientConfig;
 import xin.vanilla.aotake.config.DustbinGuiLayoutCache;
-import xin.vanilla.aotake.util.AotakeUtils;
 import xin.vanilla.banira.client.util.AbstractGuiUtils;
 import xin.vanilla.banira.client.util.TextureUtils;
+import xin.vanilla.banira.common.util.Translator;
 
 @Mixin(ChestScreen.class)
 public abstract class ChestScreenMixin {
@@ -32,7 +32,7 @@ public abstract class ChestScreenMixin {
         if (player == null) return;
         ChestScreen screen = (ChestScreen) (Object) this;
         if (!aotake$isDustbinScreen(screen)) return;
-        if (ClientConfig.VANILLA_DUSTBIN.get()) return;
+        if (ClientConfig.get().dustbin().vanillaDustbin()) return;
         if (!DustbinGuiLayoutCache.valid) return;
 
         int leftPos = DustbinGuiLayoutCache.leftPos;
@@ -55,7 +55,7 @@ public abstract class ChestScreenMixin {
         if (player == null) return false;
         String title = screen.getTitle().getContents();
         String modTitle = AotakeComponent.get().transAuto("title")
-                .toVanilla(AotakeUtils.getPlayerLanguage(player))
+                .toVanilla(Translator.getClientLanguage())
                 .getContents();
         return title.startsWith(modTitle);
     }

@@ -5,8 +5,6 @@
   "compatibilityLevel": "JAVA_8",
   "refmap": "aotake_sweep.refmap.json",
   "mixins": [
-    "ServerPlayerAccessor",
-    "ServerPlayerMixin"
   ],
   "client": [
     "ChestScreenMixin",

@@ -72,14 +72,14 @@ public class EntitySweeper {
         if (result.getTotalBatch() == 0) LOGGER.debug("AddDrops started at {}", System.currentTimeMillis());
         this.init();
 
-        if (result.getTotalBatch() == 0 && CollectionUtils.isNotNullOrEmpty(entities) && entities.size() > CommonConfig.SWEEP_ENTITY_LIMIT.get()) {
-            List<List<Entity>> lists = CollectionUtils.splitToCollections(entities, CommonConfig.SWEEP_ENTITY_LIMIT.get(), CommonConfig.SWEEP_BATCH_LIMIT.get());
+        if (result.getTotalBatch() == 0 && CollectionUtils.isNotNullOrEmpty(entities) && entities.size() > CommonConfig.get().base().batch().sweepEntityLimit()) {
+            List<List<Entity>> lists = CollectionUtils.splitToCollections(entities, CommonConfig.get().base().batch().sweepEntityLimit(), CommonConfig.get().base().batch().sweepBatchLimit());
             result.setTotalBatch(lists.size());
             if (lists.size() > 1) {
                 for (int i = 1; i < lists.size(); i++) {
                     List<Entity> entityList = lists.get(i);
                     BaniraScheduler.schedule(BaniraCodex.serverInstance().key()
-                            , CommonConfig.SWEEP_ENTITY_INTERVAL.get() * i
+                            , CommonConfig.get().base().batch().sweepEntityInterval() * i
                             , () -> AotakeSweep.getEntitySweeper().addDrops(entityList, result)
                     );
                 }
@@ -145,7 +145,7 @@ public class EntitySweeper {
                 }
                 if (playerData.isEnableWarningVoice()) {
                     String voice = AotakeUtils.getWarningVoice(result.isEmpty() ? "fail" : "success");
-                    float volume = CommonConfig.SWEEP_WARNING_VOICE_VOLUME.get() / 100f;
+                    float volume = CommonConfig.get().base().sweep().sweepWarningVoiceVolume() / 100f;
                     if (StringUtils.isNotNullOrEmpty(voice)) {
                         CommandUtils.executeCommandNoOutput(p, String.format("playsound %s voice @s ~ ~ ~ %s", voice, volume));
                     }
@@ -172,7 +172,7 @@ public class EntitySweeper {
         // 处理掉落物
         if (entity instanceof ItemEntity) {
             ItemStack item = ((ItemEntity) entity).getItem();
-            if (!AotakeSweep.getEntityFilter().validEntity(CommonConfig.ENTITY_REDLIST.get(), entity)) {
+            if (!AotakeSweep.getEntityFilter().validEntity(CommonConfig.get().base().sweep().entityRedlist(), entity)) {
                 itemToRecycle = item.copy();
                 result.setItemCount(item.getCount());
             }
@@ -182,10 +182,10 @@ public class EntitySweeper {
         // 处理其他实体
         else {
             // 回收实体
-            if (!CommonConfig.CATCH_ITEM.get().isEmpty()
-                    && AotakeSweep.getEntityFilter().validEntity(CommonConfig.CATCH_ENTITY.get(), entity)
+            if (!CommonConfig.get().base().entityCatch().catchItem().isEmpty()
+                    && AotakeSweep.getEntityFilter().validEntity(CommonConfig.get().base().entityCatch().catchEntity(), entity)
             ) {
-                String randomItem = CollectionUtils.getRandomElement(CommonConfig.CATCH_ITEM.get());
+                String randomItem = CollectionUtils.getRandomElement(CommonConfig.get().base().entityCatch().catchItem());
                 itemToRecycle = ItemUtils.deserializeItemStack(randomItem);
                 CompoundNBT tag = itemToRecycle.getOrCreateTag();
                 CompoundNBT aotake = new CompoundNBT();
@@ -224,8 +224,8 @@ public class EntitySweeper {
     }
 
     private void handleItemRecycling(WorldCoordinate coordinate, ItemStack item, SweepResult result) {
-        EnumDustbinMode dustbinMode = EnumDustbinMode.valueOfOrDefault(CommonConfig.DUSTBIN_MODE.get());
-        if (CommonConfig.SELF_CLEAN_MODE.get().contains(EnumSelfCleanMode.SWEEP_DELETE.name())) {
+        EnumDustbinMode dustbinMode = EnumDustbinMode.valueOfOrDefault(CommonConfig.get().base().dustbin().dustbinBlockMode());
+        if (CommonConfig.get().base().dustbin().selfCleanMode().contains(EnumSelfCleanMode.SWEEP_DELETE.name())) {
             switch (dustbinMode) {
                 case VIRTUAL: {
                     selfCleanVirtualDustbin();
@@ -284,7 +284,7 @@ public class EntitySweeper {
     }
 
     private void selfCleanDustbinBlock() {
-        for (String pos : CommonConfig.DUSTBIN_BLOCK_POSITIONS.get()) {
+        for (String pos : CommonConfig.get().base().dustbin().dustbinBlockPositions()) {
             WorldCoordinate dustbinPos = WorldCoordinate.fromString(pos);
             IItemHandler handler = AotakeUtils.getBlockItemHandler(dustbinPos);
             if (handler != null) {
@@ -322,7 +322,7 @@ public class EntitySweeper {
 
     private ItemStack addItemToDustbinBlock(ItemStack item) {
         ItemStack remaining = item;
-        for (String pos : CommonConfig.DUSTBIN_BLOCK_POSITIONS.get()) {
+        for (String pos : CommonConfig.get().base().dustbin().dustbinBlockPositions()) {
             WorldCoordinate dustbinPos = WorldCoordinate.fromString(pos);
             IItemHandler handler = AotakeUtils.getBlockItemHandler(dustbinPos);
             if (handler != null) {
@@ -348,18 +348,18 @@ public class EntitySweeper {
     }
 
     private void handleOverflow(WorldCoordinate coordinate, ItemStack item, SweepResult result) {
-        EnumOverflowMode mode = EnumOverflowMode.valueOf(CommonConfig.DUSTBIN_OVERFLOW_MODE.get());
+        EnumOverflowMode mode = EnumOverflowMode.valueOf(CommonConfig.get().base().dustbin().dustbinOverflowMode());
 
         switch (mode) {
             case KEEP: {
                 // 多余部分移除
-                if (dropList.size() < CommonConfig.CACHE_LIMIT.get()) {
+                if (dropList.size() < CommonConfig.get().base().dustbin().cacheLimit()) {
                     this.dropList.add(new KeyValue<>(coordinate, item.copy()));
                 }
             }
             break;
             case REPLACE: {
-                switch (EnumDustbinMode.valueOfOrDefault(CommonConfig.DUSTBIN_MODE.get())) {
+                switch (EnumDustbinMode.valueOfOrDefault(CommonConfig.get().base().dustbin().dustbinBlockMode())) {
                     case VIRTUAL:
                     case VIRTUAL_BLOCK: {
                         Inventory inv = this.inventoryList.get(AotakeSweep.RANDOM.nextInt(this.inventoryList.size()));
@@ -369,7 +369,7 @@ public class EntitySweeper {
                     break;
                     case BLOCK:
                     case BLOCK_VIRTUAL: {
-                        String pos = CollectionUtils.getRandomElement(CommonConfig.DUSTBIN_BLOCK_POSITIONS.get());
+                        String pos = CollectionUtils.getRandomElement(CommonConfig.get().base().dustbin().dustbinBlockPositions());
                         WorldCoordinate dustbinPos = WorldCoordinate.fromString(pos);
                         IItemHandler handler = AotakeUtils.getBlockItemHandler(dustbinPos);
                         if (handler != null) {

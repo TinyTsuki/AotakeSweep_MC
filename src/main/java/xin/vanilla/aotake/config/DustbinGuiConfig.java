@@ -8,7 +8,7 @@ import net.minecraft.resources.IResource;
 import net.minecraft.util.ResourceLocation;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import xin.vanilla.aotake.AotakeSweep;
+import xin.vanilla.aotake.Identifier;
 import xin.vanilla.aotake.enums.EnumDustbinScaleMode;
 import xin.vanilla.banira.common.util.JsonUtils;
 
@@ -20,7 +20,7 @@ import java.nio.charset.StandardCharsets;
  */
 public final class DustbinGuiConfig {
     private static final Logger LOGGER = LogManager.getLogger();
-    private static final ResourceLocation CONFIG_LOCATION = AotakeSweep.createIdentifier("dustbin/config.json");
+    private static final ResourceLocation CONFIG_LOCATION = Identifier.id().create("dustbin/config.json");
 
     @Getter
     private static EnumDustbinScaleMode scaleMode = EnumDustbinScaleMode.FIT;

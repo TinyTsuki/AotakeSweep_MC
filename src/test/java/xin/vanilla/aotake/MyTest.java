@@ -2,7 +2,7 @@ package xin.vanilla.aotake;
 
 import com.google.gson.JsonObject;
 import org.junit.Test;
-import xin.vanilla.aotake.util.JsonUtils;
+import xin.vanilla.banira.common.util.JsonUtils;
 
 public class MyTest {
 

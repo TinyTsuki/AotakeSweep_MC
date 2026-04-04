@@ -90,7 +90,7 @@ public class ClearDropCommand {
             return 1;
         };
 
-        return Commands.literal(CommonConfig.COMMAND_CLEAR_DROP.get())
+        return Commands.literal(CommonConfig.get().command().commandClearDrop())
                 .requires(source -> AotakeUtils.hasCommandPermission(source, EnumCommandType.CLEAR_DROP))
                 .executes(clearDropCommand)
                 .then(Commands.argument("dimension", DimensionArgument.dimension())

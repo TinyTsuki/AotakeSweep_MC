@@ -80,7 +80,7 @@ public class DustbinCommand {
             return 1;
         };
 
-        return Commands.literal(CommonConfig.COMMAND_DUSTBIN_OPEN.get())
+        return Commands.literal(CommonConfig.get().command().commandDustbinOpen())
                 .requires(source -> AotakeUtils.hasCommandPermission(source, EnumCommandType.DUSTBIN_OPEN))
                 .executes(openDustbinCommand)
                 .then(Commands.argument("page", IntegerArgumentType.integer(1))
@@ -118,9 +118,9 @@ public class DustbinCommand {
             }
 
             int page = CommandUtils.getIntDefault(context, "page", 0);
-            int vPage = CommonConfig.DUSTBIN_PAGE_LIMIT.get();
-            int bPage = CommonConfig.DUSTBIN_BLOCK_POSITIONS.get().size();
-            switch (EnumDustbinMode.valueOfOrDefault(CommonConfig.DUSTBIN_MODE.get())) {
+            int vPage = CommonConfig.get().base().dustbin().dustbinPageLimit();
+            int bPage = CommonConfig.get().base().dustbin().dustbinBlockPositions().size();
+            switch (EnumDustbinMode.valueOfOrDefault(CommonConfig.get().base().dustbin().dustbinBlockMode())) {
                 case VIRTUAL: {
                     AotakeUtils.clearVirtualDustbin(page);
                 }
@@ -168,7 +168,7 @@ public class DustbinCommand {
                     .forEach(p -> MessageUtils.sendMessage(p, message));
             return 1;
         };
-        return Commands.literal(CommonConfig.COMMAND_DUSTBIN_CLEAR.get())
+        return Commands.literal(CommonConfig.get().command().commandDustbinClear())
                 .requires(source -> AotakeUtils.hasCommandPermission(source, EnumCommandType.DUSTBIN_CLEAR))
                 .executes(clearDustbinCommand)
                 .then(Commands.argument("page", IntegerArgumentType.integer(1))
@@ -194,9 +194,9 @@ public class DustbinCommand {
             }
 
             int page = CommandUtils.getIntDefault(context, "page", 0);
-            int vPage = CommonConfig.DUSTBIN_PAGE_LIMIT.get();
-            int bPage = CommonConfig.DUSTBIN_BLOCK_POSITIONS.get().size();
-            switch (EnumDustbinMode.valueOfOrDefault(CommonConfig.DUSTBIN_MODE.get())) {
+            int vPage = CommonConfig.get().base().dustbin().dustbinPageLimit();
+            int bPage = CommonConfig.get().base().dustbin().dustbinBlockPositions().size();
+            switch (EnumDustbinMode.valueOfOrDefault(CommonConfig.get().base().dustbin().dustbinBlockMode())) {
                 case VIRTUAL: {
                     AotakeUtils.dropVirtualDustbin(player, page);
                 }
@@ -244,7 +244,7 @@ public class DustbinCommand {
                     .forEach(p -> MessageUtils.sendMessage(p, message));
             return 1;
         };
-        return Commands.literal(CommonConfig.COMMAND_DUSTBIN_DROP.get())
+        return Commands.literal(CommonConfig.get().command().commandDustbinDrop())
                 .requires(source -> AotakeUtils.hasCommandPermission(source, EnumCommandType.DUSTBIN_DROP))
                 .executes(dropDustbinCommand)
                 .then(Commands.argument("page", IntegerArgumentType.integer(1))

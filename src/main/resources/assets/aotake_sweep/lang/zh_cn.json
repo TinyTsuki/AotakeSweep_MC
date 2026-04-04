@@ -4,6 +4,7 @@
   "key.aotake_sweep.open_dustbin_pre": "垃圾箱上一页",
   "key.aotake_sweep.open_dustbin_next": "垃圾箱下一页",
   "key.aotake_sweep.progress": "显示进度条",
+  "word.aotake_sweep.client_config_editor": "竹叶清客户端配置",
   "itemGroup.aotake_sweep": "竹叶清",
   "word.aotake_sweep.title": "竹叶清",
   "word.aotake_sweep.help": "[<页数>|<指令类型>] 查询指令帮助信息",

@@ -8,10 +8,7 @@ import net.minecraft.nbt.INBT;
 import net.minecraft.nbt.NumberNBT;
 import net.minecraft.network.datasync.DataParameter;
 import net.minecraftforge.common.UsernameCache;
-import xin.vanilla.banira.common.util.CollectionUtils;
-import xin.vanilla.banira.common.util.FieldUtils;
-import xin.vanilla.banira.common.util.NBTUtils;
-import xin.vanilla.banira.common.util.SafeExpressionEvaluator;
+import xin.vanilla.banira.common.util.*;
 
 import javax.annotation.Nullable;
 import java.lang.reflect.Array;
@@ -323,7 +320,7 @@ public class EntityFilter {
                     switch (d.payload) {
                         case "namespace":
                             if (namespace == null) {
-                                entityType = (entityType == null) ? AotakeUtils.getEntityTypeRegistryName(entity) : entityType;
+                                entityType = (entityType == null) ? EntityUtils.getEntityRegistryString(entity) : entityType;
                                 String[] parts = entityType.split(":", 2);
                                 namespace = parts.length > 0 ? parts[0] : "";
                             }
@@ -331,7 +328,7 @@ public class EntityFilter {
                             break;
                         case "path":
                             if (path == null) {
-                                entityType = (entityType == null) ? AotakeUtils.getEntityTypeRegistryName(entity) : entityType;
+                                entityType = (entityType == null) ? EntityUtils.getEntityRegistryString(entity) : entityType;
                                 String[] parts = entityType.split(":", 2);
                                 path = parts.length > 1 ? parts[1] : "";
                             }
@@ -341,7 +338,7 @@ public class EntityFilter {
                         case "location":
                         case "resourceLocation":
                             if (resourceLocation == null)
-                                resourceLocation = (entityType == null) ? AotakeUtils.getEntityTypeRegistryName(entity) : entityType;
+                                resourceLocation = (entityType == null) ? EntityUtils.getEntityRegistryString(entity) : entityType;
                             varsOut.put(key, resourceLocation);
                             break;
                         case "clazz":
@@ -384,7 +381,7 @@ public class EntityFilter {
                             break;
                         case "dim":
                         case "dimension":
-                            if (dim == null) dim = AotakeUtils.getDimensionRegistryName(entity.level);
+                            if (dim == null) dim = DimensionUtils.getDimensionId(entity.level);
                             varsOut.put(key, dim);
                             break;
                         case "x":

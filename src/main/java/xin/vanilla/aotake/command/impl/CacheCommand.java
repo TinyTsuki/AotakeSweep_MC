@@ -52,7 +52,7 @@ public class CacheCommand {
             return 1;
         };
 
-        return Commands.literal(CommonConfig.COMMAND_CACHE_CLEAR.get())
+        return Commands.literal(CommonConfig.get().command().commandCacheClear())
                 .requires(source -> AotakeUtils.hasCommandPermission(source, EnumCommandType.CACHE_CLEAR))
                 .executes(clearCacheCommand);
     }
@@ -97,7 +97,7 @@ public class CacheCommand {
             return 1;
         };
 
-        return Commands.literal(CommonConfig.COMMAND_CACHE_DROP.get())
+        return Commands.literal(CommonConfig.get().command().commandCacheDrop())
                 .requires(source -> AotakeUtils.hasCommandPermission(source, EnumCommandType.CACHE_DROP))
                 .executes(dropCacheCommand)
                 .then(Commands.argument("originalPos", BoolArgumentType.bool())

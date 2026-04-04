@@ -50,8 +50,8 @@ public class DropStatisticsStorage {
         if (server == null) return result;
 
         try {
-            if (Boolean.FALSE.equals(CommonConfig.DUSTBIN_PERSISTENT.get())) return result;
-            if (CommonConfig.DROP_STATS_FILE_LIMIT.get() < 0) return result;
+            if (!CommonConfig.get().base().dustbin().dustbinPersistent()) return result;
+            if (CommonConfig.get().base().dustbin().dropStatsFileLimit() < 0) return result;
         } catch (Throwable ignored) {
         }
 
@@ -82,8 +82,8 @@ public class DropStatisticsStorage {
         if (server == null) return;
 
         try {
-            if (Boolean.FALSE.equals(CommonConfig.DUSTBIN_PERSISTENT.get())) return;
-            if (CommonConfig.DROP_STATS_FILE_LIMIT.get() < 0) return;
+            if (!CommonConfig.get().base().dustbin().dustbinPersistent()) return;
+            if (CommonConfig.get().base().dustbin().dropStatsFileLimit() < 0) return;
         } catch (Throwable ignored) {
         }
 
@@ -120,7 +120,7 @@ public class DropStatisticsStorage {
     private static void pruneOldFiles(MinecraftServer server) {
         int limit;
         try {
-            limit = CommonConfig.DROP_STATS_FILE_LIMIT.get();
+            limit = CommonConfig.get().base().dustbin().dropStatsFileLimit();
         } catch (Throwable ignored) {
             return;
         }

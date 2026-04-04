@@ -14,9 +14,9 @@ import xin.vanilla.aotake.Identifier;
 import xin.vanilla.aotake.config.ClientConfig;
 import xin.vanilla.aotake.config.DustbinGuiConfig;
 import xin.vanilla.aotake.config.DustbinGuiLayoutCache;
-import xin.vanilla.aotake.util.AotakeUtils;
 import xin.vanilla.banira.client.util.TextureUtils;
 import xin.vanilla.banira.common.data.KeyValue;
+import xin.vanilla.banira.common.util.Translator;
 
 @Mixin(ContainerScreen.class)
 public abstract class ContainerScreenMixin {
@@ -32,7 +32,7 @@ public abstract class ContainerScreenMixin {
             DustbinGuiLayoutCache.invalidate();
             return;
         }
-        if (ClientConfig.VANILLA_DUSTBIN.get()) {
+        if (ClientConfig.get().dustbin().vanillaDustbin()) {
             DustbinGuiLayoutCache.invalidate();
             return;
         }
@@ -41,7 +41,7 @@ public abstract class ContainerScreenMixin {
         ResourceLocation texture = TextureUtils.loadCustomTexture(Identifier.id(), "textures/gui/dustbin_gui.png");
         KeyValue<Integer, Integer> size = TextureUtils.getTextureSize(texture);
         int srcW = size.key();
-        int srcH = size.value();
+        int srcH = size.val();
         if (srcW <= 0 || srcH <= 0) return;
 
         int screenWidth = screen.width;
@@ -64,7 +64,7 @@ public abstract class ContainerScreenMixin {
         if (player == null) return false;
         String title = screen.getTitle().getContents();
         String modTitle = AotakeComponent.get().transAuto("title")
-                .toVanilla(AotakeUtils.getPlayerLanguage(player))
+                .toVanilla(Translator.getClientLanguage())
                 .getContents();
         return title.startsWith(modTitle);
     }

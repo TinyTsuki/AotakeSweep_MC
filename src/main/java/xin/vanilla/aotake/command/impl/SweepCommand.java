@@ -55,7 +55,7 @@ public class SweepCommand {
             return 1;
         };
 
-        return Commands.literal(CommonConfig.COMMAND_SWEEP.get())
+        return Commands.literal(CommonConfig.get().command().commandSweep())
                 .requires(source -> AotakeUtils.hasCommandPermission(source, EnumCommandType.SWEEP))
                 .executes(sweepCommand)
                 .then(Commands.argument("dimension", DimensionArgument.dimension())

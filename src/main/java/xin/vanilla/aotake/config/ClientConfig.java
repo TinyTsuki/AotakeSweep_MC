@@ -1,460 +1,301 @@
 package xin.vanilla.aotake.config;
 
-import net.minecraftforge.common.ForgeConfigSpec;
+import lombok.AccessLevel;
+import lombok.Getter;
+import lombok.Setter;
+import lombok.experimental.Accessors;
+import net.minecraftforge.fml.config.ModConfig;
+import xin.vanilla.aotake.AotakeSweep;
+import xin.vanilla.aotake.config.access.ClientConfigAccess;
 import xin.vanilla.aotake.enums.EnumProgressBarType;
-import xin.vanilla.aotake.enums.EnumRotationCenter;
+import xin.vanilla.banira.common.config.ConfigData;
+import xin.vanilla.banira.common.config.ConfigHolder;
+import xin.vanilla.banira.common.config.ForgeConfigAdapter;
+import xin.vanilla.banira.common.config.annotation.Config;
+import xin.vanilla.banira.common.config.annotation.ConfigEntry;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
 /**
- * 客户端配置
+ * 客户端配置（Forge CLIENT），由 Banira {@link ForgeConfigAdapter} 构建并在配置编辑器中编辑。
  */
-public class ClientConfig {
-    public static final ForgeConfigSpec CLIENT_CONFIG;
-
-
-    // region 进度条设置
-
-    /**
-     * 正常状态下进度条显示方式
-     */
-    public static final ForgeConfigSpec.ConfigValue<List<? extends String>> PROGRESS_BAR_DISPLAY_NORMAL;
-
-    /**
-     * 按住按键时进度条显示方式
-     */
-    public static final ForgeConfigSpec.ConfigValue<List<? extends String>> PROGRESS_BAR_DISPLAY_HOLD;
-
-    /**
-     * 进度条显示按键应用模式
-     */
-    public static final ForgeConfigSpec.BooleanValue PROGRESS_BAR_KEY_APPLY_MODE;
-
-
-    /**
-     * 绘制竹叶时是否隐藏经验条
-     */
-    public static final ForgeConfigSpec.BooleanValue HIDE_EXPERIENCE_BAR_LEAF;
-
-    /**
-     * 进度条竹叶屏幕坐标系象限
-     */
-    public static final ForgeConfigSpec.IntValue PROGRESS_BAR_LEAF_SCREEN_QUADRANT;
-
-    /**
-     * 进度条竹叶位置
-     */
-    public static final ForgeConfigSpec.ConfigValue<String> PROGRESS_BAR_LEAF_POSITION;
-
-    /**
-     * 进度条竹叶位置基准点
-     */
-    public static final ForgeConfigSpec.ConfigValue<String> PROGRESS_BAR_LEAF_BASE;
-
-    /**
-     * 进度条竹叶角度
-     */
-    public static final ForgeConfigSpec.DoubleValue PROGRESS_BAR_LEAF_ANGLE;
-
-    /**
-     * 进度条竹叶高度
-     */
-    public static final ForgeConfigSpec.IntValue PROGRESS_BAR_LEAF_HEIGHT;
-
-    /**
-     * 进度条竹叶宽度
-     */
-    public static final ForgeConfigSpec.IntValue PROGRESS_BAR_LEAF_WIDTH;
-
-
-    /**
-     * 绘制竹竿时是否隐藏经验条
-     */
-    public static final ForgeConfigSpec.BooleanValue HIDE_EXPERIENCE_BAR_POLE;
-
-    /**
-     * 进度条竹竿屏幕坐标系象限
-     */
-    public static final ForgeConfigSpec.IntValue PROGRESS_BAR_POLE_SCREEN_QUADRANT;
-
-    /**
-     * 进度条竹竿位置
-     */
-    public static final ForgeConfigSpec.ConfigValue<String> PROGRESS_BAR_POLE_POSITION;
-
-    /**
-     * 进度条竹竿位置基准点
-     */
-    public static final ForgeConfigSpec.ConfigValue<String> PROGRESS_BAR_POLE_BASE;
-
-    /**
-     * 进度条竹竿角度
-     */
-    public static final ForgeConfigSpec.DoubleValue PROGRESS_BAR_POLE_ANGLE;
-
-    /**
-     * 进度条竹竿高度
-     */
-    public static final ForgeConfigSpec.IntValue PROGRESS_BAR_POLE_HEIGHT;
-
-    /**
-     * 进度条竹竿宽度
-     */
-    public static final ForgeConfigSpec.IntValue PROGRESS_BAR_POLE_WIDTH;
-
-
-    /**
-     * 绘制文字时是否隐藏经验条
-     */
-    public static final ForgeConfigSpec.BooleanValue HIDE_EXPERIENCE_BAR_TEXT;
-
-    /**
-     * 进度条文字屏幕坐标系象限
-     */
-    public static final ForgeConfigSpec.IntValue PROGRESS_BAR_TEXT_SCREEN_QUADRANT;
-
-    /**
-     * 进度条文字位置
-     */
-    public static final ForgeConfigSpec.ConfigValue<String> PROGRESS_BAR_TEXT_POSITION;
-
-    /**
-     * 进度条文字位置基准点
-     */
-    public static final ForgeConfigSpec.ConfigValue<String> PROGRESS_BAR_TEXT_BASE;
-
-    /**
-     * 进度条文字角度
-     */
-    public static final ForgeConfigSpec.DoubleValue PROGRESS_BAR_TEXT_ANGLE;
-
-    /**
-     * 进度条文字大小
-     */
-    public static final ForgeConfigSpec.IntValue PROGRESS_BAR_TEXT_SIZE;
-
-    /**
-     * 进度条文字颜色
-     */
-    public static final ForgeConfigSpec.ConfigValue<String> PROGRESS_BAR_TEXT_COLOR;
-
-    // endregion 进度条设置
-
-    public static final ForgeConfigSpec.BooleanValue VANILLA_DUSTBIN;
-
-    static {
-        ForgeConfigSpec.Builder CLIENT_BUILDER = new ForgeConfigSpec.Builder();
-
-        // 定义客户端配置项
-        CLIENT_BUILDER.comment("Client Settings", "客户端设置").push("client");
-
-        // 进度条设置
-        {
-            CLIENT_BUILDER.comment("Progress Bar Settings", "进度条设置").push("progress_bar");
-
-            // 正常状态下进度条显示方式
-            PROGRESS_BAR_DISPLAY_NORMAL = CLIENT_BUILDER
-                    .comment("Progress bar display mode under normal conditions."
-                            , "LEAF: Show leaf;"
-                            , "POLE: Show pole;"
-                            , "TEXT: Show countdown text."
-                            , "正常状态下进度条显示方式。"
-                            , "LEAF：显示竹叶；"
-                            , "POLE：显示竹竿；"
-                            , "TEXT：显示倒计时文字。")
-                    .defineList("progressBarDisplayNormal"
-                            , Arrays.asList(EnumProgressBarType.LEAF.name())
-                            , EnumProgressBarType::isValid
-                    );
-
-            // 按住按键时进度条显示方式
-            PROGRESS_BAR_DISPLAY_HOLD = CLIENT_BUILDER
-                    .comment("Progress bar display mode when holding the key."
-                            , "LEAF: Show leaf;"
-                            , "POLE: Show pole;"
-                            , "TEXT: Show countdown text."
-                            , "按住按键时进度条显示方式。"
-                            , "LEAF：显示竹叶；"
-                            , "POLE：显示竹竿；"
-                            , "TEXT：显示倒计时文字。")
-                    .defineList("progressBarDisplayHold"
-                            , Arrays.asList(EnumProgressBarType.LEAF.name(), EnumProgressBarType.POLE.name(), EnumProgressBarType.TEXT.name())
-                            , EnumProgressBarType::isValid);
-
-            // 进度条显示按键应用模式
-            PROGRESS_BAR_KEY_APPLY_MODE = CLIENT_BUILDER
-                    .comment("Progress bar key apply mode."
-                            , "false: Hold the key;"
-                            , "true: Toggle."
-                            , "进度条显示按键应用模式。"
-                            , "false：按住；"
-                            , "true：切换。")
-                    .define("progressBarKeyApplyMode", false);
-
-            // 竹叶
-            {
-                CLIENT_BUILDER.comment("Leaf", "竹叶").push("leaf");
-
-                // 绘制竹叶时是否隐藏经验条
-                HIDE_EXPERIENCE_BAR_LEAF = CLIENT_BUILDER
-                        .comment("Whether to hide the experience bar when drawing the bamboo leaf."
-                                , "绘制竹叶时是否隐藏经验条。")
-                        .define("hideExperienceBarLeaf", false);
-
-                // 屏幕坐标系象限
-                PROGRESS_BAR_LEAF_SCREEN_QUADRANT = CLIENT_BUILDER
-                        .comment("Screen coordinate system quadrant."
-                                , "1: The origin is in the lower left corner of the screen, ↑→ is the positive direction;"
-                                , "2: The origin is in the lower right corner of the screen, ↑← is the positive direction;"
-                                , "3: The origin is in the upper right corner of the screen, ↓← is the positive direction;"
-                                , "4: The origin is in the upper left corner of the screen, ↓→ is the positive direction."
-                                , "屏幕坐标系象限。"
-                                , "1：原点在屏幕左下角，↑→为正方向；"
-                                , "2：原点在屏幕右下角，↑←为正方向；"
-                                , "3：原点在屏幕右上角，↓←为正方向；"
-                                , "4：原点在屏幕左上角，↓→为正方向。")
-                        .defineInRange("progressBarLeafScreenQuadrant", 1, 1, 4);
-
-                // 进度条竹叶位置
-                PROGRESS_BAR_LEAF_POSITION = CLIENT_BUILDER
-                        .comment("Position of the progress bar leaf relative to the bamboo pole."
-                                , "x,y: Absolute coordinates. When the quadrant is set to 4, (0,0) represents the top-left corner of the bamboo pole;"
-                                , "x%,y%: Relative coordinates. When the quadrant is set to 4, (0%,0%) represents the top-left corner of the bamboo pole."
-                                , "进度条竹叶相对于竹竿的位置。"
-                                , "x,y：绝对坐标，象限为4时，0,0为竹竿左上角；"
-                                , "x%,y%：相对坐标，象限为4时，0%,0%为竹竿左上角。")
-                        .define("progressBarLeafPosition"
-                                , "0,4"
-                                , s -> s instanceof String && ((String) s).contains(","));
-
-                // 进度条竹叶位置基准点
-                PROGRESS_BAR_LEAF_BASE = CLIENT_BUILDER
-                        .comment("Progress bar leaf base."
-                                , "TOP_LEFT: Uses the top-left corner of the texture as the anchor point. When `progressBarLeafPosition` is `0,0`, the texture’s top-left corner aligns with the screen’s top-left corner."
-                                , "TOP_RIGHT: Uses the top-right corner of the texture as the anchor point. When `progressBarLeafPosition` is `0,0`, the texture’s top-right corner aligns with the screen’s top-left corner."
-                                , "TOP_CENTER: Uses the top-center of the texture as the anchor point. When `progressBarLeafPosition` is `0,0`, the texture’s top-center aligns with the screen’s top-left corner."
-                                , "BOTTOM_LEFT: Uses the bottom-left corner of the texture as the anchor point. When `progressBarLeafPosition` is `0,0`, the texture’s bottom-left corner aligns with the screen’s top-left corner."
-                                , "BOTTOM_RIGHT: Uses the bottom-right corner of the texture as the anchor point. When `progressBarLeafPosition` is `0,0`, the texture’s bottom-right corner aligns with the screen’s top-left corner."
-                                , "BOTTOM_CENTER: Uses the bottom-center of the texture as the anchor point. When `progressBarLeafPosition` is `0,0`, the texture’s bottom-center aligns with the screen’s top-left corner."
-                                , "CENTER: Uses the center of the texture as the anchor point. When `progressBarLeafPosition` is `0,0`, the texture’s center aligns with the screen’s top-left corner."
-                                , "进度条竹叶位置基准点。"
-                                , "TOP_LEFT: 以纹理左上角为基准点，progressBarLeafPosition为0,0时纹理左上角与屏幕左上角重合；"
-                                , "TOP_RIGHT: 以纹理右上角为基准点，progressBarLeafPosition为0,0时纹理右上角与屏幕左上角重合；"
-                                , "TOP_CENTER: 以纹理中上部为基准点，progressBarLeafPosition为0,0时纹理中上部与屏幕左上角重合；"
-                                , "BOTTOM_LEFT: 以纹理左下角为基准点，progressBarLeafPosition为0,0时纹理左下角与屏幕左上角重合；"
-                                , "BOTTOM_RIGHT: 以纹理右下角为基准点，progressBarLeafPosition为0,0时纹理右下角与屏幕左上角重合；"
-                                , "BOTTOM_CENTER: 以纹理中下部为基准点，progressBarLeafPosition为0,0时纹理中下部与屏幕左上角重合；"
-                                , "CENTER: 以纹理中心为基准点，progressBarLeafPosition为0,0时纹理中心与屏幕左上角重合。")
-                        .define("progressBarLeafBase"
-                                , EnumRotationCenter.TOP_LEFT.name()
-                                , EnumRotationCenter::isValid);
-
-                // 进度条竹叶角度
-                PROGRESS_BAR_LEAF_ANGLE = CLIENT_BUILDER
-                        .comment("Progress bar leaf angle."
-                                , "进度条竹叶角度。")
-                        .defineInRange("progressBarLeafAngle", 0.0, 0.0, 360.0);
-
-                // 进度条竹叶高度
-                PROGRESS_BAR_LEAF_HEIGHT = CLIENT_BUILDER
-                        .comment("Progress bar leaf height."
-                                , "进度条竹叶高度。")
-                        .defineInRange("progressBarLeafHeight", 10, 1, Integer.MAX_VALUE);
-
-                // 进度条竹叶宽度
-                PROGRESS_BAR_LEAF_WIDTH = CLIENT_BUILDER
-                        .comment("Progress bar leaf width."
-                                , "进度条竹叶宽度。")
-                        .defineInRange("progressBarLeafWidth", 9, 1, Integer.MAX_VALUE);
-
-                CLIENT_BUILDER.pop();
-            }
-
-            // 竹竿
-            {
-                CLIENT_BUILDER.comment("Pole", "竹竿").push("pole");
-
-                // 绘制竹竿时是否隐藏经验条
-                HIDE_EXPERIENCE_BAR_POLE = CLIENT_BUILDER
-                        .comment("Whether to hide the experience bar when drawing the bamboo pole."
-                                , "绘制竹竿时是否隐藏经验条。")
-                        .define("hideExperienceBarPole", true);
-
-                // 屏幕坐标系象限
-                PROGRESS_BAR_POLE_SCREEN_QUADRANT = CLIENT_BUILDER
-                        .comment("Screen coordinate system quadrant."
-                                , "1: The origin is in the lower left corner of the screen, ↑→ is the positive direction;"
-                                , "2: The origin is in the lower right corner of the screen, ↑← is the positive direction;"
-                                , "3: The origin is in the upper right corner of the screen, ↓← is the positive direction;"
-                                , "4: The origin is in the upper left corner of the screen, ↓→ is the positive direction."
-                                , "屏幕坐标系象限。"
-                                , "1：原点在屏幕左下角，↑→为正方向；"
-                                , "2：原点在屏幕右下角，↑←为正方向；"
-                                , "3：原点在屏幕右上角，↓←为正方向；"
-                                , "4：原点在屏幕左上角，↓→为正方向。")
-                        .defineInRange("progressBarPoleScreenQuadrant", 1, 1, 4);
-
-                // 进度条竹竿位置
-                PROGRESS_BAR_POLE_POSITION = CLIENT_BUILDER
-                        .comment("Progress bar pole position."
-                                , "x,y: Absolute coordinates. When the quadrant is set to 4, 0,0 is the top left corner of the screen;"
-                                , "x%,y%: Relative coordinates. When the quadrant is set to 4, 0%,0% is the top left corner of the screen."
-                                , "进度条竹竿位置。"
-                                , "x,y：绝对坐标，象限为4时，0,0为屏幕左上角；"
-                                , "x%,y%：相对坐标，象限为4时，0%,0%为屏幕左上角。")
-                        .define("progressBarPolePosition"
-                                , "50%,29"
-                                , s -> s instanceof String && ((String) s).contains(","));
-
-                // 进度条竹竿位置基准点
-                PROGRESS_BAR_POLE_BASE = CLIENT_BUILDER
-                        .comment("Progress bar pole base."
-                                , "TOP_LEFT: Uses the top-left corner of the texture as the anchor point. When `progressBarPolePosition` is `0,0`, the texture’s top-left corner aligns with the screen’s top-left corner."
-                                , "TOP_RIGHT: Uses the top-right corner of the texture as the anchor point. When `progressBarPolePosition` is `0,0`, the texture’s top-right corner aligns with the screen’s top-left corner."
-                                , "TOP_CENTER: Uses the top-center of the texture as the anchor point. When `progressBarPolePosition` is `0,0`, the texture’s top-center aligns with the screen’s top-left corner."
-                                , "BOTTOM_LEFT: Uses the bottom-left corner of the texture as the anchor point. When `progressBarPolePosition` is `0,0`, the texture’s bottom-left corner aligns with the screen’s top-left corner."
-                                , "BOTTOM_RIGHT: Uses the bottom-right corner of the texture as the anchor point. When `progressBarPolePosition` is `0,0`, the texture’s bottom-right corner aligns with the screen’s top-left corner."
-                                , "BOTTOM_CENTER: Uses the bottom-center of the texture as the anchor point. When `progressBarPolePosition` is `0,0`, the texture’s bottom-center aligns with the screen’s top-left corner."
-                                , "CENTER: Uses the center of the texture as the anchor point. When `progressBarPolePosition` is `0,0`, the texture’s center aligns with the screen’s top-left corner."
-                                , "进度条竹竿位置基准点。"
-                                , "TOP_LEFT: 以纹理左上角为基准点，progressBarPolePosition为0,0时纹理左上角与屏幕左上角重合；"
-                                , "TOP_RIGHT: 以纹理右上角为基准点，progressBarPolePosition为0,0时纹理右上角与屏幕左上角重合；"
-                                , "TOP_CENTER: 以纹理中上部为基准点，progressBarPolePosition为0,0时纹理中上部与屏幕左上角重合；"
-                                , "BOTTOM_LEFT: 以纹理左下角为基准点，progressBarPolePosition为0,0时纹理左下角与屏幕左上角重合；"
-                                , "BOTTOM_RIGHT: 以纹理右下角为基准点，progressBarPolePosition为0,0时纹理右下角与屏幕左上角重合；"
-                                , "BOTTOM_CENTER: 以纹理中下部为基准点，progressBarPolePosition为0,0时纹理中下部与屏幕左上角重合；"
-                                , "CENTER: 以纹理中心为基准点，progressBarPolePosition为0,0时纹理中心与屏幕左上角重合。")
-                        .define("progressBarPoleBase"
-                                , EnumRotationCenter.TOP_CENTER.name()
-                                , EnumRotationCenter::isValid);
-
-                // 进度条竹竿角度
-                PROGRESS_BAR_POLE_ANGLE = CLIENT_BUILDER
-                        .comment("Progress bar pole angle."
-                                , "进度条竹竿角度。")
-                        .defineInRange("progressBarPoleAngle", 0.0, 0.0, 360.0);
-
-                // 进度条竹竿高度
-                PROGRESS_BAR_POLE_HEIGHT = CLIENT_BUILDER
-                        .comment("Progress bar pole height."
-                                , "进度条竹竿高度。")
-                        .defineInRange("progressBarPoleHeight", 5, 1, Integer.MAX_VALUE);
-
-                // 进度条竹竿宽度
-                PROGRESS_BAR_POLE_WIDTH = CLIENT_BUILDER
-                        .comment("Progress bar pole width."
-                                , "进度条竹竿宽度。")
-                        .defineInRange("progressBarPoleWidth", 180, 1, Integer.MAX_VALUE);
-
-                CLIENT_BUILDER.pop();
-            }
-
-            // 文字
-            {
-                CLIENT_BUILDER.comment("Text", "文字").push("text");
-
-                // 绘制文字时是否隐藏经验条
-                HIDE_EXPERIENCE_BAR_TEXT = CLIENT_BUILDER
-                        .comment("Whether to hide the experience bar when drawing the text."
-                                , "绘制文字时是否隐藏经验条。")
-                        .define("hideExperienceBarText", true);
-
-                // 屏幕坐标系象限
-                PROGRESS_BAR_TEXT_SCREEN_QUADRANT = CLIENT_BUILDER
-                        .comment("Screen coordinate system quadrant."
-                                , "1: The origin is in the lower left corner of the screen, ↑→ is the positive direction;"
-                                , "2: The origin is in the lower right corner of the screen, ↑← is the positive direction;"
-                                , "3: The origin is in the upper right corner of the screen, ↓← is the positive direction;"
-                                , "4: The origin is in the upper left corner of the screen, ↓→ is the positive direction."
-                                , "屏幕坐标系象限。"
-                                , "1：原点在屏幕左下角，↑→为正方向；"
-                                , "2：原点在屏幕右下角，↑←为正方向；"
-                                , "3：原点在屏幕右上角，↓←为正方向；"
-                                , "4：原点在屏幕左上角，↓→为正方向。")
-                        .defineInRange("progressBarTextScreenQuadrant", 1, 1, 4);
-
-                // 进度条文字位置
-                PROGRESS_BAR_TEXT_POSITION = CLIENT_BUILDER
-                        .comment("Position of the progress bar text relative to the text."
-                                , "x,y: Absolute coordinates. When the quadrant is set to 4, (0,0) represents the top-left corner of the text;"
-                                , "x%,y%: Relative coordinates. When the quadrant is set to 4, (0%,0%) represents the top-left corner of the text."
-                                , "进度条文字相对于竹竿的位置。"
-                                , "x,y：绝对坐标，象限为4时，0,0为竹竿左上角；"
-                                , "x%,y%：相对坐标，象限为4时，0%,0%为竹竿左上角。")
-                        .define("progressBarTextPosition"
-                                , "50%,8"
-                                , s -> s instanceof String && ((String) s).contains(","));
-
-                // 进度条文字位置基准点
-                PROGRESS_BAR_TEXT_BASE = CLIENT_BUILDER
-                        .comment("Progress bar text base."
-                                , "TOP_LEFT: Uses the top-left corner of the texture as the anchor point. When `progressBarPolePosition` is `0,0`, the texture’s top-left corner aligns with the screen’s top-left corner."
-                                , "TOP_RIGHT: Uses the top-right corner of the texture as the anchor point. When `progressBarPolePosition` is `0,0`, the texture’s top-right corner aligns with the screen’s top-left corner."
-                                , "TOP_CENTER: Uses the top-center of the texture as the anchor point. When `progressBarPolePosition` is `0,0`, the texture’s top-center aligns with the screen’s top-left corner."
-                                , "BOTTOM_LEFT: Uses the bottom-left corner of the texture as the anchor point. When `progressBarPolePosition` is `0,0`, the texture’s bottom-left corner aligns with the screen’s top-left corner."
-                                , "BOTTOM_RIGHT: Uses the bottom-right corner of the texture as the anchor point. When `progressBarPolePosition` is `0,0`, the texture’s bottom-right corner aligns with the screen’s top-left corner."
-                                , "BOTTOM_CENTER: Uses the bottom-center of the texture as the anchor point. When `progressBarPolePosition` is `0,0`, the texture’s bottom-center aligns with the screen’s top-left corner."
-                                , "CENTER: Uses the center of the texture as the anchor point. When `progressBarPolePosition` is `0,0`, the texture’s center aligns with the screen’s top-left corner."
-                                , "进度条文字位置基准点。"
-                                , "TOP_LEFT: 以纹理左上角为基准点，progressBarPolePosition为0,0时纹理左上角与屏幕左上角重合；"
-                                , "TOP_RIGHT: 以纹理右上角为基准点，progressBarPolePosition为0,0时纹理右上角与屏幕左上角重合；"
-                                , "TOP_CENTER: 以纹理中上部为基准点，progressBarPolePosition为0,0时纹理中上部与屏幕左上角重合；"
-                                , "BOTTOM_LEFT: 以纹理左下角为基准点，progressBarPolePosition为0,0时纹理左下角与屏幕左上角重合；"
-                                , "BOTTOM_RIGHT: 以纹理右下角为基准点，progressBarPolePosition为0,0时纹理右下角与屏幕左上角重合；"
-                                , "BOTTOM_CENTER: 以纹理中下部为基准点，progressBarPolePosition为0,0时纹理中下部与屏幕左上角重合；"
-                                , "CENTER: 以纹理中心为基准点，progressBarPolePosition为0,0时纹理中心与屏幕左上角重合。")
-                        .define("progressBarTextBase"
-                                , EnumRotationCenter.TOP_CENTER.name()
-                                , EnumRotationCenter::isValid);
-
-                // 进度条文字角度
-                PROGRESS_BAR_TEXT_ANGLE = CLIENT_BUILDER
-                        .comment("Progress bar text angle."
-                                , "进度条文字角度。")
-                        .defineInRange("progressBarTextAngle", 0.0, 0.0, 360.0);
-
-                // 进度条文字大小
-                PROGRESS_BAR_TEXT_SIZE = CLIENT_BUILDER
-                        .comment("Progress bar text size."
-                                , "进度条文字大小。")
-                        .defineInRange("progressBarTextSize", 8, 1, 16 * 16);
-
-                // 进度条文字颜色
-                PROGRESS_BAR_TEXT_COLOR = CLIENT_BUILDER
-                        .comment("Progress bar text color. The following formats are supported:"
-                                , "Hex: `0xAARRGGBB`, `0xRRGGBB`, `#RRGGBB`, `#AARRGGBB`"
-                                , "Decimal: `R,G,B` or `A,R,G,B`"
-                                , "进度条文字颜色。支持以下格式："
-                                , "十六进制：`0xAARRGGBB`、`0xRRGGBB`、`#RRGGBB`、`#AARRGGBB`"
-                                , "十进制：`R,G,B`、`A,R,G,B`")
-                        .define("progressBarTextColor", "0x5DA530", o -> o instanceof String);
-
-                CLIENT_BUILDER.pop();
-            }
-
-
-            CLIENT_BUILDER.pop();
-
-        }
-
-        {
-            CLIENT_BUILDER.comment("Dustbin", "垃圾箱").push("dustbin");
-
-            VANILLA_DUSTBIN = CLIENT_BUILDER
-                    .comment("Whether to use the vanilla UI for dustbin screen."
-                            , "垃圾箱页面是否使用原版UI。")
-                    .define("vanillaDustbin", false);
-
-            CLIENT_BUILDER.pop();
-        }
-
-        CLIENT_BUILDER.pop();
-
-        CLIENT_CONFIG = CLIENT_BUILDER.build();
+@Config(name = AotakeSweep.MODID + "-client", type = ModConfig.Type.CLIENT)
+public class ClientConfig implements ConfigData {
+
+    @Getter(AccessLevel.NONE)
+    @Setter(AccessLevel.NONE)
+    @ConfigEntry.Gui.CollapsibleObject
+    @ConfigEntry.Gui.Tooltip(zh_cn = "进度条与竹叶/竹竿/文字显示", en_us = "Progress bar (bamboo leaf / pole / text)")
+    private ProgressBarCategory progressBar = new ProgressBarCategory();
+
+    @Getter(AccessLevel.NONE)
+    @Setter(AccessLevel.NONE)
+    @ConfigEntry.Gui.CollapsibleObject
+    @ConfigEntry.Gui.Tooltip(zh_cn = "垃圾箱界面", en_us = "Dustbin screen")
+    private DustbinCategory dustbin = new DustbinCategory();
+
+    public ClientConfig() {
     }
 
-    public static void save() {
-        CLIENT_CONFIG.save();
+    public static RootView get() {
+        return ClientConfigAccess.root(ForgeConfigAdapter.getHolder(ClientConfig.class));
+    }
+
+    public interface RootView {
+        ProgressBarView progressBar();
+
+        DustbinView dustbin();
+
+        ConfigHolder holder();
+    }
+
+    public interface ProgressBarView {
+        List<String> progressBarDisplayNormal();
+
+        ProgressBarView progressBarDisplayNormal(List<String> value);
+
+        List<String> progressBarDisplayHold();
+
+        ProgressBarView progressBarDisplayHold(List<String> value);
+
+        boolean progressBarKeyApplyMode();
+
+        ProgressBarView progressBarKeyApplyMode(boolean value);
+
+        ProgressBarLeafView leaf();
+
+        ProgressBarPoleView pole();
+
+        ProgressBarTextView text();
+    }
+
+    public interface ProgressBarLeafView {
+        boolean hideExperienceBarLeaf();
+
+        ProgressBarLeafView hideExperienceBarLeaf(boolean value);
+
+        int progressBarLeafScreenQuadrant();
+
+        ProgressBarLeafView progressBarLeafScreenQuadrant(int value);
+
+        String progressBarLeafPosition();
+
+        ProgressBarLeafView progressBarLeafPosition(String value);
+
+        String progressBarLeafBase();
+
+        ProgressBarLeafView progressBarLeafBase(String value);
+
+        double progressBarLeafAngle();
+
+        ProgressBarLeafView progressBarLeafAngle(double value);
+
+        int progressBarLeafHeight();
+
+        ProgressBarLeafView progressBarLeafHeight(int value);
+
+        int progressBarLeafWidth();
+
+        ProgressBarLeafView progressBarLeafWidth(int value);
+    }
+
+    public interface ProgressBarPoleView {
+        boolean hideExperienceBarPole();
+
+        ProgressBarPoleView hideExperienceBarPole(boolean value);
+
+        int progressBarPoleScreenQuadrant();
+
+        ProgressBarPoleView progressBarPoleScreenQuadrant(int value);
+
+        String progressBarPolePosition();
+
+        ProgressBarPoleView progressBarPolePosition(String value);
+
+        String progressBarPoleBase();
+
+        ProgressBarPoleView progressBarPoleBase(String value);
+
+        double progressBarPoleAngle();
+
+        ProgressBarPoleView progressBarPoleAngle(double value);
+
+        int progressBarPoleHeight();
+
+        ProgressBarPoleView progressBarPoleHeight(int value);
+
+        int progressBarPoleWidth();
+
+        ProgressBarPoleView progressBarPoleWidth(int value);
+    }
+
+    public interface ProgressBarTextView {
+        boolean hideExperienceBarText();
+
+        ProgressBarTextView hideExperienceBarText(boolean value);
+
+        int progressBarTextScreenQuadrant();
+
+        ProgressBarTextView progressBarTextScreenQuadrant(int value);
+
+        String progressBarTextPosition();
+
+        ProgressBarTextView progressBarTextPosition(String value);
+
+        String progressBarTextBase();
+
+        ProgressBarTextView progressBarTextBase(String value);
+
+        double progressBarTextAngle();
+
+        ProgressBarTextView progressBarTextAngle(double value);
+
+        int progressBarTextSize();
+
+        ProgressBarTextView progressBarTextSize(int value);
+
+        String progressBarTextColor();
+
+        ProgressBarTextView progressBarTextColor(String value);
+    }
+
+    public interface DustbinView {
+        boolean vanillaDustbin();
+
+        DustbinView vanillaDustbin(boolean value);
+    }
+
+    @Getter
+    @Setter
+    @Accessors(chain = true, fluent = true)
+    public static class ProgressBarCategory {
+        @ConfigEntry.Gui.Tooltip(zh_cn = "正常状态下进度条显示方式（LEAF/POLE/TEXT）",
+                en_us = "Progress bar modes when idle (LEAF / POLE / TEXT)")
+        private List<String> progressBarDisplayNormal = new ArrayList<>(Arrays.asList(EnumProgressBarType.LEAF.name()));
+
+        @ConfigEntry.Gui.Tooltip(zh_cn = "按住按键时进度条显示方式", en_us = "Progress bar modes while holding the key")
+        private List<String> progressBarDisplayHold = new ArrayList<>(Arrays.asList(
+                EnumProgressBarType.LEAF.name(), EnumProgressBarType.POLE.name(), EnumProgressBarType.TEXT.name()));
+
+        @ConfigEntry.Gui.Tooltip(zh_cn = "进度条快捷键：false 按住，true 切换", en_us = "Key mode: false = hold, true = toggle")
+        private boolean progressBarKeyApplyMode = false;
+
+        @ConfigEntry.Gui.CollapsibleObject
+        @ConfigEntry.Gui.Tooltip(zh_cn = "竹叶", en_us = "Bamboo leaf")
+        private ProgressBarLeafCategory leaf = new ProgressBarLeafCategory();
+
+        @ConfigEntry.Gui.CollapsibleObject
+        @ConfigEntry.Gui.Tooltip(zh_cn = "竹竿", en_us = "Bamboo pole")
+        private ProgressBarPoleCategory pole = new ProgressBarPoleCategory();
+
+        @ConfigEntry.Gui.CollapsibleObject
+        @ConfigEntry.Gui.Tooltip(zh_cn = "文字", en_us = "Text overlay")
+        private ProgressBarTextCategory text = new ProgressBarTextCategory();
+    }
+
+    @Getter
+    @Setter
+    @Accessors(chain = true, fluent = true)
+    public static class ProgressBarLeafCategory {
+        @ConfigEntry.Gui.Tooltip(zh_cn = "绘制竹叶时是否隐藏经验条。", en_us = "Hide the XP bar while drawing the bamboo leaf.")
+        private boolean hideExperienceBarLeaf = false;
+
+        @ConfigEntry.Gui.Tooltip(zh_cn = "屏幕坐标象限：1 左下(↑→)；2 右下(↑←)；3 右上(↓←)；4 左上(↓→)。",
+                en_us = "Screen quadrant: 1 bottom-left; 2 bottom-right; 3 top-right; 4 top-left.")
+        @ConfigEntry.BoundedDiscrete(min = 1, max = 4)
+        private int progressBarLeafScreenQuadrant = 1;
+
+        @ConfigEntry.Gui.Tooltip(zh_cn = "竹叶相对竹竿的偏移。x,y 为绝对坐标；x%,y% 为相对坐标（象限为 4 时，0,0 表示竹竿左上角）。",
+                en_us = "Leaf position vs pole: x,y absolute; x%,y% relative (quadrant 4: 0,0 = pole top-left).")
+        private String progressBarLeafPosition = "0,4";
+
+        @ConfigEntry.Gui.Tooltip(zh_cn = "竹叶纹理锚点：TOP_LEFT/TOP_RIGHT/TOP_CENTER/BOTTOM_LEFT/BOTTOM_RIGHT/BOTTOM_CENTER/CENTER（与 EnumPosition 一致）。",
+                en_us = "Texture anchor for the leaf (EnumPosition names, e.g. TOP_LEFT, CENTER).")
+        private String progressBarLeafBase = "TOP_LEFT";
+
+        @ConfigEntry.Gui.Tooltip(zh_cn = "竹叶旋转角度（0–360）。", en_us = "Leaf rotation in degrees (0–360).")
+        @ConfigEntry.BoundedDouble(max = 360.0)
+        private double progressBarLeafAngle = 0.0;
+
+        @ConfigEntry.Gui.Tooltip(zh_cn = "竹叶显示高度（像素）。", en_us = "Leaf draw height in pixels.")
+        @ConfigEntry.BoundedDiscrete(min = 1)
+        private int progressBarLeafHeight = 10;
+
+        @ConfigEntry.Gui.Tooltip(zh_cn = "竹叶显示宽度（像素）。", en_us = "Leaf draw width in pixels.")
+        @ConfigEntry.BoundedDiscrete(min = 1)
+        private int progressBarLeafWidth = 9;
+    }
+
+    @Getter
+    @Setter
+    @Accessors(chain = true, fluent = true)
+    public static class ProgressBarPoleCategory {
+        @ConfigEntry.Gui.Tooltip(zh_cn = "绘制竹竿时是否隐藏经验条。", en_us = "Hide the XP bar while drawing the bamboo pole.")
+        private boolean hideExperienceBarPole = true;
+
+        @ConfigEntry.Gui.Tooltip(zh_cn = "屏幕坐标象限：1 左下；2 右下；3 右上；4 左上（与竹叶说明相同）。",
+                en_us = "Screen quadrant for pole placement (same meaning as leaf quadrant).")
+        @ConfigEntry.BoundedDiscrete(min = 1, max = 4)
+        private int progressBarPoleScreenQuadrant = 1;
+
+        @ConfigEntry.Gui.Tooltip(zh_cn = "竹竿在屏幕上的位置。x,y 绝对坐标；x%,y% 相对坐标（象限 4 时 0%,0% 为屏幕左上角）。",
+                en_us = "Pole position: x,y absolute; x%,y% relative (quadrant 4: 0%,0% = screen top-left).")
+        private String progressBarPolePosition = "50%,29";
+
+        @ConfigEntry.Gui.Tooltip(zh_cn = "竹竿纹理锚点（EnumPosition）。", en_us = "Texture anchor for the pole (EnumPosition).")
+        private String progressBarPoleBase = "TOP_CENTER";
+
+        @ConfigEntry.Gui.Tooltip(zh_cn = "竹竿旋转角度（0–360）。", en_us = "Pole rotation in degrees (0–360).")
+        @ConfigEntry.BoundedDouble(min = 0.0, max = 360.0)
+        private double progressBarPoleAngle = 0.0;
+
+        @ConfigEntry.Gui.Tooltip(zh_cn = "竹竿显示高度（像素）。", en_us = "Pole draw height in pixels.")
+        @ConfigEntry.BoundedDiscrete(min = 1)
+        private int progressBarPoleHeight = 5;
+
+        @ConfigEntry.Gui.Tooltip(zh_cn = "竹竿显示宽度（像素）。", en_us = "Pole draw width in pixels.")
+        @ConfigEntry.BoundedDiscrete(min = 1)
+        private int progressBarPoleWidth = 180;
+    }
+
+    @Getter
+    @Setter
+    @Accessors(chain = true, fluent = true)
+    public static class ProgressBarTextCategory {
+        @ConfigEntry.Gui.Tooltip(zh_cn = "绘制倒计时文字时是否隐藏经验条。", en_us = "Hide the XP bar while drawing countdown text.")
+        private boolean hideExperienceBarText = true;
+
+        @ConfigEntry.Gui.Tooltip(zh_cn = "文字相对竹竿定位所用的屏幕象限（1–4）。", en_us = "Screen quadrant for text placement relative to the pole.")
+        @ConfigEntry.BoundedDiscrete(min = 1, max = 4)
+        private int progressBarTextScreenQuadrant = 1;
+
+        @ConfigEntry.Gui.Tooltip(zh_cn = "倒计时文字相对竹竿的偏移（x,y 或 x%,y%，含义与竹竿/竹叶类似）。",
+                en_us = "Text offset from pole (x,y or x%,y%).")
+        private String progressBarTextPosition = "50%,8";
+
+        @ConfigEntry.Gui.Tooltip(zh_cn = "文字布局锚点（EnumPosition）。", en_us = "Text layout anchor (EnumPosition).")
+        private String progressBarTextBase = "TOP_CENTER";
+
+        @ConfigEntry.Gui.Tooltip(zh_cn = "文字旋转角度（0–360）。", en_us = "Text rotation in degrees (0–360).")
+        @ConfigEntry.BoundedDouble(min = 0.0, max = 360.0)
+        private double progressBarTextAngle = 0.0;
+
+        @ConfigEntry.Gui.Tooltip(zh_cn = "文字大小（相对 16px 基准缩放）。", en_us = "Font size scale relative to 16px base.")
+        @ConfigEntry.BoundedDiscrete(min = 1, max = 256)
+        private int progressBarTextSize = 8;
+
+        @ConfigEntry.Gui.Tooltip(zh_cn = "文字颜色。支持十六进制（0xAARRGGBB、#RRGGBB 等）或十进制 R,G,B / A,R,G,B。",
+                en_us = "Text color: hex (0xAARRGGBB, #RRGGBB, …) or decimal R,G,B / A,R,G,B.")
+        private String progressBarTextColor = "0x5DA530";
+    }
+
+    @Getter
+    @Setter
+    @Accessors(chain = true, fluent = true)
+    public static class DustbinCategory {
+        @ConfigEntry.Gui.Tooltip(zh_cn = "垃圾箱是否使用原版容器界面", en_us = "Use vanilla container UI for dustbin")
+        private boolean vanillaDustbin = false;
     }
 }
