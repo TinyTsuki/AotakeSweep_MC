@@ -54,6 +54,10 @@ public class WorldTrashData extends WorldCapabilityData {
      * 掉落物统计
      */
     private Queue<DropStatistics> dropCount = new ConcurrentLinkedQueue<>();
+    /**
+     * {@link #dropCount} 当前对应的日历日期（与 {@link DateUtils#toString(Date)} 一致），用于跨日时先落盘上一日再切换到当日
+     */
+    private String dropStatsDate;
 
     public WorldTrashData() {
         super(DATA_NAME);
@@ -94,6 +98,7 @@ public class WorldTrashData extends WorldCapabilityData {
             nbt.remove("dropCount");
         }
         this.setDropCount(dropCounts);
+        this.dropStatsDate = todayStr;
 
         this.inventoryList = new ArrayList<>();
         ListNBT inventoryListNBT = nbt.getList("inventoryList", 9);
@@ -126,7 +131,9 @@ public class WorldTrashData extends WorldCapabilityData {
 
         String todayStr = DateUtils.toString(new Date());
         if (BaniraCodex.serverInstance().val()) {
-            DropStatisticsStorage.saveByDate(BaniraCodex.serverInstance().key(), todayStr, this.dropCount);
+            MinecraftServer server = BaniraCodex.serverInstance().key();
+            rolloverDropStatisticsIfNeeded(server, todayStr);
+            DropStatisticsStorage.saveByDate(server, todayStr, this.dropCount);
         }
 
         ListNBT inventoryNBT = new ListNBT();
@@ -145,6 +152,37 @@ public class WorldTrashData extends WorldCapabilityData {
 
     private void setDropCount(Queue<DropStatistics> drops) {
         this.dropCount = drops;
+        super.setDirty();
+    }
+
+    /**
+     * 长时间运行时若已跨自然日，将仍属于 {@link #dropStatsDate} 的条目写入对应日期文件，
+     * 再与当日 JSON 合并，避免把前一日累计继续写入新日期文件。
+     */
+    private void rolloverDropStatisticsIfNeeded(MinecraftServer server, String todayStr) {
+        if (this.dropStatsDate == null) {
+            this.dropStatsDate = todayStr;
+            return;
+        }
+        if (this.dropStatsDate.equals(todayStr)) {
+            return;
+        }
+        List<DropStatistics> snapshot = new ArrayList<>(this.dropCount);
+        Queue<DropStatistics> oldDayEntries = new ConcurrentLinkedQueue<>();
+        Queue<DropStatistics> todayEntries = new ConcurrentLinkedQueue<>();
+        for (DropStatistics stat : snapshot) {
+            String entryDate = DateUtils.toString(new Date(stat.getTime()));
+            if (this.dropStatsDate.equals(entryDate)) {
+                oldDayEntries.add(stat);
+            } else {
+                todayEntries.add(stat);
+            }
+        }
+        DropStatisticsStorage.saveByDate(server, this.dropStatsDate, oldDayEntries);
+        Queue<DropStatistics> mergedToday = DropStatisticsStorage.loadByDate(server, todayStr);
+        mergedToday.addAll(todayEntries);
+        this.dropCount = mergedToday;
+        this.dropStatsDate = todayStr;
         super.setDirty();
     }
 

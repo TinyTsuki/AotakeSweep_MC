@@ -10,17 +10,20 @@ import org.apache.logging.log4j.Logger;
 import xin.vanilla.aotake.AotakeSweep;
 import xin.vanilla.aotake.config.CommonConfig;
 import xin.vanilla.aotake.data.DropStatistics;
+import xin.vanilla.banira.BaniraCodex;
 import xin.vanilla.banira.common.util.JsonUtils;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * 掉落物统计
@@ -28,11 +31,61 @@ import java.util.stream.Collectors;
 public class DropStatisticsStorage {
     private static final Logger LOGGER = LogManager.getLogger();
 
+    private static final Object LEGACY_MIGRATE_LOCK = new Object();
+
     /**
      * 获取当日统计文件的存储路径
      */
     public static Path getStatsDir(MinecraftServer server) {
-        return server.getWorldPath(FolderName.PLAYER_STATS_DIR).resolve(AotakeSweep.MODID);
+        Path newDir = BaniraCodex.BANIRA_WORLD_DATA_PATH.get().resolve(AotakeSweep.MODID);
+        if (server != null) {
+            migrateLegacyStatsDirAndDelete(server, newDir);
+        }
+        return newDir;
+    }
+
+    /**
+     * 自原 {@code stats/} 下本 mod 子目录迁移至 Banira世界数据根下的同名子目录，并删除旧目录
+     */
+    private static void migrateLegacyStatsDirAndDelete(MinecraftServer server, Path newDir) {
+        Path oldDir = server.getWorldPath(FolderName.PLAYER_STATS_DIR).resolve(AotakeSweep.MODID);
+        synchronized (LEGACY_MIGRATE_LOCK) {
+            try {
+                if (!Files.exists(oldDir) || !Files.isDirectory(oldDir)) {
+                    return;
+                }
+                Files.createDirectories(newDir);
+                try (Stream<Path> list = Files.list(oldDir)) {
+                    for (Path oldFile : list.collect(Collectors.toList())) {
+                        if (!Files.isRegularFile(oldFile)) {
+                            continue;
+                        }
+                        String name = oldFile.getFileName().toString();
+                        if (!name.endsWith(".json")) {
+                            continue;
+                        }
+                        Path dest = newDir.resolve(name);
+                        if (!Files.exists(dest)) {
+                            Files.move(oldFile, dest, StandardCopyOption.REPLACE_EXISTING);
+                        } else {
+                            Files.deleteIfExists(oldFile);
+                        }
+                    }
+                }
+                try (Stream<Path> walk = Files.walk(oldDir)) {
+                    walk.sorted(Comparator.reverseOrder()).forEach(p -> {
+                        try {
+                            Files.deleteIfExists(p);
+                        } catch (IOException e) {
+                            LOGGER.warn("Failed to delete legacy stats path {}: {}", p, e.getMessage());
+                        }
+                    });
+                }
+                LOGGER.info("Migrated drop statistics from {} to {} and removed legacy directory", oldDir, newDir);
+            } catch (IOException e) {
+                LOGGER.warn("Failed to migrate drop statistics from {} to {}: {}", oldDir, newDir, e.getMessage());
+            }
+        }
     }
 
     /**
