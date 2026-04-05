@@ -160,30 +160,16 @@
 			#4：原点在屏幕左上角，↓→为正方向。
 			#Range: 1 ~ 4
 			progressBarTextScreenQuadrant = 1
-			#Position of the progress bar text relative to the text.
-			#x,y: Absolute coordinates. When the quadrant is set to 4, (0,0) represents the top-left corner of the text;
-			#x%,y%: Relative coordinates. When the quadrant is set to 4, (0%,0%) represents the top-left corner of the text.
-			#进度条文字相对于竹竿的位置。
-			#x,y：绝对坐标，象限为4时，0,0为竹竿左上角；
-			#x%,y%：相对坐标，象限为4时，0%,0%为竹竿左上角。
+			#Anchor point offset from the bamboo pole (same quadrant rules as leaf/pole).
+			#Then horizontal/vertical align place the text box relative to this anchor.
+			#参考点相对竹竿的偏移（象限规则与竹竿一致）；再由水平/垂直对齐决定字框相对参考点的位置。
 			progressBarTextPosition = "50%,8"
-			#Progress bar text base.
-			#TOP_LEFT: Uses the top-left corner of the texture as the anchor point. When `progressBarPolePosition` is `0,0`, the texture’s top-left corner aligns with the screen’s top-left corner.
-			#TOP_RIGHT: Uses the top-right corner of the texture as the anchor point. When `progressBarPolePosition` is `0,0`, the texture’s top-right corner aligns with the screen’s top-left corner.
-			#TOP_CENTER: Uses the top-center of the texture as the anchor point. When `progressBarPolePosition` is `0,0`, the texture’s top-center aligns with the screen’s top-left corner.
-			#BOTTOM_LEFT: Uses the bottom-left corner of the texture as the anchor point. When `progressBarPolePosition` is `0,0`, the texture’s bottom-left corner aligns with the screen’s top-left corner.
-			#BOTTOM_RIGHT: Uses the bottom-right corner of the texture as the anchor point. When `progressBarPolePosition` is `0,0`, the texture’s bottom-right corner aligns with the screen’s top-left corner.
-			#BOTTOM_CENTER: Uses the bottom-center of the texture as the anchor point. When `progressBarPolePosition` is `0,0`, the texture’s bottom-center aligns with the screen’s top-left corner.
-			#CENTER: Uses the center of the texture as the anchor point. When `progressBarPolePosition` is `0,0`, the texture’s center aligns with the screen’s top-left corner.
-			#进度条文字位置基准点。
-			#TOP_LEFT: 以纹理左上角为基准点，progressBarPolePosition为0,0时纹理左上角与屏幕左上角重合；
-			#TOP_RIGHT: 以纹理右上角为基准点，progressBarPolePosition为0,0时纹理右上角与屏幕左上角重合；
-			#TOP_CENTER: 以纹理中上部为基准点，progressBarPolePosition为0,0时纹理中上部与屏幕左上角重合；
-			#BOTTOM_LEFT: 以纹理左下角为基准点，progressBarPolePosition为0,0时纹理左下角与屏幕左上角重合；
-			#BOTTOM_RIGHT: 以纹理右下角为基准点，progressBarPolePosition为0,0时纹理右下角与屏幕左上角重合；
-			#BOTTOM_CENTER: 以纹理中下部为基准点，progressBarPolePosition为0,0时纹理中下部与屏幕左上角重合；
-			#CENTER: 以纹理中心为基准点，progressBarPolePosition为0,0时纹理中心与屏幕左上角重合。
-			progressBarTextBase = "TOP_CENTER"
+			#Horizontal align to anchor: LEFT, CENTER, RIGHT.
+			#相对参考点的水平对齐。
+			progressBarTextAlignH = "CENTER"
+			#Vertical align to anchor: TOP, CENTER, BOTTOM.
+			#相对参考点的垂直对齐。
+			progressBarTextAlignV = "TOP"
 			#Progress bar text angle.
 			#进度条文字角度。
 			#Range: 0.0 ~ 360.0

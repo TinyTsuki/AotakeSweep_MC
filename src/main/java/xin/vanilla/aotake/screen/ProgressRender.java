@@ -3,10 +3,13 @@ package xin.vanilla.aotake.screen;
 import com.mojang.blaze3d.matrix.MatrixStack;
 import net.minecraft.client.Minecraft;
 import net.minecraft.util.ResourceLocation;
+import net.minecraft.util.math.vector.Vector3f;
 import net.minecraftforge.client.event.RenderGameOverlayEvent;
 import xin.vanilla.aotake.AotakeSweep;
 import xin.vanilla.aotake.Identifier;
 import xin.vanilla.aotake.config.ClientConfig;
+import xin.vanilla.aotake.enums.EnumProgressBarTextAlignH;
+import xin.vanilla.aotake.enums.EnumProgressBarTextAlignV;
 import xin.vanilla.aotake.enums.EnumProgressBarType;
 import xin.vanilla.banira.client.data.FontDrawArgs;
 import xin.vanilla.banira.client.data.TransformArgs;
@@ -78,22 +81,7 @@ public final class ProgressRender {
             if (cpt.hideExperienceBarText()) {
                 event.setCanceled(true);
             }
-            TransformArgs textTransformArgs = new TransformArgs(ms);
-            textTransformArgs.scale(scale)
-                    .angle(cpt.progressBarTextAngle())
-                    .center(EnumPosition.CENTER)
-                    .x(getTextX())
-                    .y(getTextY())
-                    .width(getTextWidth())
-                    .height(getTextHeight());
-            AbstractGuiUtils.renderByTransform(textTransformArgs, (arg) -> {
-                Text time = Text.literal(getText())
-                        .stack(arg.stack())
-                        .color(getTextColor())
-                        .shadow(true)
-                        .font(Minecraft.getInstance().font);
-                LabelWidget.drawLimitedText(FontDrawArgs.of(time).x(arg.x()).y(arg.y()).inScreen(false));
-            });
+            drawProgressCountdownText(mc, ms, cpt, scale);
         }
 
         if (displayList.contains(EnumProgressBarType.LEAF)) {
@@ -257,70 +245,97 @@ public final class ProgressRender {
         return (int) y;
     }
 
-    private static int getTextX() {
-        ClientConfig.ProgressBarTextView cpt = ClientConfig.get().progressBar().text();
-        ClientConfig.ProgressBarPoleView cpp = ClientConfig.get().progressBar().pole();
-        int baseX = getPoleX();
-        int width = cpp.progressBarPoleWidth();
-        double x;
-        String xString = cpt.progressBarTextPosition().split(",")[0];
-        if (xString.endsWith("%")) {
-            x = NumberUtils.toDouble(xString.replace("%", "")) * 0.01d * width;
-        } else {
-            x = NumberUtils.toInt(xString);
+    /**
+     * 倒计时文字
+     */
+    private static void drawProgressCountdownText(Minecraft mc, MatrixStack stack, ClientConfig.ProgressBarTextView cpt, double scale) {
+        String line = getText();
+        if (line.isEmpty()) {
+            return;
         }
-        int quadrant = cpt.progressBarTextScreenQuadrant();
-        if (quadrant == 2 || quadrant == 3) {
-            x = baseX - x;
-        } else {
-            x = baseX + x;
+        float lh = mc.font.lineHeight;
+        Color color = getTextColor();
+        Text probe = Text.literal(line).font(mc.font).color(color).shadow(true);
+        FontDrawArgs measureArgs = FontDrawArgs.of(probe).x(0).y(0).inScreen(false).wrap(false).fontSize(lh);
+        KeyValue<Integer, Integer> layout = LabelWidget.calculateLimitedTextSize(measureArgs);
+        int layoutW = layout.key();
+        int layoutH = layout.val();
+
+        double[] anchor = progressTextAnchorScreen(cpt);
+        float ax = (float) anchor[0];
+        float ay = (float) anchor[1];
+        float pivotX = alignPivotX(cpt.progressBarTextAlignH(), layoutW);
+        float pivotY = alignPivotY(cpt.progressBarTextAlignV(), layoutH);
+        float angle = (float) cpt.progressBarTextAngle();
+
+        stack.pushPose();
+        stack.translate(ax, ay, 0);
+        if (Math.abs(angle % 360f) > 1e-3f) {
+            stack.mulPose(Vector3f.ZP.rotationDegrees(angle));
         }
-        switch (cpt.progressBarTextBase()) {
-            case CENTER:
-            case TOP_CENTER:
-            case BOTTOM_CENTER: {
-                x -= cpt.progressBarTextSize() / 16.0 * getTextWidth() / 2.0;
-            }
-            break;
-            case TOP_RIGHT:
-            case BOTTOM_RIGHT: {
-                x -= cpt.progressBarTextSize() / 16.0 * getTextWidth();
-            }
-            break;
-        }
-        return (int) x;
+        stack.scale((float) scale, (float) scale, 1f);
+        stack.translate(-pivotX, -pivotY, 0);
+
+        Text drawText = Text.literal(line).stack(stack).font(mc.font).color(color).shadow(true);
+        LabelWidget.drawLimitedText(FontDrawArgs.of(drawText).x(0).y(0).inScreen(false).wrap(false).fontSize(lh));
+        stack.popPose();
     }
 
-    private static int getTextY() {
-        ClientConfig.ProgressBarTextView cpt = ClientConfig.get().progressBar().text();
+    private static float alignPivotX(EnumProgressBarTextAlignH h, int layoutWidth) {
+        switch (h) {
+            case CENTER:
+                return layoutWidth / 2f;
+            case RIGHT:
+                return layoutWidth;
+            case LEFT:
+            default:
+                return 0f;
+        }
+    }
+
+    private static float alignPivotY(EnumProgressBarTextAlignV v, int layoutHeight) {
+        switch (v) {
+            case CENTER:
+                return layoutHeight / 2f;
+            case BOTTOM:
+                return layoutHeight;
+            case TOP:
+            default:
+                return 0f;
+        }
+    }
+
+    /**
+     * 配置中「相对竹竿」的参考点（屏幕坐标），不含文字尺寸。
+     */
+    private static double[] progressTextAnchorScreen(ClientConfig.ProgressBarTextView cpt) {
         ClientConfig.ProgressBarPoleView cpp = ClientConfig.get().progressBar().pole();
-        int baseY = getPoleY();
-        int height = cpp.progressBarPoleHeight();
-        double y;
-        String yString = cpt.progressBarTextPosition().split(",")[1];
-        if (yString.endsWith("%")) {
-            y = NumberUtils.toDouble(yString.replace("%", "")) * 0.01d * height;
+        double baseX = getPoleX();
+        double baseY = getPoleY();
+        int poleW = cpp.progressBarPoleWidth();
+        int poleH = cpp.progressBarPoleHeight();
+        String[] parts = cpt.progressBarTextPosition().split(",");
+        if (parts.length < 2) {
+            return new double[]{baseX, baseY};
+        }
+        double relX;
+        String xString = parts[0];
+        if (xString.endsWith("%")) {
+            relX = NumberUtils.toDouble(xString.replace("%", "")) * 0.01d * poleW;
         } else {
-            y = NumberUtils.toInt(yString);
+            relX = NumberUtils.toInt(xString);
+        }
+        double relY;
+        String yString = parts[1];
+        if (yString.endsWith("%")) {
+            relY = NumberUtils.toDouble(yString.replace("%", "")) * 0.01d * poleH;
+        } else {
+            relY = NumberUtils.toInt(yString);
         }
         int quadrant = cpt.progressBarTextScreenQuadrant();
-        if (quadrant == 1 || quadrant == 2) {
-            y = baseY - y;
-        } else {
-            y = baseY + y;
-        }
-        switch (cpt.progressBarTextBase()) {
-            case CENTER: {
-                y -= cpt.progressBarTextSize() / 16.0 * getTextHeight() / 2.0;
-            }
-            break;
-            case BOTTOM_LEFT:
-            case BOTTOM_RIGHT: {
-                y -= cpt.progressBarTextSize() / 16.0 * getTextHeight();
-            }
-            break;
-        }
-        return (int) y;
+        double x = (quadrant == 2 || quadrant == 3) ? baseX - relX : baseX + relX;
+        double y = (quadrant == 1 || quadrant == 2) ? baseY - relY : baseY + relY;
+        return new double[]{x, y};
     }
 
     private static String getText() {
@@ -367,14 +382,6 @@ public final class ProgressRender {
             }
         }
         return nextSweepTime;
-    }
-
-    private static int getTextWidth() {
-        return AbstractGuiUtils.getStringWidth(Minecraft.getInstance().font, getText());
-    }
-
-    private static int getTextHeight() {
-        return AbstractGuiUtils.getStringHeight(Minecraft.getInstance().font, getText());
     }
 
     private static Color getTextColor() {

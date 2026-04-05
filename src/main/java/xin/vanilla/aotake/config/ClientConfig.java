@@ -7,6 +7,8 @@ import lombok.experimental.Accessors;
 import net.minecraftforge.fml.config.ModConfig;
 import xin.vanilla.aotake.AotakeSweep;
 import xin.vanilla.aotake.config.access.ClientConfigAccess;
+import xin.vanilla.aotake.enums.EnumProgressBarTextAlignH;
+import xin.vanilla.aotake.enums.EnumProgressBarTextAlignV;
 import xin.vanilla.aotake.enums.EnumProgressBarType;
 import xin.vanilla.banira.common.config.ConfigData;
 import xin.vanilla.banira.common.config.ConfigHolder;
@@ -15,7 +17,6 @@ import xin.vanilla.banira.common.config.annotation.Config;
 import xin.vanilla.banira.common.config.annotation.ConfigEntry;
 import xin.vanilla.banira.common.enums.EnumPosition;
 
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
@@ -145,9 +146,13 @@ public class ClientConfig implements ConfigData {
 
         ProgressBarTextView progressBarTextPosition(String value);
 
-        EnumPosition progressBarTextBase();
+        EnumProgressBarTextAlignH progressBarTextAlignH();
 
-        ProgressBarTextView progressBarTextBase(EnumPosition value);
+        ProgressBarTextView progressBarTextAlignH(EnumProgressBarTextAlignH value);
+
+        EnumProgressBarTextAlignV progressBarTextAlignV();
+
+        ProgressBarTextView progressBarTextAlignV(EnumProgressBarTextAlignV value);
 
         double progressBarTextAngle();
 
@@ -174,11 +179,10 @@ public class ClientConfig implements ConfigData {
     public static class ProgressBarCategory {
         @ConfigEntry.Gui.Tooltip(zh_cn = "正常状态下进度条显示方式（LEAF/POLE/TEXT）",
                 en_us = "Progress bar modes when idle (LEAF / POLE / TEXT)")
-        private List<EnumProgressBarType> progressBarDisplayNormal = new ArrayList<>(Arrays.asList(EnumProgressBarType.LEAF));
+        private List<EnumProgressBarType> progressBarDisplayNormal = Arrays.asList(EnumProgressBarType.LEAF);
 
         @ConfigEntry.Gui.Tooltip(zh_cn = "按住按键时进度条显示方式", en_us = "Progress bar modes while holding the key")
-        private List<EnumProgressBarType> progressBarDisplayHold = new ArrayList<>(Arrays.asList(
-                EnumProgressBarType.LEAF, EnumProgressBarType.POLE, EnumProgressBarType.TEXT));
+        private List<EnumProgressBarType> progressBarDisplayHold = Arrays.asList(EnumProgressBarType.LEAF, EnumProgressBarType.POLE, EnumProgressBarType.TEXT);
 
         @ConfigEntry.Gui.Tooltip(zh_cn = "进度条快捷键：false 按住，true 切换", en_us = "Key mode: false = hold, true = toggle")
         private boolean progressBarKeyApplyMode = false;
@@ -272,12 +276,15 @@ public class ClientConfig implements ConfigData {
         @ConfigEntry.BoundedDiscrete(min = 1, max = 4)
         private int progressBarTextScreenQuadrant = 1;
 
-        @ConfigEntry.Gui.Tooltip(zh_cn = "倒计时文字相对竹竿的偏移（x,y 或 x%,y%，含义与竹竿/竹叶类似）。",
-                en_us = "Text offset from pole (x,y or x%,y%).")
+        @ConfigEntry.Gui.Tooltip(zh_cn = "参考点相对竹竿的偏移（x,y 或 x%,y%，象限含义与竹竿一致）。文字再按水平/垂直对齐相对该点对齐。",
+                en_us = "Anchor offset from pole (x,y or x%,y%). Text aligns to this point per horizontal/vertical align.")
         private String progressBarTextPosition = "50%,8";
 
-        @ConfigEntry.Gui.Tooltip(zh_cn = "文字布局锚点（EnumPosition）。", en_us = "Text layout anchor (EnumPosition).")
-        private EnumPosition progressBarTextBase = EnumPosition.TOP_CENTER;
+        @ConfigEntry.Gui.Tooltip(zh_cn = "相对参考点的水平对齐：LEFT/CENTER/RIGHT。", en_us = "Horizontal align to anchor: LEFT / CENTER / RIGHT.")
+        private EnumProgressBarTextAlignH progressBarTextAlignH = EnumProgressBarTextAlignH.CENTER;
+
+        @ConfigEntry.Gui.Tooltip(zh_cn = "相对参考点的垂直对齐：TOP/CENTER/BOTTOM。", en_us = "Vertical align to anchor: TOP / CENTER / BOTTOM.")
+        private EnumProgressBarTextAlignV progressBarTextAlignV = EnumProgressBarTextAlignV.TOP;
 
         @ConfigEntry.Gui.Tooltip(zh_cn = "文字旋转角度（0–360）。", en_us = "Text rotation in degrees (0–360).")
         @ConfigEntry.BoundedDouble(min = 0.0, max = 360.0)
