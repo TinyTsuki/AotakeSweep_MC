@@ -3,16 +3,20 @@ package xin.vanilla.aotake.enums;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import lombok.Getter;
 import net.minecraft.command.CommandSource;
+import xin.vanilla.aotake.AotakeComponent;
 import xin.vanilla.aotake.AotakeSweep;
 import xin.vanilla.aotake.command.impl.*;
 import xin.vanilla.banira.command.BaniraCommand;
 import xin.vanilla.banira.common.api.IVirtualPermissionType;
+import xin.vanilla.banira.common.data.Component;
+import xin.vanilla.banira.common.enums.IEnumDescribable;
+import xin.vanilla.banira.common.util.EnumDescriptionHelper;
 
 import javax.annotation.Nullable;
 import java.util.function.Supplier;
 
 @Getter
-public enum EnumCommandType implements IVirtualPermissionType {
+public enum EnumCommandType implements IVirtualPermissionType, IEnumDescribable {
     HELP(HelpCommand::help, false, false),
     LANGUAGE(() -> BaniraCommand.LANGUAGE, false, false),
     LANGUAGE_CONCISE(),
@@ -110,5 +114,10 @@ public enum EnumCommandType implements IVirtualPermissionType {
             return EnumCommandType.valueOf(this.name().replace("_CONCISE", ""));
         }
         return this;
+    }
+
+    @Override
+    public Component enumDescription() {
+        return EnumDescriptionHelper.describeEnum(AotakeComponent.get(), this);
     }
 }

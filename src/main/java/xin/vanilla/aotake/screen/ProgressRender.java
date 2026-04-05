@@ -123,9 +123,6 @@ public final class ProgressRender {
         }
     }
 
-    /**
-     * 进度条贴图需传入<strong>纹理文件真实宽高</strong>参与 UV；误把屏幕绘制宽高当作纹理尺寸会导致采样错误（竹竿呈细线等）。
-     */
     private static void blitProgressAtlas(MatrixStack ms, ResourceLocation texture, int x, int y, int destW, int destH) {
         KeyValue<Integer, Integer> dim = TextureUtils.getTextureSize(texture);
         int texW = dim.key();

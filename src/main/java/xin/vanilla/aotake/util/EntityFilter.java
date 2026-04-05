@@ -8,6 +8,9 @@ import net.minecraft.nbt.INBT;
 import net.minecraft.nbt.NumberNBT;
 import net.minecraft.network.datasync.DataParameter;
 import net.minecraftforge.common.UsernameCache;
+import xin.vanilla.aotake.AotakeComponent;
+import xin.vanilla.banira.common.data.Component;
+import xin.vanilla.banira.common.enums.IEnumDescribable;
 import xin.vanilla.banira.common.util.*;
 
 import javax.annotation.Nullable;
@@ -110,7 +113,18 @@ public class EntityFilter {
         }
     }
 
-    private enum SourceType {PREDEFINED, LITERAL, ACCESSOR_KEY, NBT_PATH}
+    private enum SourceType implements IEnumDescribable {
+        PREDEFINED,
+        LITERAL,
+        ACCESSOR_KEY,
+        NBT_PATH,
+        ;
+
+        @Override
+        public Component enumDescription() {
+            return EnumDescriptionHelper.describeEnum(AotakeComponent.get(), this);
+        }
+    }
 
     private List<VarDescriptor> parseLeftVariables(String left) {
         if (left == null || left.trim().isEmpty()) return Collections.emptyList();
