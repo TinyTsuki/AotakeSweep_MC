@@ -37,9 +37,9 @@ public final class ProgressRender {
         ClientConfig.ProgressBarPoleView cpp = cp.pole();
         ClientConfig.ProgressBarTextView cpt = cp.text();
         if (event instanceof RenderGameOverlayEvent.Post
-                && ((cpp.hideExperienceBarPole() && cp.progressBarDisplayNormal().contains(EnumProgressBarType.POLE.name()))
-                || (cpt.hideExperienceBarText() && cp.progressBarDisplayNormal().contains(EnumProgressBarType.TEXT.name()))
-                || (cpl.hideExperienceBarLeaf() && cp.progressBarDisplayNormal().contains(EnumProgressBarType.LEAF.name())))
+                && ((cpp.hideExperienceBarPole() && cp.progressBarDisplayNormal().contains(EnumProgressBarType.POLE))
+                || (cpt.hideExperienceBarText() && cp.progressBarDisplayNormal().contains(EnumProgressBarType.TEXT))
+                || (cpl.hideExperienceBarLeaf() && cp.progressBarDisplayNormal().contains(EnumProgressBarType.LEAF)))
         ) {
             return;
         }
@@ -49,11 +49,11 @@ public final class ProgressRender {
         if (mc.player == null) return;
         MatrixStack ms = event.getMatrixStack();
         boolean hold = showProgressHeld && mc.screen == null;
-        List<? extends String> displayList = hold ? cp.progressBarDisplayHold() : cp.progressBarDisplayNormal();
+        List<EnumProgressBarType> displayList = hold ? cp.progressBarDisplayHold() : cp.progressBarDisplayNormal();
 
         double scale = cpt.progressBarTextSize() / 16.0;
 
-        if (displayList.contains(EnumProgressBarType.POLE.name())) {
+        if (displayList.contains(EnumProgressBarType.POLE)) {
             if (cpp.hideExperienceBarPole()) {
                 event.setCanceled(true);
             }
@@ -74,7 +74,7 @@ public final class ProgressRender {
                     blitProgressAtlas(ms, poleTex, (int) arg.x(), (int) arg.y(), (int) arg.width(), (int) arg.height()));
         }
 
-        if (displayList.contains(EnumProgressBarType.TEXT.name())) {
+        if (displayList.contains(EnumProgressBarType.TEXT)) {
             if (cpt.hideExperienceBarText()) {
                 event.setCanceled(true);
             }
@@ -96,7 +96,7 @@ public final class ProgressRender {
             });
         }
 
-        if (displayList.contains(EnumProgressBarType.LEAF.name())) {
+        if (displayList.contains(EnumProgressBarType.LEAF)) {
             if (cpl.hideExperienceBarLeaf()) {
                 event.setCanceled(true);
             }
@@ -151,7 +151,7 @@ public final class ProgressRender {
         } else {
             x = baseX + x;
         }
-        switch (EnumPosition.valueOf(cpl.progressBarLeafBase())) {
+        switch (cpl.progressBarLeafBase()) {
             case CENTER:
             case TOP_CENTER:
             case BOTTOM_CENTER: {
@@ -185,7 +185,7 @@ public final class ProgressRender {
         } else {
             y = baseY + y;
         }
-        switch (EnumPosition.valueOf(cpl.progressBarLeafBase())) {
+        switch (cpl.progressBarLeafBase()) {
             case CENTER: {
                 y -= cpl.progressBarLeafHeight() / 2.0;
             }
@@ -213,7 +213,7 @@ public final class ProgressRender {
         if (quadrant == 2 || quadrant == 3) {
             x = width - x;
         }
-        switch (EnumPosition.valueOf(cpp.progressBarPoleBase())) {
+        switch (cpp.progressBarPoleBase()) {
             case CENTER:
             case TOP_CENTER:
             case BOTTOM_CENTER: {
@@ -243,7 +243,7 @@ public final class ProgressRender {
         if (quadrant == 1 || quadrant == 2) {
             y = height - y;
         }
-        switch (EnumPosition.valueOf(cpp.progressBarPoleBase())) {
+        switch (cpp.progressBarPoleBase()) {
             case CENTER: {
                 y -= cpp.progressBarPoleHeight() / 2.0;
             }
@@ -275,7 +275,7 @@ public final class ProgressRender {
         } else {
             x = baseX + x;
         }
-        switch (EnumPosition.valueOf(cpt.progressBarTextBase())) {
+        switch (cpt.progressBarTextBase()) {
             case CENTER:
             case TOP_CENTER:
             case BOTTOM_CENTER: {
@@ -309,7 +309,7 @@ public final class ProgressRender {
         } else {
             y = baseY + y;
         }
-        switch (EnumPosition.valueOf(cpt.progressBarTextBase())) {
+        switch (cpt.progressBarTextBase()) {
             case CENTER: {
                 y -= cpt.progressBarTextSize() / 16.0 * getTextHeight() / 2.0;
             }

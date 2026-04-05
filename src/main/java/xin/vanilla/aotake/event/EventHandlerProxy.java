@@ -149,13 +149,13 @@ public class EventHandlerProxy {
             WorldTrashData worldTrashData = WorldTrashData.get();
             List<Inventory> inventories = worldTrashData.getInventoryList();
             // 清空
-            if (CommonConfig.get().base().dustbin().selfCleanMode().contains(EnumSelfCleanMode.SCHEDULED_CLEAR.name())) {
+            if (CommonConfig.get().base().dustbin().selfCleanMode().contains(EnumSelfCleanMode.SCHEDULED_CLEAR)) {
                 worldTrashData.getDropList().clear();
                 if (CollectionUtils.isNotNullOrEmpty(inventories)) inventories.forEach(Inventory::clearContent);
                 WorldTrashData.get().setDirty();
             }
             // 随机删除
-            else if (CommonConfig.get().base().dustbin().selfCleanMode().contains(EnumSelfCleanMode.SCHEDULED_DELETE.name())) {
+            else if (CommonConfig.get().base().dustbin().selfCleanMode().contains(EnumSelfCleanMode.SCHEDULED_DELETE)) {
                 if (AotakeSweep.RANDOM.nextBoolean()) {
                     ConcurrentShuffleList<KeyValue<WorldCoordinate, ItemStack>> dropList = worldTrashData.getDropList();
                     dropList.removeRandom();
@@ -181,7 +181,7 @@ public class EventHandlerProxy {
             lastChunkCheckTime = now;
             try {
                 long start = System.currentTimeMillis();
-                boolean advanced = !EnumChunkCheckMode.DEFAULT.name().equals(CommonConfig.get().base().chunk().chunkCheckMode());
+                boolean advanced = CommonConfig.get().base().chunk().chunkCheckMode() != EnumChunkCheckMode.DEFAULT;
                 Map<ChunkKey, List<Entity>> chunkEntities = new HashMap<>();
                 for (Entity entity : AotakeUtils.getAllEntitiesByFilter(null, true)) {
                     String dimension = entity.level != null

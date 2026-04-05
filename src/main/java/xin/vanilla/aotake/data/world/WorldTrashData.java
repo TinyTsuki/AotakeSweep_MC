@@ -22,7 +22,6 @@ import xin.vanilla.aotake.AotakeLang;
 import xin.vanilla.aotake.config.CommonConfig;
 import xin.vanilla.aotake.data.ConcurrentShuffleList;
 import xin.vanilla.aotake.data.DropStatistics;
-import xin.vanilla.aotake.enums.EnumDustbinMode;
 import xin.vanilla.banira.BaniraCodex;
 import xin.vanilla.banira.common.data.Component;
 import xin.vanilla.banira.common.data.KeyValue;
@@ -234,7 +233,7 @@ public class WorldTrashData extends WorldCapabilityData {
                         .color(EnumMCColor.RED.getColor());
                 Component plusComponent = AotakeComponent.get().literal("+")
                         .color(EnumMCColor.BLACK.getColor());
-                switch (EnumDustbinMode.valueOfOrDefault(CommonConfig.get().base().dustbin().dustbinBlockMode())) {
+                switch (CommonConfig.get().base().dustbin().dustbinBlockMode()) {
                     case VIRTUAL: {
                         title.append(String.format("(%s/%s)", page, limit));
                     }

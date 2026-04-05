@@ -42,7 +42,6 @@ import xin.vanilla.aotake.data.SweepResult;
 import xin.vanilla.aotake.data.player.PlayerSweepData;
 import xin.vanilla.aotake.data.world.WorldTrashData;
 import xin.vanilla.aotake.enums.EnumCommandType;
-import xin.vanilla.aotake.enums.EnumDustbinMode;
 import xin.vanilla.aotake.enums.EnumListType;
 import xin.vanilla.aotake.enums.EnumSelfCleanMode;
 import xin.vanilla.aotake.event.EventHandlerProxy;
@@ -329,10 +328,10 @@ public class AotakeUtils {
             if (chuck) {
                 // 空列表
                 if (CollectionUtils.isNullOrEmpty(CommonConfig.get().base().chunk().chunkCheckEntityList())) {
-                    result = EnumListType.WHITE.name().equals(CommonConfig.get().base().chunk().chunkCheckEntityListMode());
+                    result = CommonConfig.get().base().chunk().chunkCheckEntityListMode() == EnumListType.WHITE;
                 }
                 // 黑名单模式
-                else if (EnumListType.BLACK.name().equals(CommonConfig.get().base().chunk().chunkCheckEntityListMode())) {
+                else if (CommonConfig.get().base().chunk().chunkCheckEntityListMode() == EnumListType.BLACK) {
                     result = AotakeSweep.getEntityFilter().validEntity(CommonConfig.get().base().chunk().chunkCheckEntityList(), entity);
                 }
                 // 白名单模式
@@ -342,10 +341,10 @@ public class AotakeUtils {
             } else {
                 // 空列表
                 if (CollectionUtils.isNullOrEmpty(CommonConfig.get().base().sweep().entityList())) {
-                    result = EnumListType.WHITE.name().equals(CommonConfig.get().base().sweep().entityListMode());
+                    result = CommonConfig.get().base().sweep().entityListMode() == EnumListType.WHITE;
                 }
                 // 黑名单模式
-                else if (EnumListType.BLACK.name().equals(CommonConfig.get().base().sweep().entityListMode())) {
+                else if (CommonConfig.get().base().sweep().entityListMode() == EnumListType.BLACK) {
                     result = AotakeSweep.getEntityFilter().validEntity(CommonConfig.get().base().sweep().entityList(), entity);
                 }
                 // 白名单模式
@@ -512,8 +511,8 @@ public class AotakeUtils {
 
             // if (CollectionUtils.isNotNullOrEmpty(list)) {
             // 清空旧的物品
-            if (CommonConfig.get().base().dustbin().selfCleanMode().contains(EnumSelfCleanMode.SWEEP_CLEAR.name())) {
-                switch (EnumDustbinMode.valueOfOrDefault(CommonConfig.get().base().dustbin().dustbinBlockMode())) {
+            if (CommonConfig.get().base().dustbin().selfCleanMode().contains(EnumSelfCleanMode.SWEEP_CLEAR)) {
+                switch (CommonConfig.get().base().dustbin().dustbinBlockMode()) {
                     case VIRTUAL: {
                         clearVirtualDustbin();
                     }
@@ -753,7 +752,7 @@ public class AotakeUtils {
         if (totalPage <= 0) {
             MessageUtils.sendMessage(player, AotakeComponent.get().transAuto("dustbin_page_empty"));
         } else {
-            switch (EnumDustbinMode.valueOfOrDefault(CommonConfig.get().base().dustbin().dustbinBlockMode())) {
+            switch (CommonConfig.get().base().dustbin().dustbinBlockMode()) {
                 case VIRTUAL: {
                     result = openVirtualDustbin(player, page);
                 }
@@ -922,7 +921,7 @@ public class AotakeUtils {
 
     public static int getDustbinTotalPage() {
         int result = 0;
-        switch (EnumDustbinMode.valueOfOrDefault(CommonConfig.get().base().dustbin().dustbinBlockMode())) {
+        switch (CommonConfig.get().base().dustbin().dustbinBlockMode()) {
             case VIRTUAL: {
                 result = CommonConfig.get().base().dustbin().dustbinPageLimit();
             }

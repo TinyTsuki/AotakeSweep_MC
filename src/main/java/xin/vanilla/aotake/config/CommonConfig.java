@@ -104,13 +104,13 @@ public class CommonConfig implements ConfigData {
 
         DustbinView selfCleanInterval(long value);
 
-        List<String> selfCleanMode();
+        List<EnumSelfCleanMode> selfCleanMode();
 
-        DustbinView selfCleanMode(List<String> value);
+        DustbinView selfCleanMode(List<EnumSelfCleanMode> value);
 
-        String dustbinOverflowMode();
+        EnumOverflowMode dustbinOverflowMode();
 
-        DustbinView dustbinOverflowMode(String value);
+        DustbinView dustbinOverflowMode(EnumOverflowMode value);
 
         boolean dustbinPersistent();
 
@@ -124,9 +124,9 @@ public class CommonConfig implements ConfigData {
 
         DustbinView dustbinBlockPositions(List<String> value);
 
-        String dustbinBlockMode();
+        EnumDustbinMode dustbinBlockMode();
 
-        DustbinView dustbinBlockMode(String value);
+        DustbinView dustbinBlockMode(EnumDustbinMode value);
     }
 
     public interface SweepView {
@@ -154,9 +154,9 @@ public class CommonConfig implements ConfigData {
 
         SweepView entityList(List<String> value);
 
-        String entityListMode();
+        EnumListType entityListMode();
 
-        SweepView entityListMode(String value);
+        SweepView entityListMode(EnumListType value);
 
         int entityListLimit();
 
@@ -216,17 +216,17 @@ public class CommonConfig implements ConfigData {
 
         ChunkView chunkCheckNotice(boolean value);
 
-        String chunkCheckMode();
+        EnumChunkCheckMode chunkCheckMode();
 
-        ChunkView chunkCheckMode(String value);
+        ChunkView chunkCheckMode(EnumChunkCheckMode value);
 
         List<String> chunkCheckEntityList();
 
         ChunkView chunkCheckEntityList(List<String> value);
 
-        String chunkCheckEntityListMode();
+        EnumListType chunkCheckEntityListMode();
 
-        ChunkView chunkCheckEntityListMode(String value);
+        ChunkView chunkCheckEntityListMode(EnumListType value);
 
         boolean chunkCheckOnlyNotice();
 
@@ -450,10 +450,10 @@ public class CommonConfig implements ConfigData {
 
         @ConfigEntry.Gui.Tooltip(zh_cn = "自清洁模式列表：NONE、SWEEP_CLEAR、SWEEP_DELETE、SCHEDULED_CLEAR、SCHEDULED_DELETE。",
                 en_us = "Self-clean modes: NONE, SWEEP_CLEAR, SWEEP_DELETE, SCHEDULED_CLEAR, SCHEDULED_DELETE.")
-        private List<String> selfCleanMode = new ArrayList<>(Arrays.asList(EnumSelfCleanMode.NONE.name()));
+        private List<EnumSelfCleanMode> selfCleanMode = new ArrayList<>(Collections.singletonList(EnumSelfCleanMode.NONE));
 
         @ConfigEntry.Gui.Tooltip(zh_cn = "垃圾箱满溢时：KEEP / REMOVE / REPLACE。", en_us = "When dustbin overflows: KEEP, REMOVE, or REPLACE.")
-        private String dustbinOverflowMode = EnumOverflowMode.KEEP.name();
+        private EnumOverflowMode dustbinOverflowMode = EnumOverflowMode.KEEP;
 
         @ConfigEntry.Gui.Tooltip(zh_cn = "是否将垃圾箱持久化到磁盘（关闭则关服后丢失）。", en_us = "Persist dustbin to disk (off = lost after restart).")
         private boolean dustbinPersistent = true;
@@ -467,7 +467,7 @@ public class CommonConfig implements ConfigData {
         private List<String> dustbinBlockPositions = new ArrayList<>();
 
         @ConfigEntry.Gui.Tooltip(zh_cn = "垃圾箱模式：VIRTUAL / BLOCK / VIRTUAL_BLOCK / BLOCK_VIRTUAL。", en_us = "Dustbin mode: VIRTUAL, BLOCK, VIRTUAL_BLOCK, BLOCK_VIRTUAL.")
-        private String dustbinBlockMode = EnumDustbinMode.VIRTUAL.name();
+        private EnumDustbinMode dustbinBlockMode = EnumDustbinMode.VIRTUAL;
     }
 
     @Getter
@@ -495,7 +495,7 @@ public class CommonConfig implements ConfigData {
         private List<String> entityList = defaultEntityList();
 
         @ConfigEntry.Gui.Tooltip(zh_cn = "名单模式：BLACK 仅清列表内；WHITE 清列表外。", en_us = "List mode: BLACK clean listed only; WHITE clean unlisted.")
-        private String entityListMode = EnumListType.BLACK.name();
+        private EnumListType entityListMode = EnumListType.BLACK;
 
         @ConfigEntry.Gui.Tooltip(zh_cn = "单类型实体全服超过该数量时仍强制清理。", en_us = "Global per-type cap; still clean when count exceeds this.")
         @ConfigEntry.BoundedDiscrete(min = 1)
@@ -560,14 +560,14 @@ public class CommonConfig implements ConfigData {
         private boolean chunkCheckNotice = true;
 
         @ConfigEntry.Gui.Tooltip(zh_cn = "DEFAULT：总实体超阈值；ADVANCED：单类型超阈值。", en_us = "DEFAULT: total count; ADVANCED: per-type count.")
-        private String chunkCheckMode = EnumChunkCheckMode.ADVANCED.name();
+        private EnumChunkCheckMode chunkCheckMode = EnumChunkCheckMode.ADVANCED;
 
         @ConfigEntry.Gui.Tooltip(zh_cn = "区块检测用的实体规则/名单（与 chunkCheckEntityListMode 配合）。",
                 en_us = "Entity rules/list for chunk check (with chunkCheckEntityListMode).")
         private List<String> chunkCheckEntityList = defaultChunkCheckEntityList();
 
         @ConfigEntry.Gui.Tooltip(zh_cn = "区块名单模式：BLACK / WHITE。", en_us = "Chunk list mode: BLACK or WHITE.")
-        private String chunkCheckEntityListMode = EnumListType.WHITE.name();
+        private EnumListType chunkCheckEntityListMode = EnumListType.WHITE;
 
         @ConfigEntry.Gui.Tooltip(zh_cn = "仅提示、不执行清理。", en_us = "Notice only; do not clean.")
         private boolean chunkCheckOnlyNotice = false;
@@ -811,12 +811,12 @@ public class CommonConfig implements ConfigData {
                 .dustbinPageLimit(2)
                 .cacheLimit(5000)
                 .selfCleanInterval(60L * 60 * 1000)
-                .selfCleanMode(new ArrayList<>(Arrays.asList(EnumSelfCleanMode.NONE.name())))
-                .dustbinOverflowMode(EnumOverflowMode.KEEP.name())
+                .selfCleanMode(new ArrayList<>(Collections.singletonList(EnumSelfCleanMode.NONE)))
+                .dustbinOverflowMode(EnumOverflowMode.KEEP)
                 .dustbinPersistent(true)
                 .dropStatsFileLimit(15)
                 .dustbinBlockPositions(new ArrayList<>())
-                .dustbinBlockMode(EnumDustbinMode.VIRTUAL.name());
+                .dustbinBlockMode(EnumDustbinMode.VIRTUAL);
         c.base().sweep()
                 .sweepWhenNoPlayer(false)
                 .sweepWarningContent("")
@@ -824,7 +824,7 @@ public class CommonConfig implements ConfigData {
                 .sweepWarningVoiceVolume(33)
                 .sweepInterval(10L * 60 * 1000)
                 .entityList(defaultEntityListReset())
-                .entityListMode(EnumListType.WHITE.name())
+                .entityListMode(EnumListType.WHITE)
                 .entityListLimit(250)
                 .entityRedlist(new ArrayList<>());
         c.base().safe()
@@ -841,9 +841,9 @@ public class CommonConfig implements ConfigData {
                 .chunkCheckLimit(250)
                 .chunkCheckRetain(0.5)
                 .chunkCheckNotice(true)
-                .chunkCheckMode(EnumChunkCheckMode.ADVANCED.name())
+                .chunkCheckMode(EnumChunkCheckMode.ADVANCED)
                 .chunkCheckEntityList(defaultChunkCheckEntityList())
-                .chunkCheckEntityListMode(EnumListType.WHITE.name())
+                .chunkCheckEntityListMode(EnumListType.WHITE)
                 .chunkCheckOnlyNotice(false);
         c.base().entityCatch()
                 .catchEntity(new ArrayList<>())

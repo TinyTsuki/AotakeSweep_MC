@@ -224,8 +224,8 @@ public class EntitySweeper {
     }
 
     private void handleItemRecycling(WorldCoordinate coordinate, ItemStack item, SweepResult result) {
-        EnumDustbinMode dustbinMode = EnumDustbinMode.valueOfOrDefault(CommonConfig.get().base().dustbin().dustbinBlockMode());
-        if (CommonConfig.get().base().dustbin().selfCleanMode().contains(EnumSelfCleanMode.SWEEP_DELETE.name())) {
+        EnumDustbinMode dustbinMode = CommonConfig.get().base().dustbin().dustbinBlockMode();
+        if (CommonConfig.get().base().dustbin().selfCleanMode().contains(EnumSelfCleanMode.SWEEP_DELETE)) {
             switch (dustbinMode) {
                 case VIRTUAL: {
                     selfCleanVirtualDustbin();
@@ -348,7 +348,7 @@ public class EntitySweeper {
     }
 
     private void handleOverflow(WorldCoordinate coordinate, ItemStack item, SweepResult result) {
-        EnumOverflowMode mode = EnumOverflowMode.valueOf(CommonConfig.get().base().dustbin().dustbinOverflowMode());
+        EnumOverflowMode mode = CommonConfig.get().base().dustbin().dustbinOverflowMode();
 
         switch (mode) {
             case KEEP: {
@@ -359,7 +359,7 @@ public class EntitySweeper {
             }
             break;
             case REPLACE: {
-                switch (EnumDustbinMode.valueOfOrDefault(CommonConfig.get().base().dustbin().dustbinBlockMode())) {
+                switch (CommonConfig.get().base().dustbin().dustbinBlockMode()) {
                     case VIRTUAL:
                     case VIRTUAL_BLOCK: {
                         Inventory inv = this.inventoryList.get(AotakeSweep.RANDOM.nextInt(this.inventoryList.size()));

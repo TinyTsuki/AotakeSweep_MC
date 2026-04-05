@@ -13,6 +13,7 @@ import xin.vanilla.banira.common.config.ConfigHolder;
 import xin.vanilla.banira.common.config.ForgeConfigAdapter;
 import xin.vanilla.banira.common.config.annotation.Config;
 import xin.vanilla.banira.common.config.annotation.ConfigEntry;
+import xin.vanilla.banira.common.enums.EnumPosition;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -52,13 +53,13 @@ public class ClientConfig implements ConfigData {
     }
 
     public interface ProgressBarView {
-        List<String> progressBarDisplayNormal();
+        List<EnumProgressBarType> progressBarDisplayNormal();
 
-        ProgressBarView progressBarDisplayNormal(List<String> value);
+        ProgressBarView progressBarDisplayNormal(List<EnumProgressBarType> value);
 
-        List<String> progressBarDisplayHold();
+        List<EnumProgressBarType> progressBarDisplayHold();
 
-        ProgressBarView progressBarDisplayHold(List<String> value);
+        ProgressBarView progressBarDisplayHold(List<EnumProgressBarType> value);
 
         boolean progressBarKeyApplyMode();
 
@@ -84,9 +85,9 @@ public class ClientConfig implements ConfigData {
 
         ProgressBarLeafView progressBarLeafPosition(String value);
 
-        String progressBarLeafBase();
+        EnumPosition progressBarLeafBase();
 
-        ProgressBarLeafView progressBarLeafBase(String value);
+        ProgressBarLeafView progressBarLeafBase(EnumPosition value);
 
         double progressBarLeafAngle();
 
@@ -114,9 +115,9 @@ public class ClientConfig implements ConfigData {
 
         ProgressBarPoleView progressBarPolePosition(String value);
 
-        String progressBarPoleBase();
+        EnumPosition progressBarPoleBase();
 
-        ProgressBarPoleView progressBarPoleBase(String value);
+        ProgressBarPoleView progressBarPoleBase(EnumPosition value);
 
         double progressBarPoleAngle();
 
@@ -144,9 +145,9 @@ public class ClientConfig implements ConfigData {
 
         ProgressBarTextView progressBarTextPosition(String value);
 
-        String progressBarTextBase();
+        EnumPosition progressBarTextBase();
 
-        ProgressBarTextView progressBarTextBase(String value);
+        ProgressBarTextView progressBarTextBase(EnumPosition value);
 
         double progressBarTextAngle();
 
@@ -173,11 +174,11 @@ public class ClientConfig implements ConfigData {
     public static class ProgressBarCategory {
         @ConfigEntry.Gui.Tooltip(zh_cn = "正常状态下进度条显示方式（LEAF/POLE/TEXT）",
                 en_us = "Progress bar modes when idle (LEAF / POLE / TEXT)")
-        private List<String> progressBarDisplayNormal = new ArrayList<>(Arrays.asList(EnumProgressBarType.LEAF.name()));
+        private List<EnumProgressBarType> progressBarDisplayNormal = new ArrayList<>(Arrays.asList(EnumProgressBarType.LEAF));
 
         @ConfigEntry.Gui.Tooltip(zh_cn = "按住按键时进度条显示方式", en_us = "Progress bar modes while holding the key")
-        private List<String> progressBarDisplayHold = new ArrayList<>(Arrays.asList(
-                EnumProgressBarType.LEAF.name(), EnumProgressBarType.POLE.name(), EnumProgressBarType.TEXT.name()));
+        private List<EnumProgressBarType> progressBarDisplayHold = new ArrayList<>(Arrays.asList(
+                EnumProgressBarType.LEAF, EnumProgressBarType.POLE, EnumProgressBarType.TEXT));
 
         @ConfigEntry.Gui.Tooltip(zh_cn = "进度条快捷键：false 按住，true 切换", en_us = "Key mode: false = hold, true = toggle")
         private boolean progressBarKeyApplyMode = false;
@@ -213,7 +214,7 @@ public class ClientConfig implements ConfigData {
 
         @ConfigEntry.Gui.Tooltip(zh_cn = "竹叶纹理锚点：TOP_LEFT/TOP_RIGHT/TOP_CENTER/BOTTOM_LEFT/BOTTOM_RIGHT/BOTTOM_CENTER/CENTER（与 EnumPosition 一致）。",
                 en_us = "Texture anchor for the leaf (EnumPosition names, e.g. TOP_LEFT, CENTER).")
-        private String progressBarLeafBase = "TOP_LEFT";
+        private EnumPosition progressBarLeafBase = EnumPosition.TOP_LEFT;
 
         @ConfigEntry.Gui.Tooltip(zh_cn = "竹叶旋转角度（0–360）。", en_us = "Leaf rotation in degrees (0–360).")
         @ConfigEntry.BoundedDouble(max = 360.0)
@@ -245,7 +246,7 @@ public class ClientConfig implements ConfigData {
         private String progressBarPolePosition = "50%,29";
 
         @ConfigEntry.Gui.Tooltip(zh_cn = "竹竿纹理锚点（EnumPosition）。", en_us = "Texture anchor for the pole (EnumPosition).")
-        private String progressBarPoleBase = "TOP_CENTER";
+        private EnumPosition progressBarPoleBase = EnumPosition.TOP_CENTER;
 
         @ConfigEntry.Gui.Tooltip(zh_cn = "竹竿旋转角度（0–360）。", en_us = "Pole rotation in degrees (0–360).")
         @ConfigEntry.BoundedDouble(min = 0.0, max = 360.0)
@@ -276,7 +277,7 @@ public class ClientConfig implements ConfigData {
         private String progressBarTextPosition = "50%,8";
 
         @ConfigEntry.Gui.Tooltip(zh_cn = "文字布局锚点（EnumPosition）。", en_us = "Text layout anchor (EnumPosition).")
-        private String progressBarTextBase = "TOP_CENTER";
+        private EnumPosition progressBarTextBase = EnumPosition.TOP_CENTER;
 
         @ConfigEntry.Gui.Tooltip(zh_cn = "文字旋转角度（0–360）。", en_us = "Text rotation in degrees (0–360).")
         @ConfigEntry.BoundedDouble(min = 0.0, max = 360.0)

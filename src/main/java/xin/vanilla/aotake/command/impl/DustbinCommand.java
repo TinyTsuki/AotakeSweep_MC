@@ -17,7 +17,6 @@ import xin.vanilla.aotake.config.CommonConfig;
 import xin.vanilla.aotake.data.player.PlayerSweepData;
 import xin.vanilla.aotake.data.world.WorldTrashData;
 import xin.vanilla.aotake.enums.EnumCommandType;
-import xin.vanilla.aotake.enums.EnumDustbinMode;
 import xin.vanilla.aotake.util.AotakeUtils;
 import xin.vanilla.banira.BaniraCodex;
 import xin.vanilla.banira.common.data.Component;
@@ -120,7 +119,7 @@ public class DustbinCommand {
             int page = CommandUtils.getIntDefault(context, "page", 0);
             int vPage = CommonConfig.get().base().dustbin().dustbinPageLimit();
             int bPage = CommonConfig.get().base().dustbin().dustbinBlockPositions().size();
-            switch (EnumDustbinMode.valueOfOrDefault(CommonConfig.get().base().dustbin().dustbinBlockMode())) {
+            switch (CommonConfig.get().base().dustbin().dustbinBlockMode()) {
                 case VIRTUAL: {
                     AotakeUtils.clearVirtualDustbin(page);
                 }
@@ -196,7 +195,7 @@ public class DustbinCommand {
             int page = CommandUtils.getIntDefault(context, "page", 0);
             int vPage = CommonConfig.get().base().dustbin().dustbinPageLimit();
             int bPage = CommonConfig.get().base().dustbin().dustbinBlockPositions().size();
-            switch (EnumDustbinMode.valueOfOrDefault(CommonConfig.get().base().dustbin().dustbinBlockMode())) {
+            switch (CommonConfig.get().base().dustbin().dustbinBlockMode()) {
                 case VIRTUAL: {
                     AotakeUtils.dropVirtualDustbin(player, page);
                 }
