@@ -125,6 +125,8 @@ dependencies {
 
     // Narcissus
     compileOnly "curse.maven:narcissus-farewell-1210871:${narcissus_maven_id}"
+    // compileOnly fg.deobf("blank:narcissus_farewell:forge-1.16.5-2.0.0.dev2")
+    // runtimeOnly fg.deobf("blank:narcissus_farewell:forge-1.16.5-2.0.0.dev2")
 
 }
 
