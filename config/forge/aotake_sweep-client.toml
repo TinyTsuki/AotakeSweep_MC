@@ -1,195 +1,115 @@
 
-#Client Settings
-#客户端设置
-[client]
+#进度条与竹叶/竹竿/文字显示
+#Progress bar (bamboo leaf / pole / text)
+[progressBar]
+	#进度条快捷键：false 按住，true 切换
+	#Key mode: false = hold, true = toggle
+	progressBarKeyApplyMode = false
+	#正常状态下进度条显示方式（LEAF/POLE/TEXT）
+	#Progress bar modes when idle (LEAF / POLE / TEXT)
+	progressBarDisplayNormal = ["LEAF"]
+	#按住按键时进度条显示方式
+	#Progress bar modes while holding the key
+	progressBarDisplayHold = ["LEAF", "POLE", "TEXT"]
 
-	#Progress Bar Settings
-	#进度条设置
-	[client.progress_bar]
-		#Progress bar display mode under normal conditions.
-		#LEAF: Show leaf;
-		#POLE: Show pole;
-		#TEXT: Show countdown text.
-		#正常状态下进度条显示方式。
-		#LEAF：显示竹叶；
-		#POLE：显示竹竿；
-		#TEXT：显示倒计时文字。
-		progressBarDisplayNormal = ["LEAF"]
-		#Progress bar display mode when holding the key.
-		#LEAF: Show leaf;
-		#POLE: Show pole;
-		#TEXT: Show countdown text.
-		#按住按键时进度条显示方式。
-		#LEAF：显示竹叶；
-		#POLE：显示竹竿；
-		#TEXT：显示倒计时文字。
-		progressBarDisplayHold = ["LEAF", "POLE", "TEXT"]
-		#Progress bar key apply mode.
-		#false: Hold the key;
-		#true: Toggle.
-		#进度条显示按键应用模式。
-		#false：按住；
-		#true：切换。
-		progressBarKeyApplyMode = false
+	#文字
+	#Text overlay
+	[progressBar.text]
+		#绘制倒计时文字时是否隐藏经验条。
+		#Hide the XP bar while drawing countdown text.
+		hideExperienceBarText = true
+		#文字相对竹竿定位所用的屏幕象限（1–4）。
+		#Screen quadrant for text placement relative to the pole.
+		#Range: 1 ~ 4
+		progressBarTextScreenQuadrant = 1
+		#文字旋转角度（0–360）。
+		#Text rotation in degrees (0–360).
+		#Range: 0.0 ~ 360.0
+		progressBarTextAngle = 0.0
+		#文字大小（相对 16px 基准缩放）。
+		#Font size scale relative to 16px base.
+		#Range: 1 ~ 256
+		progressBarTextSize = 8
+		#参考点相对竹竿的偏移（x,y 或 x%,y%，象限含义与竹竿一致）。文字再按水平/垂直对齐相对该点对齐。
+		#Anchor offset from pole (x,y or x%,y%). Text aligns to this point per horizontal/vertical align.
+		progressBarTextPosition = "50%,8"
+		#相对参考点的垂直对齐：TOP/CENTER/BOTTOM。
+		#Vertical align to anchor: TOP / CENTER / BOTTOM.
+		#Allowed Values: TOP, CENTER, BOTTOM
+		progressBarTextAlignV = "TOP"
+		#相对参考点的水平对齐：LEFT/CENTER/RIGHT。
+		#Horizontal align to anchor: LEFT / CENTER / RIGHT.
+		#Allowed Values: LEFT, CENTER, RIGHT
+		progressBarTextAlignH = "CENTER"
+		#文字颜色。支持十六进制（0xAARRGGBB、#RRGGBB 等）或十进制 R,G,B / A,R,G,B。
+		#Text color: hex (0xAARRGGBB, #RRGGBB, …) or decimal R,G,B / A,R,G,B.
+		progressBarTextColor = "0x5DA530"
 
-		#Leaf
-		#竹叶
-		[client.progress_bar.leaf]
-			#Whether to hide the experience bar when drawing the bamboo leaf.
-			#绘制竹叶时是否隐藏经验条。
-			hideExperienceBarLeaf = false
-			#Screen coordinate system quadrant.
-			#1: The origin is in the lower left corner of the screen, ↑→ is the positive direction;
-			#2: The origin is in the lower right corner of the screen, ↑← is the positive direction;
-			#3: The origin is in the upper right corner of the screen, ↓← is the positive direction;
-			#4: The origin is in the upper left corner of the screen, ↓→ is the positive direction.
-			#屏幕坐标系象限。
-			#1：原点在屏幕左下角，↑→为正方向；
-			#2：原点在屏幕右下角，↑←为正方向；
-			#3：原点在屏幕右上角，↓←为正方向；
-			#4：原点在屏幕左上角，↓→为正方向。
-			#Range: 1 ~ 4
-			progressBarLeafScreenQuadrant = 1
-			#Position of the progress bar leaf relative to the bamboo pole.
-			#x,y: Absolute coordinates. When the quadrant is set to 4, (0,0) represents the top-left corner of the bamboo pole;
-			#x%,y%: Relative coordinates. When the quadrant is set to 4, (0%,0%) represents the top-left corner of the bamboo pole.
-			#进度条竹叶相对于竹竿的位置。
-			#x,y：绝对坐标，象限为4时，0,0为竹竿左上角；
-			#x%,y%：相对坐标，象限为4时，0%,0%为竹竿左上角。
-			progressBarLeafPosition = "0,4"
-			#Progress bar leaf base.
-			#TOP_LEFT: Uses the top-left corner of the texture as the anchor point. When `progressBarLeafPosition` is `0,0`, the texture’s top-left corner aligns with the screen’s top-left corner.
-			#TOP_RIGHT: Uses the top-right corner of the texture as the anchor point. When `progressBarLeafPosition` is `0,0`, the texture’s top-right corner aligns with the screen’s top-left corner.
-			#TOP_CENTER: Uses the top-center of the texture as the anchor point. When `progressBarLeafPosition` is `0,0`, the texture’s top-center aligns with the screen’s top-left corner.
-			#BOTTOM_LEFT: Uses the bottom-left corner of the texture as the anchor point. When `progressBarLeafPosition` is `0,0`, the texture’s bottom-left corner aligns with the screen’s top-left corner.
-			#BOTTOM_RIGHT: Uses the bottom-right corner of the texture as the anchor point. When `progressBarLeafPosition` is `0,0`, the texture’s bottom-right corner aligns with the screen’s top-left corner.
-			#BOTTOM_CENTER: Uses the bottom-center of the texture as the anchor point. When `progressBarLeafPosition` is `0,0`, the texture’s bottom-center aligns with the screen’s top-left corner.
-			#CENTER: Uses the center of the texture as the anchor point. When `progressBarLeafPosition` is `0,0`, the texture’s center aligns with the screen’s top-left corner.
-			#进度条竹叶位置基准点。
-			#TOP_LEFT: 以纹理左上角为基准点，progressBarLeafPosition为0,0时纹理左上角与屏幕左上角重合；
-			#TOP_RIGHT: 以纹理右上角为基准点，progressBarLeafPosition为0,0时纹理右上角与屏幕左上角重合；
-			#TOP_CENTER: 以纹理中上部为基准点，progressBarLeafPosition为0,0时纹理中上部与屏幕左上角重合；
-			#BOTTOM_LEFT: 以纹理左下角为基准点，progressBarLeafPosition为0,0时纹理左下角与屏幕左上角重合；
-			#BOTTOM_RIGHT: 以纹理右下角为基准点，progressBarLeafPosition为0,0时纹理右下角与屏幕左上角重合；
-			#BOTTOM_CENTER: 以纹理中下部为基准点，progressBarLeafPosition为0,0时纹理中下部与屏幕左上角重合；
-			#CENTER: 以纹理中心为基准点，progressBarLeafPosition为0,0时纹理中心与屏幕左上角重合。
-			progressBarLeafBase = "TOP_LEFT"
-			#Progress bar leaf angle.
-			#进度条竹叶角度。
-			#Range: 0.0 ~ 360.0
-			progressBarLeafAngle = 0.0
-			#Progress bar leaf height.
-			#进度条竹叶高度。
-			#Range: > 1
-			progressBarLeafHeight = 10
-			#Progress bar leaf width.
-			#进度条竹叶宽度。
-			#Range: > 1
-			progressBarLeafWidth = 9
+	#竹叶
+	#Bamboo leaf
+	[progressBar.leaf]
+		#竹叶显示高度（像素）。
+		#Leaf draw height in pixels.
+		#Range: > 1
+		progressBarLeafHeight = 10
+		#竹叶显示宽度（像素）。
+		#Leaf draw width in pixels.
+		#Range: > 1
+		progressBarLeafWidth = 9
+		#竹叶旋转角度（0–360）。
+		#Leaf rotation in degrees (0–360).
+		#Range: 0.0 ~ 360.0
+		progressBarLeafAngle = 0.0
+		#绘制竹叶时是否隐藏经验条。
+		#Hide the XP bar while drawing the bamboo leaf.
+		hideExperienceBarLeaf = false
+		#竹叶纹理锚点：TOP_LEFT/TOP_RIGHT/TOP_CENTER/BOTTOM_LEFT/BOTTOM_RIGHT/BOTTOM_CENTER/CENTER（与 EnumPosition 一致）。
+		#Texture anchor for the leaf (EnumPosition names, e.g. TOP_LEFT, CENTER).
+		#Allowed Values: TOP_LEFT, TOP_RIGHT, TOP_CENTER, LEFT_CENTER, RIGHT_CENTER, BOTTOM_LEFT, BOTTOM_RIGHT, BOTTOM_CENTER, CENTER
+		progressBarLeafBase = "TOP_LEFT"
+		#屏幕坐标象限：1 左下(↑→)；2 右下(↑←)；3 右上(↓←)；4 左上(↓→)。
+		#Screen quadrant: 1 bottom-left; 2 bottom-right; 3 top-right; 4 top-left.
+		#Range: 1 ~ 4
+		progressBarLeafScreenQuadrant = 1
+		#竹叶相对竹竿的偏移。x,y 为绝对坐标；x%,y% 为相对坐标（象限为 4 时，0,0 表示竹竿左上角）。
+		#Leaf position vs pole: x,y absolute; x%,y% relative (quadrant 4: 0,0 = pole top-left).
+		progressBarLeafPosition = "0,4"
 
-		#Pole
-		#竹竿
-		[client.progress_bar.pole]
-			#Whether to hide the experience bar when drawing the bamboo pole.
-			#绘制竹竿时是否隐藏经验条。
-			hideExperienceBarPole = true
-			#Screen coordinate system quadrant.
-			#1: The origin is in the lower left corner of the screen, ↑→ is the positive direction;
-			#2: The origin is in the lower right corner of the screen, ↑← is the positive direction;
-			#3: The origin is in the upper right corner of the screen, ↓← is the positive direction;
-			#4: The origin is in the upper left corner of the screen, ↓→ is the positive direction.
-			#屏幕坐标系象限。
-			#1：原点在屏幕左下角，↑→为正方向；
-			#2：原点在屏幕右下角，↑←为正方向；
-			#3：原点在屏幕右上角，↓←为正方向；
-			#4：原点在屏幕左上角，↓→为正方向。
-			#Range: 1 ~ 4
-			progressBarPoleScreenQuadrant = 1
-			#Progress bar pole position.
-			#x,y: Absolute coordinates. When the quadrant is set to 4, 0,0 is the top left corner of the screen;
-			#x%,y%: Relative coordinates. When the quadrant is set to 4, 0%,0% is the top left corner of the screen.
-			#进度条竹竿位置。
-			#x,y：绝对坐标，象限为4时，0,0为屏幕左上角；
-			#x%,y%：相对坐标，象限为4时，0%,0%为屏幕左上角。
-			progressBarPolePosition = "50%,29"
-			#Progress bar pole base.
-			#TOP_LEFT: Uses the top-left corner of the texture as the anchor point. When `progressBarPolePosition` is `0,0`, the texture’s top-left corner aligns with the screen’s top-left corner.
-			#TOP_RIGHT: Uses the top-right corner of the texture as the anchor point. When `progressBarPolePosition` is `0,0`, the texture’s top-right corner aligns with the screen’s top-left corner.
-			#TOP_CENTER: Uses the top-center of the texture as the anchor point. When `progressBarPolePosition` is `0,0`, the texture’s top-center aligns with the screen’s top-left corner.
-			#BOTTOM_LEFT: Uses the bottom-left corner of the texture as the anchor point. When `progressBarPolePosition` is `0,0`, the texture’s bottom-left corner aligns with the screen’s top-left corner.
-			#BOTTOM_RIGHT: Uses the bottom-right corner of the texture as the anchor point. When `progressBarPolePosition` is `0,0`, the texture’s bottom-right corner aligns with the screen’s top-left corner.
-			#BOTTOM_CENTER: Uses the bottom-center of the texture as the anchor point. When `progressBarPolePosition` is `0,0`, the texture’s bottom-center aligns with the screen’s top-left corner.
-			#CENTER: Uses the center of the texture as the anchor point. When `progressBarPolePosition` is `0,0`, the texture’s center aligns with the screen’s top-left corner.
-			#进度条竹竿位置基准点。
-			#TOP_LEFT: 以纹理左上角为基准点，progressBarPolePosition为0,0时纹理左上角与屏幕左上角重合；
-			#TOP_RIGHT: 以纹理右上角为基准点，progressBarPolePosition为0,0时纹理右上角与屏幕左上角重合；
-			#TOP_CENTER: 以纹理中上部为基准点，progressBarPolePosition为0,0时纹理中上部与屏幕左上角重合；
-			#BOTTOM_LEFT: 以纹理左下角为基准点，progressBarPolePosition为0,0时纹理左下角与屏幕左上角重合；
-			#BOTTOM_RIGHT: 以纹理右下角为基准点，progressBarPolePosition为0,0时纹理右下角与屏幕左上角重合；
-			#BOTTOM_CENTER: 以纹理中下部为基准点，progressBarPolePosition为0,0时纹理中下部与屏幕左上角重合；
-			#CENTER: 以纹理中心为基准点，progressBarPolePosition为0,0时纹理中心与屏幕左上角重合。
-			progressBarPoleBase = "TOP_CENTER"
-			#Progress bar pole angle.
-			#进度条竹竿角度。
-			#Range: 0.0 ~ 360.0
-			progressBarPoleAngle = 0.0
-			#Progress bar pole height.
-			#进度条竹竿高度。
-			#Range: > 1
-			progressBarPoleHeight = 5
-			#Progress bar pole width.
-			#进度条竹竿宽度。
-			#Range: > 1
-			progressBarPoleWidth = 180
+	#竹竿
+	#Bamboo pole
+	[progressBar.pole]
+		#屏幕坐标象限：1 左下；2 右下；3 右上；4 左上（与竹叶说明相同）。
+		#Screen quadrant for pole placement (same meaning as leaf quadrant).
+		#Range: 1 ~ 4
+		progressBarPoleScreenQuadrant = 1
+		#竹竿显示宽度（像素）。
+		#Pole draw width in pixels.
+		#Range: > 1
+		progressBarPoleWidth = 180
+		#竹竿显示高度（像素）。
+		#Pole draw height in pixels.
+		#Range: > 1
+		progressBarPoleHeight = 5
+		#竹竿纹理锚点（EnumPosition）。
+		#Texture anchor for the pole (EnumPosition).
+		#Allowed Values: TOP_LEFT, TOP_RIGHT, TOP_CENTER, LEFT_CENTER, RIGHT_CENTER, BOTTOM_LEFT, BOTTOM_RIGHT, BOTTOM_CENTER, CENTER
+		progressBarPoleBase = "TOP_CENTER"
+		#竹竿在屏幕上的位置。x,y 绝对坐标；x%,y% 相对坐标（象限 4 时 0%,0% 为屏幕左上角）。
+		#Pole position: x,y absolute; x%,y% relative (quadrant 4: 0%,0% = screen top-left).
+		progressBarPolePosition = "50%,29"
+		#绘制竹竿时是否隐藏经验条。
+		#Hide the XP bar while drawing the bamboo pole.
+		hideExperienceBarPole = true
+		#竹竿旋转角度（0–360）。
+		#Pole rotation in degrees (0–360).
+		#Range: 0.0 ~ 360.0
+		progressBarPoleAngle = 0.0
 
-		#Text
-		#文字
-		[client.progress_bar.text]
-			#Whether to hide the experience bar when drawing the text.
-			#绘制文字时是否隐藏经验条。
-			hideExperienceBarText = true
-			#Screen coordinate system quadrant.
-			#1: The origin is in the lower left corner of the screen, ↑→ is the positive direction;
-			#2: The origin is in the lower right corner of the screen, ↑← is the positive direction;
-			#3: The origin is in the upper right corner of the screen, ↓← is the positive direction;
-			#4: The origin is in the upper left corner of the screen, ↓→ is the positive direction.
-			#屏幕坐标系象限。
-			#1：原点在屏幕左下角，↑→为正方向；
-			#2：原点在屏幕右下角，↑←为正方向；
-			#3：原点在屏幕右上角，↓←为正方向；
-			#4：原点在屏幕左上角，↓→为正方向。
-			#Range: 1 ~ 4
-			progressBarTextScreenQuadrant = 1
-			#Anchor point offset from the bamboo pole (same quadrant rules as leaf/pole).
-			#Then horizontal/vertical align place the text box relative to this anchor.
-			#参考点相对竹竿的偏移（象限规则与竹竿一致）；再由水平/垂直对齐决定字框相对参考点的位置。
-			progressBarTextPosition = "50%,8"
-			#Horizontal align to anchor: LEFT, CENTER, RIGHT.
-			#相对参考点的水平对齐。
-			progressBarTextAlignH = "CENTER"
-			#Vertical align to anchor: TOP, CENTER, BOTTOM.
-			#相对参考点的垂直对齐。
-			progressBarTextAlignV = "TOP"
-			#Progress bar text angle.
-			#进度条文字角度。
-			#Range: 0.0 ~ 360.0
-			progressBarTextAngle = 0.0
-			#Progress bar text size.
-			#进度条文字大小。
-			#Range: 1 ~ 256
-			progressBarTextSize = 8
-			#Progress bar text color. The following formats are supported:
-			#Hex: `0xAARRGGBB`, `0xRRGGBB`, `#RRGGBB`, `#AARRGGBB`
-			#Decimal: `R,G,B` or `A,R,G,B`
-			#进度条文字颜色。支持以下格式：
-			#十六进制：`0xAARRGGBB`、`0xRRGGBB`、`#RRGGBB`、`#AARRGGBB`
-			#十进制：`R,G,B`、`A,R,G,B`
-			progressBarTextColor = "0x5DA530"
-
-	#Dustbin
-	#垃圾箱
-	[client.dustbin]
-		#Dustbin UI style: VANILLA / TEXTURED / BANIRA_THEME
-		#垃圾箱界面：VANILLA 原版；TEXTURED 自定义纹理；BANIRA_THEME Banira 主题色无纹理。
-		dustbinUiStyle = "TEXTURED"
+#垃圾箱界面
+#Dustbin screen
+[dustbin]
+	#垃圾箱界面：VANILLA 原版；TEXTURED 自定义纹理；BANIRA_THEME 使用主题色纯色绘制。
+	#Dustbin UI: VANILLA; TEXTURED; BANIRA_THEME.
+	#Allowed Values: VANILLA, TEXTURED, BANIRA_THEME
+	dustbinUiStyle = "TEXTURED"
 
