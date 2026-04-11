@@ -1,10 +1,17 @@
-[简体中文](README.md) | **English** | [日本語](README_ja.md)
+<div align="center">
+
+| [中文](README.md) | [English](README_en.md) | [日本語](README_ja.md) |
+|:---------------:|:-----------------------:|:-------------------:|
+
+<img src="src/main/resources/logo.png"  alt="Aotake Sweep" />
 
 # Aotake Sweep
 
-![](src/main/resources/logo.png)
-
 **A Minecraft Forge, Neoforge and Fabric Timed Cleanup MOD.**
+
+</div>
+
+---
 
 ## Table of Contents
 

@@ -1,10 +1,17 @@
-[简体中文](README.md) | [English](README_en.md) | **日本語**
+<div align="center">
+
+| [中文](README.md) | [English](README_en.md) | [日本語](README_ja.md) |
+|:---------------:|:-----------------------:|:-------------------:|
+
+<img src="src/main/resources/logo.png"  alt="Aotake Sweep" />
 
 # Aotake Sweep (竹葉清)
 
-![](src/main/resources/logo.png)
-
 **Minecraft Forge、NeoForge、Fabric 向け定期掃除 MOD。**
+
+</div>
+
+---
 
 ## 目次
 
