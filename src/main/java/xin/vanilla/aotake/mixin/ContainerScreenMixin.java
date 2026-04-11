@@ -13,6 +13,7 @@ import xin.vanilla.aotake.Identifier;
 import xin.vanilla.aotake.config.ClientConfig;
 import xin.vanilla.aotake.config.DustbinGuiConfig;
 import xin.vanilla.aotake.config.DustbinGuiLayoutCache;
+import xin.vanilla.aotake.enums.EnumDustbinClientUiStyle;
 import xin.vanilla.aotake.screen.DustbinRender;
 import xin.vanilla.banira.client.util.TextureUtils;
 import xin.vanilla.banira.common.data.KeyValue;
@@ -31,7 +32,8 @@ public abstract class ContainerScreenMixin {
             DustbinGuiLayoutCache.invalidate();
             return;
         }
-        if (ClientConfig.get().dustbin().vanillaDustbin()) {
+        EnumDustbinClientUiStyle ui = ClientConfig.get().dustbin().dustbinUiStyle();
+        if (ui == EnumDustbinClientUiStyle.VANILLA || ui == EnumDustbinClientUiStyle.BANIRA_THEME) {
             DustbinGuiLayoutCache.invalidate();
             return;
         }

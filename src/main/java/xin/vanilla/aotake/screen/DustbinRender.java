@@ -7,6 +7,7 @@ import net.minecraft.client.entity.player.ClientPlayerEntity;
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.gui.screen.inventory.ChestScreen;
 import net.minecraft.client.gui.widget.button.Button;
+import net.minecraft.util.ResourceLocation;
 import net.minecraftforge.client.event.GuiScreenEvent;
 import xin.vanilla.aotake.AotakeComponent;
 import xin.vanilla.aotake.AotakeLang;
@@ -15,14 +16,17 @@ import xin.vanilla.aotake.config.ClientConfig;
 import xin.vanilla.aotake.config.DustbinGuiConfig;
 import xin.vanilla.aotake.config.DustbinGuiLayoutCache;
 import xin.vanilla.aotake.enums.EnumCommandType;
+import xin.vanilla.aotake.enums.EnumDustbinClientUiStyle;
 import xin.vanilla.aotake.event.ClientModEventHandler;
 import xin.vanilla.aotake.mixin.ContainerScreenAccessor;
 import xin.vanilla.aotake.network.NetworkInit;
 import xin.vanilla.aotake.network.packet.ClearDustbinToServer;
 import xin.vanilla.aotake.network.packet.OpenDustbinToServer;
 import xin.vanilla.aotake.util.AotakeUtils;
+import xin.vanilla.banira.client.data.BaniraColorConfig;
 import xin.vanilla.banira.client.data.FontDrawArgs;
 import xin.vanilla.banira.client.gui.component.Text;
+import xin.vanilla.banira.client.gui.widget.ButtonWidget;
 import xin.vanilla.banira.client.gui.widget.TooltipWidget;
 import xin.vanilla.banira.client.util.AbstractGuiUtils;
 import xin.vanilla.banira.client.util.ClientThemeManager;
@@ -35,10 +39,11 @@ import xin.vanilla.banira.common.enums.EnumMCColor;
 import xin.vanilla.banira.common.util.PacketUtils;
 import xin.vanilla.banira.common.util.StringUtils;
 
+import javax.annotation.Nullable;
 import java.util.function.Consumer;
 
 /**
- * 垃圾箱 {@link ChestScreen} 的控件与自定义纹理按钮绘制、快捷键处理
+ * 垃圾箱 {@link ChestScreen} 的侧栏控件绘制与快捷键处理
  */
 public final class DustbinRender {
 
@@ -117,7 +122,7 @@ public final class DustbinRender {
         }
 
         if (event instanceof GuiScreenEvent.InitGuiEvent.Post) {
-            if (ClientConfig.get().dustbin().vanillaDustbin()) {
+            if (ClientConfig.get().dustbin().dustbinUiStyle() == EnumDustbinClientUiStyle.VANILLA) {
                 GuiScreenEvent.InitGuiEvent.Post eve = (GuiScreenEvent.InitGuiEvent.Post) event;
                 ClientPlayerEntity player = mc.player;
                 ContainerScreenAccessor accessor = (ContainerScreenAccessor) screen;
@@ -201,7 +206,7 @@ public final class DustbinRender {
                 eve.addWidget(nextButton);
             }
         } else if (event instanceof GuiScreenEvent.DrawScreenEvent.Post) {
-            if (ClientConfig.get().dustbin().vanillaDustbin()) {
+            if (ClientConfig.get().dustbin().dustbinUiStyle() == EnumDustbinClientUiStyle.VANILLA) {
                 boolean canPrev = true;
                 boolean canNext = true;
                 if (dustbinPage > 0 && dustbinTotalPage > 0) {
@@ -215,13 +220,16 @@ public final class DustbinRender {
                     dustbinNextButton.active = canNext;
                 }
             }
-            if (!ClientConfig.get().dustbin().vanillaDustbin()) {
+            EnumDustbinClientUiStyle dustbinUi = ClientConfig.get().dustbin().dustbinUiStyle();
+            if (dustbinUi == EnumDustbinClientUiStyle.TEXTURED || dustbinUi == EnumDustbinClientUiStyle.BANIRA_THEME) {
                 GuiScreenEvent.DrawScreenEvent.Post eve = (GuiScreenEvent.DrawScreenEvent.Post) event;
                 ClientPlayerEntity player = mc.player;
                 int mouseX = eve.getMouseX();
                 int mouseY = eve.getMouseY();
 
-                MatrixStack ms = eve.getMatrixStack();
+                MatrixStack stack = eve.getMatrixStack();
+                BaniraColorConfig baniraTheme = dustbinUi == EnumDustbinClientUiStyle.BANIRA_THEME
+                        ? ClientThemeManager.getEffectiveTheme() : null;
                 int baseW = 16;
                 int baseH = 16;
                 ContainerScreenAccessor accessor = (ContainerScreenAccessor) screen;
@@ -247,18 +255,24 @@ public final class DustbinRender {
                     int y = baseY + (h + 1) * (yOffset++);
                     boolean hover = mouseHelper.isHoverInRect(x, y, w, h);
 
-                    if (mouseHelper.isPressingLeftEx() && hover) {
+                    boolean pressVisual = mouseHelper.isPressingLeftEx() && hover;
+                    if (pressVisual) {
                         x--;
                         y--;
                         w += 2;
                         h += 2;
                     }
 
-                    AbstractGuiUtils.blitBlend(ms, TextureUtils.loadCustomTexture(Identifier.id(), "gui/clear_cache.png"), x, y, 0, 0, 0, w, h, w, h);
+                    dustbinDrawToolbarAppearance(stack, dustbinUi, baniraTheme, x, y, w, h, hover, true, pressVisual,
+                            dustbinUi == EnumDustbinClientUiStyle.TEXTURED
+                                    ? TextureUtils.loadCustomTexture(Identifier.id(), "gui/clear_cache.png") : null,
+                            dustbinUi == EnumDustbinClientUiStyle.BANIRA_THEME ? ButtonWidget.PresetStyle.CLOSE : null,
+                            dustbinUi == EnumDustbinClientUiStyle.BANIRA_THEME
+                                    ? DustbinBaniraToolbarButtonRenderer.IconTint.CLEAR_CACHE_CLOSE_ORANGE : null);
 
                     if (hover) {
-                        TooltipWidget.drawPopupMessage(ms,
-                                FontDrawArgs.ofPopo(new Text(AotakeComponent.get().trans(EnumI18nType.WORD, "clear_cache")).stack(ms))
+                        TooltipWidget.drawPopupMessage(stack,
+                                FontDrawArgs.ofPopo(new Text(AotakeComponent.get().trans(EnumI18nType.WORD, "clear_cache")).stack(stack))
                                         .x(mouseX).y(mouseY),
                                 ClientThemeManager.getEffectiveTheme(), null);
                     }
@@ -275,18 +289,24 @@ public final class DustbinRender {
                         int y = baseY + (h + 1) * (yOffset++);
                         boolean hover = mouseHelper.isHoverInRect(x, y, w, h);
 
-                        if (mouseHelper.isPressingLeftEx() && hover) {
+                        boolean pressVisual = mouseHelper.isPressingLeftEx() && hover;
+                        if (pressVisual) {
                             x--;
                             y--;
                             w += 2;
                             h += 2;
                         }
 
-                        AbstractGuiUtils.blitBlend(ms, TextureUtils.loadCustomTexture(Identifier.id(), "gui/clear_all.png"), x, y, 0, 0, 0, w, h, w, h);
+                        dustbinDrawToolbarAppearance(stack, dustbinUi, baniraTheme, x, y, w, h, hover, true, pressVisual,
+                                dustbinUi == EnumDustbinClientUiStyle.TEXTURED
+                                        ? TextureUtils.loadCustomTexture(Identifier.id(), "gui/clear_all.png") : null,
+                                dustbinUi == EnumDustbinClientUiStyle.BANIRA_THEME ? ButtonWidget.PresetStyle.CLOSE : null,
+                                dustbinUi == EnumDustbinClientUiStyle.BANIRA_THEME
+                                        ? DustbinBaniraToolbarButtonRenderer.IconTint.CLEAR_ALL_CLOSE_RED : null);
 
                         if (hover) {
-                            TooltipWidget.drawPopupMessage(ms,
-                                    FontDrawArgs.ofPopo(new Text(AotakeComponent.get().trans(EnumI18nType.WORD, "clear_all_dustbin")).stack(ms))
+                            TooltipWidget.drawPopupMessage(stack,
+                                    FontDrawArgs.ofPopo(new Text(AotakeComponent.get().trans(EnumI18nType.WORD, "clear_all_dustbin")).stack(stack))
                                             .x(mouseX).y(mouseY),
                                     ClientThemeManager.getEffectiveTheme(), null);
                         }
@@ -303,18 +323,24 @@ public final class DustbinRender {
                         int y = baseY + (h + 1) * (yOffset++);
                         boolean hover = mouseHelper.isHoverInRect(x, y, w, h);
 
-                        if (mouseHelper.isPressingLeftEx() && hover) {
+                        boolean pressVisual = mouseHelper.isPressingLeftEx() && hover;
+                        if (pressVisual) {
                             x--;
                             y--;
                             w += 2;
                             h += 2;
                         }
 
-                        AbstractGuiUtils.blitBlend(ms, TextureUtils.loadCustomTexture(Identifier.id(), "gui/clear_page.png"), x, y, 0, 0, 0, w, h, w, h);
+                        dustbinDrawToolbarAppearance(stack, dustbinUi, baniraTheme, x, y, w, h, hover, true, pressVisual,
+                                dustbinUi == EnumDustbinClientUiStyle.TEXTURED
+                                        ? TextureUtils.loadCustomTexture(Identifier.id(), "gui/clear_page.png") : null,
+                                dustbinUi == EnumDustbinClientUiStyle.BANIRA_THEME ? ButtonWidget.PresetStyle.MINUS : null,
+                                dustbinUi == EnumDustbinClientUiStyle.BANIRA_THEME
+                                        ? DustbinBaniraToolbarButtonRenderer.IconTint.CLEAR_PAGE_MINUS_ACCENT : null);
 
                         if (hover) {
-                            TooltipWidget.drawPopupMessage(ms,
-                                    FontDrawArgs.ofPopo(new Text(AotakeComponent.get().trans(EnumI18nType.WORD, "clear_cur_dustbin")).stack(ms))
+                            TooltipWidget.drawPopupMessage(stack,
+                                    FontDrawArgs.ofPopo(new Text(AotakeComponent.get().trans(EnumI18nType.WORD, "clear_cur_dustbin")).stack(stack))
                                             .x(mouseX).y(mouseY),
                                     ClientThemeManager.getEffectiveTheme(), null);
                         }
@@ -331,18 +357,24 @@ public final class DustbinRender {
                     int y = baseY + (h + 1) * (yOffset++);
                     boolean hover = mouseHelper.isHoverInRect(x, y, w, h);
 
-                    if (mouseHelper.isPressingLeftEx() && hover) {
+                    boolean pressVisual = mouseHelper.isPressingLeftEx() && hover;
+                    if (pressVisual) {
                         x--;
                         y--;
                         w += 2;
                         h += 2;
                     }
 
-                    AbstractGuiUtils.blitBlend(ms, TextureUtils.loadCustomTexture(Identifier.id(), "gui/refresh.png"), x, y, 0, 0, 0, w, h, w, h);
+                    dustbinDrawToolbarAppearance(stack, dustbinUi, baniraTheme, x, y, w, h, hover, true, pressVisual,
+                            dustbinUi == EnumDustbinClientUiStyle.TEXTURED
+                                    ? TextureUtils.loadCustomTexture(Identifier.id(), "gui/refresh.png") : null,
+                            dustbinUi == EnumDustbinClientUiStyle.BANIRA_THEME ? ButtonWidget.PresetStyle.RESET : null,
+                            dustbinUi == EnumDustbinClientUiStyle.BANIRA_THEME
+                                    ? DustbinBaniraToolbarButtonRenderer.IconTint.PRESET_DEFAULT : null);
 
                     if (hover) {
-                        TooltipWidget.drawPopupMessage(ms,
-                                FontDrawArgs.ofPopo(new Text(AotakeComponent.get().trans(EnumI18nType.WORD, "refresh_page")).stack(ms))
+                        TooltipWidget.drawPopupMessage(stack,
+                                FontDrawArgs.ofPopo(new Text(AotakeComponent.get().trans(EnumI18nType.WORD, "refresh_page")).stack(stack))
                                         .x(mouseX).y(mouseY),
                                 ClientThemeManager.getEffectiveTheme(), null);
                     }
@@ -359,20 +391,24 @@ public final class DustbinRender {
                     int y = baseY + (h + 1) * (yOffset++);
                     boolean hover = canPrev && mouseHelper.isHoverInRect(x, y, w, h);
 
-                    if (mouseHelper.isPressingLeftEx() && hover) {
+                    boolean pressVisual = mouseHelper.isPressingLeftEx() && hover;
+                    if (pressVisual) {
                         x--;
                         y--;
                         w += 2;
                         h += 2;
                     }
 
-                    RenderSystem.color4f(1.0F, 1.0F, 1.0F, canPrev ? 1.0F : 0.5F);
-                    AbstractGuiUtils.blitBlend(ms, TextureUtils.loadCustomTexture(Identifier.id(), "gui/up.png"), x, y, 0, 0, 0, w, h, w, h);
-                    RenderSystem.color4f(1.0F, 1.0F, 1.0F, 1.0F);
+                    dustbinDrawToolbarAppearance(stack, dustbinUi, baniraTheme, x, y, w, h, hover, canPrev, pressVisual,
+                            dustbinUi == EnumDustbinClientUiStyle.TEXTURED
+                                    ? TextureUtils.loadCustomTexture(Identifier.id(), "gui/up.png") : null,
+                            dustbinUi == EnumDustbinClientUiStyle.BANIRA_THEME ? ButtonWidget.PresetStyle.ARROW_UP : null,
+                            dustbinUi == EnumDustbinClientUiStyle.BANIRA_THEME
+                                    ? DustbinBaniraToolbarButtonRenderer.IconTint.PRESET_DEFAULT : null);
 
                     if (hover) {
-                        TooltipWidget.drawPopupMessage(ms,
-                                FontDrawArgs.ofPopo(new Text(AotakeComponent.get().trans(EnumI18nType.WORD, "previous_page")).stack(ms))
+                        TooltipWidget.drawPopupMessage(stack,
+                                FontDrawArgs.ofPopo(new Text(AotakeComponent.get().trans(EnumI18nType.WORD, "previous_page")).stack(stack))
                                         .x(mouseX).y(mouseY),
                                 ClientThemeManager.getEffectiveTheme(), null);
                     }
@@ -389,20 +425,24 @@ public final class DustbinRender {
                     int y = baseY + (h + 1) * (yOffset++);
                     boolean hover = canNext && mouseHelper.isHoverInRect(x, y, w, h);
 
-                    if (mouseHelper.isPressingLeftEx() && hover) {
+                    boolean pressVisual = mouseHelper.isPressingLeftEx() && hover;
+                    if (pressVisual) {
                         x--;
                         y--;
                         w += 2;
                         h += 2;
                     }
 
-                    RenderSystem.color4f(1.0F, 1.0F, 1.0F, canNext ? 1.0F : 0.5F);
-                    AbstractGuiUtils.blitBlend(ms, TextureUtils.loadCustomTexture(Identifier.id(), "gui/down.png"), x, y, 0, 0, 0, w, h, w, h);
-                    RenderSystem.color4f(1.0F, 1.0F, 1.0F, 1.0F);
+                    dustbinDrawToolbarAppearance(stack, dustbinUi, baniraTheme, x, y, w, h, hover, canNext, pressVisual,
+                            dustbinUi == EnumDustbinClientUiStyle.TEXTURED
+                                    ? TextureUtils.loadCustomTexture(Identifier.id(), "gui/down.png") : null,
+                            dustbinUi == EnumDustbinClientUiStyle.BANIRA_THEME ? ButtonWidget.PresetStyle.ARROW_DOWN : null,
+                            dustbinUi == EnumDustbinClientUiStyle.BANIRA_THEME
+                                    ? DustbinBaniraToolbarButtonRenderer.IconTint.PRESET_DEFAULT : null);
 
                     if (hover) {
-                        TooltipWidget.drawPopupMessage(ms,
-                                FontDrawArgs.ofPopo(new Text(AotakeComponent.get().trans(EnumI18nType.WORD, "next_page")).stack(ms))
+                        TooltipWidget.drawPopupMessage(stack,
+                                FontDrawArgs.ofPopo(new Text(AotakeComponent.get().trans(EnumI18nType.WORD, "next_page")).stack(stack))
                                         .x(mouseX).y(mouseY),
                                 ClientThemeManager.getEffectiveTheme(), null);
                     }
@@ -435,6 +475,35 @@ public final class DustbinRender {
                 }
             }
         }
+    }
+
+    private static void dustbinDrawToolbarAppearance(MatrixStack stack,
+                                                     EnumDustbinClientUiStyle dustbinUi,
+                                                     BaniraColorConfig baniraTheme,
+                                                     int x, int y, int w, int h,
+                                                     boolean hover,
+                                                     boolean enabled,
+                                                     boolean pressVisual,
+                                                     @Nullable ResourceLocation texture,
+                                                     @Nullable ButtonWidget.PresetStyle baniraPreset,
+                                                     @Nullable DustbinBaniraToolbarButtonRenderer.IconTint baniraTint) {
+        if (dustbinUi == EnumDustbinClientUiStyle.TEXTURED) {
+            if (texture == null) {
+                return;
+            }
+            if (!enabled) {
+                RenderSystem.color4f(1.0F, 1.0F, 1.0F, 0.5F);
+            }
+            AbstractGuiUtils.blitBlend(stack, texture, x, y, 0, 0, 0, w, h, w, h);
+            if (!enabled) {
+                RenderSystem.color4f(1.0F, 1.0F, 1.0F, 1.0F);
+            }
+            return;
+        }
+        if (baniraTheme == null || baniraPreset == null || baniraTint == null) {
+            return;
+        }
+        DustbinBaniraToolbarButtonRenderer.draw(stack, baniraTheme, x, y, w, h, hover, pressVisual, enabled, baniraPreset, baniraTint);
     }
 
     private static Button newButton(int x, int y, int width, int height,

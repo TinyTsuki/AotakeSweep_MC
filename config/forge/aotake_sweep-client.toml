@@ -189,7 +189,7 @@
 	#Dustbin
 	#垃圾箱
 	[client.dustbin]
-		#Whether to use the vanilla UI for dustbin screen.
-		#垃圾箱页面是否使用原版UI。
-		vanillaDustbin = false
+		#Dustbin UI style: VANILLA / TEXTURED / BANIRA_THEME
+		#垃圾箱界面：VANILLA 原版；TEXTURED 自定义纹理；BANIRA_THEME Banira 主题色无纹理。
+		dustbinUiStyle = "TEXTURED"
 

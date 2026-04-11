@@ -1,4 +1,4 @@
-vanillaDustbin = false
+dustbinUiStyle = "TEXTURED"
 
 [progressBarConfig]
 progressBarDisplayNormal = ["LEAF"]

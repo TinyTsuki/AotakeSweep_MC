@@ -42,7 +42,7 @@ public final class DustbinGuiConfig {
             try (InputStreamReader reader = new InputStreamReader(resource.getInputStream(), StandardCharsets.UTF_8)) {
                 JsonObject json = JsonUtils.parseObject(reader);
                 if (json.has("scale_mode")) {
-                    scaleMode = EnumDustbinScaleMode.fromString(json.get("scale_mode").getAsString());
+                    scaleMode = EnumDustbinScaleMode.valueOf((Object) json.get("scale_mode").getAsString());
                 }
                 if (json.has("x_offset")) {
                     xOffset = parseInt(json.get("x_offset"));

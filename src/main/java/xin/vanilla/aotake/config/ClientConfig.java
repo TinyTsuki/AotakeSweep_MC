@@ -7,6 +7,7 @@ import lombok.experimental.Accessors;
 import net.minecraftforge.fml.config.ModConfig;
 import xin.vanilla.aotake.AotakeSweep;
 import xin.vanilla.aotake.config.access.ClientConfigAccess;
+import xin.vanilla.aotake.enums.EnumDustbinClientUiStyle;
 import xin.vanilla.aotake.enums.EnumProgressBarTextAlignH;
 import xin.vanilla.aotake.enums.EnumProgressBarTextAlignV;
 import xin.vanilla.aotake.enums.EnumProgressBarType;
@@ -168,9 +169,9 @@ public class ClientConfig implements ConfigData {
     }
 
     public interface DustbinView {
-        boolean vanillaDustbin();
+        EnumDustbinClientUiStyle dustbinUiStyle();
 
-        DustbinView vanillaDustbin(boolean value);
+        DustbinView dustbinUiStyle(EnumDustbinClientUiStyle value);
     }
 
     @Getter
@@ -303,7 +304,9 @@ public class ClientConfig implements ConfigData {
     @Setter
     @Accessors(chain = true, fluent = true)
     public static class DustbinCategory {
-        @ConfigEntry.Gui.Tooltip(zh_cn = "垃圾箱是否使用原版容器界面", en_us = "Use vanilla container UI for dustbin")
-        private boolean vanillaDustbin = false;
+        @ConfigEntry.Gui.Tooltip(
+                zh_cn = "垃圾箱界面：VANILLA 原版；TEXTURED 自定义纹理；BANIRA_THEME 使用主题色纯色绘制。",
+                en_us = "Dustbin UI: VANILLA; TEXTURED; BANIRA_THEME.")
+        private EnumDustbinClientUiStyle dustbinUiStyle = EnumDustbinClientUiStyle.TEXTURED;
     }
 }

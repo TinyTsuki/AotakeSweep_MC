@@ -28,11 +28,14 @@ public enum EnumDustbinScaleMode implements IEnumDescribable {
 
     private static final EnumDustbinScaleMode[] VALUES = values();
 
-    public static EnumDustbinScaleMode fromString(String name) {
-        if (name == null || name.isEmpty()) return FIT;
-        String upper = name.toUpperCase().trim();
-        for (EnumDustbinScaleMode mode : VALUES) {
-            if (mode.name().equals(upper)) return mode;
+    public static EnumDustbinScaleMode valueOf(Object obj) {
+        if (obj instanceof EnumDustbinScaleMode) return (EnumDustbinScaleMode) obj;
+        if (obj instanceof String) {
+            for (EnumDustbinScaleMode value : values()) {
+                if (value.name().equalsIgnoreCase((String) obj)) {
+                    return value;
+                }
+            }
         }
         return FIT;
     }
