@@ -47,11 +47,12 @@ import xin.vanilla.aotake.enums.EnumSelfCleanMode;
 import xin.vanilla.aotake.event.EventHandlerProxy;
 import xin.vanilla.aotake.network.NetworkInit;
 import xin.vanilla.aotake.network.packet.DustbinPageSyncToClient;
+import xin.vanilla.aotake.notification.AotakeNotificationTypes;
 import xin.vanilla.banira.BaniraCodex;
 import xin.vanilla.banira.common.data.Component;
 import xin.vanilla.banira.common.data.KeyValue;
 import xin.vanilla.banira.common.data.WorldCoordinate;
-import xin.vanilla.banira.common.enums.EnumMCColor;
+import xin.vanilla.banira.common.enums.*;
 import xin.vanilla.banira.common.util.*;
 
 import javax.annotation.Nullable;
@@ -537,7 +538,7 @@ public class AotakeUtils {
                 Component msg = getWarningMessage("error", language, null);
                 PlayerSweepData playerData = PlayerSweepData.getData(p);
                 if (playerData.isShowSweepResult()) {
-                    MessageUtils.sendMessage(p, AotakeComponent.get().empty()
+                    MessageUtils.sendNotification(p, AotakeComponent.get().empty()
                             .append(msg)
                             .append(AotakeComponent.get().literal("[x]")
                                     .color(EnumMCColor.RED.getColor())
@@ -549,9 +550,9 @@ public class AotakeUtils {
                                             , "/" + AotakeUtils.getCommandPrefix() + " config player showSweepResult change")
                                     )
                             )
-                    );
+                    , AotakeNotificationTypes.SWEEP_RESULT_INTERACTIVE);
                 } else {
-                    MessageUtils.sendActionBarMessage(p, msg);
+                    MessageUtils.sendNotification(p, msg, EnumPosition.TOP_CENTER, EnumMoveType.AUTO, 5000L, EnumNotificationStyle.NORMAL, EnumNotificationVanillaFallback.ACTION_BAR, AotakeNotificationTypes.SWEEP_RESULT_COMPACT);
                 }
                 if (playerData.isEnableWarningVoice()) {
                     String voice = getWarningVoice("error");
@@ -750,7 +751,7 @@ public class AotakeUtils {
         int bPage = CommonConfig.get().base().dustbin().dustbinBlockPositions().size();
         int totalPage = getDustbinTotalPage();
         if (totalPage <= 0) {
-            MessageUtils.sendMessage(player, AotakeComponent.get().transAuto("dustbin_page_empty"));
+            MessageUtils.sendNotification(player, AotakeComponent.get().transAuto("dustbin_page_empty"), AotakeNotificationTypes.DUSTBIN);
         } else {
             switch (CommonConfig.get().base().dustbin().dustbinBlockMode()) {
                 case VIRTUAL: {

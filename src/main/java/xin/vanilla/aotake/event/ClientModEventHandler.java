@@ -3,7 +3,8 @@ package xin.vanilla.aotake.event;
 import net.minecraft.client.settings.KeyBinding;
 import org.lwjgl.glfw.GLFW;
 import xin.vanilla.aotake.AotakeSweep;
-import xin.vanilla.banira.client.event.BaniraClientEventHub;
+import xin.vanilla.aotake.notification.AotakeNotificationTypes;
+import xin.vanilla.banira.client.notification.NotificationTypeRegistry;
 import xin.vanilla.banira.client.util.BaniraKeyBindings;
 
 /**
@@ -36,5 +37,8 @@ public final class ClientModEventHandler {
      * 由主模组构造函数经 {@link net.minecraftforge.fml.DistExecutor} 在客户端触发类初始化
      */
     public static void bootstrap() {
+        for (String id : AotakeNotificationTypes.ALL_TYPE_IDS) {
+            NotificationTypeRegistry.register(id);
+        }
     }
 }

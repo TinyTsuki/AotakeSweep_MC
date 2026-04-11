@@ -19,6 +19,7 @@ import xin.vanilla.aotake.config.CommonConfig;
 import xin.vanilla.aotake.data.SweepResult;
 import xin.vanilla.aotake.data.player.PlayerSweepData;
 import xin.vanilla.aotake.enums.EnumCommandType;
+import xin.vanilla.aotake.notification.AotakeNotificationTypes;
 import xin.vanilla.aotake.util.AotakeUtils;
 import xin.vanilla.banira.BaniraCodex;
 import xin.vanilla.banira.common.data.Component;
@@ -81,12 +82,12 @@ public class ClearDropCommand {
             BaniraCodex.serverInstance().key()
                     .getPlayerList()
                     .getPlayers()
-                    .forEach(player -> MessageUtils.sendMessage(player
+                    .forEach(player -> MessageUtils.sendNotification(player
                             , AotakeUtils.getWarningMessage(result.isEmpty() ? "fail" : "success"
                                     , AotakeLang.getPlayerLanguage(player)
                                     , result
                             )
-                    ));
+                            , AotakeNotificationTypes.ADMIN_BROADCAST));
             return 1;
         };
 

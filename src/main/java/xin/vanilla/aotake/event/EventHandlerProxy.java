@@ -38,22 +38,19 @@ import xin.vanilla.aotake.enums.EnumCommandType;
 import xin.vanilla.aotake.enums.EnumSelfCleanMode;
 import xin.vanilla.aotake.network.NetworkInit;
 import xin.vanilla.aotake.network.packet.GhostCameraToClient;
-import xin.vanilla.aotake.network.packet.SweepTimeSyncToClient;
+import xin.vanilla.aotake.network.packet.SweepDataSyncToClient;
+import xin.vanilla.aotake.notification.AotakeNotificationTypes;
 import xin.vanilla.aotake.util.AotakeUtils;
 import xin.vanilla.aotake.util.EntitySweeper;
 import xin.vanilla.banira.BaniraCodex;
 import xin.vanilla.banira.common.data.Component;
 import xin.vanilla.banira.common.data.KeyValue;
 import xin.vanilla.banira.common.data.WorldCoordinate;
-import xin.vanilla.banira.common.enums.EnumI18nType;
-import xin.vanilla.banira.common.enums.EnumMCColor;
+import xin.vanilla.banira.common.enums.*;
 import xin.vanilla.banira.common.util.*;
 import xin.vanilla.banira.internal.config.CustomConfig;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
@@ -72,6 +69,10 @@ public class EventHandlerProxy {
     private static long lastReadConfTime = System.currentTimeMillis();
     private static long lastChunkCheckTime = System.currentTimeMillis();
     private static long lastVoiceTime = System.currentTimeMillis();
+    /**
+     * 与 {@code countdown/1000} 一致；仅在 warnKey 变化时发倒计时通知与 SweepTimeSync，避免同一秒内每 tick 重复发送约 20 次。
+     */
+    private static String lastCountdownWarningDispatchKey = null;
     private static final AtomicBoolean chunkSweepLock = new AtomicBoolean(false);
     private static final Map<String, Long> lastCatchTick = new ConcurrentHashMap<>();
     private static final Map<String, Long> lastUseEntityTick = new ConcurrentHashMap<>();
@@ -96,22 +97,26 @@ public class EventHandlerProxy {
         long countdown = nextSweepTime - now;
         long sweepInterval = CommonConfig.get().base().sweep().sweepInterval();
 
-        // 扫地前提示
+        // 扫地前提示（warnKey 每秒才变一次，但服务端约 20 tick/s；仅在 key 变化时派发，避免连续重复发包/通知）
         String warnKey = String.valueOf(countdown / 1000);
         if (AotakeUtils.hasWarning(warnKey)) {
-            for (ServerPlayerEntity player : BaniraCodex.serverInstance().key()
-                    .getPlayerList()
-                    .getPlayers()
-            ) {
-                // 给已安装mod玩家同步扫地倒计时
-                if (PlayerUtils.isRemoteClientModInstalled(player, AotakeSweep.MODID)) {
-                    PacketUtils.sendPacketToPlayer(NetworkInit.INSTANCE, new SweepTimeSyncToClient(), player);
-                }
-                Component warningMessage = AotakeUtils.getWarningMessage(warnKey, Translator.getServerPlayerLanguage(player), null);
-                if (warningMessage != null) {
-                    MessageUtils.sendActionBarMessage(player, warningMessage);
+            if (!Objects.equals(lastCountdownWarningDispatchKey, warnKey)) {
+                lastCountdownWarningDispatchKey = warnKey;
+                for (ServerPlayerEntity player : BaniraCodex.serverInstance().key()
+                        .getPlayerList()
+                        .getPlayers()
+                ) {
+                    if (PlayerUtils.isRemoteClientModInstalled(player, AotakeSweep.MODID)) {
+                        PacketUtils.sendPacketToPlayer(NetworkInit.INSTANCE, new SweepDataSyncToClient(player), player);
+                    }
+                    Component warningMessage = AotakeUtils.getWarningMessage(warnKey, Translator.getServerPlayerLanguage(player), null);
+                    if (warningMessage != null) {
+                        MessageUtils.sendNotification(player, warningMessage, EnumPosition.TOP_CENTER, EnumMoveType.AUTO, 1200L, EnumNotificationStyle.NORMAL, EnumNotificationVanillaFallback.ACTION_BAR, AotakeNotificationTypes.SWEEP_COUNTDOWN);
+                    }
                 }
             }
+        } else {
+            lastCountdownWarningDispatchKey = null;
         }
         // 扫地前提示音效
         if (AotakeUtils.hasWarningVoice(warnKey) && lastVoiceTime + 1010 < now) {
@@ -133,12 +138,13 @@ public class EventHandlerProxy {
         // 扫地
         if (countdown <= 0 && sweepInterval > 0) {
             nextSweepTime = now + sweepInterval;
+            lastCountdownWarningDispatchKey = null;
             LOGGER.debug("Scheduled sweep will start");
             BaniraScheduler.schedule(server, 1, AotakeUtils::sweep);
             // 给已安装mod玩家同步扫地倒计时
             for (ServerPlayerEntity player : server.getPlayerList().getPlayers()) {
                 if (PlayerUtils.isRemoteClientModInstalled(player, AotakeSweep.MODID)) {
-                    PacketUtils.sendPacketToPlayer(NetworkInit.INSTANCE, new SweepTimeSyncToClient(), player);
+                    PacketUtils.sendPacketToPlayer(NetworkInit.INSTANCE, new SweepDataSyncToClient(player), player);
                 }
             }
         }
@@ -230,7 +236,7 @@ public class EventHandlerProxy {
                             if (player.hasPermissions(1)
                                     && PlayerSweepData.getData(player).isShowSweepResult()
                             ) {
-                                MessageUtils.sendMessage(player, message
+                                MessageUtils.sendNotification(player, message
                                         .hoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT
                                                 , AotakeComponent.get().trans(EnumI18nType.WORD, "chunk_check_msg_hover")
                                                 .toVanilla(language))
@@ -262,9 +268,9 @@ public class EventHandlerProxy {
                                                         , "/" + AotakeUtils.getCommandPrefix() + " config player showSweepResult change")
                                                 )
                                         )
-                                );
+                                , AotakeNotificationTypes.CHUNK_CHECK_INTERACTIVE);
                             } else {
-                                MessageUtils.sendActionBarMessage(player, message);
+                                MessageUtils.sendNotification(player, message, EnumPosition.TOP_CENTER, EnumMoveType.AUTO, 5000L, EnumNotificationStyle.NORMAL, EnumNotificationVanillaFallback.ACTION_BAR, AotakeNotificationTypes.CHUNK_CHECK_COMPACT);
                             }
                         }
                     }
@@ -419,7 +425,7 @@ public class EventHandlerProxy {
                             player.addItem(copy);
                         }
                         stopGhost(target);
-                        MessageUtils.sendActionBarMessage(player, AotakeComponent.get().trans(EnumI18nType.WORD, "entity_released", target.getDisplayName()));
+                        MessageUtils.sendNotification(player, AotakeComponent.get().trans(EnumI18nType.WORD, "entity_released", target.getDisplayName()), EnumPosition.TOP_CENTER, EnumMoveType.AUTO, 2200L, EnumNotificationStyle.NORMAL, EnumNotificationVanillaFallback.ACTION_BAR, AotakeNotificationTypes.ENTITY_TOOL_FEEDBACK);
                         if (event instanceof PlayerInteractEvent.EntityInteractSpecific) {
                             PlayerInteractEvent.EntityInteractSpecific eve = (PlayerInteractEvent.EntityInteractSpecific) event;
                             eve.setCanceled(true);
@@ -460,7 +466,7 @@ public class EventHandlerProxy {
                         if (!copy.isEmpty()) {
                             player.addItem(copy);
                         }
-                        MessageUtils.sendActionBarMessage(player, AotakeComponent.get().trans(EnumI18nType.WORD, "entity_released", entity.getDisplayName()));
+                        MessageUtils.sendNotification(player, AotakeComponent.get().trans(EnumI18nType.WORD, "entity_released", entity.getDisplayName()), EnumPosition.TOP_CENTER, EnumMoveType.AUTO, 2200L, EnumNotificationStyle.NORMAL, EnumNotificationVanillaFallback.ACTION_BAR, AotakeNotificationTypes.ENTITY_TOOL_FEEDBACK);
                         if (event instanceof PlayerInteractEvent.EntityInteractSpecific) {
                             PlayerInteractEvent.EntityInteractSpecific eve = (PlayerInteractEvent.EntityInteractSpecific) event;
                             eve.setCanceled(true);
@@ -586,7 +592,7 @@ public class EventHandlerProxy {
                 }
                 lastCatchTick.put(uuid, tick);
                 suppressUseItemTick.put(uuid, tick);
-                MessageUtils.sendActionBarMessage(player, AotakeComponent.get().trans(EnumI18nType.WORD, "entity_caught"));
+                MessageUtils.sendNotification(player, AotakeComponent.get().trans(EnumI18nType.WORD, "entity_caught"), EnumPosition.TOP_CENTER, EnumMoveType.AUTO, 2200L, EnumNotificationStyle.NORMAL, EnumNotificationVanillaFallback.ACTION_BAR, AotakeNotificationTypes.ENTITY_TOOL_FEEDBACK);
                 event.setCanceled(true);
                 event.setResult(Event.Result.DENY);
                 event.setCancellationResult(ActionResultType.SUCCESS);
@@ -637,7 +643,7 @@ public class EventHandlerProxy {
         if (event.getPlayer() instanceof ServerPlayerEntity) {
             ServerPlayerEntity player = (ServerPlayerEntity) event.getPlayer();
             if (PlayerUtils.isRemoteClientModInstalled(player, AotakeSweep.MODID)) {
-                PacketUtils.sendPacketToPlayer(NetworkInit.INSTANCE, new SweepTimeSyncToClient(), (ServerPlayerEntity) event.getPlayer());
+                PacketUtils.sendPacketToPlayer(NetworkInit.INSTANCE, new SweepDataSyncToClient(player), player);
             }
         }
     }
@@ -653,6 +659,7 @@ public class EventHandlerProxy {
         } else {
             AotakeSweep.getClientServerTime().key(0L).value(0L);
             AotakeSweep.getSweepTime().key(0L).value(0L);
+            AotakeSweep.setClientCachedPlayerSweepPrefs(true, true);
         }
     }
 

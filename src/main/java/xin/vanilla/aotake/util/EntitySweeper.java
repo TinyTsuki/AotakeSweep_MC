@@ -29,11 +29,12 @@ import xin.vanilla.aotake.enums.EnumCommandType;
 import xin.vanilla.aotake.enums.EnumDustbinMode;
 import xin.vanilla.aotake.enums.EnumOverflowMode;
 import xin.vanilla.aotake.enums.EnumSelfCleanMode;
+import xin.vanilla.aotake.notification.AotakeNotificationTypes;
 import xin.vanilla.banira.BaniraCodex;
 import xin.vanilla.banira.common.data.Component;
 import xin.vanilla.banira.common.data.KeyValue;
 import xin.vanilla.banira.common.data.WorldCoordinate;
-import xin.vanilla.banira.common.enums.EnumMCColor;
+import xin.vanilla.banira.common.enums.*;
 import xin.vanilla.banira.common.util.*;
 
 import java.util.*;
@@ -127,7 +128,7 @@ public class EntitySweeper {
                             .hoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT
                                     , AotakeComponent.get().literal(openCom).toVanilla())
                             );
-                    MessageUtils.sendMessage(p, AotakeComponent.get().empty()
+                    MessageUtils.sendNotification(p, AotakeComponent.get().empty()
                             .append(msg)
                             .append(AotakeComponent.get().literal("[x]")
                                     .color(EnumMCColor.RED.getColor())
@@ -139,9 +140,9 @@ public class EntitySweeper {
                                             , "/" + AotakeUtils.getCommandPrefix() + " config player showSweepResult change")
                                     )
                             )
-                    );
+                    , AotakeNotificationTypes.SWEEP_RESULT_INTERACTIVE);
                 } else {
-                    MessageUtils.sendActionBarMessage(p, msg);
+                    MessageUtils.sendNotification(p, msg, EnumPosition.TOP_CENTER, EnumMoveType.AUTO, 5000L, EnumNotificationStyle.NORMAL, EnumNotificationVanillaFallback.ACTION_BAR, AotakeNotificationTypes.SWEEP_RESULT_COMPACT);
                 }
                 if (playerData.isEnableWarningVoice()) {
                     String voice = AotakeUtils.getWarningVoice(result.isEmpty() ? "fail" : "success");

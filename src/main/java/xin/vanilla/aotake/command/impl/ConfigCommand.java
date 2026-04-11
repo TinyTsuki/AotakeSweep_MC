@@ -13,12 +13,13 @@ import xin.vanilla.aotake.AotakeSweep;
 import xin.vanilla.aotake.config.CommonConfig;
 import xin.vanilla.aotake.data.player.PlayerSweepData;
 import xin.vanilla.aotake.enums.EnumCommandType;
+import xin.vanilla.aotake.network.NetworkInit;
+import xin.vanilla.aotake.network.packet.SweepDataSyncToClient;
+import xin.vanilla.aotake.notification.AotakeNotificationTypes;
 import xin.vanilla.aotake.util.AotakeUtils;
 import xin.vanilla.banira.common.config.ForgeConfigAdapter;
 import xin.vanilla.banira.common.enums.EnumI18nType;
-import xin.vanilla.banira.common.util.CommandUtils;
-import xin.vanilla.banira.common.util.MessageUtils;
-import xin.vanilla.banira.common.util.Translator;
+import xin.vanilla.banira.common.util.*;
 
 public class ConfigCommand {
     public static LiteralArgumentBuilder<CommandSource> config() {
@@ -65,13 +66,12 @@ public class ConfigCommand {
                         .then(Commands.argument("disable", BoolArgumentType.bool())
                                 .executes(context -> {
                                     AotakeSweep.setDisable(BoolArgumentType.getBool(context, "disable"));
-                                    MessageUtils.broadcastMessage(context.getSource().getServer()
-                                            , AotakeComponent.get().trans(EnumI18nType.FORMAT
+                                    MessageUtils.broadcastNotification(AotakeComponent.get().trans(EnumI18nType.FORMAT
                                                     , "mod_status"
                                                     , AotakeComponent.get().trans(EnumI18nType.PLAIN, "key.aotake_sweep.categories")
                                                     , AotakeLang.get().enabled(CommonConfig.get().base().common().defaultLanguage(), !AotakeSweep.isDisable())
                                             )
-                                    );
+                                            , AotakeNotificationTypes.ADMIN_BROADCAST);
                                     return 1;
                                 })
                         )
@@ -140,13 +140,16 @@ public class ConfigCommand {
                                             PlayerSweepData data = PlayerSweepData.getData(player);
                                             boolean r = "change".equalsIgnoreCase(show) ? !data.isShowSweepResult() : Boolean.parseBoolean(show);
                                             data.setShowSweepResult(r);
-                                            MessageUtils.sendMessage(player
+                                            MessageUtils.sendNotification(player
                                                     , AotakeComponent.get().trans(EnumI18nType.FORMAT
                                                             , "show_sweep_result"
                                                             , AotakeLang.get().enabled(Translator.getServerPlayerLanguage(player), r)
                                                             , String.format("/%s config player showSweepResult [<status>]", AotakeUtils.getCommandPrefix())
                                                     )
-                                            );
+                                                    , AotakeNotificationTypes.PLAYER_PREFERENCE);
+                                            if (PlayerUtils.isRemoteClientModInstalled(player, AotakeSweep.MODID)) {
+                                                PacketUtils.sendPacketToPlayer(NetworkInit.INSTANCE, new SweepDataSyncToClient(player), player);
+                                            }
                                             return 1;
                                         })
                                 )
@@ -170,13 +173,16 @@ public class ConfigCommand {
                                             PlayerSweepData data = PlayerSweepData.getData(player);
                                             boolean r = "change".equalsIgnoreCase(enable) ? !data.isEnableWarningVoice() : Boolean.parseBoolean(enable);
                                             data.setEnableWarningVoice(r);
-                                            MessageUtils.sendMessage(player
+                                            MessageUtils.sendNotification(player
                                                     , AotakeComponent.get().trans(EnumI18nType.FORMAT
                                                             , "warning_voice"
                                                             , AotakeLang.get().enabled(Translator.getServerPlayerLanguage(player), r)
                                                             , String.format("/%s config player enableWarningVoice [<status>]", AotakeUtils.getCommandPrefix())
                                                     )
-                                            );
+                                                    , AotakeNotificationTypes.PLAYER_PREFERENCE);
+                                            if (PlayerUtils.isRemoteClientModInstalled(player, AotakeSweep.MODID)) {
+                                                PacketUtils.sendPacketToPlayer(NetworkInit.INSTANCE, new SweepDataSyncToClient(player), player);
+                                            }
                                             return 1;
                                         })
                                 )

@@ -2,6 +2,7 @@ package xin.vanilla.aotake;
 
 import lombok.Getter;
 import lombok.Setter;
+import net.minecraft.client.Minecraft;
 import net.minecraft.util.ResourceLocation;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.api.distmarker.OnlyIn;
@@ -19,7 +20,9 @@ import xin.vanilla.aotake.event.ClientModEventHandler;
 import xin.vanilla.aotake.event.EventHandlerProxy;
 import xin.vanilla.aotake.network.NetworkInit;
 import xin.vanilla.aotake.network.packet.OpenDustbinToServer;
-import xin.vanilla.aotake.network.packet.SweepTimeSyncToClient;
+import xin.vanilla.aotake.network.packet.SweepDataSyncToClient;
+import xin.vanilla.aotake.notification.AotakeNotificationTypes;
+import xin.vanilla.aotake.screen.PlayerSweepConfigScreen;
 import xin.vanilla.aotake.util.EntityFilter;
 import xin.vanilla.aotake.util.EntitySweeper;
 import xin.vanilla.banira.BaniraCodex;
@@ -70,6 +73,18 @@ public class AotakeSweep {
     @Getter
     private static final KeyValue<Long, Long> sweepTime = new KeyValue<>(0L, 0L);
 
+    /**
+     * 客户端：由 {@link SweepDataSyncToClient} 写入，供偏好界面读取（默认与 {@link xin.vanilla.aotake.data.player.PlayerSweepData} 一致）。
+     */
+    @Getter
+    private static volatile boolean clientCachedShowSweepResult = true;
+    @Getter
+    private static volatile boolean clientCachedEnableWarningVoice = true;
+
+    public static void setClientCachedPlayerSweepPrefs(boolean showSweepResult, boolean enableWarningVoice) {
+        AotakeSweep.clientCachedShowSweepResult = showSweepResult;
+        AotakeSweep.clientCachedEnableWarningVoice = enableWarningVoice;
+    }
 
     public static final Random RANDOM = new Random();
 
@@ -94,9 +109,10 @@ public class AotakeSweep {
         BaniraEventBus.Commands.onRegister(event -> AotakeCommand.register(event.getDispatcher()));
 
         BaniraEventBus.ModLifecycle.onCommonSetup(event -> {
+            AotakeNotificationTypes.registerAllOnServer();
             ModLoadedPresence.register(MODID, player -> {
-                // 同步清理时间到客户端
-                PacketUtils.sendPacketToPlayer(NetworkInit.INSTANCE, new SweepTimeSyncToClient(), player);
+                // 同步清理时间与玩家偏好到客户端
+                PacketUtils.sendPacketToPlayer(NetworkInit.INSTANCE, new SweepDataSyncToClient(player), player);
                 // 刷新权限信息
                 CommandUtils.refreshPermission(player);
             });
@@ -151,9 +167,11 @@ public class AotakeSweep {
                 QuickActionContextMenuItem editCommonConfig = new QuickActionContextMenuItem(AotakeComponent.get().transClientAuto("edit_common_config"), ctx ->
                         ConfigEditorScreen.open(CommonConfig.get().holder(), ctx.currentScreen())
                 );
-                QuickActionContextMenuItem editPlayerConfig = new QuickActionContextMenuItem(AotakeComponent.get().transClientAuto("edit_player_config"), ctx -> {
-                    // TODO 打开玩家配置界面
-                });
+                QuickActionContextMenuItem editPlayerConfig = new QuickActionContextMenuItem(AotakeComponent.get().transClientAuto("edit_player_config"), ctx ->
+                        Minecraft.getInstance().setScreen(new PlayerSweepConfigScreen(ctx.currentScreen()
+                                , AotakeSweep.isClientCachedShowSweepResult()
+                                , AotakeSweep.isClientCachedEnableWarningVoice()))
+                );
                 QuickActionRegistry.get().registerIcon(MODID + ":quick", texture, label, action, editPlayerConfig, editClientConfig, editCommonConfig);
             });
         }

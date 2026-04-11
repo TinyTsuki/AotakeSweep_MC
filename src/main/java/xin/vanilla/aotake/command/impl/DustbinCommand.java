@@ -17,12 +17,14 @@ import xin.vanilla.aotake.config.CommonConfig;
 import xin.vanilla.aotake.data.player.PlayerSweepData;
 import xin.vanilla.aotake.data.world.WorldTrashData;
 import xin.vanilla.aotake.enums.EnumCommandType;
+import xin.vanilla.aotake.notification.AotakeNotificationTypes;
 import xin.vanilla.aotake.util.AotakeUtils;
 import xin.vanilla.banira.BaniraCodex;
 import xin.vanilla.banira.common.data.Component;
 import xin.vanilla.banira.common.util.CollectionUtils;
 import xin.vanilla.banira.common.util.CommandUtils;
 import xin.vanilla.banira.common.util.MessageUtils;
+import xin.vanilla.banira.common.util.Translator;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -57,7 +59,12 @@ public class DustbinCommand {
 
             int totalPage = AotakeUtils.getDustbinTotalPage();
             if (totalPage <= 0) {
-                MessageUtils.sendMessage(context.getSource(), false, AotakeComponent.get().transAuto("dustbin_page_empty"));
+                Component empty = AotakeComponent.get().transAuto("dustbin_page_empty");
+                if (context.getSource().getEntity() instanceof ServerPlayerEntity) {
+                    MessageUtils.sendNotification(context.getSource().getPlayerOrException(), empty, AotakeNotificationTypes.DUSTBIN);
+                } else {
+                    context.getSource().sendFailure(empty.toVanilla(Translator.getServerLanguage()));
+                }
                 return 0;
             }
 
@@ -112,7 +119,12 @@ public class DustbinCommand {
 
             int totalPage = AotakeUtils.getDustbinTotalPage();
             if (totalPage <= 0) {
-                MessageUtils.sendMessage(context.getSource(), false, AotakeComponent.get().transAuto("dustbin_page_empty"));
+                Component empty = AotakeComponent.get().transAuto("dustbin_page_empty");
+                if (context.getSource().getEntity() instanceof ServerPlayerEntity) {
+                    MessageUtils.sendNotification(context.getSource().getPlayerOrException(), empty, AotakeNotificationTypes.DUSTBIN);
+                } else {
+                    context.getSource().sendFailure(empty.toVanilla(Translator.getServerLanguage()));
+                }
                 return 0;
             }
 
@@ -164,7 +176,7 @@ public class DustbinCommand {
             BaniraCodex.serverInstance().key()
                     .getPlayerList()
                     .getPlayers()
-                    .forEach(p -> MessageUtils.sendMessage(p, message));
+                    .forEach(p -> MessageUtils.sendNotification(p, message, AotakeNotificationTypes.DUSTBIN));
             return 1;
         };
         return Commands.literal(CommonConfig.get().command().commandDustbinClear())
@@ -188,7 +200,7 @@ public class DustbinCommand {
             ServerPlayerEntity player = context.getSource().getPlayerOrException();
             int totalPage = AotakeUtils.getDustbinTotalPage();
             if (totalPage <= 0) {
-                MessageUtils.sendMessage(player, AotakeComponent.get().transAuto("dustbin_page_empty"));
+                MessageUtils.sendNotification(player, AotakeComponent.get().transAuto("dustbin_page_empty"), AotakeNotificationTypes.DUSTBIN);
                 return 0;
             }
 
@@ -240,7 +252,7 @@ public class DustbinCommand {
             BaniraCodex.serverInstance().key()
                     .getPlayerList()
                     .getPlayers()
-                    .forEach(p -> MessageUtils.sendMessage(p, message));
+                    .forEach(p -> MessageUtils.sendNotification(p, message, AotakeNotificationTypes.DUSTBIN));
             return 1;
         };
         return Commands.literal(CommonConfig.get().command().commandDustbinDrop())
