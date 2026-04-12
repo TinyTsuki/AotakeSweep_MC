@@ -111,7 +111,7 @@ public final class ChunkVaultCommand {
             body.append(AotakeComponent.get().literal(id)
                     .clickEvent(new ClickEvent(ClickEvent.Action.SUGGEST_COMMAND, openCmd))
                     .hoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT,
-                            AotakeComponent.get().transAuto("chunk_vault_list_click_hint").toVanilla(lang))));
+                            AotakeComponent.get().transAuto("click_to_suggest").toVanilla(lang))));
         }
         MessageUtils.sendNotification(player, header.append("\n").append(body), AotakeNotificationTypes.CHUNK_VAULT_LIST);
         return 1;
