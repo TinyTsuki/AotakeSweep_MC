@@ -37,7 +37,7 @@ public class DropStatisticsStorage {
      * 获取当日统计文件的存储路径
      */
     public static Path getStatsDir(MinecraftServer server) {
-        Path newDir = BaniraCodex.BANIRA_WORLD_DATA_PATH.get().resolve(AotakeSweep.MODID);
+        Path newDir = BaniraCodex.BANIRA_WORLD_DATA_PATH.get().resolve(AotakeSweep.MODID).resolve("drop_stats");
         if (server != null) {
             migrateLegacyStatsDirAndDelete(server, newDir);
         }
