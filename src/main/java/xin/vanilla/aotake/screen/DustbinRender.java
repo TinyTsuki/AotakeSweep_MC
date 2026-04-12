@@ -20,6 +20,7 @@ import xin.vanilla.aotake.enums.EnumDustbinClientUiStyle;
 import xin.vanilla.aotake.event.ClientModEventHandler;
 import xin.vanilla.aotake.mixin.ContainerScreenAccessor;
 import xin.vanilla.aotake.network.NetworkInit;
+import xin.vanilla.aotake.network.packet.ChunkVaultNavigateToServer;
 import xin.vanilla.aotake.network.packet.ClearDustbinToServer;
 import xin.vanilla.aotake.network.packet.OpenDustbinToServer;
 import xin.vanilla.aotake.util.AotakeUtils;
@@ -56,6 +57,8 @@ public final class DustbinRender {
 
     private static int dustbinPage = -1;
     private static int dustbinTotalPage = -1;
+    private static int chunkVaultPage = -1;
+    private static int chunkVaultTotalPage = -1;
     private static Button dustbinPrevButton;
     private static Button dustbinNextButton;
     private static long lastDustbinScreenKeyTime = 0L;
@@ -77,6 +80,20 @@ public final class DustbinRender {
         dustbinTotalPage = totalPage;
     }
 
+    public static void updateChunkVaultPage(int page, int totalPage) {
+        chunkVaultPage = page;
+        chunkVaultTotalPage = totalPage;
+    }
+
+    public static boolean isChunkVaultTitle(String title) {
+        return StringUtils.isNotNullOrEmpty(title)
+                && AotakeLang.get().getI18nFiles().stream().anyMatch(lang ->
+                title.startsWith(
+                        AotakeComponent.get().transAuto("chunk_vault_title").getString(lang)
+                )
+        );
+    }
+
     /**
      * 在发送会触发垃圾箱界面重建的 {@link OpenDustbinToServer} 之前调用，记录当前光标
      */
@@ -89,6 +106,13 @@ public final class DustbinRender {
         return screen instanceof ChestScreen
                 && mc.player != null
                 && isDustbinTitle(screen.getTitle().getContents());
+    }
+
+    private static boolean isOurSpecialChestScreen(Screen screen, Minecraft mc) {
+        return screen instanceof ChestScreen
+                && mc.player != null
+                && (isDustbinTitle(screen.getTitle().getContents())
+                || isChunkVaultTitle(screen.getTitle().getContents()));
     }
 
     /**
@@ -116,7 +140,7 @@ public final class DustbinRender {
     public static void handleGuiScreen(GuiScreenEvent event) {
         Screen screen = event.getGui();
         Minecraft mc = Minecraft.getInstance();
-        if (!isOurDustbinChestScreen(screen, mc)) {
+        if (!isOurSpecialChestScreen(screen, mc)) {
             abandonPendingCursorRestore();
             return;
         }
@@ -129,13 +153,16 @@ public final class DustbinRender {
                 int baseX = accessor.aotake$getLeftPos();
                 int baseY = accessor.aotake$getTopPos();
                 int yOffset = 0;
+                boolean chunkVault = isChunkVaultTitle(screen.getTitle().getContents());
+                int curPage = chunkVault ? chunkVaultPage : dustbinPage;
+                int totPage = chunkVault ? chunkVaultTotalPage : dustbinTotalPage;
                 boolean canPrev = true;
                 boolean canNext = true;
-                if (dustbinPage > 0 && dustbinTotalPage > 0) {
-                    canPrev = dustbinPage > 1;
-                    canNext = dustbinPage < dustbinTotalPage;
+                if (curPage > 0 && totPage > 0) {
+                    canPrev = curPage > 1;
+                    canNext = curPage < totPage;
                 }
-                if (AotakeUtils.hasCommandPermission(player, EnumCommandType.CACHE_CLEAR)) {
+                if (!chunkVault && AotakeUtils.hasCommandPermission(player, EnumCommandType.CACHE_CLEAR)) {
                     eve.addWidget(
                             newButton(baseX - 21
                                     , baseY + 21 * (yOffset++)
@@ -146,7 +173,7 @@ public final class DustbinRender {
                             )
                     );
                 }
-                if (AotakeUtils.hasCommandPermission(player, EnumCommandType.DUSTBIN_CLEAR)) {
+                if (!chunkVault && AotakeUtils.hasCommandPermission(player, EnumCommandType.DUSTBIN_CLEAR)) {
                     eve.addWidget(
                             newButton(baseX - 21
                                     , baseY + 21 * (yOffset++)
@@ -173,7 +200,11 @@ public final class DustbinRender {
                                 , AotakeComponent.get().literal("↻")
                                 , button -> {
                                     queueCursorRestoreBeforeContainerRefresh();
-                                    PacketUtils.sendPacketToServer(NetworkInit.INSTANCE, new OpenDustbinToServer(0));
+                                    if (chunkVault) {
+                                        PacketUtils.sendPacketToServer(NetworkInit.INSTANCE, new ChunkVaultNavigateToServer(0));
+                                    } else {
+                                        PacketUtils.sendPacketToServer(NetworkInit.INSTANCE, new OpenDustbinToServer(0));
+                                    }
                                 }
                                 , AotakeComponent.get().trans(EnumI18nType.WORD, "refresh_page")
                         )
@@ -184,7 +215,11 @@ public final class DustbinRender {
                         , AotakeComponent.get().literal("▲")
                         , button -> {
                             queueCursorRestoreBeforeContainerRefresh();
-                            PacketUtils.sendPacketToServer(NetworkInit.INSTANCE, new OpenDustbinToServer(-1));
+                            if (chunkVault) {
+                                PacketUtils.sendPacketToServer(NetworkInit.INSTANCE, new ChunkVaultNavigateToServer(-1));
+                            } else {
+                                PacketUtils.sendPacketToServer(NetworkInit.INSTANCE, new OpenDustbinToServer(-1));
+                            }
                         }
                         , AotakeComponent.get().trans(EnumI18nType.WORD, "previous_page")
                 );
@@ -197,7 +232,11 @@ public final class DustbinRender {
                         , AotakeComponent.get().literal("▼")
                         , button -> {
                             queueCursorRestoreBeforeContainerRefresh();
-                            PacketUtils.sendPacketToServer(NetworkInit.INSTANCE, new OpenDustbinToServer(1));
+                            if (chunkVault) {
+                                PacketUtils.sendPacketToServer(NetworkInit.INSTANCE, new ChunkVaultNavigateToServer(1));
+                            } else {
+                                PacketUtils.sendPacketToServer(NetworkInit.INSTANCE, new OpenDustbinToServer(1));
+                            }
                         }
                         , AotakeComponent.get().trans(EnumI18nType.WORD, "next_page")
                 );
@@ -207,11 +246,14 @@ public final class DustbinRender {
             }
         } else if (event instanceof GuiScreenEvent.DrawScreenEvent.Post) {
             if (ClientConfig.get().dustbin().dustbinUiStyle() == EnumDustbinClientUiStyle.VANILLA) {
+                boolean chunkVault = isChunkVaultTitle(screen.getTitle().getContents());
+                int curPage = chunkVault ? chunkVaultPage : dustbinPage;
+                int totPage = chunkVault ? chunkVaultTotalPage : dustbinTotalPage;
                 boolean canPrev = true;
                 boolean canNext = true;
-                if (dustbinPage > 0 && dustbinTotalPage > 0) {
-                    canPrev = dustbinPage > 1;
-                    canNext = dustbinPage < dustbinTotalPage;
+                if (curPage > 0 && totPage > 0) {
+                    canPrev = curPage > 1;
+                    canNext = curPage < totPage;
                 }
                 if (dustbinPrevButton != null) {
                     dustbinPrevButton.active = canPrev;
@@ -240,15 +282,18 @@ public final class DustbinRender {
                         ? DustbinGuiLayoutCache.topPos + DustbinGuiConfig.getButtonYOffset()
                         : accessor.aotake$getTopPos();
 
+                boolean chunkVaultDraw = isChunkVaultTitle(screen.getTitle().getContents());
                 boolean canPrev = true;
                 boolean canNext = true;
-                if (dustbinPage > 0 && dustbinTotalPage > 0) {
-                    canPrev = dustbinPage > 1;
-                    canNext = dustbinPage < dustbinTotalPage;
+                int curDrawPage = chunkVaultDraw ? chunkVaultPage : dustbinPage;
+                int totDrawPage = chunkVaultDraw ? chunkVaultTotalPage : dustbinTotalPage;
+                if (curDrawPage > 0 && totDrawPage > 0) {
+                    canPrev = curDrawPage > 1;
+                    canNext = curDrawPage < totDrawPage;
                 }
 
                 int yOffset = 0;
-                if (AotakeUtils.hasCommandPermission(player, EnumCommandType.CACHE_CLEAR)) {
+                if (!chunkVaultDraw && AotakeUtils.hasCommandPermission(player, EnumCommandType.CACHE_CLEAR)) {
                     int w = baseW;
                     int h = baseH;
                     int x = baseX - w - 1;
@@ -281,7 +326,7 @@ public final class DustbinRender {
                         PacketUtils.sendPacketToServer(NetworkInit.INSTANCE, new ClearDustbinToServer(true, true));
                     }
                 }
-                if (AotakeUtils.hasCommandPermission(player, EnumCommandType.DUSTBIN_CLEAR)) {
+                if (!chunkVaultDraw && AotakeUtils.hasCommandPermission(player, EnumCommandType.DUSTBIN_CLEAR)) {
                     {
                         int w = baseW;
                         int h = baseH;
@@ -381,7 +426,11 @@ public final class DustbinRender {
 
                     if (mouseHelper.isLeftPressedInRect(x, y, w, h)) {
                         queueCursorRestoreBeforeContainerRefresh();
-                        PacketUtils.sendPacketToServer(NetworkInit.INSTANCE, new OpenDustbinToServer(0));
+                        if (chunkVaultDraw) {
+                            PacketUtils.sendPacketToServer(NetworkInit.INSTANCE, new ChunkVaultNavigateToServer(0));
+                        } else {
+                            PacketUtils.sendPacketToServer(NetworkInit.INSTANCE, new OpenDustbinToServer(0));
+                        }
                     }
                 }
                 {
@@ -415,7 +464,11 @@ public final class DustbinRender {
 
                     if (canPrev && mouseHelper.isLeftPressedInRect(x, y, w, h)) {
                         queueCursorRestoreBeforeContainerRefresh();
-                        PacketUtils.sendPacketToServer(NetworkInit.INSTANCE, new OpenDustbinToServer(-1));
+                        if (chunkVaultDraw) {
+                            PacketUtils.sendPacketToServer(NetworkInit.INSTANCE, new ChunkVaultNavigateToServer(-1));
+                        } else {
+                            PacketUtils.sendPacketToServer(NetworkInit.INSTANCE, new OpenDustbinToServer(-1));
+                        }
                     }
                 }
                 {
@@ -449,13 +502,19 @@ public final class DustbinRender {
 
                     if (canNext && mouseHelper.isLeftPressedInRect(x, y, w, h)) {
                         queueCursorRestoreBeforeContainerRefresh();
-                        PacketUtils.sendPacketToServer(NetworkInit.INSTANCE, new OpenDustbinToServer(1));
+                        if (chunkVaultDraw) {
+                            PacketUtils.sendPacketToServer(NetworkInit.INSTANCE, new ChunkVaultNavigateToServer(1));
+                        } else {
+                            PacketUtils.sendPacketToServer(NetworkInit.INSTANCE, new OpenDustbinToServer(1));
+                        }
                     }
                 }
             }
         } else if (event instanceof GuiScreenEvent.KeyboardKeyPressedEvent.Pre) {
             GuiScreenEvent.KeyboardKeyPressedEvent.Pre keyEvent = (GuiScreenEvent.KeyboardKeyPressedEvent.Pre) event;
             if (keyEvent.getModifiers() != 0) return;
+            boolean chunkKeys = screen instanceof ChestScreen
+                    && isChunkVaultTitle(((ChestScreen) screen).getTitle().getContents());
             if (keyEvent.getKeyCode() == ClientModEventHandler.DUSTBIN_KEY.getKey().getValue()) {
                 if (System.currentTimeMillis() - lastDustbinScreenKeyTime > 200) {
                     lastDustbinScreenKeyTime = System.currentTimeMillis();
@@ -465,13 +524,21 @@ public final class DustbinRender {
                 if (System.currentTimeMillis() - lastDustbinScreenKeyTime > 200) {
                     lastDustbinScreenKeyTime = System.currentTimeMillis();
                     queueCursorRestoreBeforeContainerRefresh();
-                    PacketUtils.sendPacketToServer(NetworkInit.INSTANCE, new OpenDustbinToServer(-1));
+                    if (chunkKeys) {
+                        PacketUtils.sendPacketToServer(NetworkInit.INSTANCE, new ChunkVaultNavigateToServer(-1));
+                    } else {
+                        PacketUtils.sendPacketToServer(NetworkInit.INSTANCE, new OpenDustbinToServer(-1));
+                    }
                 }
             } else if (keyEvent.getKeyCode() == ClientModEventHandler.DUSTBIN_NEXT_KEY.getKey().getValue()) {
                 if (System.currentTimeMillis() - lastDustbinScreenKeyTime > 200) {
                     lastDustbinScreenKeyTime = System.currentTimeMillis();
                     queueCursorRestoreBeforeContainerRefresh();
-                    PacketUtils.sendPacketToServer(NetworkInit.INSTANCE, new OpenDustbinToServer(1));
+                    if (chunkKeys) {
+                        PacketUtils.sendPacketToServer(NetworkInit.INSTANCE, new ChunkVaultNavigateToServer(1));
+                    } else {
+                        PacketUtils.sendPacketToServer(NetworkInit.INSTANCE, new OpenDustbinToServer(1));
+                    }
                 }
             }
         }

@@ -3,55 +3,29 @@
 #Base: dustbin, sweep, safe blocks, chunk check, …
 [base]
 
-	#虚拟垃圾箱页数、缓存上限、自清洁、溢出、持久化、方块垃圾箱等。
-	#Virtual dustbin pages, cache cap, self-clean, overflow, persistence, block dustbins.
-	[base.dustbin]
-		#虚拟垃圾箱最大页数。
-		#Maximum pages for the virtual dustbin.
-		#Range: 0 ~ 65536
-		dustbinPageLimit = 2
-		#缓存区（溢出暂存等）最大物品数量。
-		#Max items in the overflow/cache buffer.
-		#Range: > 1
-		cacheLimit = 5000
-		#垃圾箱自清洁间隔（毫秒）。
-		#Self-clean interval for the dustbin (ms).
-		#Range: 0 ~ 604800000
-		selfCleanInterval = 3600000
-		#自清洁模式列表：NONE、SWEEP_CLEAR、SWEEP_DELETE、SCHEDULED_CLEAR、SCHEDULED_DELETE。
-		#Self-clean modes: NONE, SWEEP_CLEAR, SWEEP_DELETE, SCHEDULED_CLEAR, SCHEDULED_DELETE.
-		selfCleanMode = ["NONE"]
-		#垃圾箱满溢时：KEEP / REMOVE / REPLACE。
-		#When dustbin overflows: KEEP, REMOVE, or REPLACE.
-		#Allowed Values: KEEP, REMOVE, REPLACE
-		dustbinOverflowMode = "KEEP"
-		#是否将垃圾箱持久化到磁盘（关闭则关服后丢失）。
-		#Persist dustbin to disk (off = lost after restart).
-		dustbinPersistent = true
-		#掉落统计按日期保留文件数。-1 禁用，0 不限制。
-		#Max drop-stat files by date; -1 off, 0 unlimited.
-		#Range: -1 ~ 3650
-		dropStatsFileLimit = 15
-		#方块垃圾箱坐标列表：dimension, x, y, z, side（可选 DOWN/UP/NORTH/SOUTH/WEST/EAST）。
-		#Block dustbin positions: dimension, x, y, z, optional side face.
-		dustbinBlockPositions = []
-		#垃圾箱模式：VIRTUAL / BLOCK / VIRTUAL_BLOCK / BLOCK_VIRTUAL。
-		#Dustbin mode: VIRTUAL, BLOCK, VIRTUAL_BLOCK, BLOCK_VIRTUAL.
-		#Allowed Values: VIRTUAL, BLOCK, VIRTUAL_BLOCK, BLOCK_VIRTUAL
-		dustbinBlockMode = "VIRTUAL"
-
 	#定时扫地间隔、实体名单、提示音量等（文案/语音已迁移至 warning JSON 的项仅作兼容）。
 	#Sweep interval, entity lists, warning volume (legacy text/voice fields kept for compatibility).
 	[base.sweep]
+		#名单模式：BLACK 仅清列表内；WHITE 清列表外。
+		#List mode: BLACK clean listed only; WHITE clean unlisted.
+		#Allowed Values: WHITE, BLACK
+		entityListMode = "BLACK"
+		#已废弃：请改用 config/aotake_sweep-warning.json。
+		#Deprecated; use config/aotake_sweep-warning.json.
+		sweepWarningVoice = ""
 		#服务器无玩家时是否仍执行自动扫地。
 		#Run auto-sweep when no players are online.
 		sweepWhenNoPlayer = false
 		#已废弃：请改用 config/aotake_sweep-warning.json。
 		#Deprecated; use config/aotake_sweep-warning.json.
 		sweepWarningContent = ""
-		#已废弃：请改用 config/aotake_sweep-warning.json。
-		#Deprecated; use config/aotake_sweep-warning.json.
-		sweepWarningVoice = ""
+		#实体过滤规则/ID 列表（与 entityListMode 配合）。
+		#Entity filter rules / ids (used with entityListMode).
+		entityList = ["minecraft:arrow", "minecraft:spectral_arrow", "minecraft:experience_orb", "tick, clazz, itemClazz, createProcessing = [CreateData.Processing.Time] -> tick >= 5 && clazz :> itemClazz && (createProcessing <= 0 || createProcessing == null)"]
+		#单类型实体全服超过该数量时仍强制清理。
+		#Global per-type cap; still clean when count exceeds this.
+		#Range: > 1
+		entityListLimit = 250
 		#提示音效音量 0–100。
 		#Warning sound volume 0–100.
 		#Range: 0 ~ 100
@@ -60,41 +34,16 @@
 		#Auto-sweep interval (ms).
 		#Range: 0 ~ 604800000
 		sweepInterval = 600000
-		#实体过滤规则/ID 列表（与 entityListMode 配合）。
-		#Entity filter rules / ids (used with entityListMode).
-		entityList = ["minecraft:arrow", "minecraft:spectral_arrow", "minecraft:experience_orb", "tick, clazz, itemClazz, createProcessing = [CreateData.Processing.Time] -> tick >= 5 && clazz :> itemClazz && (createProcessing <= 0 || createProcessing == null)"]
-		#名单模式：BLACK 仅清列表内；WHITE 清列表外。
-		#List mode: BLACK clean listed only; WHITE clean unlisted.
-		#Allowed Values: WHITE, BLACK
-		entityListMode = "BLACK"
-		#单类型实体全服超过该数量时仍强制清理。
-		#Global per-type cap; still clean when count exceeds this.
-		#Range: > 1
-		entityListLimit = 250
 		#红名单：仅清理、不回收的实体规则/ID。
 		#Redlist: entities to clean without recycling.
 		entityRedlist = []
 
-	#安全方块：处于其内/上/下的实体可豁免清理及数量上限。
-	#Safe blocks: entities inside/on/below may be exempt; per-chunk cap override.
-	[base.safe]
-		#实体处于这些方块「内部」时不清理（支持带状态，如 minecraft:lava[level=0]）。
-		#Skip cleanup when entity is inside these blocks (supports block states).
-		safeBlocks = []
-		#实体站在这些方块上时不清理。
-		#Skip cleanup when standing on these blocks.
-		safeBlocksBelow = []
-		#实体位于这些方块下方时不清理。
-		#Skip cleanup when below these blocks.
-		safeBlocksAbove = []
-		#即使在安全方块内，单区块该实体数超过此值仍会清理。
-		#Even in safe blocks, clean if per-chunk count exceeds this.
-		#Range: > 1
-		safeBlocksEntityLimit = 250
-
 	#帮助分页标题格式、每页条数、服务器默认语言代码。
 	#Help header format, lines per page, default language code.
 	[base.common]
+		#服务器默认语言代码（如 en_us、zh_cn）。
+		#Server default language code (e.g. en_us, zh_cn).
+		defaultLanguage = "en_us"
 		#帮助指令分页标题，%d/%d 为当前页/总页。
 		#Help header format string; %d/%d = page/total.
 		helpHeader = "-----==== Aotake Sweep Help (%d/%d) ====-----"
@@ -102,13 +51,109 @@
 		#Help lines per page.
 		#Range: 1 ~ 9999
 		helpInfoNumPerPage = 5
-		#服务器默认语言代码（如 en_us、zh_cn）。
-		#Server default language code (e.g. en_us, zh_cn).
-		defaultLanguage = "en_us"
+
+	#虚拟垃圾箱页数、缓存上限、自清洁、溢出、持久化、方块垃圾箱等。
+	#Virtual dustbin pages, cache cap, self-clean, overflow, persistence, block dustbins.
+	[base.dustbin]
+		#是否将垃圾箱持久化到磁盘（关闭则关服后丢失）。
+		#Persist dustbin to disk (off = lost after restart).
+		dustbinPersistent = true
+		#缓存区（溢出暂存等）最大物品数量。
+		#Max items in the overflow/cache buffer.
+		#Range: > 1
+		cacheLimit = 5000
+		#垃圾箱满溢时：KEEP / REMOVE / REPLACE。
+		#When dustbin overflows: KEEP, REMOVE, or REPLACE.
+		#Allowed Values: KEEP, REMOVE, REPLACE
+		dustbinOverflowMode = "KEEP"
+		#垃圾箱模式：VIRTUAL / BLOCK / VIRTUAL_BLOCK / BLOCK_VIRTUAL。
+		#Dustbin mode: VIRTUAL, BLOCK, VIRTUAL_BLOCK, BLOCK_VIRTUAL.
+		#Allowed Values: VIRTUAL, BLOCK, VIRTUAL_BLOCK, BLOCK_VIRTUAL
+		dustbinBlockMode = "VIRTUAL"
+		#垃圾箱自清洁间隔（毫秒）。
+		#Self-clean interval for the dustbin (ms).
+		#Range: 0 ~ 604800000
+		selfCleanInterval = 3600000
+		#自清洁模式列表：NONE、SWEEP_CLEAR、SWEEP_DELETE、SCHEDULED_CLEAR、SCHEDULED_DELETE。
+		#Self-clean modes: NONE, SWEEP_CLEAR, SWEEP_DELETE, SCHEDULED_CLEAR, SCHEDULED_DELETE.
+		selfCleanMode = ["NONE"]
+		#虚拟垃圾箱最大页数。
+		#Maximum pages for the virtual dustbin.
+		#Range: 0 ~ 65536
+		dustbinPageLimit = 2
+		#方块垃圾箱坐标列表：dimension, x, y, z, side（可选 DOWN/UP/NORTH/SOUTH/WEST/EAST）。
+		#Block dustbin positions: dimension, x, y, z, optional side face.
+		dustbinBlockPositions = []
+		#掉落统计按日期保留文件数。-1 禁用，0 不限制。
+		#Max drop-stat files by date; -1 off, 0 unlimited.
+		#Range: -1 ~ 3650
+		dropStatsFileLimit = 15
+
+	#安全方块：处于其内/上/下的实体可豁免清理及数量上限。
+	#Safe blocks: entities inside/on/below may be exempt; per-chunk cap override.
+	[base.safe]
+		#即使在安全方块内，单区块该实体数超过此值仍会清理。
+		#Even in safe blocks, clean if per-chunk count exceeds this.
+		#Range: > 1
+		safeBlocksEntityLimit = 250
+		#实体位于这些方块下方时不清理。
+		#Skip cleanup when below these blocks.
+		safeBlocksAbove = []
+		#实体处于这些方块「内部」时不清理（支持带状态，如 minecraft:lava[level=0]）。
+		#Skip cleanup when entity is inside these blocks (supports block states).
+		safeBlocks = []
+		#实体站在这些方块上时不清理。
+		#Skip cleanup when standing on these blocks.
+		safeBlocksBelow = []
+
+	#分批次清理：每 tick 上限、批次间隔与批次数量上限。
+	#Batched cleanup: per-tick limit, tick gap between batches, max batches.
+	[base.batch]
+		#批次之间的间隔（tick）。
+		#Ticks between batches.
+		#Range: > 1
+		sweepEntityInterval = 2
+		#每个游戏刻最多移除的实体数，防止卡顿。
+		#Max entities removed per tick to reduce lag.
+		#Range: > 1
+		sweepEntityLimit = 500
+		#单次清理最多跑几批（优先级高于每刻上限）。
+		#Max batches per cleanup run (overrides per-tick cap).
+		#Range: > 1
+		sweepBatchLimit = 10
 
 	#单区块实体过多检测：间隔、阈值、保留比例、模式与名单。
 	#Per-chunk entity overload: interval, threshold, retain ratio, mode, lists.
 	[base.chunk]
+		#区块实体过多时是否向玩家发提示。
+		#Broadcast warning when chunk is overloaded.
+		chunkCheckNotice = true
+		#暂存文件按文件名日期保留的天数；早于「今天减该天数」的 0 点整的文件会被删除。
+		#Keep chunk-vault NBT files for this many days (by date prefix); older files are deleted.
+		#Range: 1 ~ 3650
+		chunkVaultRetentionDays = 2
+		#DEFAULT：总实体超阈值；ADVANCED：单类型超阈值。
+		#DEFAULT: total count; ADVANCED: per-type count.
+		#Allowed Values: DEFAULT, ADVANCED
+		chunkCheckMode = "ADVANCED"
+		#区块检测用的实体规则/名单（与 chunkCheckEntityListMode 配合）。
+		#Entity rules/list for chunk check (with chunkCheckEntityListMode).
+		chunkCheckEntityList = ["customName, hasOwner, createProcessing = [CreateData.Processing.Time] -> customName != null || hasOwner || createProcessing > 0"]
+		#清理后保留实体比例（0–1），具体行为受 chunkCheckMode 影响。
+		#Fraction of entities to retain after cleanup (0–1); interacts with chunkCheckMode.
+		#Range: 0.0 ~ 1.0
+		chunkCheckRetain = 0.5
+		#区块名单模式：BLACK / WHITE。
+		#Chunk list mode: BLACK or WHITE.
+		#Allowed Values: WHITE, BLACK
+		chunkCheckEntityListMode = "WHITE"
+		#暂存文件名时间分组（小时）。1=每小时独立文件；6=每 6 小时一档；24=按自然日（与旧版整日一档一致）。
+		#Chunk vault filename time bucket in hours. 1 = hourly file; 6 = 6-hour windows; 24 = calendar day (legacy whole-day bucket).
+		#Range: 1 ~ 24
+		chunkVaultBucketHours = 1
+		#区块过载清理的回收物品是否写入独立暂存（与全局虚拟垃圾箱分离）。
+		#Store chunk-overload recycled items in a separate vault (not the global virtual dustbin).
+		chunkVaultEnabled = true
 		#区块实体检测间隔（毫秒），0 关闭。
 		#Chunk entity check interval (ms); 0 disables.
 		#Range: 0 ~ 604800000
@@ -117,24 +162,6 @@
 		#Entity count threshold to trigger cleanup.
 		#Range: > 1
 		chunkCheckLimit = 250
-		#清理后保留实体比例（0–1），具体行为受 chunkCheckMode 影响。
-		#Fraction of entities to retain after cleanup (0–1); interacts with chunkCheckMode.
-		#Range: 0.0 ~ 1.0
-		chunkCheckRetain = 0.5
-		#区块实体过多时是否向玩家发提示。
-		#Broadcast warning when chunk is overloaded.
-		chunkCheckNotice = true
-		#DEFAULT：总实体超阈值；ADVANCED：单类型超阈值。
-		#DEFAULT: total count; ADVANCED: per-type count.
-		#Allowed Values: DEFAULT, ADVANCED
-		chunkCheckMode = "ADVANCED"
-		#区块检测用的实体规则/名单（与 chunkCheckEntityListMode 配合）。
-		#Entity rules/list for chunk check (with chunkCheckEntityListMode).
-		chunkCheckEntityList = ["customName, hasOwner, createProcessing = [CreateData.Processing.Time] -> customName != null || hasOwner || createProcessing > 0"]
-		#区块名单模式：BLACK / WHITE。
-		#Chunk list mode: BLACK or WHITE.
-		#Allowed Values: WHITE, BLACK
-		chunkCheckEntityListMode = "WHITE"
 		#仅提示、不执行清理。
 		#Notice only; do not clean.
 		chunkCheckOnlyNotice = false
@@ -142,78 +169,77 @@
 	#实体捕获（原 TOML 节 catch；现路径 base.entityCatch）。
 	#Entity catch (formerly toml section catch; path base.entityCatch).
 	[base.entityCatch]
+		#可用作捕获工具的物品 ID 列表。
+		#Item ids usable as catch tools.
+		catchItem = ["minecraft:snowball", "minecraft:glass_bottle", "minecraft:music_disc_13"]
 		#允许在清理时被「捕获」的实体规则/ID。
 		#Entities that may be caught during cleanup.
 		catchEntity = []
 		#是否允许玩家用物品交互捕获实体。
 		#Allow players to catch entities using items.
 		allowCatchEntity = false
-		#可用作捕获工具的物品 ID 列表。
-		#Item ids usable as catch tools.
-		catchItem = ["minecraft:snowball", "minecraft:glass_bottle", "minecraft:music_disc_13"]
-
-	#分批次清理：每 tick 上限、批次间隔与批次数量上限。
-	#Batched cleanup: per-tick limit, tick gap between batches, max batches.
-	[base.batch]
-		#每个游戏刻最多移除的实体数，防止卡顿。
-		#Max entities removed per tick to reduce lag.
-		#Range: > 1
-		sweepEntityLimit = 500
-		#批次之间的间隔（tick）。
-		#Ticks between batches.
-		#Range: > 1
-		sweepEntityInterval = 2
-		#单次清理最多跑几批（优先级高于每刻上限）。
-		#Max batches per cleanup run (overrides per-tick cap).
-		#Range: > 1
-		sweepBatchLimit = 10
 
 #自定义指令名（勿加 /）
 #Custom command names (no leading /)
 [command]
-	#主指令前缀，仅字母与下划线。
-	#Root command prefix; letters and underscores only.
-	commandPrefix = "aotake"
-	#设置语言子命令名。
-	#Subcommand name for /prefix language.
-	commandLanguage = "language"
-	#虚拟权限子命令名。
-	#Subcommand name for virtual OP.
-	commandVirtualOp = "opv"
-	#打开垃圾箱子命令名。
-	#Subcommand to open dustbin.
-	commandDustbinOpen = "dustbin"
-	#清空垃圾箱子命令名。
-	#Subcommand to clear dustbin.
-	commandDustbinClear = "cleardustbin"
 	#掉落垃圾箱物品子命令名。
 	#Subcommand to drop dustbin items.
 	commandDustbinDrop = "dropdustbin"
-	#清空缓存子命令名。
-	#Subcommand to clear cache.
-	commandCacheClear = "clearcache"
+	#主指令前缀，仅字母与下划线。
+	#Root command prefix; letters and underscores only.
+	commandPrefix = "aotake"
+	#清空垃圾箱子命令名。
+	#Subcommand to clear dustbin.
+	commandDustbinClear = "cleardustbin"
+	#清除掉落物子命令名。
+	#Subcommand to clear ground items.
+	commandClearDrop = "killitem"
+	#设置语言子命令名。
+	#Subcommand name for /prefix language.
+	commandLanguage = "language"
 	#掉落缓存物品子命令名。
 	#Subcommand to drop cache items.
 	commandCacheDrop = "dropcache"
 	#手动触发扫底子命令名。
 	#Subcommand to trigger sweep.
 	commandSweep = "sweep"
-	#清除掉落物子命令名。
-	#Subcommand to clear ground items.
-	commandClearDrop = "killitem"
 	#延迟本次清理子命令名。
 	#Subcommand to delay next sweep.
 	commandDelaySweep = "delay"
+	#区块清理暂存箱（列表/打开/授权/查看）子命令名。
+	#Subcommand for chunk cleanup vault (list/open/grant/view).
+	commandChunkVault = "chunkvault"
+	#虚拟权限子命令名。
+	#Subcommand name for virtual OP.
+	commandVirtualOp = "opv"
+	#打开垃圾箱子命令名。
+	#Subcommand to open dustbin.
+	commandDustbinOpen = "dustbin"
+	#清空缓存子命令名。
+	#Subcommand to clear cache.
+	commandCacheClear = "clearcache"
 
 #无前缀简短指令开关
 #Concise (no-prefix) command toggles
 [concise]
-	#允许无前缀执行「设置语言」。
-	#Allow no-prefix alias for language command.
-	conciseLanguage = false
+	#允许无前缀延迟清理。
+	#Allow no-prefix delay sweep.
+	conciseDelaySweep = false
+	#允许无前缀执行区块暂存箱指令。
+	#Allow no-prefix chunk-vault command.
+	conciseChunkVault = false
+	#允许无前缀清除掉落物。
+	#Allow no-prefix clear drops.
+	conciseClearDrop = true
 	#允许无前缀执行「虚拟权限」。
 	#Allow no-prefix alias for virtual OP.
 	conciseVirtualOp = false
+	#允许无前缀清空缓存。
+	#Allow no-prefix clear cache.
+	conciseCacheClear = false
+	#允许无前缀掉落缓存。
+	#Allow no-prefix drop cache.
+	conciseCacheDrop = false
 	#允许无前缀打开垃圾箱。
 	#Allow no-prefix open dustbin.
 	conciseDustbinOpen = false
@@ -223,37 +249,16 @@
 	#允许无前缀掉落垃圾箱。
 	#Allow no-prefix drop dustbin.
 	conciseDustbinDrop = false
-	#允许无前缀清空缓存。
-	#Allow no-prefix clear cache.
-	conciseCacheClear = false
-	#允许无前缀掉落缓存。
-	#Allow no-prefix drop cache.
-	conciseCacheDrop = false
+	#允许无前缀执行「设置语言」。
+	#Allow no-prefix alias for language command.
+	conciseLanguage = false
 	#允许无前缀触发扫地。
 	#Allow no-prefix sweep.
 	conciseSweep = false
-	#允许无前缀清除掉落物。
-	#Allow no-prefix clear drops.
-	conciseClearDrop = true
-	#允许无前缀延迟清理。
-	#Allow no-prefix delay sweep.
-	conciseDelaySweep = false
 
 #各指令所需权限等级
 #Permission levels for commands
 [permission]
-	#虚拟权限 / 修改配置相关所需权限等级（0–4）。
-	#Permission level for virtual OP / config (0–4).
-	#Range: 0 ~ 4
-	permissionVirtualOp = 4
-	#打开垃圾箱所需权限等级。
-	#Level to open own dustbin.
-	#Range: 0 ~ 4
-	permissionDustbinOpen = 0
-	#为他人打开垃圾箱所需权限等级。
-	#Level to open dustbin for others.
-	#Range: 0 ~ 4
-	permissionDustbinOpenOther = 2
 	#清空垃圾箱所需权限等级。
 	#Level to clear dustbin.
 	#Range: 0 ~ 4
@@ -262,26 +267,42 @@
 	#Level to drop dustbin items.
 	#Range: 0 ~ 4
 	permissionDustbinDrop = 1
-	#清空缓存所需权限等级。
-	#Level to clear cache.
-	#Range: 0 ~ 4
-	permissionCacheClear = 1
 	#掉落缓存所需权限等级。
 	#Level to drop cache.
 	#Range: 0 ~ 4
 	permissionCacheDrop = 1
-	#手动扫地所需权限等级。
-	#Level to run sweep.
+	#清空缓存所需权限等级。
+	#Level to clear cache.
 	#Range: 0 ~ 4
-	permissionSweep = 0
-	#清除掉落物所需权限等级。
-	#Level to clear item entities.
+	permissionCacheClear = 1
+	#为他人打开垃圾箱所需权限等级。
+	#Level to open dustbin for others.
 	#Range: 0 ~ 4
-	permissionClearDrop = 1
+	permissionDustbinOpenOther = 2
+	#虚拟权限 / 修改配置相关所需权限等级（0–4）。
+	#Permission level for virtual OP / config (0–4).
+	#Range: 0 ~ 4
+	permissionVirtualOp = 4
 	#延迟清理所需权限等级。
 	#Level to delay sweep.
 	#Range: 0 ~ 4
 	permissionDelaySweep = 1
+	#清除掉落物所需权限等级。
+	#Level to clear item entities.
+	#Range: 0 ~ 4
+	permissionClearDrop = 1
+	#区块暂存箱 list/open/grant 所需权限等级（view 子命令另受分组授权约束）。
+	#Level for chunk-vault list/open/grant (view also requires per-vault grant unless this level is met).
+	#Range: 0 ~ 4
+	permissionChunkVault = 2
+	#打开垃圾箱所需权限等级。
+	#Level to open own dustbin.
+	#Range: 0 ~ 4
+	permissionDustbinOpen = 0
+	#手动扫地所需权限等级。
+	#Level to run sweep.
+	#Range: 0 ~ 4
+	permissionSweep = 0
 	#用物品捕获玩家所需权限等级。
 	#Level to catch players with items.
 	#Range: 0 ~ 4

@@ -79,6 +79,7 @@ public abstract class ChestScreenMixin {
     private boolean aotake$isDustbinScreen(ChestScreen screen) {
         PlayerEntity player = Minecraft.getInstance().player;
         if (player == null) return false;
-        return DustbinRender.isDustbinTitle(screen.getTitle().getContents());
+        String t = screen.getTitle().getContents();
+        return DustbinRender.isDustbinTitle(t) || DustbinRender.isChunkVaultTitle(t);
     }
 }

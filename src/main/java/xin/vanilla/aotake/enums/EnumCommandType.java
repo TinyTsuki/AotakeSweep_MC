@@ -40,6 +40,8 @@ public enum EnumCommandType implements IVirtualPermissionType, IEnumDescribable 
     CLEAR_DROP_CONCISE(),
     DELAY_SWEEP(DelayCommand::delay),
     DELAY_SWEEP_CONCISE(),
+    CHUNK_VAULT(ChunkVaultCommand::register),
+    CHUNK_VAULT_CONCISE(true),
     CATCH_PLAYER(true),
     CONFIG(ConfigCommand::config, true, true),
     ;

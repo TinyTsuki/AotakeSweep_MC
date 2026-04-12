@@ -24,6 +24,7 @@ import xin.vanilla.aotake.data.ConcurrentShuffleList;
 import xin.vanilla.aotake.data.DropStatistics;
 import xin.vanilla.aotake.data.SweepResult;
 import xin.vanilla.aotake.data.player.PlayerSweepData;
+import xin.vanilla.aotake.data.world.ChunkVaultStorage;
 import xin.vanilla.aotake.data.world.WorldTrashData;
 import xin.vanilla.aotake.enums.EnumCommandType;
 import xin.vanilla.aotake.enums.EnumDustbinMode;
@@ -95,7 +96,7 @@ public class EntitySweeper {
         for (Entity entity : entities) {
             Entity canonical = (entity instanceof PartEntity) ? ((PartEntity<?>) entity).getParent() : entity;
             if (seenEntities.add(canonical)) {
-                result.add(this.processDrop(entity));
+                result.add(this.processDrop(entity, result));
             }
         }
 
@@ -114,6 +115,7 @@ public class EntitySweeper {
 
         if (result.getBatch().get() >= result.getTotalBatch()) {
             LOGGER.debug("AddDrops finished at {}", System.currentTimeMillis());
+            ChunkVaultStorage.flushPending(BaniraCodex.serverInstance().key());
 
             List<ServerPlayerEntity> players = BaniraCodex.serverInstance().key().getPlayerList().getPlayers();
             for (ServerPlayerEntity p : players) {
@@ -129,18 +131,18 @@ public class EntitySweeper {
                                     , AotakeComponent.get().literal(openCom).toVanilla())
                             );
                     MessageUtils.sendNotification(p, AotakeComponent.get().empty()
-                            .append(msg)
-                            .append(AotakeComponent.get().literal("[x]")
-                                    .color(EnumMCColor.RED.getColor())
-                                    .hoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT
-                                            , AotakeComponent.get().transAuto("not_show_button")
-                                            .toVanilla(language))
+                                    .append(msg)
+                                    .append(AotakeComponent.get().literal("[x]")
+                                            .color(EnumMCColor.RED.getColor())
+                                            .hoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT
+                                                    , AotakeComponent.get().transAuto("not_show_button")
+                                                    .toVanilla(language))
+                                            )
+                                            .clickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND
+                                                    , "/" + AotakeUtils.getCommandPrefix() + " config player showSweepResult change")
+                                            )
                                     )
-                                    .clickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND
-                                            , "/" + AotakeUtils.getCommandPrefix() + " config player showSweepResult change")
-                                    )
-                            )
-                    , AotakeNotificationTypes.SWEEP_RESULT_INTERACTIVE);
+                            , AotakeNotificationTypes.SWEEP_RESULT_INTERACTIVE);
                 } else {
                     MessageUtils.sendNotification(p, msg, EnumPosition.TOP_CENTER, EnumMoveType.AUTO, 5000L, EnumNotificationStyle.NORMAL, EnumNotificationVanillaFallback.ACTION_BAR, AotakeNotificationTypes.SWEEP_RESULT_COMPACT);
                 }
@@ -159,7 +161,7 @@ public class EntitySweeper {
         return result;
     }
 
-    private SweepResult processDrop(@NonNull Entity original) {
+    private SweepResult processDrop(@NonNull Entity original, SweepResult batchResult) {
         SweepResult result = new SweepResult();
         WorldCoordinate coordinate = new WorldCoordinate(original);
         Entity entity = (original instanceof PartEntity) ? ((PartEntity<?>) original).getParent() : original;
@@ -218,7 +220,14 @@ public class EntitySweeper {
 
         // 处理回收物品
         if (itemToRecycle != null) {
-            handleItemRecycling(coordinate, itemToRecycle, result);
+            if (batchResult != null && batchResult.isChunkOverloadVault()
+                    && CommonConfig.get().base().chunk().chunkVaultEnabled()) {
+                ChunkVaultStorage.queueRecycledItem(entity, itemToRecycle, batchResult);
+                int recycled = itemToRecycle.getCount();
+                result.setRecycledItemCount(Math.max(result.getRecycledItemCount(), recycled));
+            } else {
+                handleItemRecycling(coordinate, itemToRecycle, result);
+            }
         }
 
         return result;

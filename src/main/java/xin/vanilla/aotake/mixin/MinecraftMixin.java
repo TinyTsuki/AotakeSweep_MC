@@ -26,7 +26,8 @@ public abstract class MinecraftMixin {
         if (!(s instanceof ChestScreen)) {
             return;
         }
-        if (!DustbinRender.isDustbinTitle(s.getTitle().getContents())) {
+        if (!DustbinRender.isDustbinTitle(s.getTitle().getContents())
+                && !DustbinRender.isChunkVaultTitle(s.getTitle().getContents())) {
             return;
         }
         DustbinRender.tryConsumePendingCursorRaw();

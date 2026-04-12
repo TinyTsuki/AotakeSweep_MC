@@ -40,6 +40,7 @@ import xin.vanilla.aotake.config.WarningConfig;
 import xin.vanilla.aotake.data.ChunkKey;
 import xin.vanilla.aotake.data.SweepResult;
 import xin.vanilla.aotake.data.player.PlayerSweepData;
+import xin.vanilla.aotake.data.world.ChunkVaultStorage;
 import xin.vanilla.aotake.data.world.WorldTrashData;
 import xin.vanilla.aotake.enums.EnumCommandType;
 import xin.vanilla.aotake.enums.EnumListType;
@@ -128,6 +129,10 @@ public class AotakeUtils {
                 return prefix + " " + CommonConfig.get().command().commandDelaySweep();
             case DELAY_SWEEP_CONCISE:
                 return isConciseEnabled(type) ? CommonConfig.get().command().commandDelaySweep() : "";
+            case CHUNK_VAULT:
+                return prefix + " " + CommonConfig.get().command().commandChunkVault();
+            case CHUNK_VAULT_CONCISE:
+                return isConciseEnabled(type) ? CommonConfig.get().command().commandChunkVault() : "";
             default:
                 return "";
         }
@@ -171,6 +176,9 @@ public class AotakeUtils {
                 return CommonConfig.get().permission().permissionDelaySweep();
             case CATCH_PLAYER:
                 return CommonConfig.get().permission().permissionCatchPlayer();
+            case CHUNK_VAULT:
+            case CHUNK_VAULT_CONCISE:
+                return CommonConfig.get().permission().permissionChunkVault();
             default:
                 return 0;
         }
@@ -213,6 +221,9 @@ public class AotakeUtils {
             case DELAY_SWEEP:
             case DELAY_SWEEP_CONCISE:
                 return CommonConfig.get().concise().conciseDelaySweep();
+            case CHUNK_VAULT:
+            case CHUNK_VAULT_CONCISE:
+                return CommonConfig.get().concise().conciseChunkVault();
             default:
                 return false;
         }
@@ -495,6 +506,13 @@ public class AotakeUtils {
      * @param filtered 实体列表是否已过滤
      */
     public static void sweep(List<Entity> entities, boolean filtered) {
+        sweep(entities, filtered, false);
+    }
+
+    /**
+     * @param chunkOverloadVault 为 true 时，回收物品写入区块暂存目录（若配置启用），而非全局垃圾箱。
+     */
+    public static void sweep(List<Entity> entities, boolean filtered, boolean chunkOverloadVault) {
         KeyValue<MinecraftServer, Boolean> serverInstance = BaniraCodex.serverInstance();
         // 服务器已关闭
         if (!serverInstance.val()) return;
@@ -528,7 +546,12 @@ public class AotakeUtils {
                     }
                 }
             }
-            AotakeSweep.getEntitySweeper().addDrops(list, new SweepResult());
+            SweepResult sweepResult = new SweepResult().setChunkOverloadVault(chunkOverloadVault);
+            if (chunkOverloadVault && CommonConfig.get().base().chunk().chunkVaultEnabled()) {
+                sweepResult.setChunkVaultTimePrefix(ChunkVaultStorage.vaultTimePrefix());
+                sweepResult.setChunkVaultRunId(ChunkVaultStorage.newVaultRunId());
+            }
+            AotakeSweep.getEntitySweeper().addDrops(list, sweepResult);
             // }
 
         } catch (Exception e) {
@@ -539,18 +562,18 @@ public class AotakeUtils {
                 PlayerSweepData playerData = PlayerSweepData.getData(p);
                 if (playerData.isShowSweepResult()) {
                     MessageUtils.sendNotification(p, AotakeComponent.get().empty()
-                            .append(msg)
-                            .append(AotakeComponent.get().literal("[x]")
-                                    .color(EnumMCColor.RED.getColor())
-                                    .hoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT
-                                            , AotakeComponent.get().transAuto("not_show_button")
-                                            .toVanilla(language))
+                                    .append(msg)
+                                    .append(AotakeComponent.get().literal("[x]")
+                                            .color(EnumMCColor.RED.getColor())
+                                            .hoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT
+                                                    , AotakeComponent.get().transAuto("not_show_button")
+                                                    .toVanilla(language))
+                                            )
+                                            .clickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND
+                                                    , "/" + AotakeUtils.getCommandPrefix() + " config player showSweepResult change")
+                                            )
                                     )
-                                    .clickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND
-                                            , "/" + AotakeUtils.getCommandPrefix() + " config player showSweepResult change")
-                                    )
-                            )
-                    , AotakeNotificationTypes.SWEEP_RESULT_INTERACTIVE);
+                            , AotakeNotificationTypes.SWEEP_RESULT_INTERACTIVE);
                 } else {
                     MessageUtils.sendNotification(p, msg, EnumPosition.TOP_CENTER, EnumMoveType.AUTO, 5000L, EnumNotificationStyle.NORMAL, EnumNotificationVanillaFallback.ACTION_BAR, AotakeNotificationTypes.SWEEP_RESULT_COMPACT);
                 }

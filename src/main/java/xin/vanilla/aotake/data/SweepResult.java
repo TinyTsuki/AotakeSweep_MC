@@ -41,6 +41,21 @@ public class SweepResult {
      */
     private long totalBatch;
 
+    /**
+     * 是否由「区块实体过多」触发的扫地（回收物进区块暂存箱）
+     */
+    private boolean chunkOverloadVault;
+
+    /**
+     * 本轮区块暂存写入的时间桶前缀（{@link xin.vanilla.aotake.data.world.ChunkVaultStorage#vaultTimePrefix()}），在整次扫地分批间复用，避免每个物品重复计算。
+     */
+    private String chunkVaultTimePrefix;
+
+    /**
+     * 本轮区块过载扫地的运行标识，与区块键组合成独立 vault 文件名，便于按次找回物品。
+     */
+    private String chunkVaultRunId;
+
     public SweepResult plusItemCount() {
         this.itemCount++;
         return this;

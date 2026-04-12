@@ -13,11 +13,13 @@ public class NetworkInit {
 
     public static void registerPackets() {
         HANDLER.register(OpenDustbinToServer.class, OpenDustbinToServer::toBytes, OpenDustbinToServer::new, OpenDustbinToServer::handle);
+        HANDLER.register(ChunkVaultNavigateToServer.class, ChunkVaultNavigateToServer::toBytes, ChunkVaultNavigateToServer::new, ChunkVaultNavigateToServer::handle);
         HANDLER.register(ClearDustbinToServer.class, ClearDustbinToServer::toBytes, ClearDustbinToServer::new, ClearDustbinToServer::handle);
         HANDLER.register(PlayerConfigSyncToServer.class, PlayerConfigSyncToServer::toBytes, PlayerConfigSyncToServer::new, PlayerConfigSyncToServer::handle);
 
         HANDLER.register(SweepDataSyncToClient.class, SweepDataSyncToClient::toBytes, SweepDataSyncToClient::new, SweepDataSyncToClient::handle);
         HANDLER.register(GhostCameraToClient.class, GhostCameraToClient::toBytes, GhostCameraToClient::new, GhostCameraToClient::handle);
         HANDLER.register(DustbinPageSyncToClient.class, DustbinPageSyncToClient::toBytes, DustbinPageSyncToClient::new, DustbinPageSyncToClient::handle);
+        HANDLER.register(ChunkVaultPageSyncToClient.class, ChunkVaultPageSyncToClient::toBytes, ChunkVaultPageSyncToClient::new, ChunkVaultPageSyncToClient::handle);
     }
 }

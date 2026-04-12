@@ -6,6 +6,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.util.ResourceLocation;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.api.distmarker.OnlyIn;
+import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.entity.player.PlayerEvent;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.config.ModConfig;
@@ -15,6 +16,7 @@ import org.apache.logging.log4j.Logger;
 import xin.vanilla.aotake.command.AotakeCommand;
 import xin.vanilla.aotake.config.ClientConfig;
 import xin.vanilla.aotake.config.CommonConfig;
+import xin.vanilla.aotake.data.world.ChunkVaultSession;
 import xin.vanilla.aotake.event.ClientGameEventHandler;
 import xin.vanilla.aotake.event.ClientModEventHandler;
 import xin.vanilla.aotake.event.EventHandlerProxy;
@@ -60,6 +62,14 @@ public class AotakeSweep {
      */
     @Getter
     private static final Map<String, Integer> playerDustbinPage = new ConcurrentHashMap<>();
+
+    /**
+     * 区块清理暂存箱：当前打开的 vaultId 与页码（供客户端翻页同步）
+     */
+    @Getter
+    private static final Map<String, Integer> playerChunkVaultPage = new ConcurrentHashMap<>();
+    @Getter
+    private static final Map<String, String> playerChunkVaultId = new ConcurrentHashMap<>();
 
     /**
      * 客户端-服务器时间
@@ -133,6 +143,8 @@ public class AotakeSweep {
 
         // 注册配置文件重载事件
         FMLJavaModLoadingContext.get().getModEventBus().addListener(this::onConfigReload);
+
+        MinecraftForge.EVENT_BUS.addListener(ChunkVaultSession::onContainerClose);
 
         if (EnvironmentUtils.isClient()) {
             ClientProxy.init();

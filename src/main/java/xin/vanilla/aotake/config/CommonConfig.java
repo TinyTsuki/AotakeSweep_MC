@@ -231,6 +231,18 @@ public class CommonConfig implements ConfigData {
         boolean chunkCheckOnlyNotice();
 
         ChunkView chunkCheckOnlyNotice(boolean value);
+
+        boolean chunkVaultEnabled();
+
+        ChunkView chunkVaultEnabled(boolean value);
+
+        int chunkVaultRetentionDays();
+
+        ChunkView chunkVaultRetentionDays(int value);
+
+        int chunkVaultBucketHours();
+
+        ChunkView chunkVaultBucketHours(int value);
     }
 
     public interface EntityCatchView {
@@ -305,6 +317,10 @@ public class CommonConfig implements ConfigData {
         String commandDelaySweep();
 
         CommandView commandDelaySweep(String value);
+
+        String commandChunkVault();
+
+        CommandView commandChunkVault(String value);
     }
 
     public interface ConciseView {
@@ -347,6 +363,10 @@ public class CommonConfig implements ConfigData {
         boolean conciseDelaySweep();
 
         ConciseView conciseDelaySweep(boolean value);
+
+        boolean conciseChunkVault();
+
+        ConciseView conciseChunkVault(boolean value);
     }
 
     public interface PermissionView {
@@ -393,6 +413,10 @@ public class CommonConfig implements ConfigData {
         int permissionCatchPlayer();
 
         PermissionView permissionCatchPlayer(int value);
+
+        int permissionChunkVault();
+
+        PermissionView permissionChunkVault(int value);
     }
 
     @Getter
@@ -571,6 +595,20 @@ public class CommonConfig implements ConfigData {
 
         @ConfigEntry.Gui.Tooltip(zh_cn = "仅提示、不执行清理。", en_us = "Notice only; do not clean.")
         private boolean chunkCheckOnlyNotice = false;
+
+        @ConfigEntry.Gui.Tooltip(zh_cn = "区块过载清理的回收物品是否写入独立暂存（与全局虚拟垃圾箱分离）。",
+                en_us = "Store chunk-overload recycled items in a separate vault (not the global virtual dustbin).")
+        private boolean chunkVaultEnabled = true;
+
+        @ConfigEntry.Gui.Tooltip(zh_cn = "暂存文件按文件名日期保留的天数；早于「今天减该天数」的 0 点整的文件会被删除。",
+                en_us = "Keep chunk-vault NBT files for this many days (by date prefix); older files are deleted.")
+        @ConfigEntry.BoundedDiscrete(min = 1, max = 3650)
+        private int chunkVaultRetentionDays = 2;
+
+        @ConfigEntry.Gui.Tooltip(zh_cn = "暂存文件名时间分组（小时）。1=每小时独立文件；6=每6小时一档；24=按自然日。",
+                en_us = "Chunk vault filename time bucket in hours. 1 = hourly file; 6 = 6-hour windows; 24 = calendar day.")
+        @ConfigEntry.BoundedDiscrete(min = 1, max = 24)
+        private int chunkVaultBucketHours = 1;
     }
 
     @Getter
@@ -640,6 +678,9 @@ public class CommonConfig implements ConfigData {
 
         @ConfigEntry.Gui.Tooltip(zh_cn = "延迟本次清理子命令名。", en_us = "Subcommand to delay next sweep.")
         private String commandDelaySweep = "delay";
+
+        @ConfigEntry.Gui.Tooltip(zh_cn = "区块清理暂存箱（列表/打开/授权/查看）子命令名。", en_us = "Subcommand for chunk cleanup vault (list/open/grant/view).")
+        private String commandChunkVault = "chunkvault";
     }
 
     @Getter
@@ -675,6 +716,9 @@ public class CommonConfig implements ConfigData {
 
         @ConfigEntry.Gui.Tooltip(zh_cn = "允许无前缀延迟清理。", en_us = "Allow no-prefix delay sweep.")
         private boolean conciseDelaySweep = false;
+
+        @ConfigEntry.Gui.Tooltip(zh_cn = "允许无前缀执行区块暂存箱指令。", en_us = "Allow no-prefix chunk-vault command.")
+        private boolean conciseChunkVault = false;
     }
 
     @Getter
@@ -724,6 +768,11 @@ public class CommonConfig implements ConfigData {
         @ConfigEntry.Gui.Tooltip(zh_cn = "用物品捕获玩家所需权限等级。", en_us = "Level to catch players with items.")
         @ConfigEntry.BoundedDiscrete(min = 0, max = 4)
         private int permissionCatchPlayer = 3;
+
+        @ConfigEntry.Gui.Tooltip(zh_cn = "区块暂存箱 list/open/grant 所需权限等级（view 子命令另受分组授权约束）。",
+                en_us = "Level for chunk-vault list/open/grant (view also requires per-vault grant unless this level is met).")
+        @ConfigEntry.BoundedDiscrete(min = 0, max = 4)
+        private int permissionChunkVault = 2;
     }
 
     private static List<String> defaultEntityList() {
@@ -844,7 +893,10 @@ public class CommonConfig implements ConfigData {
                 .chunkCheckMode(EnumChunkCheckMode.ADVANCED)
                 .chunkCheckEntityList(defaultChunkCheckEntityList())
                 .chunkCheckEntityListMode(EnumListType.WHITE)
-                .chunkCheckOnlyNotice(false);
+                .chunkCheckOnlyNotice(false)
+                .chunkVaultEnabled(true)
+                .chunkVaultRetentionDays(2)
+                .chunkVaultBucketHours(1);
         c.base().entityCatch()
                 .catchEntity(new ArrayList<>())
                 .allowCatchEntity(false)
@@ -864,7 +916,8 @@ public class CommonConfig implements ConfigData {
                 .commandCacheDrop("dropcache")
                 .commandSweep("sweep")
                 .commandClearDrop("killitem")
-                .commandDelaySweep("delay");
+                .commandDelaySweep("delay")
+                .commandChunkVault("chunkvault");
         c.concise()
                 .conciseLanguage(false)
                 .conciseVirtualOp(false)
@@ -875,7 +928,8 @@ public class CommonConfig implements ConfigData {
                 .conciseCacheDrop(false)
                 .conciseSweep(false)
                 .conciseClearDrop(true)
-                .conciseDelaySweep(false);
+                .conciseDelaySweep(false)
+                .conciseChunkVault(false);
         c.permission()
                 .permissionVirtualOp(4)
                 .permissionDustbinOpen(0)
@@ -887,7 +941,8 @@ public class CommonConfig implements ConfigData {
                 .permissionSweep(0)
                 .permissionClearDrop(1)
                 .permissionDelaySweep(1)
-                .permissionCatchPlayer(3);
+                .permissionCatchPlayer(3)
+                .permissionChunkVault(2);
     }
 
     private static List<String> defaultEntityListReset() {
