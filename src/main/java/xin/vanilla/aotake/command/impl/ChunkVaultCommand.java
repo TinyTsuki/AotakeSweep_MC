@@ -28,6 +28,7 @@ import xin.vanilla.banira.common.util.*;
 
 import java.util.Collection;
 import java.util.List;
+import java.util.stream.Collectors;
 
 public final class ChunkVaultCommand {
 
@@ -90,7 +91,7 @@ public final class ChunkVaultCommand {
         ServerPlayerEntity player = context.getSource().getPlayerOrException();
         List<String> ids = ChunkVaultStorage.listVaultIds(player.getServer());
         if (CollectionUtils.isNullOrEmpty(ids)) {
-            MessageUtils.sendNotification(player, AotakeComponent.get().transAuto("chunk_vault_list_empty"), AotakeNotificationTypes.DUSTBIN);
+            MessageUtils.sendNotification(player, AotakeComponent.get().transAuto("chunk_vault_list_empty"), AotakeNotificationTypes.CHUNK_VAULT_LIST);
             return 1;
         }
         int perPage = CommonConfig.get().base().common().helpInfoNumPerPage();
@@ -112,7 +113,7 @@ public final class ChunkVaultCommand {
                     .hoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT,
                             AotakeComponent.get().transAuto("chunk_vault_list_click_hint").toVanilla(lang))));
         }
-        MessageUtils.sendNotification(player, header.append("\n").append(body), AotakeNotificationTypes.DUSTBIN);
+        MessageUtils.sendNotification(player, header.append("\n").append(body), AotakeNotificationTypes.CHUNK_VAULT_LIST);
         return 1;
     }
 
@@ -157,7 +158,11 @@ public final class ChunkVaultCommand {
             ChunkVaultGrants.grant(admin.getServer(), vaultId, target);
             MessageUtils.sendNotification(target, AotakeComponent.get().transAuto("chunk_vault_granted", vaultId), AotakeNotificationTypes.DUSTBIN);
         }
-        MessageUtils.sendNotification(admin, AotakeComponent.get().transAuto("chunk_vault_grant_ok", vaultId, String.valueOf(targets.size())), AotakeNotificationTypes.DUSTBIN);
+        String playerNames = targets.stream()
+                .map(p -> p.getDisplayName().getString())
+                .collect(Collectors.joining("§7, §f"));
+        MessageUtils.sendNotification(admin, AotakeComponent.get().transAuto("chunk_vault_grant_ok",
+                vaultId, playerNames, String.valueOf(targets.size())), AotakeNotificationTypes.DUSTBIN);
         return 1;
     }
 }

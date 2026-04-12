@@ -86,7 +86,7 @@
   "format.aotake_sweep.sweep_interval": "Server sweep interval is set to: %s milliseconds.",
   "format.aotake_sweep.sweep_when_no_player": "Sweep when no player is online is set to: %s.",
   "format.aotake_sweep.warning_voice": "Play warning voice is set to: %s, \nuse the command '%s' to modify the status.",
-  "format.aotake_sweep.chunk_vault_grant_ok": "§aGranted view permission on §f%s §ato §f%s §aplayer(s).",
+  "format.aotake_sweep.chunk_vault_grant_ok": "§aGranted view access to chunk overload stash §f%s§a § players: §f%s§a §7(%s player(s) total)§a.",
   "format.aotake_sweep.chunk_vault_granted": "§aGranted view access to §f%s§a.",
   "format.aotake_sweep.chunk_vault_list_header": "§eChunk overload stash §7page %s/%s §8 - §f%s §eentries",
   "format.aotake_sweep.chunk_vault_list_click_hint": "Click to fill in the open command",

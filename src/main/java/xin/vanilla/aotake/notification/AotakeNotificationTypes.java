@@ -49,6 +49,11 @@ public final class AotakeNotificationTypes {
     public static final String DUSTBIN = P + "dustbin";
 
     /**
+     * 区块超载暂存：{@code list} 子命令输出（与垃圾箱等其它通知分流，便于客户端单独配置）
+     */
+    public static final String CHUNK_VAULT_LIST = P + "chunk_vault_list";
+
+    /**
      * 管理类广播：模组开关、缓存清理、延后清理、掉落物清理等
      */
     public static final String ADMIN_BROADCAST = P + "admin_broadcast";
@@ -66,6 +71,7 @@ public final class AotakeNotificationTypes {
             CHUNK_CHECK_COMPACT,
             ENTITY_TOOL_FEEDBACK,
             DUSTBIN,
+            CHUNK_VAULT_LIST,
             ADMIN_BROADCAST,
             PLAYER_PREFERENCE,
     };
@@ -79,6 +85,7 @@ public final class AotakeNotificationTypes {
         ServerNotificationTypeRegistry.register(CHUNK_CHECK_COMPACT, EnumPosition.TOP_CENTER, EnumMoveType.AUTO);
         ServerNotificationTypeRegistry.register(ENTITY_TOOL_FEEDBACK, EnumPosition.TOP_CENTER, EnumMoveType.AUTO);
         ServerNotificationTypeRegistry.register(DUSTBIN, EnumPosition.TOP_CENTER, EnumMoveType.AUTO);
+        ServerNotificationTypeRegistry.register(CHUNK_VAULT_LIST, EnumPosition.TOP_CENTER, EnumMoveType.AUTO);
         ServerNotificationTypeRegistry.register(ADMIN_BROADCAST, EnumPosition.TOP_CENTER, EnumMoveType.AUTO);
         ServerNotificationTypeRegistry.register(PLAYER_PREFERENCE, EnumPosition.TOP_CENTER, EnumMoveType.AUTO);
     }
