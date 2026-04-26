@@ -321,18 +321,6 @@ public class AotakeUtils {
         }
     }
 
-    public static List<Entity> getAllEntities() {
-        List<Entity> entities = new ArrayList<>();
-        KeyValue<MinecraftServer, Boolean> serverInstance = BaniraCodex.serverInstance();
-        if (serverInstance.val()) {
-            serverInstance.key().getAllLevels()
-                    .forEach(level -> entities.addAll(level.getEntities()
-                            .collect(Collectors.toList()))
-                    );
-        }
-        return entities;
-    }
-
     public static boolean isJunkEntity(Entity entity, boolean chuck) {
         boolean result = false;
         if (entity != null && !(entity instanceof PlayerEntity)) {
@@ -400,7 +388,7 @@ public class AotakeUtils {
     public static List<Entity> getAllEntitiesByFilter(@Nullable List<Entity> entities, boolean chuck) {
         LOGGER.debug("Entity filter started at {}", System.currentTimeMillis());
         if (CollectionUtils.isNullOrEmpty(entities)) {
-            entities = getAllEntities();
+            entities = EntityUtils.getAllEntities();
         }
         initSafeBlocks();
 
@@ -493,7 +481,7 @@ public class AotakeUtils {
 
     public static void sweep() {
         LOGGER.debug("Sweep started at {}", System.currentTimeMillis());
-        List<Entity> entities = getAllEntities();
+        List<Entity> entities = EntityUtils.getAllEntities();
         AotakeUtils.sweep(entities, false);
         LOGGER.debug("Sweep finished at {}", System.currentTimeMillis());
     }

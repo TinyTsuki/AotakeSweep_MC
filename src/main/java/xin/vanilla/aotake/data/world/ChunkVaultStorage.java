@@ -2,7 +2,6 @@ package xin.vanilla.aotake.data.world;
 
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.CompoundNBT;
-import net.minecraft.nbt.CompressedStreamTools;
 import net.minecraft.nbt.ListNBT;
 import net.minecraft.server.MinecraftServer;
 import org.apache.logging.log4j.LogManager;
@@ -12,6 +11,7 @@ import xin.vanilla.aotake.config.CommonConfig;
 import xin.vanilla.aotake.data.ChunkKey;
 import xin.vanilla.aotake.data.SweepResult;
 import xin.vanilla.banira.BaniraCodex;
+import xin.vanilla.banira.common.util.NBTUtils;
 
 import javax.annotation.Nullable;
 import java.io.IOException;
@@ -151,7 +151,7 @@ public final class ChunkVaultStorage {
             try {
                 Files.createDirectories(dir);
                 CompoundNBT root = Files.exists(file)
-                        ? CompressedStreamTools.read(file.toFile())
+                        ? NBTUtils.readCompressed(file.toFile())
                         : new CompoundNBT();
                 root.putString("VaultId", vaultId);
                 root.putLong("UpdatedAt", System.currentTimeMillis());
@@ -167,7 +167,7 @@ public final class ChunkVaultStorage {
                     list.add(s.save(new CompoundNBT()));
                 }
                 root.put("Items", list);
-                CompressedStreamTools.write(root, file.toFile());
+                NBTUtils.writeCompressed(root, file.toFile());
             } catch (Exception e) {
                 LOGGER.warn("Failed to write chunk vault {}: {}", vaultId, e.getMessage());
             }
@@ -185,7 +185,7 @@ public final class ChunkVaultStorage {
         }
         synchronized (lockFor(vaultId)) {
             try {
-                CompoundNBT root = CompressedStreamTools.read(file.toFile());
+                CompoundNBT root = NBTUtils.readCompressed(file.toFile());
                 return readItemsFromRoot(root);
             } catch (Exception e) {
                 LOGGER.warn("Failed to read chunk vault {}: {}", vaultId, e.getMessage());
@@ -217,7 +217,7 @@ public final class ChunkVaultStorage {
             try {
                 Files.createDirectories(dir);
                 CompoundNBT root = Files.exists(file)
-                        ? CompressedStreamTools.read(file.toFile())
+                        ? NBTUtils.readCompressed(file.toFile())
                         : new CompoundNBT();
                 root.putString("VaultId", vaultId);
                 root.putLong("UpdatedAt", System.currentTimeMillis());
@@ -233,7 +233,7 @@ public final class ChunkVaultStorage {
                 if (list.isEmpty()) {
                     Files.deleteIfExists(file);
                 } else {
-                    CompressedStreamTools.write(root, file.toFile());
+                    NBTUtils.writeCompressed(root, file.toFile());
                 }
             } catch (Exception e) {
                 LOGGER.warn("Failed to rewrite chunk vault {}: {}", vaultId, e.getMessage());

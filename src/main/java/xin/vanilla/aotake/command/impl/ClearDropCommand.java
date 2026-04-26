@@ -24,6 +24,7 @@ import xin.vanilla.aotake.util.AotakeUtils;
 import xin.vanilla.banira.BaniraCodex;
 import xin.vanilla.banira.common.data.Component;
 import xin.vanilla.banira.common.util.CommandUtils;
+import xin.vanilla.banira.common.util.EntityUtils;
 import xin.vanilla.banira.common.util.MessageUtils;
 import xin.vanilla.banira.common.util.NumberUtils;
 
@@ -55,11 +56,11 @@ public class ClearDropCommand {
                 ServerPlayerEntity player = context.getSource().getPlayerOrException();
                 entities = new ArrayList<>(player.level.getEntitiesOfClass(Entity.class, player.getBoundingBox().inflate(range)));
             } else if (dimension != null) {
-                entities = AotakeUtils.getAllEntities().stream()
+                entities = EntityUtils.getAllEntities().stream()
                         .filter(entity -> entity.level == dimension)
                         .collect(Collectors.toList());
             } else {
-                entities = AotakeUtils.getAllEntities();
+                entities = EntityUtils.getAllEntities();
             }
             entities = entities.stream()
                     .filter(Objects::nonNull)

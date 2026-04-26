@@ -19,6 +19,7 @@ import xin.vanilla.aotake.util.AotakeUtils;
 import xin.vanilla.banira.common.data.Component;
 import xin.vanilla.banira.common.util.BaniraScheduler;
 import xin.vanilla.banira.common.util.CommandUtils;
+import xin.vanilla.banira.common.util.EntityUtils;
 import xin.vanilla.banira.common.util.NumberUtils;
 
 import java.util.ArrayList;
@@ -44,11 +45,11 @@ public class SweepCommand {
                 ServerPlayerEntity player = context.getSource().getPlayerOrException();
                 entities = new ArrayList<>(player.level.getEntitiesOfClass(Entity.class, player.getBoundingBox().inflate(range)));
             } else if (dimension != null) {
-                entities = AotakeUtils.getAllEntities().stream()
+                entities = EntityUtils.getAllEntities().stream()
                         .filter(entity -> entity.level == dimension)
                         .collect(Collectors.toList());
             } else {
-                entities = AotakeUtils.getAllEntities();
+                entities = EntityUtils.getAllEntities();
             }
 
             BaniraScheduler.schedule(context.getSource().getServer(), 1, () -> AotakeUtils.sweep(entities, false));
