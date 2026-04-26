@@ -24,7 +24,7 @@ import xin.vanilla.aotake.network.NetworkInit;
 import xin.vanilla.aotake.network.packet.OpenDustbinToServer;
 import xin.vanilla.aotake.network.packet.SweepDataSyncToClient;
 import xin.vanilla.aotake.notification.AotakeNotificationTypes;
-import xin.vanilla.aotake.screen.PlayerSweepConfigScreen;
+import xin.vanilla.aotake.screen.PlayerConfigScreen;
 import xin.vanilla.aotake.util.EntityFilter;
 import xin.vanilla.aotake.util.EntitySweeper;
 import xin.vanilla.banira.BaniraCodex;
@@ -180,7 +180,7 @@ public class AotakeSweep {
                         ConfigEditorScreen.open(CommonConfig.get().holder(), ctx.currentScreen())
                 );
                 QuickActionContextMenuItem editPlayerConfig = new QuickActionContextMenuItem(AotakeComponent.get().transClientAuto("edit_player_config"), ctx ->
-                        Minecraft.getInstance().setScreen(new PlayerSweepConfigScreen(ctx.currentScreen()
+                        Minecraft.getInstance().setScreen(new PlayerConfigScreen(ctx.currentScreen()
                                 , AotakeSweep.isClientCachedShowSweepResult()
                                 , AotakeSweep.isClientCachedEnableWarningVoice()))
                 );
