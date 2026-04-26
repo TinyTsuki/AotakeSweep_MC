@@ -107,14 +107,14 @@ public final class DustbinRender {
     private static boolean isOurDustbinChestScreen(Screen screen, Minecraft mc) {
         return screen instanceof ContainerScreen
                 && mc.player != null
-                && isDustbinTitle(screen.getTitle().getContents());
+                && isDustbinTitle(screen.getTitle().getString());
     }
 
     private static boolean isOurSpecialChestScreen(Screen screen, Minecraft mc) {
         return screen instanceof ContainerScreen
                 && mc.player != null
-                && (isDustbinTitle(screen.getTitle().getContents())
-                || isChunkVaultTitle(screen.getTitle().getContents()));
+                && (isDustbinTitle(screen.getTitle().getString())
+                || isChunkVaultTitle(screen.getTitle().getString()));
     }
 
     /**
@@ -154,7 +154,7 @@ public final class DustbinRender {
                 int baseX = accessor.aotake$getLeftPos();
                 int baseY = accessor.aotake$getTopPos();
                 int yOffset = 0;
-                boolean chunkVault = isChunkVaultTitle(screen.getTitle().getContents());
+                boolean chunkVault = isChunkVaultTitle(screen.getTitle().getString());
                 int curPage = chunkVault ? chunkVaultPage : dustbinPage;
                 int totPage = chunkVault ? chunkVaultTotalPage : dustbinTotalPage;
                 boolean canPrev = true;
@@ -247,7 +247,7 @@ public final class DustbinRender {
             }
         } else if (event instanceof GuiScreenEvent.DrawScreenEvent.Post) {
             if (ClientConfig.get().dustbin().dustbinUiStyle() == EnumDustbinClientUiStyle.VANILLA) {
-                boolean chunkVault = isChunkVaultTitle(screen.getTitle().getContents());
+                boolean chunkVault = isChunkVaultTitle(screen.getTitle().getString());
                 int curPage = chunkVault ? chunkVaultPage : dustbinPage;
                 int totPage = chunkVault ? chunkVaultTotalPage : dustbinTotalPage;
                 boolean canPrev = true;
@@ -284,7 +284,7 @@ public final class DustbinRender {
                         ? DustbinGuiLayoutCache.topPos + DustbinGuiConfig.getButtonYOffset()
                         : accessor.aotake$getTopPos();
 
-                boolean chunkVaultDraw = isChunkVaultTitle(screen.getTitle().getContents());
+                boolean chunkVaultDraw = isChunkVaultTitle(screen.getTitle().getString());
                 boolean canPrev = true;
                 boolean canNext = true;
                 int curDrawPage = chunkVaultDraw ? chunkVaultPage : dustbinPage;
@@ -516,7 +516,7 @@ public final class DustbinRender {
             GuiScreenEvent.KeyboardKeyPressedEvent.Pre keyEvent = (GuiScreenEvent.KeyboardKeyPressedEvent.Pre) event;
             if (keyEvent.getModifiers() != 0) return;
             boolean chunkKeys = screen instanceof ContainerScreen
-                    && isChunkVaultTitle(screen.getTitle().getContents());
+                    && isChunkVaultTitle(screen.getTitle().getString());
             if (keyEvent.getKeyCode() == ClientModEventHandler.DUSTBIN_KEY.getKey().getValue()) {
                 if (System.currentTimeMillis() - lastDustbinScreenKeyTime > 200) {
                     lastDustbinScreenKeyTime = System.currentTimeMillis();
