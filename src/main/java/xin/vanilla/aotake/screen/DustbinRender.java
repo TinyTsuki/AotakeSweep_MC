@@ -19,7 +19,6 @@ import xin.vanilla.aotake.enums.EnumCommandType;
 import xin.vanilla.aotake.enums.EnumDustbinClientUiStyle;
 import xin.vanilla.aotake.event.ClientModEventHandler;
 import xin.vanilla.aotake.mixin.ContainerScreenAccessor;
-import xin.vanilla.aotake.network.NetworkInit;
 import xin.vanilla.aotake.network.packet.ChunkVaultNavigateToServer;
 import xin.vanilla.aotake.network.packet.ClearDustbinToServer;
 import xin.vanilla.aotake.network.packet.OpenDustbinToServer;
@@ -168,7 +167,7 @@ public final class DustbinRender {
                                     , baseY + 21 * (yOffset++)
                                     , 20, 20
                                     , AotakeComponent.get().literal("✕").color(EnumMCColor.RED.getColor())
-                                    , button -> PacketUtils.sendPacketToServer(NetworkInit.INSTANCE, new ClearDustbinToServer(true, true))
+                                    , button -> PacketUtils.sendPacketToServer(new ClearDustbinToServer(true, true))
                                     , AotakeComponent.get().trans(EnumI18nType.WORD, "clear_cache")
                             )
                     );
@@ -179,7 +178,7 @@ public final class DustbinRender {
                                     , baseY + 21 * (yOffset++)
                                     , 20, 20
                                     , AotakeComponent.get().literal("✕").color(EnumMCColor.RED.getColor())
-                                    , button -> PacketUtils.sendPacketToServer(NetworkInit.INSTANCE, new ClearDustbinToServer(true, false))
+                                    , button -> PacketUtils.sendPacketToServer(new ClearDustbinToServer(true, false))
                                     , AotakeComponent.get().trans(EnumI18nType.WORD, "clear_all_dustbin")
                             )
                     );
@@ -188,7 +187,7 @@ public final class DustbinRender {
                                     , baseY + 21 * (yOffset++)
                                     , 20, 20
                                     , AotakeComponent.get().literal("✕").color(EnumMCColor.YELLOW.getColor())
-                                    , button -> PacketUtils.sendPacketToServer(NetworkInit.INSTANCE, new ClearDustbinToServer(false, false))
+                                    , button -> PacketUtils.sendPacketToServer(new ClearDustbinToServer(false, false))
                                     , AotakeComponent.get().trans(EnumI18nType.WORD, "clear_cur_dustbin")
                             )
                     );
@@ -201,9 +200,9 @@ public final class DustbinRender {
                                 , button -> {
                                     queueCursorRestoreBeforeContainerRefresh();
                                     if (chunkVault) {
-                                        PacketUtils.sendPacketToServer(NetworkInit.INSTANCE, new ChunkVaultNavigateToServer(0));
+                                        PacketUtils.sendPacketToServer(new ChunkVaultNavigateToServer(0));
                                     } else {
-                                        PacketUtils.sendPacketToServer(NetworkInit.INSTANCE, new OpenDustbinToServer(0));
+                                        PacketUtils.sendPacketToServer(new OpenDustbinToServer(0));
                                     }
                                 }
                                 , AotakeComponent.get().trans(EnumI18nType.WORD, "refresh_page")
@@ -216,9 +215,9 @@ public final class DustbinRender {
                         , button -> {
                             queueCursorRestoreBeforeContainerRefresh();
                             if (chunkVault) {
-                                PacketUtils.sendPacketToServer(NetworkInit.INSTANCE, new ChunkVaultNavigateToServer(-1));
+                                PacketUtils.sendPacketToServer(new ChunkVaultNavigateToServer(-1));
                             } else {
-                                PacketUtils.sendPacketToServer(NetworkInit.INSTANCE, new OpenDustbinToServer(-1));
+                                PacketUtils.sendPacketToServer(new OpenDustbinToServer(-1));
                             }
                         }
                         , AotakeComponent.get().trans(EnumI18nType.WORD, "previous_page")
@@ -233,9 +232,9 @@ public final class DustbinRender {
                         , button -> {
                             queueCursorRestoreBeforeContainerRefresh();
                             if (chunkVault) {
-                                PacketUtils.sendPacketToServer(NetworkInit.INSTANCE, new ChunkVaultNavigateToServer(1));
+                                PacketUtils.sendPacketToServer(new ChunkVaultNavigateToServer(1));
                             } else {
-                                PacketUtils.sendPacketToServer(NetworkInit.INSTANCE, new OpenDustbinToServer(1));
+                                PacketUtils.sendPacketToServer(new OpenDustbinToServer(1));
                             }
                         }
                         , AotakeComponent.get().trans(EnumI18nType.WORD, "next_page")
@@ -323,7 +322,7 @@ public final class DustbinRender {
                     }
 
                     if (mouseHelper.isLeftPressedInRect(x, y, w, h)) {
-                        PacketUtils.sendPacketToServer(NetworkInit.INSTANCE, new ClearDustbinToServer(true, true));
+                        PacketUtils.sendPacketToServer(new ClearDustbinToServer(true, true));
                     }
                 }
                 if (!chunkVaultDraw && AotakeUtils.hasCommandPermission(player, EnumCommandType.DUSTBIN_CLEAR)) {
@@ -357,7 +356,7 @@ public final class DustbinRender {
                         }
 
                         if (mouseHelper.isLeftPressedInRect(x, y, w, h)) {
-                            PacketUtils.sendPacketToServer(NetworkInit.INSTANCE, new ClearDustbinToServer(true, false));
+                            PacketUtils.sendPacketToServer(new ClearDustbinToServer(true, false));
                         }
                     }
 
@@ -391,7 +390,7 @@ public final class DustbinRender {
                         }
 
                         if (mouseHelper.isLeftPressedInRect(x, y, w, h)) {
-                            PacketUtils.sendPacketToServer(NetworkInit.INSTANCE, new ClearDustbinToServer(false, false));
+                            PacketUtils.sendPacketToServer(new ClearDustbinToServer(false, false));
                         }
                     }
                 }
@@ -427,9 +426,9 @@ public final class DustbinRender {
                     if (mouseHelper.isLeftPressedInRect(x, y, w, h)) {
                         queueCursorRestoreBeforeContainerRefresh();
                         if (chunkVaultDraw) {
-                            PacketUtils.sendPacketToServer(NetworkInit.INSTANCE, new ChunkVaultNavigateToServer(0));
+                            PacketUtils.sendPacketToServer(new ChunkVaultNavigateToServer(0));
                         } else {
-                            PacketUtils.sendPacketToServer(NetworkInit.INSTANCE, new OpenDustbinToServer(0));
+                            PacketUtils.sendPacketToServer(new OpenDustbinToServer(0));
                         }
                     }
                 }
@@ -465,9 +464,9 @@ public final class DustbinRender {
                     if (canPrev && mouseHelper.isLeftPressedInRect(x, y, w, h)) {
                         queueCursorRestoreBeforeContainerRefresh();
                         if (chunkVaultDraw) {
-                            PacketUtils.sendPacketToServer(NetworkInit.INSTANCE, new ChunkVaultNavigateToServer(-1));
+                            PacketUtils.sendPacketToServer(new ChunkVaultNavigateToServer(-1));
                         } else {
-                            PacketUtils.sendPacketToServer(NetworkInit.INSTANCE, new OpenDustbinToServer(-1));
+                            PacketUtils.sendPacketToServer(new OpenDustbinToServer(-1));
                         }
                     }
                 }
@@ -503,9 +502,9 @@ public final class DustbinRender {
                     if (canNext && mouseHelper.isLeftPressedInRect(x, y, w, h)) {
                         queueCursorRestoreBeforeContainerRefresh();
                         if (chunkVaultDraw) {
-                            PacketUtils.sendPacketToServer(NetworkInit.INSTANCE, new ChunkVaultNavigateToServer(1));
+                            PacketUtils.sendPacketToServer(new ChunkVaultNavigateToServer(1));
                         } else {
-                            PacketUtils.sendPacketToServer(NetworkInit.INSTANCE, new OpenDustbinToServer(1));
+                            PacketUtils.sendPacketToServer(new OpenDustbinToServer(1));
                         }
                     }
                 }
@@ -525,9 +524,9 @@ public final class DustbinRender {
                     lastDustbinScreenKeyTime = System.currentTimeMillis();
                     queueCursorRestoreBeforeContainerRefresh();
                     if (chunkKeys) {
-                        PacketUtils.sendPacketToServer(NetworkInit.INSTANCE, new ChunkVaultNavigateToServer(-1));
+                        PacketUtils.sendPacketToServer(new ChunkVaultNavigateToServer(-1));
                     } else {
-                        PacketUtils.sendPacketToServer(NetworkInit.INSTANCE, new OpenDustbinToServer(-1));
+                        PacketUtils.sendPacketToServer(new OpenDustbinToServer(-1));
                     }
                 }
             } else if (keyEvent.getKeyCode() == ClientModEventHandler.DUSTBIN_NEXT_KEY.getKey().getValue()) {
@@ -535,9 +534,9 @@ public final class DustbinRender {
                     lastDustbinScreenKeyTime = System.currentTimeMillis();
                     queueCursorRestoreBeforeContainerRefresh();
                     if (chunkKeys) {
-                        PacketUtils.sendPacketToServer(NetworkInit.INSTANCE, new ChunkVaultNavigateToServer(1));
+                        PacketUtils.sendPacketToServer(new ChunkVaultNavigateToServer(1));
                     } else {
-                        PacketUtils.sendPacketToServer(NetworkInit.INSTANCE, new OpenDustbinToServer(1));
+                        PacketUtils.sendPacketToServer(new OpenDustbinToServer(1));
                     }
                 }
             }

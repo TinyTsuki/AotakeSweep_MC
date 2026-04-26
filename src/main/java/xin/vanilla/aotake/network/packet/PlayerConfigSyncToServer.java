@@ -5,14 +5,14 @@ import net.minecraft.network.PacketBuffer;
 import net.minecraftforge.fml.network.NetworkEvent;
 import xin.vanilla.aotake.AotakeSweep;
 import xin.vanilla.aotake.data.player.PlayerSweepData;
-import xin.vanilla.aotake.network.NetworkInit;
+import xin.vanilla.aotake.network.NetworkPacket;
 import xin.vanilla.banira.common.util.PacketUtils;
 import xin.vanilla.banira.common.util.PlayerUtils;
 
 import java.util.function.Supplier;
 
 
-public class PlayerConfigSyncToServer {
+public class PlayerConfigSyncToServer implements NetworkPacket {
 
     private final boolean showSweepResult;
     private final boolean enableWarningVoice;
@@ -40,7 +40,7 @@ public class PlayerConfigSyncToServer {
             data.setShowSweepResult(packet.showSweepResult);
             data.setEnableWarningVoice(packet.enableWarningVoice);
             if (PlayerUtils.isRemoteClientModInstalled(player, AotakeSweep.MODID)) {
-                PacketUtils.sendPacketToPlayer(NetworkInit.INSTANCE, new SweepDataSyncToClient(player), player);
+                PacketUtils.sendPacketToPlayer(new SweepDataSyncToClient(player), player);
             }
         });
         ctx.get().setPacketHandled(true);

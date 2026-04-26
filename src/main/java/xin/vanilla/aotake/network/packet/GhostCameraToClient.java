@@ -5,10 +5,11 @@ import net.minecraft.network.PacketBuffer;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.api.distmarker.OnlyIn;
 import net.minecraftforge.fml.network.NetworkEvent;
+import xin.vanilla.aotake.network.NetworkPacket;
 
 import java.util.function.Supplier;
 
-public class GhostCameraToClient {
+public class GhostCameraToClient implements NetworkPacket {
 
     private final int entityId;
     private final boolean reset;

@@ -8,11 +8,12 @@ import xin.vanilla.aotake.AotakeSweep;
 import xin.vanilla.aotake.config.CommonConfig;
 import xin.vanilla.aotake.data.player.PlayerSweepData;
 import xin.vanilla.aotake.event.EventHandlerProxy;
+import xin.vanilla.aotake.network.NetworkPacket;
 
 import java.util.function.Supplier;
 
 @Getter
-public class SweepDataSyncToClient {
+public class SweepDataSyncToClient implements NetworkPacket {
     /**
      * 当前时间
      */

@@ -5,13 +5,14 @@ import net.minecraft.network.PacketBuffer;
 import net.minecraftforge.fml.network.NetworkEvent;
 import xin.vanilla.aotake.AotakeSweep;
 import xin.vanilla.aotake.enums.EnumCommandType;
+import xin.vanilla.aotake.network.NetworkPacket;
 import xin.vanilla.aotake.util.AotakeUtils;
 import xin.vanilla.banira.common.util.CommandUtils;
 import xin.vanilla.banira.common.util.PlayerUtils;
 
 import java.util.function.Supplier;
 
-public class ClearDustbinToServer {
+public class ClearDustbinToServer implements NetworkPacket {
     private final boolean all;
     private final boolean cache;
 

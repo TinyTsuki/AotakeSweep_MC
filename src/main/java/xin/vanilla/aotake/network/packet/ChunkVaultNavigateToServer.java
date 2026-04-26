@@ -4,10 +4,11 @@ import net.minecraft.entity.player.ServerPlayerEntity;
 import net.minecraft.network.PacketBuffer;
 import net.minecraftforge.fml.network.NetworkEvent;
 import xin.vanilla.aotake.data.world.ChunkVaultSession;
+import xin.vanilla.aotake.network.NetworkPacket;
 
 import java.util.function.Supplier;
 
-public class ChunkVaultNavigateToServer {
+public class ChunkVaultNavigateToServer implements NetworkPacket {
     private final int offset;
 
     public ChunkVaultNavigateToServer(int offset) {

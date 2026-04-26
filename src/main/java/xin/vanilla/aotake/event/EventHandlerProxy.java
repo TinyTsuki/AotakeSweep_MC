@@ -38,7 +38,6 @@ import xin.vanilla.aotake.data.world.WorldTrashData;
 import xin.vanilla.aotake.enums.EnumChunkCheckMode;
 import xin.vanilla.aotake.enums.EnumCommandType;
 import xin.vanilla.aotake.enums.EnumSelfCleanMode;
-import xin.vanilla.aotake.network.NetworkInit;
 import xin.vanilla.aotake.network.packet.GhostCameraToClient;
 import xin.vanilla.aotake.network.packet.SweepDataSyncToClient;
 import xin.vanilla.aotake.notification.AotakeNotificationTypes;
@@ -111,7 +110,7 @@ public class EventHandlerProxy {
                         .getPlayers()
                 ) {
                     if (PlayerUtils.isRemoteClientModInstalled(player, AotakeSweep.MODID)) {
-                        PacketUtils.sendPacketToPlayer(NetworkInit.INSTANCE, new SweepDataSyncToClient(player), player);
+                        PacketUtils.sendPacketToPlayer(new SweepDataSyncToClient(player), player);
                     }
                     Component warningMessage = AotakeUtils.getWarningMessage(warnKey, Translator.getServerPlayerLanguage(player), null);
                     if (warningMessage != null) {
@@ -148,7 +147,7 @@ public class EventHandlerProxy {
             // 给已安装mod玩家同步扫地倒计时
             for (ServerPlayerEntity player : server.getPlayerList().getPlayers()) {
                 if (PlayerUtils.isRemoteClientModInstalled(player, AotakeSweep.MODID)) {
-                    PacketUtils.sendPacketToPlayer(NetworkInit.INSTANCE, new SweepDataSyncToClient(player), player);
+                    PacketUtils.sendPacketToPlayer(new SweepDataSyncToClient(player), player);
                 }
             }
         }
@@ -656,7 +655,7 @@ public class EventHandlerProxy {
         if (event.getPlayer() instanceof ServerPlayerEntity) {
             ServerPlayerEntity player = (ServerPlayerEntity) event.getPlayer();
             if (PlayerUtils.isRemoteClientModInstalled(player, AotakeSweep.MODID)) {
-                PacketUtils.sendPacketToPlayer(NetworkInit.INSTANCE, new SweepDataSyncToClient(player), player);
+                PacketUtils.sendPacketToPlayer(new SweepDataSyncToClient(player), player);
             }
         }
     }
@@ -778,7 +777,7 @@ public class EventHandlerProxy {
     }
 
     private static void sendGhostCamera(ServerPlayerEntity player, int entityId, boolean reset) {
-        PacketUtils.sendPacketToPlayer(NetworkInit.INSTANCE, new GhostCameraToClient(entityId, reset), player);
+        PacketUtils.sendPacketToPlayer(new GhostCameraToClient(entityId, reset), player);
     }
 
     private static void clampGhostMovement(MinecraftServer server) {

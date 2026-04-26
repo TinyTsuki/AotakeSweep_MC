@@ -5,7 +5,6 @@ import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.gui.widget.button.Button;
 import net.minecraft.util.text.ITextComponent;
 import xin.vanilla.aotake.AotakeComponent;
-import xin.vanilla.aotake.network.NetworkInit;
 import xin.vanilla.aotake.network.packet.PlayerConfigSyncToServer;
 import xin.vanilla.banira.common.util.PacketUtils;
 
@@ -43,7 +42,7 @@ public class PlayerSweepConfigScreen extends Screen {
         }));
         y += 28;
         this.addButton(new Button(cx - 155, y, 150, 20, AotakeComponent.get().transClientAuto("save").toVanilla(), b -> {
-            PacketUtils.sendPacketToServer(NetworkInit.INSTANCE, new PlayerConfigSyncToServer(this.showSweepResult, this.enableWarningVoice));
+            PacketUtils.sendPacketToServer(new PlayerConfigSyncToServer(this.showSweepResult, this.enableWarningVoice));
             this.minecraft.setScreen(this.parent);
         }));
         this.addButton(new Button(cx + 5, y, 150, 20, AotakeComponent.get().transClientAuto("cancel").toVanilla(), b -> this.minecraft.setScreen(this.parent)));

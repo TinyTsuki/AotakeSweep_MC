@@ -122,7 +122,7 @@ public class AotakeSweep {
             AotakeNotificationTypes.registerAllOnServer();
             ModLoadedPresence.register(MODID, player -> {
                 // 同步清理时间与玩家偏好到客户端
-                PacketUtils.sendPacketToPlayer(NetworkInit.INSTANCE, new SweepDataSyncToClient(player), player);
+                PacketUtils.sendPacketToPlayer(new SweepDataSyncToClient(player), player);
                 // 刷新权限信息
                 CommandUtils.refreshPermission(player);
             });
@@ -175,7 +175,7 @@ public class AotakeSweep {
                 QuickActionContextMenuItem editClientConfig = new QuickActionContextMenuItem(AotakeComponent.get().transClientAuto("edit_client_config"), ctx ->
                         ConfigEditorScreen.open(ClientConfig.get().holder(), ctx.currentScreen())
                 );
-                Consumer<QuickActionContext> action = ctx -> PacketUtils.sendPacketToServer(NetworkInit.INSTANCE, new OpenDustbinToServer(0));
+                Consumer<QuickActionContext> action = ctx -> PacketUtils.sendPacketToServer(new OpenDustbinToServer(0));
                 QuickActionContextMenuItem editCommonConfig = new QuickActionContextMenuItem(AotakeComponent.get().transClientAuto("edit_common_config"), ctx ->
                         ConfigEditorScreen.open(CommonConfig.get().holder(), ctx.currentScreen())
                 );

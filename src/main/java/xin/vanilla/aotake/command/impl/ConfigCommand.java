@@ -13,7 +13,6 @@ import xin.vanilla.aotake.AotakeSweep;
 import xin.vanilla.aotake.config.CommonConfig;
 import xin.vanilla.aotake.data.player.PlayerSweepData;
 import xin.vanilla.aotake.enums.EnumCommandType;
-import xin.vanilla.aotake.network.NetworkInit;
 import xin.vanilla.aotake.network.packet.SweepDataSyncToClient;
 import xin.vanilla.aotake.notification.AotakeNotificationTypes;
 import xin.vanilla.aotake.util.AotakeUtils;
@@ -148,7 +147,7 @@ public class ConfigCommand {
                                                     )
                                                     , AotakeNotificationTypes.PLAYER_PREFERENCE);
                                             if (PlayerUtils.isRemoteClientModInstalled(player, AotakeSweep.MODID)) {
-                                                PacketUtils.sendPacketToPlayer(NetworkInit.INSTANCE, new SweepDataSyncToClient(player), player);
+                                                PacketUtils.sendPacketToPlayer(new SweepDataSyncToClient(player), player);
                                             }
                                             return 1;
                                         })
@@ -181,7 +180,7 @@ public class ConfigCommand {
                                                     )
                                                     , AotakeNotificationTypes.PLAYER_PREFERENCE);
                                             if (PlayerUtils.isRemoteClientModInstalled(player, AotakeSweep.MODID)) {
-                                                PacketUtils.sendPacketToPlayer(NetworkInit.INSTANCE, new SweepDataSyncToClient(player), player);
+                                                PacketUtils.sendPacketToPlayer(new SweepDataSyncToClient(player), player);
                                             }
                                             return 1;
                                         })

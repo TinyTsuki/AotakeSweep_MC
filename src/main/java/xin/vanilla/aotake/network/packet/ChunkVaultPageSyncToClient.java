@@ -4,11 +4,12 @@ import net.minecraft.network.PacketBuffer;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.api.distmarker.OnlyIn;
 import net.minecraftforge.fml.network.NetworkEvent;
+import xin.vanilla.aotake.network.NetworkPacket;
 import xin.vanilla.aotake.screen.DustbinRender;
 
 import java.util.function.Supplier;
 
-public class ChunkVaultPageSyncToClient {
+public class ChunkVaultPageSyncToClient implements NetworkPacket {
     private final int currentPage;
     private final int totalPage;
 

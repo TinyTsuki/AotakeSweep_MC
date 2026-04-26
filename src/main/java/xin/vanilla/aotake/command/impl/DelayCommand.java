@@ -14,7 +14,6 @@ import xin.vanilla.aotake.config.CommonConfig;
 import xin.vanilla.aotake.data.player.PlayerSweepData;
 import xin.vanilla.aotake.enums.EnumCommandType;
 import xin.vanilla.aotake.event.EventHandlerProxy;
-import xin.vanilla.aotake.network.NetworkInit;
 import xin.vanilla.aotake.network.packet.SweepDataSyncToClient;
 import xin.vanilla.aotake.notification.AotakeNotificationTypes;
 import xin.vanilla.aotake.util.AotakeUtils;
@@ -48,7 +47,7 @@ public class DelayCommand {
             // 给已声明客户端 mod 且尚未完成数据同步的玩家同步扫地倒计时与玩家偏好
             for (ServerPlayerEntity player : BaniraCodex.serverInstance().key().getPlayerList().getPlayers()) {
                 if (PlayerUtils.isPlayerDataSynced(player, AotakeSweep.MODID)) continue;
-                PacketUtils.sendPacketToPlayer(NetworkInit.INSTANCE, new SweepDataSyncToClient(player), player);
+                PacketUtils.sendPacketToPlayer(new SweepDataSyncToClient(player), player);
             }
             long seconds = (EventHandlerProxy.getNextSweepTime() - current.getTime()) / 1000;
             Component message = AotakeComponent.get().transAuto("next_sweep_time_set"

@@ -46,7 +46,6 @@ import xin.vanilla.aotake.enums.EnumCommandType;
 import xin.vanilla.aotake.enums.EnumListType;
 import xin.vanilla.aotake.enums.EnumSelfCleanMode;
 import xin.vanilla.aotake.event.EventHandlerProxy;
-import xin.vanilla.aotake.network.NetworkInit;
 import xin.vanilla.aotake.network.packet.DustbinPageSyncToClient;
 import xin.vanilla.aotake.notification.AotakeNotificationTypes;
 import xin.vanilla.banira.BaniraCodex;
@@ -810,7 +809,7 @@ public class AotakeUtils {
 
         if (result > 0) {
             AotakeSweep.getPlayerDustbinPage().put(PlayerUtils.getPlayerUUIDString(player), page);
-            PacketUtils.sendPacketToPlayer(NetworkInit.INSTANCE, new DustbinPageSyncToClient(page, totalPage), player);
+            PacketUtils.sendPacketToPlayer(new DustbinPageSyncToClient(page, totalPage), player);
         }
         return result;
     }

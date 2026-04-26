@@ -16,7 +16,6 @@ import org.apache.logging.log4j.Logger;
 import xin.vanilla.aotake.AotakeComponent;
 import xin.vanilla.aotake.AotakeLang;
 import xin.vanilla.aotake.AotakeSweep;
-import xin.vanilla.aotake.network.NetworkInit;
 import xin.vanilla.aotake.network.packet.ChunkVaultPageSyncToClient;
 import xin.vanilla.banira.common.util.BaniraScheduler;
 import xin.vanilla.banira.common.util.PacketUtils;
@@ -58,7 +57,7 @@ public final class ChunkVaultSession {
         player.openMenu(holder.createMenuProvider(player, page, total));
         AotakeSweep.getPlayerChunkVaultId().put(uuid, vaultId);
         AotakeSweep.getPlayerChunkVaultPage().put(uuid, page);
-        PacketUtils.sendPacketToPlayer(NetworkInit.INSTANCE, new ChunkVaultPageSyncToClient(page, total), player);
+        PacketUtils.sendPacketToPlayer(new ChunkVaultPageSyncToClient(page, total), player);
     }
 
     /**
@@ -133,7 +132,7 @@ public final class ChunkVaultSession {
         player.openMenu(holder.createMenuProvider(player, page, total));
         AotakeSweep.getPlayerChunkVaultId().put(uuid, holder.vaultId);
         AotakeSweep.getPlayerChunkVaultPage().put(uuid, page);
-        PacketUtils.sendPacketToPlayer(NetworkInit.INSTANCE, new ChunkVaultPageSyncToClient(page, total), player);
+        PacketUtils.sendPacketToPlayer(new ChunkVaultPageSyncToClient(page, total), player);
     }
 
     private static List<ItemStack> flattenInventories(List<Inventory> pages) {
