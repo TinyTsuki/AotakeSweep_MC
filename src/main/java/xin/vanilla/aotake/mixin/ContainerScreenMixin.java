@@ -63,7 +63,7 @@ public abstract class ContainerScreenMixin {
     private boolean aotake$isDustbinScreen(ContainerScreen screen) {
         Player player = net.minecraft.client.Minecraft.getInstance().player;
         if (player == null) return false;
-        String t = screen.getTitle().getContents();
+        String t = screen.getTitle().getString();
         return DustbinRender.isDustbinTitle(t) || DustbinRender.isChunkVaultTitle(t);
     }
 

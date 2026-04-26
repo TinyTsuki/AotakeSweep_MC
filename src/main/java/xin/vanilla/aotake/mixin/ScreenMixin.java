@@ -15,8 +15,8 @@ public abstract class ScreenMixin {
     @Inject(method = "init(Lnet/minecraft/client/Minecraft;II)V", at = @At("HEAD"))
     private void aotake$abandonCursorRestoreIfNotDustbin(Minecraft mc, int width, int height, CallbackInfo ci) {
         Screen self = (Screen) (Object) this;
-        if (self instanceof ContainerScreen && (DustbinRender.isDustbinTitle(self.getTitle().getContents())
-                || DustbinRender.isChunkVaultTitle(self.getTitle().getContents()))) {
+        if (self instanceof ContainerScreen && (DustbinRender.isDustbinTitle(self.getTitle().getString())
+                || DustbinRender.isChunkVaultTitle(self.getTitle().getString()))) {
             return;
         }
         DustbinRender.abandonPendingCursorRestore();
@@ -28,8 +28,8 @@ public abstract class ScreenMixin {
         if (!(self instanceof ContainerScreen)) {
             return;
         }
-        if (!DustbinRender.isDustbinTitle(self.getTitle().getContents())
-                && !DustbinRender.isChunkVaultTitle(self.getTitle().getContents())) {
+        if (!DustbinRender.isDustbinTitle(self.getTitle().getString())
+                && !DustbinRender.isChunkVaultTitle(self.getTitle().getString())) {
             return;
         }
         DustbinRender.tryConsumePendingCursorRaw();
