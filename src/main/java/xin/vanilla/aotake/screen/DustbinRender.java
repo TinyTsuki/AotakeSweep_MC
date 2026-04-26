@@ -87,6 +87,14 @@ public final class DustbinRender {
         chunkVaultTotalPage = totalPage;
     }
 
+    private static boolean canNavigatePrev(int page, int totalPage) {
+        return page > 1 && totalPage > 1;
+    }
+
+    private static boolean canNavigateNext(int page, int totalPage) {
+        return page > 0 && totalPage > 0 && page < totalPage;
+    }
+
     public static boolean isChunkVaultTitle(String title) {
         return StringUtils.isNotNullOrEmpty(title)
                 && AotakeLang.get().getI18nFiles().stream().anyMatch(lang ->
@@ -157,12 +165,8 @@ public final class DustbinRender {
                 boolean chunkVault = isChunkVaultTitle(screen.getTitle().getString());
                 int curPage = chunkVault ? chunkVaultPage : dustbinPage;
                 int totPage = chunkVault ? chunkVaultTotalPage : dustbinTotalPage;
-                boolean canPrev = true;
-                boolean canNext = true;
-                if (curPage > 0 && totPage > 0) {
-                    canPrev = curPage > 1;
-                    canNext = curPage < totPage;
-                }
+                boolean canPrev = canNavigatePrev(curPage, totPage);
+                boolean canNext = canNavigateNext(curPage, totPage);
                 if (!chunkVault && AotakeUtils.hasCommandPermission(player, EnumCommandType.CACHE_CLEAR)) {
                     eve.addWidget(
                             newButton(baseX - 21
@@ -250,12 +254,8 @@ public final class DustbinRender {
                 boolean chunkVault = isChunkVaultTitle(screen.getTitle().getString());
                 int curPage = chunkVault ? chunkVaultPage : dustbinPage;
                 int totPage = chunkVault ? chunkVaultTotalPage : dustbinTotalPage;
-                boolean canPrev = true;
-                boolean canNext = true;
-                if (curPage > 0 && totPage > 0) {
-                    canPrev = curPage > 1;
-                    canNext = curPage < totPage;
-                }
+                boolean canPrev = canNavigatePrev(curPage, totPage);
+                boolean canNext = canNavigateNext(curPage, totPage);
                 if (dustbinPrevButton != null) {
                     dustbinPrevButton.active = canPrev;
                 }
@@ -285,14 +285,10 @@ public final class DustbinRender {
                         : accessor.aotake$getTopPos();
 
                 boolean chunkVaultDraw = isChunkVaultTitle(screen.getTitle().getString());
-                boolean canPrev = true;
-                boolean canNext = true;
                 int curDrawPage = chunkVaultDraw ? chunkVaultPage : dustbinPage;
                 int totDrawPage = chunkVaultDraw ? chunkVaultTotalPage : dustbinTotalPage;
-                if (curDrawPage > 0 && totDrawPage > 0) {
-                    canPrev = curDrawPage > 1;
-                    canNext = curDrawPage < totDrawPage;
-                }
+                boolean canPrev = canNavigatePrev(curDrawPage, totDrawPage);
+                boolean canNext = canNavigateNext(curDrawPage, totDrawPage);
 
                 int yOffset = 0;
                 if (!chunkVaultDraw && AotakeUtils.hasCommandPermission(player, EnumCommandType.CACHE_CLEAR)) {
@@ -585,11 +581,14 @@ public final class DustbinRender {
                 return;
             }
             if (!enabled) {
+                RenderSystem.enableBlend();
+                RenderSystem.defaultBlendFunc();
                 RenderSystem.setShaderColor(1.0F, 1.0F, 1.0F, 0.5F);
             }
             AbstractGuiUtils.blitBlend(stack, texture, x, y, 0, 0, 0, w, h, w, h);
             if (!enabled) {
                 RenderSystem.setShaderColor(1.0F, 1.0F, 1.0F, 1.0F);
+                AbstractGuiUtils.fill(stack, x, y, w, h, 0x66000000);
             }
             return;
         }
