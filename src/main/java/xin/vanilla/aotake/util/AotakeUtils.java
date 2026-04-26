@@ -52,7 +52,7 @@ import xin.vanilla.banira.BaniraCodex;
 import xin.vanilla.banira.common.data.Component;
 import xin.vanilla.banira.common.data.KeyValue;
 import xin.vanilla.banira.common.data.WorldCoordinate;
-import xin.vanilla.banira.common.enums.*;
+import xin.vanilla.banira.common.enums.EnumMCColor;
 import xin.vanilla.banira.common.util.*;
 
 import javax.annotation.Nullable;
@@ -524,8 +524,6 @@ public class AotakeUtils {
                                             )
                                     )
                             , AotakeNotificationTypes.SWEEP_RESULT_INTERACTIVE);
-                } else {
-                    MessageUtils.sendNotification(p, msg, EnumPosition.TOP_CENTER, EnumMoveType.AUTO, 5000L, EnumNotificationStyle.NORMAL, EnumNotificationVanillaFallback.ACTION_BAR, AotakeNotificationTypes.SWEEP_RESULT_COMPACT);
                 }
                 if (playerData.isEnableWarningVoice()) {
                     String voice = getWarningVoice("error");
