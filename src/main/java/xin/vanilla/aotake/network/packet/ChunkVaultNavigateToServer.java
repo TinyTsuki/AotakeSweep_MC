@@ -2,13 +2,11 @@ package xin.vanilla.aotake.network.packet;
 
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraftforge.network.NetworkEvent;
 import xin.vanilla.aotake.data.world.ChunkVaultSession;
-import xin.vanilla.aotake.network.NetworkPacket;
+import xin.vanilla.aotake.network.AotakeNetworkPacket;
+import xin.vanilla.banira.common.network.NetworkContext;
 
-import java.util.function.Supplier;
-
-public class ChunkVaultNavigateToServer implements NetworkPacket {
+public class ChunkVaultNavigateToServer implements AotakeNetworkPacket {
     private final int offset;
 
     public ChunkVaultNavigateToServer(int offset) {
@@ -23,12 +21,20 @@ public class ChunkVaultNavigateToServer implements NetworkPacket {
         buf.writeInt(this.offset);
     }
 
-    public static void handle(ChunkVaultNavigateToServer packet, Supplier<NetworkEvent.Context> ctx) {
-        ctx.get().enqueueWork(() -> {
-            ServerPlayer player = ctx.get().getSender();
-            if (player == null) return;
+    public int offset() {
+        return offset;
+    }
+
+    public static void handle(ChunkVaultNavigateToServer packet, NetworkContext ctx) {
+        ctx.enqueueWork(() -> {
+            if (!ctx.isServerSide()) {
+                return;
+            }
+            ServerPlayer player = ctx.sender();
+            if (player == null) {
+                return;
+            }
             ChunkVaultSession.navigateOrReload(player, packet.offset);
         });
-        ctx.get().setPacketHandled(true);
     }
 }

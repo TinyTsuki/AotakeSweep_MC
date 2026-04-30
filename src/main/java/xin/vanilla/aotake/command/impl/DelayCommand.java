@@ -10,16 +10,19 @@ import net.minecraft.server.level.ServerPlayer;
 import xin.vanilla.aotake.AotakeComponent;
 import xin.vanilla.aotake.AotakeLang;
 import xin.vanilla.aotake.AotakeSweep;
+import xin.vanilla.aotake.config.CommonConfig;
 import xin.vanilla.aotake.data.player.PlayerSweepData;
 import xin.vanilla.aotake.enums.EnumCommandType;
-import xin.vanilla.aotake.event.EventHandlerProxy;
 import xin.vanilla.aotake.event.ServerEventHandler;
 import xin.vanilla.aotake.network.packet.SweepDataSyncToClient;
 import xin.vanilla.aotake.notification.AotakeNotificationTypes;
 import xin.vanilla.aotake.util.AotakeUtils;
 import xin.vanilla.banira.BaniraCodex;
 import xin.vanilla.banira.common.data.Component;
-import xin.vanilla.banira.common.util.*;
+import xin.vanilla.banira.common.util.CommandUtils;
+import xin.vanilla.banira.common.util.DateUtils;
+import xin.vanilla.banira.common.util.MessageUtils;
+import xin.vanilla.banira.common.util.PlayerUtils;
 
 import java.util.Date;
 
@@ -42,12 +45,12 @@ public class DelayCommand {
                 long nextSweepTime = ServerEventHandler.getNextSweepTime() + delay * 1000;
                 if (nextSweepTime < current.getTime())
                     nextSweepTime = current.getTime() + CommonConfig.get().base().sweep().sweepInterval();
-                EventHandlerProxy.setNextSweepTime(nextSweepTime);
+                ServerEventHandler.setNextSweepTime(nextSweepTime);
             }
             // 给已声明客户端 mod 且尚未完成数据同步的玩家同步扫地倒计时与玩家偏好
             for (ServerPlayer player : BaniraCodex.serverInstance().key().getPlayerList().getPlayers()) {
                 if (PlayerUtils.isPlayerDataSynced(player, AotakeSweep.MODID)) continue;
-                PacketUtils.sendPacketToPlayer(new SweepDataSyncToClient(player), player);
+                AotakeUtils.sendPacketToPlayer(new SweepDataSyncToClient(player), player);
             }
             long seconds = (ServerEventHandler.getNextSweepTime() - current.getTime()) / 1000;
             Component message = AotakeComponent.get().transAuto("next_sweep_time_set"

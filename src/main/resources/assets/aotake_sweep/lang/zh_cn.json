@@ -1,7 +1,7 @@
 {
   "key.aotake_sweep.categories": "竹叶清",
   "config.aotake_sweep.config.title": "竹叶清配置",
-  "config.aotake_sweep.config.server": "服务器配置",
+  "config.aotake_sweep.config.common": "通用配置（base·指令·权限）",
   "config.aotake_sweep.config.client": "客户端配置",
   "config.aotake_sweep.config.back": "返回",
   "key.aotake_sweep.open_dustbin": "打开垃圾箱",
@@ -43,7 +43,7 @@
   "word.aotake_sweep.dustbin_open_detail": "打开垃圾箱。\n参数列表：\n [<页数>] [<玩家>]",
   "word.aotake_sweep.dustbin_page_empty": "§c服务器未启用垃圾箱。",
   "word.aotake_sweep.edit_client_config": "编辑客户端配置",
-  "word.aotake_sweep.edit_common_config": "编辑服务端配置",
+  "word.aotake_sweep.edit_common_config": "编辑通用配置",
   "word.aotake_sweep.edit_player_config": "编辑玩家配置",
   "word.aotake_sweep.enabled": "已启用",
   "word.aotake_sweep.entity_caught": "实体已捕获！",

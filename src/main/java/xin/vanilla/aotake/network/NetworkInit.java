@@ -1,15 +1,15 @@
 package xin.vanilla.aotake.network;
 
-import net.minecraftforge.network.simple.SimpleChannel;
 import xin.vanilla.aotake.Identifier;
 import xin.vanilla.aotake.network.packet.*;
 import xin.vanilla.banira.common.network.NetworkHandler;
 
-public class NetworkInit {
+public final class NetworkInit {
 
-    private static final NetworkHandler HANDLER = NetworkHandler.create("main_network", Identifier.id());
+    public static final NetworkHandler HANDLER = NetworkHandler.create("main_network", Identifier.id());
 
-    public static final SimpleChannel INSTANCE = HANDLER.getChannel();
+    private NetworkInit() {
+    }
 
     public static void registerPackets() {
         HANDLER.register(OpenDustbinToServer.class, OpenDustbinToServer::toBytes, OpenDustbinToServer::new, OpenDustbinToServer::handle);
@@ -21,5 +21,14 @@ public class NetworkInit {
         HANDLER.register(GhostCameraToClient.class, GhostCameraToClient::toBytes, GhostCameraToClient::new, GhostCameraToClient::handle);
         HANDLER.register(DustbinPageSyncToClient.class, DustbinPageSyncToClient::toBytes, DustbinPageSyncToClient::new, DustbinPageSyncToClient::handle);
         HANDLER.register(ChunkVaultPageSyncToClient.class, ChunkVaultPageSyncToClient::toBytes, ChunkVaultPageSyncToClient::new, ChunkVaultPageSyncToClient::handle);
+
+        HANDLER.registerServerReceiver();
+    }
+
+    /**
+     * 客户端须在入口调用一次（与 Banira {@code NetworkInit.registerClientReceivers()} 对齐）。
+     */
+    public static void registerClientReceivers() {
+        HANDLER.registerClientReceiver();
     }
 }

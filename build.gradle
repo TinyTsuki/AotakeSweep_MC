@@ -3,7 +3,7 @@ plugins {
     id 'maven-publish'
 }
 
-def javaVer = 21
+def javaVer = 17
 
 version = project.mod_version
 mod_id = project.mod_id
@@ -25,10 +25,6 @@ loom {
         }
     }
 }
-
-// region banira_codex：JarJar
-def baniraArtifactVersionRange = "${banira_version_range}"
-// endregion banira_codex
 
 repositories {
     flatDir {
@@ -68,10 +64,6 @@ dependencies {
     implementation "org.apache.maven:maven-artifact:4.0.0-rc-3"
 
     modImplementation "xin.vanilla.banira:banira_codex:${loader_type}-${minecraft_version}-${banira_version}"
-    jarJar("xin.vanilla.banira:banira_codex:${loader_type}-${minecraft_version}-${banira_version}") {
-        jarJar.ranged(it, baniraArtifactVersionRange)
-    }
-
 }
 
 processResources {
@@ -82,6 +74,7 @@ processResources {
     inputs.property "minecraft_version", project.minecraft_version
     inputs.property "loader_version", project.loader_version
     inputs.property "loader_type", project.loader_type
+    inputs.property "banira_version_range", project.banira_version_range
     filteringCharset "UTF-8"
 
     filesMatching("fabric.mod.json") {
@@ -91,7 +84,8 @@ processResources {
                 "version": project.version,
                 "minecraft_version": project.minecraft_version,
                 "loader_version": project.loader_version,
-                "loader_type": project.loader_type
+                "loader_type": project.loader_type,
+                "banira_version_range": project.banira_version_range
     }
 }
 

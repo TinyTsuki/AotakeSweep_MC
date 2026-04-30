@@ -5,7 +5,7 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
-import xin.vanilla.aotake.data.player.PlayerDataManager;
+import xin.vanilla.banira.common.player.PlayerDataManager;
 
 @Mixin(MinecraftServer.class)
 public abstract class MinecraftServerSaveMixin {
@@ -15,6 +15,8 @@ public abstract class MinecraftServerSaveMixin {
             at = @At("TAIL")
     )
     private void aotake$afterSaveEverything(boolean flush, boolean force, boolean suppressLogs, CallbackInfoReturnable<Boolean> cir) {
-        PlayerDataManager.instance().saveAllForWorld();
+        for (PlayerDataManager manager : PlayerDataManager.listInstances().values()) {
+            manager.saveAll();
+        }
     }
 }

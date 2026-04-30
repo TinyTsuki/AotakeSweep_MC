@@ -1,15 +1,13 @@
 package xin.vanilla.aotake.network.packet;
 
+import net.fabricmc.api.EnvType;
+import net.fabricmc.api.Environment;
 import net.minecraft.network.FriendlyByteBuf;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.api.distmarker.OnlyIn;
-import net.minecraftforge.network.NetworkEvent;
-import xin.vanilla.aotake.network.NetworkPacket;
+import xin.vanilla.aotake.network.AotakeNetworkPacket;
 import xin.vanilla.aotake.screen.DustbinRender;
+import xin.vanilla.banira.common.network.NetworkContext;
 
-import java.util.function.Supplier;
-
-public class ChunkVaultPageSyncToClient implements NetworkPacket {
+public class ChunkVaultPageSyncToClient implements AotakeNetworkPacket {
     private final int currentPage;
     private final int totalPage;
 
@@ -28,12 +26,24 @@ public class ChunkVaultPageSyncToClient implements NetworkPacket {
         buf.writeInt(this.totalPage);
     }
 
-    public static void handle(ChunkVaultPageSyncToClient packet, Supplier<NetworkEvent.Context> ctx) {
-        ctx.get().enqueueWork(() -> ClientSide.handle(packet));
-        ctx.get().setPacketHandled(true);
+    public int currentPage() {
+        return currentPage;
     }
 
-    @OnlyIn(Dist.CLIENT)
+    public int totalPage() {
+        return totalPage;
+    }
+
+    public static void handle(ChunkVaultPageSyncToClient packet, NetworkContext ctx) {
+        ctx.enqueueWork(() -> {
+            if (!ctx.isClientSide()) {
+                return;
+            }
+            ClientSide.handle(packet);
+        });
+    }
+
+    @Environment(EnvType.CLIENT)
     private static final class ClientSide {
         private static void handle(ChunkVaultPageSyncToClient packet) {
             DustbinRender.updateChunkVaultPage(packet.currentPage, packet.totalPage);

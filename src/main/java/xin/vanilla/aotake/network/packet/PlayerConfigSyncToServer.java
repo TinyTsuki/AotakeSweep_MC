@@ -2,17 +2,14 @@ package xin.vanilla.aotake.network.packet;
 
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraftforge.network.NetworkEvent;
 import xin.vanilla.aotake.AotakeSweep;
 import xin.vanilla.aotake.data.player.PlayerSweepData;
-import xin.vanilla.aotake.network.NetworkPacket;
-import xin.vanilla.banira.common.util.PacketUtils;
+import xin.vanilla.aotake.network.AotakeNetworkPacket;
+import xin.vanilla.aotake.util.AotakeUtils;
+import xin.vanilla.banira.common.network.NetworkContext;
 import xin.vanilla.banira.common.util.PlayerUtils;
 
-import java.util.function.Supplier;
-
-
-public class PlayerConfigSyncToServer implements NetworkPacket {
+public class PlayerConfigSyncToServer implements AotakeNetworkPacket {
 
     private final boolean showSweepResult;
     private final boolean enableWarningVoice;
@@ -32,17 +29,29 @@ public class PlayerConfigSyncToServer implements NetworkPacket {
         buf.writeBoolean(this.enableWarningVoice);
     }
 
-    public static void handle(PlayerConfigSyncToServer packet, Supplier<NetworkEvent.Context> ctx) {
-        ctx.get().enqueueWork(() -> {
-            ServerPlayer player = ctx.get().getSender();
-            if (player == null) return;
+    public boolean showSweepResult() {
+        return showSweepResult;
+    }
+
+    public boolean enableWarningVoice() {
+        return enableWarningVoice;
+    }
+
+    public static void handle(PlayerConfigSyncToServer packet, NetworkContext ctx) {
+        ctx.enqueueWork(() -> {
+            if (!ctx.isServerSide()) {
+                return;
+            }
+            ServerPlayer player = ctx.sender();
+            if (player == null) {
+                return;
+            }
             PlayerSweepData data = PlayerSweepData.getData(player);
             data.setShowSweepResult(packet.showSweepResult);
             data.setEnableWarningVoice(packet.enableWarningVoice);
             if (PlayerUtils.isRemoteClientModInstalled(player, AotakeSweep.MODID)) {
-                PacketUtils.sendPacketToPlayer(new SweepDataSyncToClient(player), player);
+                AotakeUtils.sendPacketToPlayer(new SweepDataSyncToClient(player), player);
             }
         });
-        ctx.get().setPacketHandled(true);
     }
 }

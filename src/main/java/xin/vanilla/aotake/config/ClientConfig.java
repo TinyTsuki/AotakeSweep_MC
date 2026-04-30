@@ -5,12 +5,15 @@ import lombok.Setter;
 import lombok.experimental.Accessors;
 import me.shedaniel.autoconfig.AutoConfig;
 import me.shedaniel.autoconfig.ConfigData;
+import me.shedaniel.autoconfig.ConfigHolder;
 import me.shedaniel.autoconfig.annotation.Config;
 import me.shedaniel.autoconfig.annotation.ConfigEntry;
 import me.shedaniel.autoconfig.serializer.Toml4jConfigSerializer;
 import xin.vanilla.aotake.AotakeSweep;
+import xin.vanilla.aotake.enums.EnumDustbinClientUiStyle;
 import xin.vanilla.aotake.enums.EnumProgressBarType;
-import xin.vanilla.aotake.enums.EnumRotationCenter;
+import xin.vanilla.banira.common.enums.EnumPosition;
+import xin.vanilla.banira.editable.EditableConfigRegistry;
 
 import java.util.Arrays;
 import java.util.List;
@@ -20,13 +23,15 @@ import java.util.List;
  */
 @Getter
 @Setter
-@Accessors(fluent = true)
+@Accessors(chain = true, fluent = true)
 @Config(name = AotakeSweep.MODID + "-client")
 public class ClientConfig implements ConfigData {
 
+    private static final ConfigHolder<ClientConfig> HOLDER =
+            AutoConfig.register(ClientConfig.class, Toml4jConfigSerializer::new);
 
-    public static ClientConfig get() {
-        return AutoConfig.getConfigHolder(ClientConfig.class).getConfig();
+    static {
+        EditableConfigRegistry.registerAutoConfig(AotakeSweep.MODID, HOLDER, false);
     }
 
     // region 进度条设置
@@ -85,7 +90,7 @@ public class ClientConfig implements ConfigData {
              */
             @ConfigEntry.Gui.Tooltip
             @ConfigEntry.Gui.EnumHandler(option = ConfigEntry.Gui.EnumHandler.EnumDisplayOption.BUTTON)
-            private EnumRotationCenter progressBarLeafBase = EnumRotationCenter.TOP_LEFT;
+            private EnumPosition progressBarLeafBase = EnumPosition.TOP_LEFT;
 
             /**
              * 进度条竹叶角度
@@ -140,7 +145,7 @@ public class ClientConfig implements ConfigData {
              */
             @ConfigEntry.Gui.Tooltip
             @ConfigEntry.Gui.EnumHandler(option = ConfigEntry.Gui.EnumHandler.EnumDisplayOption.BUTTON)
-            private EnumRotationCenter progressBarPoleBase = EnumRotationCenter.TOP_CENTER;
+            private EnumPosition progressBarPoleBase = EnumPosition.TOP_CENTER;
 
             /**
              * 进度条竹竿角度
@@ -195,7 +200,7 @@ public class ClientConfig implements ConfigData {
              */
             @ConfigEntry.Gui.Tooltip
             @ConfigEntry.Gui.EnumHandler(option = ConfigEntry.Gui.EnumHandler.EnumDisplayOption.BUTTON)
-            private EnumRotationCenter progressBarTextBase = EnumRotationCenter.TOP_CENTER;
+            private EnumPosition progressBarTextBase = EnumPosition.TOP_CENTER;
 
             /**
              * 进度条文字角度
@@ -220,6 +225,18 @@ public class ClientConfig implements ConfigData {
     }
     // endregion 进度条设置
 
+    @ConfigEntry.Gui.CollapsibleObject
+    private DustbinSection dustbin = new DustbinSection();
+
+    @Getter
+    @Setter
+    @Accessors(chain = true, fluent = true)
+    public static class DustbinSection {
+        @ConfigEntry.Gui.Tooltip
+        @ConfigEntry.Gui.EnumHandler(option = ConfigEntry.Gui.EnumHandler.EnumDisplayOption.BUTTON)
+        private EnumDustbinClientUiStyle dustbinUiStyle = EnumDustbinClientUiStyle.VANILLA;
+    }
+
     /**
      * 垃圾箱页面是否使用原版UI
      */
@@ -227,8 +244,12 @@ public class ClientConfig implements ConfigData {
     private boolean vanillaDustbin = false;
 
 
-    public static void register() {
-        AutoConfig.register(ClientConfig.class, Toml4jConfigSerializer::new);
+    public static ClientConfig get() {
+        return HOLDER.getConfig();
+    }
+
+    public static void save() {
+        HOLDER.save();
     }
 
     @Override

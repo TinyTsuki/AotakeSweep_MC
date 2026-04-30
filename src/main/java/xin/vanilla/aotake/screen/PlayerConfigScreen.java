@@ -8,6 +8,7 @@ import net.minecraft.client.gui.screens.Screen;
 import xin.vanilla.aotake.AotakeComponent;
 import xin.vanilla.aotake.AotakeSweep;
 import xin.vanilla.aotake.network.packet.PlayerConfigSyncToServer;
+import xin.vanilla.aotake.util.AotakeUtils;
 import xin.vanilla.banira.BaniraComponent;
 import xin.vanilla.banira.client.data.BaniraColorConfig;
 import xin.vanilla.banira.client.data.ScreenCoordinate;
@@ -24,7 +25,6 @@ import xin.vanilla.banira.client.util.NotificationManager;
 import xin.vanilla.banira.common.enums.EnumPosition;
 import xin.vanilla.banira.common.enums.EnumSeason;
 import xin.vanilla.banira.common.util.ColorUtils;
-import xin.vanilla.banira.common.util.PacketUtils;
 
 import javax.annotation.Nullable;
 import java.util.ArrayList;
@@ -98,8 +98,8 @@ public class PlayerConfigScreen extends BaniraScreen {
         private BaniraColorConfig theme;
         @Nullable
         private EnumSeason season;
-        private boolean showSweepResult = AotakeSweep.isClientCachedShowSweepResult();
-        private boolean enableWarningVoice = AotakeSweep.isClientCachedEnableWarningVoice();
+        private boolean showSweepResult = AotakeSweep.clientCachedShowSweepResult();
+        private boolean enableWarningVoice = AotakeSweep.clientCachedEnableWarningVoice();
     }
 
     @Override
@@ -249,7 +249,7 @@ public class PlayerConfigScreen extends BaniraScreen {
             NotificationManager.get().addNotification(notification);
             return;
         }
-        PacketUtils.sendPacketToServer(new PlayerConfigSyncToServer(showSweepResult, enableWarningVoice));
+        AotakeUtils.sendPacketToServer(new PlayerConfigSyncToServer(showSweepResult, enableWarningVoice));
         AotakeSweep.setClientCachedPlayerSweepPrefs(showSweepResult, enableWarningVoice);
         onClose();
     }

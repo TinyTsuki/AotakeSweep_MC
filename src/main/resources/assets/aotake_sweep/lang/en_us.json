@@ -1,7 +1,7 @@
 {
   "key.aotake_sweep.categories": "Aotake Sweep",
   "config.aotake_sweep.config.title": "Aotake Sweep Configuration",
-  "config.aotake_sweep.config.server": "Server Config",
+  "config.aotake_sweep.config.common": "Common (base, commands, permissions)",
   "config.aotake_sweep.config.client": "Client Config",
   "config.aotake_sweep.config.back": "Back",
   "key.aotake_sweep.open_dustbin": "Open Dustbin",

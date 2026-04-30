@@ -14,6 +14,7 @@ import net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback;
 import net.fabricmc.fabric.api.client.screen.v1.ScreenEvents;
 import net.fabricmc.fabric.api.client.screen.v1.ScreenKeyboardEvents;
 import net.fabricmc.fabric.api.resource.ResourceManagerHelper;
+import net.fabricmc.fabric.api.resource.SimpleSynchronousResourceReloadListener;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.components.Button;
@@ -22,25 +23,43 @@ import net.minecraft.client.gui.screens.inventory.ContainerScreen;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.packs.PackType;
+import net.minecraft.server.packs.resources.ResourceManager;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.lwjgl.glfw.GLFW;
+import xin.vanilla.aotake.AotakeComponent;
 import xin.vanilla.aotake.AotakeSweep;
+import xin.vanilla.aotake.Identifier;
 import xin.vanilla.aotake.config.ClientConfig;
-import xin.vanilla.aotake.config.CustomConfig;
 import xin.vanilla.aotake.config.DustbinGuiConfig;
 import xin.vanilla.aotake.config.DustbinGuiLayoutCache;
-import xin.vanilla.aotake.data.Color;
-import xin.vanilla.aotake.data.KeyValue;
-import xin.vanilla.aotake.enums.*;
+import xin.vanilla.aotake.enums.EnumCommandType;
+import xin.vanilla.aotake.enums.EnumProgressBarType;
 import xin.vanilla.aotake.mixin.AbstractContainerScreenAccessor;
 import xin.vanilla.aotake.mixin.ScreenAccessor;
-import xin.vanilla.aotake.network.ModNetworkHandler;
+import xin.vanilla.aotake.network.NetworkInit;
 import xin.vanilla.aotake.network.packet.ClearDustbinToServer;
-import xin.vanilla.aotake.network.packet.ModLoadedToBoth;
 import xin.vanilla.aotake.network.packet.OpenDustbinToServer;
-import xin.vanilla.aotake.screen.component.Text;
-import xin.vanilla.aotake.util.*;
+import xin.vanilla.aotake.util.AotakeUtils;
+import xin.vanilla.aotake.util.MouseHelper;
+import xin.vanilla.banira.client.data.FontDrawArgs;
+import xin.vanilla.banira.client.data.TransformArgs;
+import xin.vanilla.banira.client.gui.component.Text;
+import xin.vanilla.banira.client.gui.widget.LabelWidget;
+import xin.vanilla.banira.client.gui.widget.TooltipWidget;
+import xin.vanilla.banira.client.util.AbstractGuiUtils;
+import xin.vanilla.banira.client.util.TextureUtils;
+import xin.vanilla.banira.common.data.Color;
+import xin.vanilla.banira.common.data.Component;
+import xin.vanilla.banira.common.data.KeyValue;
+import xin.vanilla.banira.common.enums.EnumI18nType;
+import xin.vanilla.banira.common.enums.EnumMCColor;
+import xin.vanilla.banira.common.network.packet.ModLoadedToBoth;
+import xin.vanilla.banira.common.util.BaniraScheduler;
+import xin.vanilla.banira.common.util.DateUtils;
+import xin.vanilla.banira.common.util.NumberUtils;
+import xin.vanilla.banira.common.util.PacketUtils;
+import xin.vanilla.banira.internal.config.CustomConfig;
 
 import java.util.*;
 
@@ -99,7 +118,7 @@ public class ClientEventHandler implements ClientModInitializer {
         dustbinTotalPage = totalPage;
     }
 
-    private static final Component TITLE = Component.translatable(EnumI18nType.WORD, "title");
+    private static final Component TITLE = AotakeComponent.get().trans(EnumI18nType.WORD, "title");
 
     private static final MouseHelper mouseHelper = new MouseHelper();
     private static final Set<Screen> REGISTERED_SCREEN = Collections.newSetFromMap(new WeakHashMap<>());
@@ -110,12 +129,11 @@ public class ClientEventHandler implements ClientModInitializer {
     @Override
     public void onInitializeClient() {
         // 注册调度器
-        ClientTickEvents.END_CLIENT_TICK.register(client -> AotakeScheduler.onClientTick());
-        // 注册配置
-        ClientConfig.register();
+        ClientTickEvents.END_CLIENT_TICK.register(client -> BaniraScheduler.onClientTick());
+        // 注册配置（AutoConfig 在类加载阶段已登记）
         CustomConfig.loadCustomConfig(false);
-        // 注册网络包
-        ModNetworkHandler.registerClientPackets();
+        // 注册 Aotake 网络客户端接收
+        NetworkInit.registerClientReceivers();
         // 注册玩家登录事件
         onPlayerLoggedIn();
         // 注册玩家登出事件
@@ -129,23 +147,32 @@ public class ClientEventHandler implements ClientModInitializer {
         // 注册HUD渲染事件
         onHudRender();
 
-        ResourceManagerHelper.get(PackType.CLIENT_RESOURCES).registerReloadListener(new TextureUtils());
+        ResourceManagerHelper.get(PackType.CLIENT_RESOURCES).registerReloadListener(new SimpleSynchronousResourceReloadListener() {
+            @Override
+            public ResourceLocation getFabricId() {
+                return Identifier.id().create("listeners/texture_reload");
+            }
+
+            @Override
+            public void onResourceManagerReload(ResourceManager resourceManager) {
+                TextureUtils.clearAll();
+            }
+        });
     }
 
     private static void onPlayerLoggedIn() {
         ClientPlayConnectionEvents.JOIN.register((handler, sender, client) -> {
             LOGGER.debug("Client: Player logged in.");
-            if (ModNetworkHandler.hasAotakeServer()) {
-                // 通知服务器客户端已加载mod
-                AotakeUtils.sendPacketToServer(new ModLoadedToBoth());
+            if (PacketUtils.hasBaniraServer()) {
+                PacketUtils.sendPacketToServer(new ModLoadedToBoth(AotakeSweep.MODID));
             }
         });
     }
 
     private static void onPlayerLoggedOut() {
         ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> {
-            AotakeSweep.clientServerTime().setKey(0L).setValue(0L);
-            AotakeSweep.sweepTime().setKey(0L).setValue(0L);
+            AotakeSweep.clientServerTime().key(0L).value(0L);
+            AotakeSweep.sweepTime().key(0L).value(0L);
         });
     }
 
@@ -213,22 +240,31 @@ public class ClientEventHandler implements ClientModInitializer {
         });
     }
 
+    /**
+     * 原版容器侧栏按钮（Banira 不提供 {@link AbstractGuiUtils} 工厂方法）。
+     */
+    private static Button sidebarButton(LocalPlayer player, int x, int y,
+                                        Component label, Runnable action, @SuppressWarnings("unused") Component tooltipHint) {
+        String lang = AotakeUtils.getPlayerLanguage(player);
+        return new Button(x, y, 20, 20, label.toVanilla(lang), btn -> action.run());
+    }
+
     private static boolean isAotakeContainerScreen(Minecraft client, Screen screen) {
         return screen instanceof ContainerScreen
                 && client.player != null
                 && screen.getTitle().getString()
-                .startsWith(TITLE.toTextComponent(AotakeUtils.getPlayerLanguage(client.player)).getString()
+                .startsWith(TITLE.toVanilla(AotakeUtils.getPlayerLanguage(client.player)).getString()
                 );
     }
 
     private static void screenAfterInit(Minecraft client, Screen screen) {
         for (int i = 0; i < 20; i++) {
-            AotakeScheduler.schedule(i, () -> {
+            BaniraScheduler.schedule(i, () -> {
                 if (mousePos.key() > -1 && mousePos.val() > -1 && mouseRestoreTicks > 0) {
                     MouseHelper.setMouseRawPos(mousePos);
                     mouseRestoreTicks--;
                     if (mouseRestoreTicks <= 0) {
-                        mousePos.setKey(-1D).setValue(-1D);
+                        mousePos.key(-1d).value(-1d);
                     }
                 }
             });
@@ -249,60 +285,48 @@ public class ClientEventHandler implements ClientModInitializer {
             ScreenAccessor screen_ = (ScreenAccessor) screen;
             if (AotakeUtils.hasCommandPermission(player, EnumCommandType.CACHE_CLEAR)) {
                 screen_.aotake$addRenderableWidget(
-                        AbstractGuiUtils.newButton(baseX - 21
-                                , baseY + 21 * (yOffset++)
-                                , 20, 20
-                                , Component.literal("✕").setColor(EnumMCColor.RED.getColor())
-                                , button -> AotakeUtils.sendPacketToServer(new ClearDustbinToServer(true, true))
-                                , Component.translatable(EnumI18nType.MESSAGE, "clear_cache")
+                        sidebarButton(player, baseX - 21, baseY + 21 * (yOffset++)
+                                , AotakeComponent.get().literal("✕").color(EnumMCColor.RED.getColor())
+                                , () -> AotakeUtils.sendPacketToServer(new ClearDustbinToServer(true, true))
+                                , AotakeComponent.get().trans(EnumI18nType.WORD, "clear_cache")
                         )
                 );
             }
             if (AotakeUtils.hasCommandPermission(player, EnumCommandType.DUSTBIN_CLEAR)) {
                 screen_.aotake$addRenderableWidget(
-                        AbstractGuiUtils.newButton(baseX - 21
-                                , baseY + 21 * (yOffset++)
-                                , 20, 20
-                                , Component.literal("✕").setColor(EnumMCColor.RED.getColor())
-                                , button -> AotakeUtils.sendPacketToServer(new ClearDustbinToServer(true, false))
-                                , Component.translatable(EnumI18nType.MESSAGE, "clear_all_dustbin")
+                        sidebarButton(player, baseX - 21, baseY + 21 * (yOffset++)
+                                , AotakeComponent.get().literal("✕").color(EnumMCColor.RED.getColor())
+                                , () -> AotakeUtils.sendPacketToServer(new ClearDustbinToServer(true, false))
+                                , AotakeComponent.get().trans(EnumI18nType.WORD, "clear_all_dustbin")
                         )
                 );
                 screen_.aotake$addRenderableWidget(
-                        AbstractGuiUtils.newButton(baseX - 21
-                                , baseY + 21 * (yOffset++)
-                                , 20, 20
-                                , Component.literal("✕").setColor(EnumMCColor.YELLOW.getColor())
-                                , button -> AotakeUtils.sendPacketToServer(new ClearDustbinToServer(false, false))
-                                , Component.translatable(EnumI18nType.MESSAGE, "clear_cur_dustbin")
+                        sidebarButton(player, baseX - 21, baseY + 21 * (yOffset++)
+                                , AotakeComponent.get().literal("✕").color(EnumMCColor.YELLOW.getColor())
+                                , () -> AotakeUtils.sendPacketToServer(new ClearDustbinToServer(false, false))
+                                , AotakeComponent.get().trans(EnumI18nType.WORD, "clear_cur_dustbin")
                         )
                 );
             }
             screen_.aotake$addRenderableWidget(
-                    AbstractGuiUtils.newButton(baseX - 21
-                            , baseY + 21 * (yOffset++)
-                            , 20, 20
-                            , Component.literal("↻")
-                            , button -> AotakeUtils.sendPacketToServer(new OpenDustbinToServer(0))
-                            , Component.translatable(EnumI18nType.MESSAGE, "refresh_page")
+                    sidebarButton(player, baseX - 21, baseY + 21 * (yOffset++)
+                            , AotakeComponent.get().literal("↻")
+                            , () -> AotakeUtils.sendPacketToServer(new OpenDustbinToServer(0))
+                            , AotakeComponent.get().trans(EnumI18nType.WORD, "refresh_page")
                     )
             );
-            Button prevButton = AbstractGuiUtils.newButton(baseX - 21
-                    , baseY + 21 * (yOffset++)
-                    , 20, 20
-                    , Component.literal("▲")
-                    , button -> AotakeUtils.sendPacketToServer(new OpenDustbinToServer(-1))
-                    , Component.translatable(EnumI18nType.MESSAGE, "previous_page")
+            Button prevButton = sidebarButton(player, baseX - 21, baseY + 21 * (yOffset++)
+                    , AotakeComponent.get().literal("▲")
+                    , () -> AotakeUtils.sendPacketToServer(new OpenDustbinToServer(-1))
+                    , AotakeComponent.get().trans(EnumI18nType.WORD, "previous_page")
             );
             prevButton.active = canPrev;
             dustbinPrevButton = prevButton;
             screen_.aotake$addRenderableWidget(prevButton);
-            Button nextButton = AbstractGuiUtils.newButton(baseX - 21
-                    , baseY + 21 * (yOffset++)
-                    , 20, 20
-                    , Component.literal("▼")
-                    , button -> AotakeUtils.sendPacketToServer(new OpenDustbinToServer(1))
-                    , Component.translatable(EnumI18nType.MESSAGE, "next_page")
+            Button nextButton = sidebarButton(player, baseX - 21, baseY + 21 * (yOffset++)
+                    , AotakeComponent.get().literal("▼")
+                    , () -> AotakeUtils.sendPacketToServer(new OpenDustbinToServer(1))
+                    , AotakeComponent.get().trans(EnumI18nType.WORD, "next_page")
             );
             nextButton.active = canNext;
             dustbinNextButton = nextButton;
@@ -361,19 +385,16 @@ public class ClientEventHandler implements ClientModInitializer {
                     h += 2;
                 }
 
-                ResourceLocation texture = TextureUtils.loadCustomTexture(TextureUtils.INTERNAL_THEME_DIR + "clear_cache.png");
-                AbstractGuiUtils.bindTexture(texture);
-                AbstractGuiUtils.blitBlend(stack, x, y, 0, 0, w, h, w, h);
+                ResourceLocation texture = TextureUtils.loadCustomTexture(Identifier.id(), "gui/clear_cache.png");
+                AbstractGuiUtils.blitBlend(stack, texture, x, y, 0, 0, w, h, w, h);
 
                 if (hover) {
-                    AbstractGuiUtils.drawPopupMessage(Text.empty()
-                                    .setText(Component.translatable(EnumI18nType.MESSAGE, "clear_cache"))
-                                    .setStack(stack)
-                            , mouseX
-                            , mouseY
-                            , screen.width
-                            , screen.height
-                    );
+                    TooltipWidget.drawPopupMessage(stack,
+                            FontDrawArgs.ofPopo(Text.empty()
+                                            .text(AotakeComponent.get().trans(EnumI18nType.WORD, "clear_cache"))
+                                            .stack(stack)
+                                            .font(client.font))
+                                    .x(mouseX).y(mouseY));
                 }
 
                 if (mouseHelper.isLeftPressedInRect(x, y, w, h)) {
@@ -395,19 +416,16 @@ public class ClientEventHandler implements ClientModInitializer {
                         h += 2;
                     }
 
-                    ResourceLocation texture = TextureUtils.loadCustomTexture(TextureUtils.INTERNAL_THEME_DIR + "clear_all.png");
-                    AbstractGuiUtils.bindTexture(texture);
-                    AbstractGuiUtils.blitBlend(stack, x, y, 0, 0, w, h, w, h);
+                    ResourceLocation texture = TextureUtils.loadCustomTexture(Identifier.id(), "gui/clear.png");
+                    AbstractGuiUtils.blitBlend(stack, texture, x, y, 0, 0, w, h, w, h);
 
                     if (hover) {
-                        AbstractGuiUtils.drawPopupMessage(Text.empty()
-                                        .setText(Component.translatable(EnumI18nType.MESSAGE, "clear_all_dustbin"))
-                                        .setStack(stack)
-                                , mouseX
-                                , mouseY
-                                , screen.width
-                                , screen.height
-                        );
+                        TooltipWidget.drawPopupMessage(stack,
+                                FontDrawArgs.ofPopo(Text.empty()
+                                                .text(AotakeComponent.get().trans(EnumI18nType.WORD, "clear_all_dustbin"))
+                                                .stack(stack)
+                                                .font(client.font))
+                                        .x(mouseX).y(mouseY));
                     }
 
                     if (mouseHelper.isLeftPressedInRect(x, y, w, h)) {
@@ -429,19 +447,16 @@ public class ClientEventHandler implements ClientModInitializer {
                         h += 2;
                     }
 
-                    ResourceLocation texture = TextureUtils.loadCustomTexture(TextureUtils.INTERNAL_THEME_DIR + "clear_page.png");
-                    AbstractGuiUtils.bindTexture(texture);
-                    AbstractGuiUtils.blitBlend(stack, x, y, 0, 0, w, h, w, h);
+                    ResourceLocation texture = TextureUtils.loadCustomTexture(Identifier.id(), "gui/clear_page.png");
+                    AbstractGuiUtils.blitBlend(stack, texture, x, y, 0, 0, w, h, w, h);
 
                     if (hover) {
-                        AbstractGuiUtils.drawPopupMessage(Text.empty()
-                                        .setText(Component.translatable(EnumI18nType.MESSAGE, "clear_cur_dustbin"))
-                                        .setStack(stack)
-                                , mouseX
-                                , mouseY
-                                , screen.width
-                                , screen.height
-                        );
+                        TooltipWidget.drawPopupMessage(stack,
+                                FontDrawArgs.ofPopo(Text.empty()
+                                                .text(AotakeComponent.get().trans(EnumI18nType.WORD, "clear_cur_dustbin"))
+                                                .stack(stack)
+                                                .font(client.font))
+                                        .x(mouseX).y(mouseY));
                     }
 
                     if (mouseHelper.isLeftPressedInRect(x, y, w, h)) {
@@ -463,24 +478,21 @@ public class ClientEventHandler implements ClientModInitializer {
                     h += 2;
                 }
 
-                ResourceLocation texture = TextureUtils.loadCustomTexture(TextureUtils.INTERNAL_THEME_DIR + "refresh.png");
-                AbstractGuiUtils.bindTexture(texture);
-                AbstractGuiUtils.blitBlend(stack, x, y, 0, 0, w, h, w, h);
+                ResourceLocation texture = TextureUtils.loadCustomTexture(Identifier.id(), "gui/refresh.png");
+                AbstractGuiUtils.blitBlend(stack, texture, x, y, 0, 0, w, h, w, h);
 
                 if (hover) {
-                    AbstractGuiUtils.drawPopupMessage(Text.empty()
-                                    .setText(Component.translatable(EnumI18nType.MESSAGE, "refresh_page"))
-                                    .setStack(stack)
-                            , mouseX
-                            , mouseY
-                            , screen.width
-                            , screen.height
-                    );
+                    TooltipWidget.drawPopupMessage(stack,
+                            FontDrawArgs.ofPopo(Text.empty()
+                                            .text(AotakeComponent.get().trans(EnumI18nType.WORD, "refresh_page"))
+                                            .stack(stack)
+                                            .font(client.font))
+                                    .x(mouseX).y(mouseY));
                 }
 
                 if (mouseHelper.isLeftPressedInRect(x, y, w, h)) {
                     KeyValue<Double, Double> cursorPos = MouseHelper.getRawCursorPos();
-                    mousePos.setKey(cursorPos.getKey()).setValue(cursorPos.getValue());
+                    mousePos.key(cursorPos.key()).value(cursorPos.value());
                     mouseRestoreTicks = 20;
                     AotakeUtils.sendPacketToServer(new OpenDustbinToServer(0));
                 }
@@ -499,26 +511,23 @@ public class ClientEventHandler implements ClientModInitializer {
                     h += 2;
                 }
 
-                ResourceLocation texture = TextureUtils.loadCustomTexture(TextureUtils.INTERNAL_THEME_DIR + "up.png");
-                AbstractGuiUtils.bindTexture(texture);
+                ResourceLocation texture = TextureUtils.loadCustomTexture(Identifier.id(), "gui/up.png");
                 RenderSystem.setShaderColor(1.0F, 1.0F, 1.0F, canPrev ? 1.0F : 0.5F);
-                AbstractGuiUtils.blitBlend(stack, x, y, 0, 0, w, h, w, h);
+                AbstractGuiUtils.blitBlend(stack, texture, x, y, 0, 0, w, h, w, h);
                 RenderSystem.setShaderColor(1.0F, 1.0F, 1.0F, 1.0F);
 
                 if (hover) {
-                    AbstractGuiUtils.drawPopupMessage(Text.empty()
-                                    .setText(Component.translatable(EnumI18nType.MESSAGE, "previous_page"))
-                                    .setStack(stack)
-                            , mouseX
-                            , mouseY
-                            , screen.width
-                            , screen.height
-                    );
+                    TooltipWidget.drawPopupMessage(stack,
+                            FontDrawArgs.ofPopo(Text.empty()
+                                            .text(AotakeComponent.get().trans(EnumI18nType.WORD, "previous_page"))
+                                            .stack(stack)
+                                            .font(client.font))
+                                    .x(mouseX).y(mouseY));
                 }
 
                 if (canPrev && mouseHelper.isLeftPressedInRect(x, y, w, h)) {
                     KeyValue<Double, Double> cursorPos = MouseHelper.getRawCursorPos();
-                    mousePos.setKey(cursorPos.getKey()).setValue(cursorPos.getValue());
+                    mousePos.key(cursorPos.key()).value(cursorPos.value());
                     mouseRestoreTicks = 20;
                     AotakeUtils.sendPacketToServer(new OpenDustbinToServer(-1));
                 }
@@ -537,26 +546,23 @@ public class ClientEventHandler implements ClientModInitializer {
                     h += 2;
                 }
 
-                ResourceLocation texture = TextureUtils.loadCustomTexture(TextureUtils.INTERNAL_THEME_DIR + "down.png");
-                AbstractGuiUtils.bindTexture(texture);
+                ResourceLocation texture = TextureUtils.loadCustomTexture(Identifier.id(), "gui/down.png");
                 RenderSystem.setShaderColor(1.0F, 1.0F, 1.0F, canNext ? 1.0F : 0.5F);
-                AbstractGuiUtils.blitBlend(stack, x, y, 0, 0, w, h, w, h);
+                AbstractGuiUtils.blitBlend(stack, texture, x, y, 0, 0, w, h, w, h);
                 RenderSystem.setShaderColor(1.0F, 1.0F, 1.0F, 1.0F);
 
                 if (hover) {
-                    AbstractGuiUtils.drawPopupMessage(Text.empty()
-                                    .setText(Component.translatable(EnumI18nType.MESSAGE, "next_page"))
-                                    .setStack(stack)
-                            , mouseX
-                            , mouseY
-                            , screen.width
-                            , screen.height
-                    );
+                    TooltipWidget.drawPopupMessage(stack,
+                            FontDrawArgs.ofPopo(Text.empty()
+                                            .text(AotakeComponent.get().trans(EnumI18nType.WORD, "next_page"))
+                                            .stack(stack)
+                                            .font(client.font))
+                                    .x(mouseX).y(mouseY));
                 }
 
                 if (canNext && mouseHelper.isLeftPressedInRect(x, y, w, h)) {
                     KeyValue<Double, Double> cursorPos = MouseHelper.getRawCursorPos();
-                    mousePos.setKey(cursorPos.getKey()).setValue(cursorPos.getValue());
+                    mousePos.key(cursorPos.key()).value(cursorPos.value());
                     mouseRestoreTicks = 20;
                     AotakeUtils.sendPacketToServer(new OpenDustbinToServer(1));
                 }
@@ -582,7 +588,7 @@ public class ClientEventHandler implements ClientModInitializer {
         if (DUSTBIN_PRE_KEY.matches(key, scancode)) {
             lastTime = System.currentTimeMillis();
             KeyValue<Double, Double> cursorPos = MouseHelper.getRawCursorPos();
-            mousePos.setKey(cursorPos.getKey()).setValue(cursorPos.getValue());
+            mousePos.key(cursorPos.key()).value(cursorPos.value());
             mouseRestoreTicks = 20;
             AotakeUtils.sendPacketToServer(new OpenDustbinToServer(-1));
             return true;
@@ -590,7 +596,7 @@ public class ClientEventHandler implements ClientModInitializer {
         if (DUSTBIN_NEXT_KEY.matches(key, scancode)) {
             lastTime = System.currentTimeMillis();
             KeyValue<Double, Double> cursorPos = MouseHelper.getRawCursorPos();
-            mousePos.setKey(cursorPos.getKey()).setValue(cursorPos.getValue());
+            mousePos.key(cursorPos.key()).value(cursorPos.value());
             mouseRestoreTicks = 20;
             AotakeUtils.sendPacketToServer(new OpenDustbinToServer(1));
             return true;
@@ -608,7 +614,7 @@ public class ClientEventHandler implements ClientModInitializer {
             if (System.currentTimeMillis() - lastTime > 200) {
                 lastTime = System.currentTimeMillis();
                 KeyValue<Double, Double> cursorPos = MouseHelper.getRawCursorPos();
-                mousePos.setKey(cursorPos.getKey()).setValue(cursorPos.getValue());
+                mousePos.key(cursorPos.key()).value(cursorPos.value());
                 mouseRestoreTicks = 20;
                 AotakeUtils.sendPacketToServer(new OpenDustbinToServer(-1));
             }
@@ -616,7 +622,7 @@ public class ClientEventHandler implements ClientModInitializer {
             if (System.currentTimeMillis() - lastTime > 200) {
                 lastTime = System.currentTimeMillis();
                 KeyValue<Double, Double> cursorPos = MouseHelper.getRawCursorPos();
-                mousePos.setKey(cursorPos.getKey()).setValue(cursorPos.getValue());
+                mousePos.key(cursorPos.key()).value(cursorPos.value());
                 mouseRestoreTicks = 20;
                 AotakeUtils.sendPacketToServer(new OpenDustbinToServer(1));
             }
@@ -664,38 +670,35 @@ public class ClientEventHandler implements ClientModInitializer {
             int drawX = getPoleX();
             int drawY = getPoleY();
 
-            AbstractGuiUtils.TransformArgs transformArgs = new AbstractGuiUtils.TransformArgs(stack);
-            transformArgs.setAngle(ClientConfig.get().progressBarConfig().poleConfig().progressBarPoleAngle())
-                    .setCenter(EnumRotationCenter.CENTER)
-                    .setX(drawX)
-                    .setY(drawY)
-                    .setWidth(width)
-                    .setHeight(height);
+            TransformArgs transformArgs = new TransformArgs(stack);
+            transformArgs.angle(ClientConfig.get().progressBarConfig().poleConfig().progressBarPoleAngle())
+                    .center(ClientConfig.get().progressBarConfig().poleConfig().progressBarPoleBase())
+                    .x(drawX)
+                    .y(drawY)
+                    .width(width)
+                    .height(height);
             AbstractGuiUtils.renderByTransform(transformArgs, (arg) -> {
-                ResourceLocation texture = TextureUtils.loadCustomTexture(TextureUtils.INTERNAL_THEME_DIR + "pole.png");
-                AbstractGuiUtils.bindTexture(texture);
-                AbstractGuiUtils.blitBlend(stack, (int) arg.getX(), (int) arg.getY(), 0, 0, (int) arg.getWidth(), (int) arg.getHeight(), (int) arg.getWidth(), (int) arg.getHeight());
+                ResourceLocation texture = TextureUtils.loadCustomTexture(Identifier.id(), "gui/pole.png");
+                AbstractGuiUtils.blitBlend(stack, texture, (int) arg.x(), (int) arg.y(), 0, 0, (int) arg.width(), (int) arg.height(), (int) arg.width(), (int) arg.height());
             });
         }
 
         if (displayList.contains(EnumProgressBarType.TEXT.name())) {
             Text time = Text.literal(getText())
-                    .setStack(stack)
-                    .setColor(getTextColor())
-                    .setShadow(true)
-                    .setFont(Minecraft.getInstance().font);
-            AbstractGuiUtils.TransformArgs textTransformArgs = new AbstractGuiUtils.TransformArgs(stack);
-            textTransformArgs.setScale(scale)
-                    .setAngle(ClientConfig.get().progressBarConfig().textConfig().progressBarTextAngle())
-                    .setCenter(EnumRotationCenter.CENTER)
-                    .setX(getTextX())
-                    .setY(getTextY())
-                    .setWidth(getTextWidth())
-                    .setHeight(getTextHeight());
-            AbstractGuiUtils.renderByTransform(textTransformArgs, (arg) -> AbstractGuiUtils.drawString(time
-                    , arg.getX()
-                    , arg.getY()
-            ));
+                    .stack(stack)
+                    .color(getTextColor())
+                    .shadow(true)
+                    .font(Minecraft.getInstance().font);
+            TransformArgs textTransformArgs = new TransformArgs(stack);
+            textTransformArgs.scale(scale)
+                    .angle(ClientConfig.get().progressBarConfig().textConfig().progressBarTextAngle())
+                    .center(ClientConfig.get().progressBarConfig().textConfig().progressBarTextBase())
+                    .x(getTextX())
+                    .y(getTextY())
+                    .width(getTextWidth())
+                    .height(getTextHeight());
+            AbstractGuiUtils.renderByTransform(textTransformArgs, (arg) ->
+                    LabelWidget.drawLimitedText(FontDrawArgs.of(time.stack(arg.stack())).x(arg.x()).y(arg.y())));
         }
 
         if (displayList.contains(EnumProgressBarType.LEAF.name())) {
@@ -709,17 +712,16 @@ public class ClientEventHandler implements ClientModInitializer {
             int drawX = (int) (startX + rangeWidth * getProgress());
             int drawY = getLeafY();
 
-            AbstractGuiUtils.TransformArgs transformArgs = new AbstractGuiUtils.TransformArgs(stack);
-            transformArgs.setAngle(ClientConfig.get().progressBarConfig().leafConfig().progressBarLeafAngle())
-                    .setCenter(EnumRotationCenter.CENTER)
-                    .setX(drawX)
-                    .setY(drawY)
-                    .setWidth(width)
-                    .setHeight(height);
+            TransformArgs transformArgs = new TransformArgs(stack);
+            transformArgs.angle(ClientConfig.get().progressBarConfig().leafConfig().progressBarLeafAngle())
+                    .center(ClientConfig.get().progressBarConfig().leafConfig().progressBarLeafBase())
+                    .x(drawX)
+                    .y(drawY)
+                    .width(width)
+                    .height(height);
             AbstractGuiUtils.renderByTransform(transformArgs, (arg) -> {
-                ResourceLocation texture = TextureUtils.loadCustomTexture(TextureUtils.INTERNAL_THEME_DIR + "leaf.png");
-                AbstractGuiUtils.bindTexture(texture);
-                AbstractGuiUtils.blitBlend(stack, (int) arg.getX(), (int) arg.getY(), 0, 0, (int) arg.getWidth(), (int) arg.getHeight(), (int) arg.getWidth(), (int) arg.getHeight());
+                ResourceLocation texture = TextureUtils.loadCustomTexture(Identifier.id(), "gui/leaf.png");
+                AbstractGuiUtils.blitBlend(stack, texture, (int) arg.x(), (int) arg.y(), 0, 0, (int) arg.width(), (int) arg.height(), (int) arg.width(), (int) arg.height());
             });
         }
     }
@@ -730,9 +732,9 @@ public class ClientEventHandler implements ClientModInitializer {
         double x;
         String xString = ClientConfig.get().progressBarConfig().leafConfig().progressBarLeafPosition().split(",")[0];
         if (xString.endsWith("%")) {
-            x = StringUtils.toDouble(xString.replace("%", "")) * 0.01d * width;
+            x = NumberUtils.toDouble(xString.replace("%", "")) * 0.01d * width;
         } else {
-            x = StringUtils.toInt(xString);
+            x = NumberUtils.toInt(xString);
         }
         int quadrant = ClientConfig.get().progressBarConfig().leafConfig().progressBarLeafScreenQuadrant();
         if (quadrant == 2 || quadrant == 3) {
@@ -740,7 +742,7 @@ public class ClientEventHandler implements ClientModInitializer {
         } else {
             x = baseX + x;
         }
-        switch (EnumRotationCenter.valueOf(ClientConfig.get().progressBarConfig().leafConfig().progressBarLeafBase())) {
+        switch (ClientConfig.get().progressBarConfig().leafConfig().progressBarLeafBase()) {
             case CENTER:
             case TOP_CENTER:
             case BOTTOM_CENTER: {
@@ -762,9 +764,9 @@ public class ClientEventHandler implements ClientModInitializer {
         double y;
         String yString = ClientConfig.get().progressBarConfig().leafConfig().progressBarLeafPosition().split(",")[1];
         if (yString.endsWith("%")) {
-            y = StringUtils.toDouble(yString.replace("%", "")) * 0.01d * height;
+            y = NumberUtils.toDouble(yString.replace("%", "")) * 0.01d * height;
         } else {
-            y = StringUtils.toInt(yString);
+            y = NumberUtils.toInt(yString);
         }
         int quadrant = ClientConfig.get().progressBarConfig().leafConfig().progressBarLeafScreenQuadrant();
         if (quadrant == 1 || quadrant == 2) {
@@ -772,7 +774,7 @@ public class ClientEventHandler implements ClientModInitializer {
         } else {
             y = baseY + y;
         }
-        switch (EnumRotationCenter.valueOf(ClientConfig.get().progressBarConfig().leafConfig().progressBarLeafBase())) {
+        switch (ClientConfig.get().progressBarConfig().leafConfig().progressBarLeafBase()) {
             case CENTER: {
                 y -= ClientConfig.get().progressBarConfig().leafConfig().progressBarLeafHeight() / 2.0;
             }
@@ -791,15 +793,15 @@ public class ClientEventHandler implements ClientModInitializer {
         double x;
         String xString = ClientConfig.get().progressBarConfig().poleConfig().progressBarPolePosition().split(",")[0];
         if (xString.endsWith("%")) {
-            x = StringUtils.toDouble(xString.replace("%", "")) * 0.01d * width;
+            x = NumberUtils.toDouble(xString.replace("%", "")) * 0.01d * width;
         } else {
-            x = StringUtils.toInt(xString);
+            x = NumberUtils.toInt(xString);
         }
         int quadrant = ClientConfig.get().progressBarConfig().poleConfig().progressBarPoleScreenQuadrant();
         if (quadrant == 2 || quadrant == 3) {
             x = width - x;
         }
-        switch (EnumRotationCenter.valueOf(ClientConfig.get().progressBarConfig().poleConfig().progressBarPoleBase())) {
+        switch (ClientConfig.get().progressBarConfig().poleConfig().progressBarPoleBase()) {
             case CENTER:
             case TOP_CENTER:
             case BOTTOM_CENTER: {
@@ -820,15 +822,15 @@ public class ClientEventHandler implements ClientModInitializer {
         double y;
         String yString = ClientConfig.get().progressBarConfig().poleConfig().progressBarPolePosition().split(",")[1];
         if (yString.endsWith("%")) {
-            y = StringUtils.toDouble(yString.replace("%", "")) * 0.01d * height;
+            y = NumberUtils.toDouble(yString.replace("%", "")) * 0.01d * height;
         } else {
-            y = StringUtils.toInt(yString);
+            y = NumberUtils.toInt(yString);
         }
         int quadrant = ClientConfig.get().progressBarConfig().poleConfig().progressBarPoleScreenQuadrant();
         if (quadrant == 1 || quadrant == 2) {
             y = height - y;
         }
-        switch (EnumRotationCenter.valueOf(ClientConfig.get().progressBarConfig().poleConfig().progressBarPoleBase())) {
+        switch (ClientConfig.get().progressBarConfig().poleConfig().progressBarPoleBase()) {
             case CENTER: {
                 y -= ClientConfig.get().progressBarConfig().poleConfig().progressBarPoleHeight() / 2.0;
             }
@@ -848,9 +850,9 @@ public class ClientEventHandler implements ClientModInitializer {
         double x;
         String xString = ClientConfig.get().progressBarConfig().textConfig().progressBarTextPosition().split(",")[0];
         if (xString.endsWith("%")) {
-            x = StringUtils.toDouble(xString.replace("%", "")) * 0.01d * width;
+            x = NumberUtils.toDouble(xString.replace("%", "")) * 0.01d * width;
         } else {
-            x = StringUtils.toInt(xString);
+            x = NumberUtils.toInt(xString);
         }
         int quadrant = ClientConfig.get().progressBarConfig().textConfig().progressBarTextScreenQuadrant();
         if (quadrant == 2 || quadrant == 3) {
@@ -858,7 +860,7 @@ public class ClientEventHandler implements ClientModInitializer {
         } else {
             x = baseX + x;
         }
-        switch (EnumRotationCenter.valueOf(ClientConfig.get().progressBarConfig().textConfig().progressBarTextBase())) {
+        switch (ClientConfig.get().progressBarConfig().textConfig().progressBarTextBase()) {
             case CENTER:
             case TOP_CENTER:
             case BOTTOM_CENTER: {
@@ -880,9 +882,9 @@ public class ClientEventHandler implements ClientModInitializer {
         double y;
         String yString = ClientConfig.get().progressBarConfig().textConfig().progressBarTextPosition().split(",")[1];
         if (yString.endsWith("%")) {
-            y = StringUtils.toDouble(yString.replace("%", "")) * 0.01d * height;
+            y = NumberUtils.toDouble(yString.replace("%", "")) * 0.01d * height;
         } else {
-            y = StringUtils.toInt(yString);
+            y = NumberUtils.toInt(yString);
         }
         int quadrant = ClientConfig.get().progressBarConfig().textConfig().progressBarTextScreenQuadrant();
         if (quadrant == 1 || quadrant == 2) {
@@ -890,7 +892,7 @@ public class ClientEventHandler implements ClientModInitializer {
         } else {
             y = baseY + y;
         }
-        switch (EnumRotationCenter.valueOf(ClientConfig.get().progressBarConfig().textConfig().progressBarTextBase())) {
+        switch (ClientConfig.get().progressBarConfig().textConfig().progressBarTextBase()) {
             case CENTER: {
                 y -= ClientConfig.get().progressBarConfig().textConfig().progressBarTextSize() / 16.0 * getTextHeight() / 2.0;
             }

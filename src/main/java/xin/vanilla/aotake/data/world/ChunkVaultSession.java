@@ -10,15 +10,14 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.inventory.ChestMenu;
 import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.event.entity.player.PlayerContainerEvent;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import xin.vanilla.aotake.AotakeComponent;
 import xin.vanilla.aotake.AotakeLang;
 import xin.vanilla.aotake.AotakeSweep;
 import xin.vanilla.aotake.network.packet.ChunkVaultPageSyncToClient;
+import xin.vanilla.aotake.util.AotakeUtils;
 import xin.vanilla.banira.common.util.BaniraScheduler;
-import xin.vanilla.banira.common.util.PacketUtils;
 import xin.vanilla.banira.common.util.PlayerUtils;
 
 import javax.annotation.Nonnull;
@@ -57,7 +56,7 @@ public final class ChunkVaultSession {
         player.openMenu(holder.createMenuProvider(player, page, total));
         AotakeSweep.getPlayerChunkVaultId().put(uuid, vaultId);
         AotakeSweep.getPlayerChunkVaultPage().put(uuid, page);
-        PacketUtils.sendPacketToPlayer(new ChunkVaultPageSyncToClient(page, total), player);
+        AotakeUtils.sendPacketToPlayer(new ChunkVaultPageSyncToClient(page, total), player);
     }
 
     /**
@@ -94,9 +93,10 @@ public final class ChunkVaultSession {
         player.closeContainer();
     }
 
-    public static void onContainerClose(PlayerContainerEvent.Close event) {
-        if (!(event.getEntity() instanceof ServerPlayer)) return;
-        ServerPlayer player = (ServerPlayer) event.getEntity();
+    public static void onPlayerCloseContainer(ServerPlayer player) {
+        if (player == null) {
+            return;
+        }
         String uuid = PlayerUtils.getPlayerUUIDString(player);
         Holder holder = OPEN.get(uuid);
         if (holder == null) return;
@@ -132,7 +132,7 @@ public final class ChunkVaultSession {
         player.openMenu(holder.createMenuProvider(player, page, total));
         AotakeSweep.getPlayerChunkVaultId().put(uuid, holder.vaultId);
         AotakeSweep.getPlayerChunkVaultPage().put(uuid, page);
-        PacketUtils.sendPacketToPlayer(new ChunkVaultPageSyncToClient(page, total), player);
+        AotakeUtils.sendPacketToPlayer(new ChunkVaultPageSyncToClient(page, total), player);
     }
 
     private static List<ItemStack> flattenInventories(List<SimpleContainer> pages) {

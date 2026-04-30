@@ -21,9 +21,6 @@
     "main": [
       "xin.vanilla.aotake.AotakeSweep"
     ],
-    "vanilla_xin_common_config_reload": [
-      "xin.vanilla.aotake.config.CustomConfigReload"
-    ],
     "modmenu": [
       "xin.vanilla.aotake.modmenu.ModMenuIntegration"
     ]

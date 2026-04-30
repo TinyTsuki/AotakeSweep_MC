@@ -2,43 +2,36 @@ package xin.vanilla.aotake.network.packet;
 
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
-import net.fabricmc.fabric.api.networking.v1.PacketByteBufs;
+import net.minecraft.client.Minecraft;
 import net.minecraft.network.FriendlyByteBuf;
-import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.Entity;
-import xin.vanilla.aotake.AotakeSweep;
-import xin.vanilla.aotake.network.AotakePacket;
-import xin.vanilla.aotake.network.NetworkPacket;
+import xin.vanilla.aotake.network.AotakeNetworkPacket;
+import xin.vanilla.banira.common.network.NetworkContext;
 
-public record GhostCameraToClient(int entityId, boolean reset) implements NetworkPacket{
-public record GhostCameraToClient(int entityId, boolean reset) implements AotakePacket {
-    public static final ResourceLocation ID = AotakeSweep.createIdentifier("ghost_camera");
+public record GhostCameraToClient(int entityId, boolean reset) implements AotakeNetworkPacket {
 
     public GhostCameraToClient(FriendlyByteBuf buf) {
         this(buf.readInt(), buf.readBoolean());
     }
 
-    @Override
-    public ResourceLocation id() {
-        return ID;
+    public void toBytes(FriendlyByteBuf buf) {
+        buf.writeInt(this.entityId());
+        buf.writeBoolean(this.reset());
     }
 
-    @Override
-    public FriendlyByteBuf toBytes(FriendlyByteBuf buf) {
-        if (buf == null) buf = PacketByteBufs.create();
-        buf.writeInt(this.entityId);
-        buf.writeBoolean(this.reset);
-        return buf;
-    }
-
-    public static void handle(GhostCameraToClient packet) {
-        ClientSide.handle(packet);
+    public static void handle(GhostCameraToClient packet, NetworkContext ctx) {
+        ctx.enqueueWork(() -> {
+            if (!ctx.isClientSide()) {
+                return;
+            }
+            ClientSide.handle(packet);
+        });
     }
 
     @Environment(EnvType.CLIENT)
     private static final class ClientSide {
         private static void handle(GhostCameraToClient packet) {
-            net.minecraft.client.Minecraft client = net.minecraft.client.Minecraft.getInstance();
+            Minecraft client = Minecraft.getInstance();
             if (client.player == null) return;
             if (packet.reset()) {
                 client.setCameraEntity(client.player);

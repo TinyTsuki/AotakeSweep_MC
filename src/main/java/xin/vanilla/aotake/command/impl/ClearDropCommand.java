@@ -15,6 +15,7 @@ import net.minecraft.world.entity.player.Player;
 import xin.vanilla.aotake.AotakeComponent;
 import xin.vanilla.aotake.AotakeLang;
 import xin.vanilla.aotake.AotakeSweep;
+import xin.vanilla.aotake.config.CommonConfig;
 import xin.vanilla.aotake.data.SweepResult;
 import xin.vanilla.aotake.data.player.PlayerSweepData;
 import xin.vanilla.aotake.enums.EnumCommandType;
