@@ -9,7 +9,7 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
 
 /**
- * {@link ClientConfig} 运行时视图（与 {@link xin.vanilla.banira.common.config.ForgeConfigAdapter} 生成的路径一致）。
+ * {@link ClientConfig} 运行时视图（与 Banira 配置服务生成的路径一致）。
  */
 public final class ClientConfigAccess {
 

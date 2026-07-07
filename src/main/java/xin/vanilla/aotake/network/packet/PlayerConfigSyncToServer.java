@@ -1,15 +1,13 @@
 package xin.vanilla.aotake.network.packet;
 
-import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraftforge.network.NetworkEvent;
 import xin.vanilla.aotake.AotakeSweep;
 import xin.vanilla.aotake.data.player.PlayerSweepData;
 import xin.vanilla.aotake.network.NetworkPacket;
+import xin.vanilla.banira.common.network.BaniraNetworkContext;
+import xin.vanilla.banira.common.network.BaniraPacketBuffer;
 import xin.vanilla.banira.common.util.PacketUtils;
 import xin.vanilla.banira.common.util.PlayerUtils;
-
-import java.util.function.Supplier;
 
 
 public class PlayerConfigSyncToServer implements NetworkPacket {
@@ -22,19 +20,19 @@ public class PlayerConfigSyncToServer implements NetworkPacket {
         this.enableWarningVoice = enableWarningVoice;
     }
 
-    public PlayerConfigSyncToServer(FriendlyByteBuf buf) {
+    public PlayerConfigSyncToServer(BaniraPacketBuffer buf) {
         this.showSweepResult = buf.readBoolean();
         this.enableWarningVoice = buf.readBoolean();
     }
 
-    public void toBytes(FriendlyByteBuf buf) {
+    public void toBytes(BaniraPacketBuffer buf) {
         buf.writeBoolean(this.showSweepResult);
         buf.writeBoolean(this.enableWarningVoice);
     }
 
-    public static void handle(PlayerConfigSyncToServer packet, Supplier<NetworkEvent.Context> ctx) {
-        ctx.get().enqueueWork(() -> {
-            ServerPlayer player = ctx.get().getSender();
+    public static void handle(PlayerConfigSyncToServer packet, BaniraNetworkContext ctx) {
+        ctx.enqueueWork(() -> {
+            ServerPlayer player = ctx.senderAs(ServerPlayer.class);
             if (player == null) return;
             PlayerSweepData data = PlayerSweepData.getData(player);
             data.setShowSweepResult(packet.showSweepResult);
@@ -43,6 +41,6 @@ public class PlayerConfigSyncToServer implements NetworkPacket {
                 PacketUtils.sendPacketToPlayer(new SweepDataSyncToClient(player), player);
             }
         });
-        ctx.get().setPacketHandled(true);
+        ctx.markHandled();
     }
 }

@@ -16,7 +16,6 @@ import xin.vanilla.aotake.enums.EnumCommandType;
 import xin.vanilla.aotake.network.packet.SweepDataSyncToClient;
 import xin.vanilla.aotake.notification.AotakeNotificationTypes;
 import xin.vanilla.aotake.util.AotakeUtils;
-import xin.vanilla.banira.common.config.ForgeConfigAdapter;
 import xin.vanilla.banira.common.enums.EnumI18nType;
 import xin.vanilla.banira.common.util.*;
 
@@ -82,18 +81,18 @@ public class ConfigCommand {
                                 .suggests((context, builder) -> {
                                     String input = CommandUtils.getStringEmpty(context, "configKey");
                                     CommandUtils.configKeySuggestion(
-                                            ForgeConfigAdapter.getHolder(CommonConfig.class), builder, input);
+                                            CommonConfig.get().holder(), builder, input);
                                     return builder.buildFuture();
                                 })
                                 .then(Commands.argument("configValue", StringArgumentType.word())
                                         .suggests((context, builder) -> {
                                             String configKey = StringArgumentType.getString(context, "configKey");
                                             CommandUtils.configValueSuggestion(
-                                                    ForgeConfigAdapter.getHolder(CommonConfig.class), builder, configKey);
+                                                    CommonConfig.get().holder(), builder, configKey);
                                             return builder.buildFuture();
                                         })
                                         .executes(context -> CommandUtils.executeModifyConfig(
-                                                ForgeConfigAdapter.getHolder(CommonConfig.class), context))
+                                                CommonConfig.get().holder(), context))
                                 )
                         )
                 )// endregion 修改server配置
@@ -104,18 +103,18 @@ public class ConfigCommand {
                                 .suggests((context, builder) -> {
                                     String input = CommandUtils.getStringEmpty(context, "configKey");
                                     CommandUtils.configKeySuggestion(
-                                            ForgeConfigAdapter.getHolder(CommonConfig.class), builder, input);
+                                            CommonConfig.get().holder(), builder, input);
                                     return builder.buildFuture();
                                 })
                                 .then(Commands.argument("configValue", StringArgumentType.word())
                                         .suggests((context, builder) -> {
                                             String configKey = StringArgumentType.getString(context, "configKey");
                                             CommandUtils.configValueSuggestion(
-                                                    ForgeConfigAdapter.getHolder(CommonConfig.class), builder, configKey);
+                                                    CommonConfig.get().holder(), builder, configKey);
                                             return builder.buildFuture();
                                         })
                                         .executes(context -> CommandUtils.executeModifyConfig(
-                                                ForgeConfigAdapter.getHolder(CommonConfig.class), context))
+                                                CommonConfig.get().holder(), context))
                                 )
                         )
                 )// endregion 修改common配置

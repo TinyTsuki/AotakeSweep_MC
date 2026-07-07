@@ -1,16 +1,14 @@
 package xin.vanilla.aotake.network.packet;
 
 import lombok.Getter;
-import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraftforge.network.NetworkEvent;
 import xin.vanilla.aotake.AotakeSweep;
 import xin.vanilla.aotake.config.CommonConfig;
 import xin.vanilla.aotake.data.player.PlayerSweepData;
 import xin.vanilla.aotake.event.EventHandlerProxy;
 import xin.vanilla.aotake.network.NetworkPacket;
-
-import java.util.function.Supplier;
+import xin.vanilla.banira.common.network.BaniraNetworkContext;
+import xin.vanilla.banira.common.network.BaniraPacketBuffer;
 
 @Getter
 public class SweepDataSyncToClient implements NetworkPacket {
@@ -43,20 +41,15 @@ public class SweepDataSyncToClient implements NetworkPacket {
         this.enableWarningVoice = data.isEnableWarningVoice();
     }
 
-    public SweepDataSyncToClient(FriendlyByteBuf buf) {
+    public SweepDataSyncToClient(BaniraPacketBuffer buf) {
         this.currentTime = buf.readLong();
         this.nextSweepTime = buf.readLong();
         this.sweepInterval = buf.readLong();
-        if (buf.readableBytes() >= 2) {
-            this.showSweepResult = buf.readBoolean();
-            this.enableWarningVoice = buf.readBoolean();
-        } else {
-            this.showSweepResult = true;
-            this.enableWarningVoice = true;
-        }
+        this.showSweepResult = buf.readBoolean();
+        this.enableWarningVoice = buf.readBoolean();
     }
 
-    public void toBytes(FriendlyByteBuf buf) {
+    public void toBytes(BaniraPacketBuffer buf) {
         buf.writeLong(this.currentTime);
         buf.writeLong(this.nextSweepTime);
         buf.writeLong(this.sweepInterval);
@@ -64,12 +57,12 @@ public class SweepDataSyncToClient implements NetworkPacket {
         buf.writeBoolean(this.enableWarningVoice);
     }
 
-    public static void handle(SweepDataSyncToClient packet, Supplier<NetworkEvent.Context> ctx) {
-        ctx.get().enqueueWork(() -> {
+    public static void handle(SweepDataSyncToClient packet, BaniraNetworkContext ctx) {
+        ctx.enqueueWork(() -> {
             AotakeSweep.getClientServerTime().key(System.currentTimeMillis()).value(packet.getCurrentTime());
             AotakeSweep.getSweepTime().key(packet.getSweepInterval()).value(packet.getNextSweepTime());
             AotakeSweep.setClientCachedPlayerSweepPrefs(packet.isShowSweepResult(), packet.isEnableWarningVoice());
         });
-        ctx.get().setPacketHandled(true);
+        ctx.markHandled();
     }
 }

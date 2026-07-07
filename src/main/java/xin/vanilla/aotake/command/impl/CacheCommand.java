@@ -18,11 +18,11 @@ import xin.vanilla.aotake.data.world.WorldTrashData;
 import xin.vanilla.aotake.enums.EnumCommandType;
 import xin.vanilla.aotake.notification.AotakeNotificationTypes;
 import xin.vanilla.aotake.util.AotakeUtils;
-import xin.vanilla.banira.BaniraCodex;
 import xin.vanilla.banira.common.data.Component;
 import xin.vanilla.banira.common.data.KeyValue;
 import xin.vanilla.banira.common.data.WorldCoordinate;
 import xin.vanilla.banira.common.util.CommandUtils;
+import xin.vanilla.banira.common.util.BaniraServerUtils;
 import xin.vanilla.banira.common.util.DimensionUtils;
 import xin.vanilla.banira.common.util.MessageUtils;
 
@@ -45,7 +45,7 @@ public class CacheCommand {
                             ? context.getSource().getPlayerOrException().getDisplayName().getString()
                             : "server"
             );
-            BaniraCodex.serverInstance().key()
+            BaniraServerUtils.currentServer()
                     .getPlayerList()
                     .getPlayers()
                     .forEach(p -> MessageUtils.sendNotification(p, message, AotakeNotificationTypes.ADMIN_BROADCAST));
@@ -89,7 +89,7 @@ public class CacheCommand {
                             ? context.getSource().getPlayerOrException().getDisplayName().getString()
                             : "server"
             );
-            BaniraCodex.serverInstance().key()
+            BaniraServerUtils.currentServer()
                     .getPlayerList()
                     .getPlayers()
                     .forEach(p -> MessageUtils.sendNotification(p, message, AotakeNotificationTypes.ADMIN_BROADCAST));

@@ -31,7 +31,6 @@ import xin.vanilla.banira.client.gui.widget.ButtonWidget;
 import xin.vanilla.banira.client.gui.widget.TooltipWidget;
 import xin.vanilla.banira.client.util.AbstractGuiUtils;
 import xin.vanilla.banira.client.util.ClientThemeManager;
-import xin.vanilla.banira.client.util.InputStateManager;
 import xin.vanilla.banira.client.util.TextureUtils;
 import xin.vanilla.banira.common.data.Component;
 import xin.vanilla.banira.common.data.KeyValue;
@@ -108,8 +107,8 @@ public final class DustbinRender {
      * 在发送会触发垃圾箱界面重建的 {@link OpenDustbinToServer} 之前调用，记录当前光标
      */
     private static void queueCursorRestoreBeforeContainerRefresh() {
-        KeyValue<Double, Double> cur = InputStateManager.getRawCursorPos();
-        pendingMouseRaw.key(cur.key()).value(cur.val());
+        Minecraft mc = Minecraft.getInstance();
+        pendingMouseRaw.key(mc.mouseHandler.xpos()).value(mc.mouseHandler.ypos());
     }
 
     private static boolean isOurDustbinChestScreen(Screen screen, Minecraft mc) {
@@ -144,7 +143,8 @@ public final class DustbinRender {
         double rx = pendingMouseRaw.key();
         double ry = pendingMouseRaw.val();
         pendingMouseRaw.key(-1D).val(-1D);
-        InputStateManager.setMouseRawPos(rx, ry);
+        Minecraft mc = Minecraft.getInstance();
+        GLFW.glfwSetCursorPos(mc.getWindow().getWindow(), rx, ry);
     }
 
     public static void handleGuiScreen(ScreenEvent event) {
@@ -513,12 +513,12 @@ public final class DustbinRender {
             if (keyEvent.getModifiers() != 0) return;
             boolean chunkKeys = screen instanceof ContainerScreen
                     && isChunkVaultTitle(screen.getTitle().getString());
-            if (keyEvent.getKeyCode() == ClientModEventHandler.DUSTBIN_KEY.getKey().getValue()) {
+            if (keyEvent.getKeyCode() == ClientModEventHandler.DUSTBIN_KEY.currentKey()) {
                 if (System.currentTimeMillis() - lastDustbinScreenKeyTime > 200) {
                     lastDustbinScreenKeyTime = System.currentTimeMillis();
                     mc.setScreen(null);
                 }
-            } else if (keyEvent.getKeyCode() == ClientModEventHandler.DUSTBIN_PRE_KEY.getKey().getValue()) {
+            } else if (keyEvent.getKeyCode() == ClientModEventHandler.DUSTBIN_PRE_KEY.currentKey()) {
                 if (System.currentTimeMillis() - lastDustbinScreenKeyTime > 200) {
                     lastDustbinScreenKeyTime = System.currentTimeMillis();
                     queueCursorRestoreBeforeContainerRefresh();
@@ -528,7 +528,7 @@ public final class DustbinRender {
                         PacketUtils.sendPacketToServer(new OpenDustbinToServer(-1));
                     }
                 }
-            } else if (keyEvent.getKeyCode() == ClientModEventHandler.DUSTBIN_NEXT_KEY.getKey().getValue()) {
+            } else if (keyEvent.getKeyCode() == ClientModEventHandler.DUSTBIN_NEXT_KEY.currentKey()) {
                 if (System.currentTimeMillis() - lastDustbinScreenKeyTime > 200) {
                     lastDustbinScreenKeyTime = System.currentTimeMillis();
                     queueCursorRestoreBeforeContainerRefresh();
@@ -553,7 +553,8 @@ public final class DustbinRender {
     }
 
     private static boolean isLeftMousePressing() {
-        return InputStateManager.isMousePressing(GLFW.GLFW_MOUSE_BUTTON_LEFT);
+        Minecraft mc = Minecraft.getInstance();
+        return GLFW.glfwGetMouseButton(mc.getWindow().getWindow(), GLFW.GLFW_MOUSE_BUTTON_LEFT) == GLFW.GLFW_PRESS;
     }
 
     private static void updateMouseClickState(double mouseX, double mouseY) {
