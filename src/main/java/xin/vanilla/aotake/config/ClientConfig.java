@@ -4,16 +4,16 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.experimental.Accessors;
-import net.minecraftforge.fml.config.ModConfig;
 import xin.vanilla.aotake.AotakeSweep;
 import xin.vanilla.aotake.config.access.ClientConfigAccess;
 import xin.vanilla.aotake.enums.EnumDustbinClientUiStyle;
 import xin.vanilla.aotake.enums.EnumProgressBarTextAlignH;
 import xin.vanilla.aotake.enums.EnumProgressBarTextAlignV;
 import xin.vanilla.aotake.enums.EnumProgressBarType;
+import xin.vanilla.banira.common.config.BaniraConfig;
 import xin.vanilla.banira.common.config.ConfigData;
 import xin.vanilla.banira.common.config.ConfigHolder;
-import xin.vanilla.banira.common.config.ForgeConfigAdapter;
+import xin.vanilla.banira.common.config.ConfigScope;
 import xin.vanilla.banira.common.config.annotation.Config;
 import xin.vanilla.banira.common.config.annotation.ConfigEntry;
 import xin.vanilla.banira.common.enums.EnumPosition;
@@ -22,9 +22,9 @@ import java.util.Arrays;
 import java.util.List;
 
 /**
- * 客户端配置（Forge CLIENT），由 Banira {@link ForgeConfigAdapter} 构建并在配置编辑器中编辑。
+ * 客户端配置，由 Banira 配置服务构建并在配置编辑器中编辑。
  */
-@Config(name = AotakeSweep.MODID + "-client", type = ModConfig.Type.CLIENT)
+@Config(name = AotakeSweep.MODID + "-client", type = ConfigScope.CLIENT)
 public class ClientConfig implements ConfigData {
 
     @Getter(AccessLevel.NONE)
@@ -43,7 +43,7 @@ public class ClientConfig implements ConfigData {
     }
 
     public static RootView get() {
-        return ClientConfigAccess.root(ForgeConfigAdapter.getHolder(ClientConfig.class));
+        return ClientConfigAccess.root(BaniraConfig.holder(ClientConfig.class));
     }
 
     public interface RootView {

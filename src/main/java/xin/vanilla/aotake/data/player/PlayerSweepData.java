@@ -3,10 +3,10 @@ package xin.vanilla.aotake.data.player;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.entity.player.ServerPlayerEntity;
 import net.minecraft.nbt.CompoundNBT;
-import net.minecraft.network.PacketBuffer;
 import xin.vanilla.aotake.AotakeSweep;
 import xin.vanilla.banira.BaniraCodex;
 import xin.vanilla.banira.common.api.ICommandNotify;
+import xin.vanilla.banira.common.network.BaniraPacketBuffer;
 import xin.vanilla.banira.common.player.IPlayerData;
 
 import java.util.Collections;
@@ -58,7 +58,7 @@ public final class PlayerSweepData implements IPlayerData<PlayerSweepData>, ICom
      * 将数据写到网络包
      */
     @Override
-    public void writeToBuffer(PacketBuffer buffer) {
+    public void writeToBuffer(BaniraPacketBuffer buffer) {
         buffer.writeBoolean(isNotified());
         buffer.writeBoolean(isShowSweepResult());
         buffer.writeBoolean(isEnableWarningVoice());
@@ -68,7 +68,7 @@ public final class PlayerSweepData implements IPlayerData<PlayerSweepData>, ICom
      * 从网络包读数据
      */
     @Override
-    public void readFromBuffer(PacketBuffer buffer) {
+    public void readFromBuffer(BaniraPacketBuffer buffer) {
         this.notified = buffer.readBoolean();
         this.showSweepResult = buffer.readBoolean();
         this.enableWarningVoice = buffer.readBoolean();

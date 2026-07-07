@@ -183,18 +183,6 @@ tasks.register('prepareFatResources') {
     versionRange = "${minecraft_version_range}"
     ordering = "NONE"
     side = "BOTH"
-[[dependencies."banira_codex"]]
-    modId = "banira_codex"
-    mandatory = true
-    versionRange = "[1.0.0,)"
-    ordering = "NONE"
-    side = "SERVER"
-[[dependencies."banira_codex"]]
-    modId = "banira_codex"
-    mandatory = false
-    versionRange = "[1.0.0,)"
-    ordering = "NONE"
-    side = "CLIENT"
 """.stripIndent(), 'UTF-8')
     }
 }

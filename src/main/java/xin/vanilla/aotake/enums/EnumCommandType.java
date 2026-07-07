@@ -18,9 +18,9 @@ import java.util.function.Supplier;
 @Getter
 public enum EnumCommandType implements IVirtualPermissionType, IEnumDescribable {
     HELP(HelpCommand::help, false, false),
-    LANGUAGE(() -> BaniraCommand.LANGUAGE, false, false),
+    LANGUAGE(() -> commandNode(BaniraCommand.LANGUAGE), false, false),
     LANGUAGE_CONCISE(),
-    VIRTUAL_OP(() -> BaniraCommand.VIRTUAL_OP),
+    VIRTUAL_OP(() -> commandNode(BaniraCommand.VIRTUAL_OP)),
     VIRTUAL_OP_CONCISE(),
     DUSTBIN_OPEN(DustbinCommand::open),
     DUSTBIN_OPEN_CONCISE(),
@@ -121,5 +121,10 @@ public enum EnumCommandType implements IVirtualPermissionType, IEnumDescribable 
     @Override
     public Component enumDescription() {
         return EnumDescriptionHelper.describeEnum(AotakeComponent.get(), this);
+    }
+
+    @SuppressWarnings("unchecked")
+    private static LiteralArgumentBuilder<CommandSource> commandNode(Object node) {
+        return (LiteralArgumentBuilder<CommandSource>) node;
     }
 }

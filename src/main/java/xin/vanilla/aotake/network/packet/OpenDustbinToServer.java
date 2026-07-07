@@ -1,16 +1,14 @@
 package xin.vanilla.aotake.network.packet;
 
 import net.minecraft.entity.player.ServerPlayerEntity;
-import net.minecraft.network.PacketBuffer;
-import net.minecraftforge.fml.network.NetworkEvent;
 import xin.vanilla.aotake.AotakeSweep;
 import xin.vanilla.aotake.enums.EnumCommandType;
 import xin.vanilla.aotake.network.NetworkPacket;
 import xin.vanilla.aotake.util.AotakeUtils;
+import xin.vanilla.banira.common.network.BaniraNetworkContext;
+import xin.vanilla.banira.common.network.BaniraPacketBuffer;
 import xin.vanilla.banira.common.util.CommandUtils;
 import xin.vanilla.banira.common.util.PlayerUtils;
-
-import java.util.function.Supplier;
 
 public class OpenDustbinToServer implements NetworkPacket {
     private final int offset;
@@ -19,17 +17,17 @@ public class OpenDustbinToServer implements NetworkPacket {
         this.offset = offset;
     }
 
-    public OpenDustbinToServer(PacketBuffer buf) {
+    public OpenDustbinToServer(BaniraPacketBuffer buf) {
         this.offset = buf.readInt();
     }
 
-    public void toBytes(PacketBuffer buf) {
+    public void toBytes(BaniraPacketBuffer buf) {
         buf.writeInt(this.offset);
     }
 
-    public static void handle(OpenDustbinToServer packet, Supplier<NetworkEvent.Context> ctx) {
-        ctx.get().enqueueWork(() -> {
-            ServerPlayerEntity player = ctx.get().getSender();
+    public static void handle(OpenDustbinToServer packet, BaniraNetworkContext ctx) {
+        ctx.enqueueWork(() -> {
+            ServerPlayerEntity player = ctx.senderAs(ServerPlayerEntity.class);
             if (player != null) {
                 String playerUUID = PlayerUtils.getPlayerUUIDString(player);
                 Integer page = AotakeSweep.getPlayerDustbinPage().getOrDefault(playerUUID, 1);
@@ -43,6 +41,6 @@ public class OpenDustbinToServer implements NetworkPacket {
                 ));
             }
         });
-        ctx.get().setPacketHandled(true);
+        ctx.markHandled();
     }
 }

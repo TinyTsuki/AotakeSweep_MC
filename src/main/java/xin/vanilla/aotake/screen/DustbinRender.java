@@ -7,6 +7,7 @@ import net.minecraft.client.entity.player.ClientPlayerEntity;
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.gui.screen.inventory.ChestScreen;
 import net.minecraft.client.gui.widget.button.Button;
+import net.minecraft.client.settings.KeyBinding;
 import net.minecraft.util.ResourceLocation;
 import net.minecraftforge.client.event.GuiScreenEvent;
 import xin.vanilla.aotake.AotakeComponent;
@@ -28,6 +29,7 @@ import xin.vanilla.banira.client.data.FontDrawArgs;
 import xin.vanilla.banira.client.gui.component.Text;
 import xin.vanilla.banira.client.gui.widget.ButtonWidget;
 import xin.vanilla.banira.client.gui.widget.TooltipWidget;
+import xin.vanilla.banira.client.util.BaniraKeyHandle;
 import xin.vanilla.banira.client.util.AbstractGuiUtils;
 import xin.vanilla.banira.client.util.ClientThemeManager;
 import xin.vanilla.banira.client.util.InputStateManager;
@@ -514,12 +516,12 @@ public final class DustbinRender {
             if (keyEvent.getModifiers() != 0) return;
             boolean chunkKeys = screen instanceof ChestScreen
                     && isChunkVaultTitle(screen.getTitle().getString());
-            if (keyEvent.getKeyCode() == ClientModEventHandler.DUSTBIN_KEY.getKey().getValue()) {
+            if (keyEvent.getKeyCode() == keyCode(ClientModEventHandler.DUSTBIN_KEY)) {
                 if (System.currentTimeMillis() - lastDustbinScreenKeyTime > 200) {
                     lastDustbinScreenKeyTime = System.currentTimeMillis();
                     mc.setScreen(null);
                 }
-            } else if (keyEvent.getKeyCode() == ClientModEventHandler.DUSTBIN_PRE_KEY.getKey().getValue()) {
+            } else if (keyEvent.getKeyCode() == keyCode(ClientModEventHandler.DUSTBIN_PRE_KEY)) {
                 if (System.currentTimeMillis() - lastDustbinScreenKeyTime > 200) {
                     lastDustbinScreenKeyTime = System.currentTimeMillis();
                     queueCursorRestoreBeforeContainerRefresh();
@@ -529,7 +531,7 @@ public final class DustbinRender {
                         PacketUtils.sendPacketToServer(new OpenDustbinToServer(-1));
                     }
                 }
-            } else if (keyEvent.getKeyCode() == ClientModEventHandler.DUSTBIN_NEXT_KEY.getKey().getValue()) {
+            } else if (keyEvent.getKeyCode() == keyCode(ClientModEventHandler.DUSTBIN_NEXT_KEY)) {
                 if (System.currentTimeMillis() - lastDustbinScreenKeyTime > 200) {
                     lastDustbinScreenKeyTime = System.currentTimeMillis();
                     queueCursorRestoreBeforeContainerRefresh();
@@ -570,6 +572,11 @@ public final class DustbinRender {
             return;
         }
         DustbinBaniraToolbarButtonRenderer.draw(stack, baniraTheme, x, y, w, h, hover, pressVisual, enabled, baniraPreset, baniraTint);
+    }
+
+    private static int keyCode(BaniraKeyHandle handle) {
+        KeyBinding binding = handle.nativeBinding(KeyBinding.class);
+        return binding != null ? binding.getKey().getValue() : handle.defaultKey();
     }
 
     private static Button newButton(int x, int y, int width, int height,

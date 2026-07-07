@@ -547,7 +547,7 @@ public class EventHandlerProxy {
                             back.stopRiding();
                         }
                         back.startRiding(entity, true);
-                        PacketUtils.broadcastPacket(new SSetPassengersPacket(entity));
+                        ((ServerWorld) entity.level).getChunkSource().broadcast(entity, new SSetPassengersPacket(entity));
                         suppressUseItemTick.put(uuid, tick);
                         event.setCanceled(true);
                         event.setCancellationResult(ActionResultType.SUCCESS);

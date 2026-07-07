@@ -1,7 +1,9 @@
 package xin.vanilla.aotake.event;
 
 import net.minecraft.client.Minecraft;
+import net.minecraftforge.client.event.GuiScreenEvent;
 import net.minecraftforge.client.event.RenderGameOverlayEvent;
+import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.TickEvent;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -26,10 +28,10 @@ public final class ClientGameEventHandler {
 
     public static void register() {
         BaniraClientEventHub.Player.onClientLoggedOut(player -> LOGGER.debug("Client: Player logged out."));
-        BaniraClientEventHub.Client.onClientTick(ClientGameEventHandler::onClientTick);
-        BaniraClientEventHub.Client.onGuiScreen(DustbinRender::handleGuiScreen);
-        BaniraClientEventHub.Client.onRenderOverlayPre(ClientGameEventHandler::onRenderOverlayPre);
-        BaniraClientEventHub.Client.onRenderOverlayPost(ClientGameEventHandler::onRenderOverlayPost);
+        MinecraftForge.EVENT_BUS.addListener((TickEvent.ClientTickEvent event) -> ClientGameEventHandler.onClientTick(event));
+        MinecraftForge.EVENT_BUS.addListener((GuiScreenEvent event) -> DustbinRender.handleGuiScreen(event));
+        MinecraftForge.EVENT_BUS.addListener((RenderGameOverlayEvent.Pre event) -> ClientGameEventHandler.onRenderOverlayPre(event));
+        MinecraftForge.EVENT_BUS.addListener((RenderGameOverlayEvent.Post event) -> ClientGameEventHandler.onRenderOverlayPost(event));
     }
 
     private static void onClientTick(TickEvent.ClientTickEvent event) {

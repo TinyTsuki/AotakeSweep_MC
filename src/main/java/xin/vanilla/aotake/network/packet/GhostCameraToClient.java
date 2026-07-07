@@ -1,13 +1,11 @@
 package xin.vanilla.aotake.network.packet;
 
 import net.minecraft.entity.Entity;
-import net.minecraft.network.PacketBuffer;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.api.distmarker.OnlyIn;
-import net.minecraftforge.fml.network.NetworkEvent;
 import xin.vanilla.aotake.network.NetworkPacket;
-
-import java.util.function.Supplier;
+import xin.vanilla.banira.common.network.BaniraNetworkContext;
+import xin.vanilla.banira.common.network.BaniraPacketBuffer;
 
 public class GhostCameraToClient implements NetworkPacket {
 
@@ -20,18 +18,19 @@ public class GhostCameraToClient implements NetworkPacket {
         this.reset = reset;
     }
 
-    public GhostCameraToClient(PacketBuffer buf) {
+    public GhostCameraToClient(BaniraPacketBuffer buf) {
         this.entityId = buf.readInt();
         this.reset = buf.readBoolean();
     }
 
-    public void toBytes(PacketBuffer buf) {
+    public void toBytes(BaniraPacketBuffer buf) {
         buf.writeInt(this.entityId);
         buf.writeBoolean(this.reset);
     }
 
-    public static void handle(GhostCameraToClient packet, Supplier<NetworkEvent.Context> ctx) {
-        ctx.get().enqueueWork(() -> ClientSide.handle(packet));
+    public static void handle(GhostCameraToClient packet, BaniraNetworkContext ctx) {
+        ctx.enqueueWork(() -> ClientSide.handle(packet));
+        ctx.markHandled();
     }
 
     @OnlyIn(Dist.CLIENT)
