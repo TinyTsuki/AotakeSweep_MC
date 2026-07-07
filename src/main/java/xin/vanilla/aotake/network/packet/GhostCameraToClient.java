@@ -1,25 +1,26 @@
 package xin.vanilla.aotake.network.packet;
 
-import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.world.entity.Entity;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.api.distmarker.OnlyIn;
-import net.minecraftforge.event.network.CustomPayloadEvent;
 import xin.vanilla.aotake.network.NetworkPacket;
+import xin.vanilla.banira.common.network.BaniraNetworkContext;
+import xin.vanilla.banira.common.network.BaniraPacketBuffer;
 
 public record GhostCameraToClient(int entityId, boolean reset) implements NetworkPacket{
 
-    public GhostCameraToClient(FriendlyByteBuf buf) {
+    public GhostCameraToClient(BaniraPacketBuffer buf) {
         this(buf.readInt(), buf.readBoolean());
     }
 
-    public void toBytes(FriendlyByteBuf buf) {
+    public void toBytes(BaniraPacketBuffer buf) {
         buf.writeInt(this.entityId());
         buf.writeBoolean(this.reset());
     }
 
-    public static void handle(GhostCameraToClient packet, CustomPayloadEvent.Context ctx) {
+    public static void handle(GhostCameraToClient packet, BaniraNetworkContext ctx) {
         ctx.enqueueWork(() -> ClientSide.handle(packet));
+        ctx.markHandled();
     }
 
     @OnlyIn(Dist.CLIENT)

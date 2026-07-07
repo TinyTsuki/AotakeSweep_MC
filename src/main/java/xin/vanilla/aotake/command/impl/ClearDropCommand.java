@@ -21,8 +21,8 @@ import xin.vanilla.aotake.data.player.PlayerSweepData;
 import xin.vanilla.aotake.enums.EnumCommandType;
 import xin.vanilla.aotake.notification.AotakeNotificationTypes;
 import xin.vanilla.aotake.util.AotakeUtils;
-import xin.vanilla.banira.BaniraCodex;
 import xin.vanilla.banira.common.data.Component;
+import xin.vanilla.banira.common.util.BaniraServerUtils;
 import xin.vanilla.banira.common.util.CommandUtils;
 import xin.vanilla.banira.common.util.MessageUtils;
 import xin.vanilla.banira.common.util.NumberUtils;
@@ -78,7 +78,7 @@ public class ClearDropCommand {
                 AotakeUtils.removeEntity(entity, false);
             });
 
-            BaniraCodex.serverInstance().key()
+            BaniraServerUtils.currentServer()
                     .getPlayerList()
                     .getPlayers()
                     .forEach(player -> MessageUtils.sendNotification(player
