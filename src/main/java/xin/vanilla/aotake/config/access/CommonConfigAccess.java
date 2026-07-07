@@ -13,8 +13,6 @@ import java.lang.reflect.Proxy;
  */
 public final class CommonConfigAccess {
 
-    private static final CommonConfig.BaseCategory DEFAULT_BASE = new CommonConfig.BaseCategory();
-
     private CommonConfigAccess() {
     }
 
@@ -67,31 +65,31 @@ public final class CommonConfigAccess {
             case "dustbin":
                 return ConfigCategoryViewProxy.create(
                         CommonConfig.DustbinView.class, holder, "base.dustbin",
-                        DEFAULT_BASE.dustbin(), CommonConfigAccess::readSimple);
+                        DefaultBase.HOLDER.dustbin(), CommonConfigAccess::readSimple);
             case "sweep":
                 return ConfigCategoryViewProxy.create(
                         CommonConfig.SweepView.class, holder, "base.sweep",
-                        DEFAULT_BASE.sweep(), CommonConfigAccess::readSimple);
+                        DefaultBase.HOLDER.sweep(), CommonConfigAccess::readSimple);
             case "safe":
                 return ConfigCategoryViewProxy.create(
                         CommonConfig.SafeView.class, holder, "base.safe",
-                        DEFAULT_BASE.safe(), CommonConfigAccess::readSimple);
+                        DefaultBase.HOLDER.safe(), CommonConfigAccess::readSimple);
             case "common":
                 return ConfigCategoryViewProxy.create(
                         CommonConfig.CommonSettingsView.class, holder, "base.common",
-                        DEFAULT_BASE.common(), CommonConfigAccess::readSimple);
+                        DefaultBase.HOLDER.common(), CommonConfigAccess::readSimple);
             case "chunk":
                 return ConfigCategoryViewProxy.create(
                         CommonConfig.ChunkView.class, holder, "base.chunk",
-                        DEFAULT_BASE.chunk(), CommonConfigAccess::readSimple);
+                        DefaultBase.HOLDER.chunk(), CommonConfigAccess::readSimple);
             case "entityCatch":
                 return ConfigCategoryViewProxy.create(
                         CommonConfig.EntityCatchView.class, holder, "base.entityCatch",
-                        DEFAULT_BASE.entityCatch(), CommonConfigAccess::readSimple);
+                        DefaultBase.HOLDER.entityCatch(), CommonConfigAccess::readSimple);
             case "batch":
                 return ConfigCategoryViewProxy.create(
                         CommonConfig.BatchView.class, holder, "base.batch",
-                        DEFAULT_BASE.batch(), CommonConfigAccess::readSimple);
+                        DefaultBase.HOLDER.batch(), CommonConfigAccess::readSimple);
             default:
                 throw new UnsupportedOperationException(method.toString());
         }
@@ -121,5 +119,12 @@ public final class CommonConfigAccess {
                 return tag + "@" + System.identityHashCode(proxy);
         }
         throw new UnsupportedOperationException(method.toString());
+    }
+
+    /**
+     * Base 默认值会触发部分 MC 注册表类加载，只在访问 base 分类时创建。
+     */
+    private static final class DefaultBase {
+        private static final CommonConfig.BaseCategory HOLDER = new CommonConfig.BaseCategory();
     }
 }
