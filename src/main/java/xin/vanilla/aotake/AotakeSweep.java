@@ -2,16 +2,14 @@ package xin.vanilla.aotake;
 
 import lombok.Getter;
 import lombok.Setter;
-import net.minecraft.client.Minecraft;
 import net.minecraft.entity.player.ServerPlayerEntity;
-import net.minecraft.util.ResourceLocation;
 import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.api.distmarker.OnlyIn;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.RegisterCommandsEvent;
 import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.event.entity.player.PlayerEvent;
 import net.minecraftforge.event.entity.player.PlayerInteractEvent;
+import net.minecraftforge.fml.DistExecutor;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.config.ModConfig;
 import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent;
@@ -22,36 +20,24 @@ import xin.vanilla.aotake.command.AotakeCommand;
 import xin.vanilla.aotake.config.ClientConfig;
 import xin.vanilla.aotake.config.CommonConfig;
 import xin.vanilla.aotake.data.world.ChunkVaultSession;
-import xin.vanilla.aotake.event.ClientGameEventHandler;
-import xin.vanilla.aotake.event.ClientModEventHandler;
 import xin.vanilla.aotake.event.EventHandlerProxy;
 import xin.vanilla.aotake.network.NetworkInit;
-import xin.vanilla.aotake.network.packet.OpenDustbinToServer;
 import xin.vanilla.aotake.network.packet.SweepDataSyncToClient;
 import xin.vanilla.aotake.notification.AotakeNotificationTypes;
-import xin.vanilla.aotake.screen.PlayerConfigScreen;
 import xin.vanilla.aotake.util.EntityFilter;
 import xin.vanilla.aotake.util.EntitySweeper;
 import xin.vanilla.banira.BaniraCodex;
-import xin.vanilla.banira.client.event.BaniraClientEventHub;
-import xin.vanilla.banira.client.gui.ConfigEditorScreen;
-import xin.vanilla.banira.client.gui.quickaction.QuickActionContext;
-import xin.vanilla.banira.client.gui.quickaction.QuickActionContextMenuItem;
-import xin.vanilla.banira.client.gui.quickaction.QuickActionRegistry;
 import xin.vanilla.banira.common.config.BaniraConfig;
 import xin.vanilla.banira.common.config.ConfigHolder;
-import xin.vanilla.banira.common.data.Component;
 import xin.vanilla.banira.common.data.KeyValue;
 import xin.vanilla.banira.common.network.ModLoadedPresence;
 import xin.vanilla.banira.common.util.BaniraEventBus;
 import xin.vanilla.banira.common.util.CommandUtils;
-import xin.vanilla.banira.common.util.EnvironmentUtils;
 import xin.vanilla.banira.common.util.PacketUtils;
 
 import java.util.Map;
 import java.util.Random;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.function.Consumer;
 
 @Mod(AotakeSweep.MODID)
 public class AotakeSweep {
@@ -133,9 +119,8 @@ public class AotakeSweep {
 
         MinecraftForge.EVENT_BUS.addListener(ChunkVaultSession::onContainerClose);
 
-        if (EnvironmentUtils.isClient()) {
-            ClientProxy.init();
-        }
+        DistExecutor.safeRunWhenOn(Dist.CLIENT,
+                () -> xin.vanilla.aotake.client.AotakeClientBootstrap::init);
     }
 
     public void onCommonSetup(FMLCommonSetupEvent event) {
@@ -161,33 +146,6 @@ public class AotakeSweep {
                 entityFilter.clear();
             }
         } catch (Exception ignored) {
-        }
-    }
-
-    @OnlyIn(Dist.CLIENT)
-    public static class ClientProxy {
-        public static void init() {
-            ClientGameEventHandler.register();
-
-            BaniraClientEventHub.ModLifecycle.onClientSetup(event -> {
-                ClientModEventHandler.bootstrap();
-
-                ResourceLocation texture = Identifier.id().create("gui/quick_icon.png");
-                Component label = AotakeComponent.get().transClient("key.aotake_sweep.categories");
-                QuickActionContextMenuItem editClientConfig = new QuickActionContextMenuItem(AotakeComponent.get().transClientAuto("edit_client_config"), ctx ->
-                        ConfigEditorScreen.open(ClientConfig.get().holder(), ctx.currentScreen())
-                );
-                Consumer<QuickActionContext> action = ctx -> PacketUtils.sendPacketToServer(new OpenDustbinToServer(0));
-                QuickActionContextMenuItem editCommonConfig = new QuickActionContextMenuItem(AotakeComponent.get().transClientAuto("edit_common_config"), ctx ->
-                        ConfigEditorScreen.open(CommonConfig.get().holder(), ctx.currentScreen())
-                );
-                QuickActionContextMenuItem editPlayerConfig = new QuickActionContextMenuItem(AotakeComponent.get().transClientAuto("edit_player_config"), ctx ->
-                        Minecraft.getInstance().setScreen(new PlayerConfigScreen(ctx.currentScreen()
-                                , AotakeSweep.isClientCachedShowSweepResult()
-                                , AotakeSweep.isClientCachedEnableWarningVoice()))
-                );
-                QuickActionRegistry.get().registerIcon(MODID + ":quick", texture, label, action, editPlayerConfig, editClientConfig, editCommonConfig);
-            });
         }
     }
 
