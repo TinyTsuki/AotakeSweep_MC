@@ -6,14 +6,14 @@ import lombok.Setter;
 import lombok.experimental.Accessors;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.item.Items;
-import net.minecraftforge.fml.config.ModConfig;
 import xin.vanilla.aotake.AotakeSweep;
 import xin.vanilla.aotake.config.access.CommonConfigAccess;
 import xin.vanilla.aotake.enums.*;
 import xin.vanilla.aotake.util.AotakeUtils;
+import xin.vanilla.banira.common.config.BaniraConfig;
 import xin.vanilla.banira.common.config.ConfigData;
 import xin.vanilla.banira.common.config.ConfigHolder;
-import xin.vanilla.banira.common.config.ForgeConfigAdapter;
+import xin.vanilla.banira.common.config.ConfigScope;
 import xin.vanilla.banira.common.config.annotation.Config;
 import xin.vanilla.banira.common.config.annotation.ConfigEntry;
 
@@ -22,7 +22,7 @@ import java.util.*;
 /**
  * 通用配置
  */
-@Config(name = AotakeSweep.MODID + "-common", type = ModConfig.Type.COMMON)
+@Config(name = AotakeSweep.MODID + "-common", type = ConfigScope.COMMON)
 public class CommonConfig implements ConfigData {
 
     @Getter(AccessLevel.NONE)
@@ -53,11 +53,11 @@ public class CommonConfig implements ConfigData {
     }
 
     public static RootView get() {
-        return CommonConfigAccess.root(ForgeConfigAdapter.getHolder(CommonConfig.class));
+        return CommonConfigAccess.root(BaniraConfig.holder(CommonConfig.class));
     }
 
     public static void save() {
-        ConfigHolder h = ForgeConfigAdapter.getHolder(CommonConfig.class);
+        ConfigHolder h = BaniraConfig.holder(CommonConfig.class);
         if (h != null) {
             h.save();
         }

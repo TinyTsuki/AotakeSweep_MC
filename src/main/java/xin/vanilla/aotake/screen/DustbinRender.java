@@ -513,12 +513,12 @@ public final class DustbinRender {
             if (keyEvent.getModifiers() != 0) return;
             boolean chunkKeys = screen instanceof ContainerScreen
                     && isChunkVaultTitle(screen.getTitle().getString());
-            if (keyEvent.getKeyCode() == ClientModEventHandler.DUSTBIN_KEY.getKey().getValue()) {
+            if (keyEvent.getKeyCode() == ClientModEventHandler.DUSTBIN_KEY.currentKey()) {
                 if (System.currentTimeMillis() - lastDustbinScreenKeyTime > 200) {
                     lastDustbinScreenKeyTime = System.currentTimeMillis();
                     mc.setScreen(null);
                 }
-            } else if (keyEvent.getKeyCode() == ClientModEventHandler.DUSTBIN_PRE_KEY.getKey().getValue()) {
+            } else if (keyEvent.getKeyCode() == ClientModEventHandler.DUSTBIN_PRE_KEY.currentKey()) {
                 if (System.currentTimeMillis() - lastDustbinScreenKeyTime > 200) {
                     lastDustbinScreenKeyTime = System.currentTimeMillis();
                     queueCursorRestoreBeforeContainerRefresh();
@@ -528,7 +528,7 @@ public final class DustbinRender {
                         PacketUtils.sendPacketToServer(new OpenDustbinToServer(-1));
                     }
                 }
-            } else if (keyEvent.getKeyCode() == ClientModEventHandler.DUSTBIN_NEXT_KEY.getKey().getValue()) {
+            } else if (keyEvent.getKeyCode() == ClientModEventHandler.DUSTBIN_NEXT_KEY.currentKey()) {
                 if (System.currentTimeMillis() - lastDustbinScreenKeyTime > 200) {
                     lastDustbinScreenKeyTime = System.currentTimeMillis();
                     queueCursorRestoreBeforeContainerRefresh();

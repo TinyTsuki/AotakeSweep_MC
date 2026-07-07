@@ -1,9 +1,9 @@
 package xin.vanilla.aotake.event;
 
-import net.minecraft.client.KeyMapping;
 import org.lwjgl.glfw.GLFW;
 import xin.vanilla.aotake.AotakeSweep;
 import xin.vanilla.aotake.notification.AotakeNotificationTypes;
+import xin.vanilla.banira.api.client.BaniraKeyHandle;
 import xin.vanilla.banira.client.notification.NotificationTypeRegistry;
 import xin.vanilla.banira.client.util.BaniraKeyBindings;
 
@@ -15,20 +15,20 @@ public final class ClientModEventHandler {
     /**
      * 垃圾箱快捷键
      */
-    public static KeyMapping DUSTBIN_KEY = BaniraKeyBindings.register(AotakeSweep.MODID, "open_dustbin", GLFW.GLFW_KEY_UNKNOWN);
+    public static BaniraKeyHandle DUSTBIN_KEY = BaniraKeyBindings.register(AotakeSweep.MODID, "open_dustbin", GLFW.GLFW_KEY_UNKNOWN);
     /**
      * 垃圾箱上页快捷键
      */
-    public static KeyMapping DUSTBIN_PRE_KEY = BaniraKeyBindings.register(AotakeSweep.MODID, "open_dustbin_pre", GLFW.GLFW_KEY_LEFT);
+    public static BaniraKeyHandle DUSTBIN_PRE_KEY = BaniraKeyBindings.register(AotakeSweep.MODID, "open_dustbin_pre", GLFW.GLFW_KEY_LEFT);
     /**
      * 垃圾箱下页快捷键
      */
-    public static KeyMapping DUSTBIN_NEXT_KEY = BaniraKeyBindings.register(AotakeSweep.MODID, "open_dustbin_next", GLFW.GLFW_KEY_RIGHT);
+    public static BaniraKeyHandle DUSTBIN_NEXT_KEY = BaniraKeyBindings.register(AotakeSweep.MODID, "open_dustbin_next", GLFW.GLFW_KEY_RIGHT);
 
     /**
      * 切换进度条显示按键
      */
-    public static KeyMapping PROGRESS_KEY = BaniraKeyBindings.register(AotakeSweep.MODID, "progress", GLFW.GLFW_KEY_TAB);
+    public static BaniraKeyHandle PROGRESS_KEY = BaniraKeyBindings.register(AotakeSweep.MODID, "progress", GLFW.GLFW_KEY_TAB);
 
     private ClientModEventHandler() {
     }

@@ -1,31 +1,29 @@
 package xin.vanilla.aotake.network.packet;
 
-import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraftforge.network.NetworkEvent;
 import xin.vanilla.aotake.AotakeSweep;
 import xin.vanilla.aotake.enums.EnumCommandType;
 import xin.vanilla.aotake.network.NetworkPacket;
 import xin.vanilla.aotake.util.AotakeUtils;
+import xin.vanilla.banira.common.network.BaniraNetworkContext;
+import xin.vanilla.banira.common.network.BaniraPacketBuffer;
 import xin.vanilla.banira.common.util.CommandUtils;
 import xin.vanilla.banira.common.util.PlayerUtils;
 
-import java.util.function.Supplier;
-
 public record ClearDustbinToServer(boolean all, boolean cache) implements NetworkPacket{
 
-    public ClearDustbinToServer(FriendlyByteBuf buf) {
+    public ClearDustbinToServer(BaniraPacketBuffer buf) {
         this(buf.readBoolean(), buf.readBoolean());
     }
 
-    public void toBytes(FriendlyByteBuf buf) {
+    public void toBytes(BaniraPacketBuffer buf) {
         buf.writeBoolean(this.all());
         buf.writeBoolean(this.cache());
     }
 
-    public static void handle(ClearDustbinToServer packet, Supplier<NetworkEvent.Context> ctx) {
-        ctx.get().enqueueWork(() -> {
-            ServerPlayer player = ctx.get().getSender();
+    public static void handle(ClearDustbinToServer packet, BaniraNetworkContext ctx) {
+        ctx.enqueueWork(() -> {
+            ServerPlayer player = ctx.senderAs(ServerPlayer.class);
             if (player != null) {
                 String playerUUID = PlayerUtils.getPlayerUUIDString(player);
                 int page = AotakeSweep.getPlayerDustbinPage().getOrDefault(playerUUID, 1);
@@ -44,6 +42,6 @@ public record ClearDustbinToServer(boolean all, boolean cache) implements Networ
                 }
             }
         });
-        ctx.get().setPacketHandled(true);
+        ctx.markHandled();
     }
 }

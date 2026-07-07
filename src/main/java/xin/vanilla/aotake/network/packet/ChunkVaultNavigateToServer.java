@@ -1,12 +1,10 @@
 package xin.vanilla.aotake.network.packet;
 
-import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraftforge.network.NetworkEvent;
 import xin.vanilla.aotake.data.world.ChunkVaultSession;
 import xin.vanilla.aotake.network.NetworkPacket;
-
-import java.util.function.Supplier;
+import xin.vanilla.banira.common.network.BaniraNetworkContext;
+import xin.vanilla.banira.common.network.BaniraPacketBuffer;
 
 public class ChunkVaultNavigateToServer implements NetworkPacket {
     private final int offset;
@@ -15,20 +13,20 @@ public class ChunkVaultNavigateToServer implements NetworkPacket {
         this.offset = offset;
     }
 
-    public ChunkVaultNavigateToServer(FriendlyByteBuf buf) {
+    public ChunkVaultNavigateToServer(BaniraPacketBuffer buf) {
         this.offset = buf.readInt();
     }
 
-    public void toBytes(FriendlyByteBuf buf) {
+    public void toBytes(BaniraPacketBuffer buf) {
         buf.writeInt(this.offset);
     }
 
-    public static void handle(ChunkVaultNavigateToServer packet, Supplier<NetworkEvent.Context> ctx) {
-        ctx.get().enqueueWork(() -> {
-            ServerPlayer player = ctx.get().getSender();
+    public static void handle(ChunkVaultNavigateToServer packet, BaniraNetworkContext ctx) {
+        ctx.enqueueWork(() -> {
+            ServerPlayer player = ctx.senderAs(ServerPlayer.class);
             if (player == null) return;
             ChunkVaultSession.navigateOrReload(player, packet.offset);
         });
-        ctx.get().setPacketHandled(true);
+        ctx.markHandled();
     }
 }

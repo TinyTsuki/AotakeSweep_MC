@@ -2,7 +2,9 @@ package xin.vanilla.aotake.event;
 
 import net.minecraft.client.Minecraft;
 import net.minecraftforge.client.event.RenderGameOverlayEvent;
+import net.minecraftforge.client.event.ScreenEvent;
 import net.minecraftforge.client.gui.ForgeIngameGui;
+import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.TickEvent;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -14,7 +16,7 @@ import xin.vanilla.banira.client.event.BaniraClientEventHub;
 import xin.vanilla.banira.common.util.PacketUtils;
 
 /**
- * 客户端 Game 逻辑；通过 {@link BaniraClientEventHub} 订阅，在 {@link xin.vanilla.aotake.AotakeSweep.ClientProxy} 中注册。
+ * 客户端 Game 逻辑；Forge HUD/Screen 原生事件仍用于需要拦截底层渲染的场景。
  */
 public final class ClientGameEventHandler {
     private static final Logger LOGGER = LogManager.getLogger();
@@ -27,10 +29,10 @@ public final class ClientGameEventHandler {
 
     public static void register() {
         BaniraClientEventHub.Player.onClientLoggedOut(player -> LOGGER.debug("Client: Player logged out."));
-        BaniraClientEventHub.Client.onClientTick(ClientGameEventHandler::onClientTick);
-        BaniraClientEventHub.Client.onGuiScreen(DustbinRender::handleGuiScreen);
-        BaniraClientEventHub.Client.onRenderOverlayPre(ClientGameEventHandler::onRenderOverlayPre);
-        BaniraClientEventHub.Client.onRenderOverlayPost(ClientGameEventHandler::onRenderOverlayPost);
+        MinecraftForge.EVENT_BUS.addListener((TickEvent.ClientTickEvent event) -> ClientGameEventHandler.onClientTick(event));
+        MinecraftForge.EVENT_BUS.addListener((ScreenEvent event) -> DustbinRender.handleGuiScreen(event));
+        MinecraftForge.EVENT_BUS.addListener((RenderGameOverlayEvent.Pre event) -> ClientGameEventHandler.onRenderOverlayPre(event));
+        MinecraftForge.EVENT_BUS.addListener((RenderGameOverlayEvent.Post event) -> ClientGameEventHandler.onRenderOverlayPost(event));
     }
 
     private static void onClientTick(TickEvent.ClientTickEvent event) {
