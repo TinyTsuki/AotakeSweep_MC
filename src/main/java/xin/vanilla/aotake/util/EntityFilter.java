@@ -331,11 +331,11 @@ public class EntityFilter {
             Object cur;
             int startIdx;
             if (ap.className != null) {
-                Class<?> decl = FieldUtils.getClass(ap.className);
+                Class<?> decl = ReflectionUtils.getClass(ap.className);
                 if (decl == null || !decl.isInstance(entity)) {
                     return null;
                 }
-                cur = FieldUtils.getPrivateFieldValue(decl, entity, ap.chain.get(0), true);
+                cur = ReflectionUtils.getPrivateFieldValue(decl, entity, ap.chain.get(0), true);
                 startIdx = 1;
             } else {
                 cur = entity;
@@ -414,7 +414,7 @@ public class EntityFilter {
                 }
                 return null;
             }
-            return FieldUtils.getPrivateFieldValue(obj.getClass(), obj, segment, true);
+            return ReflectionUtils.getPrivateFieldValue(obj.getClass(), obj, segment, true);
         } catch (Throwable ignored) {
             return null;
         }
@@ -492,13 +492,13 @@ public class EntityFilter {
                         try {
                             String[] split = firstPartKey.split(":", 2);
                             if (split.length == 1) {
-                                return (EntityDataAccessor<?>) FieldUtils.getPrivateFieldValue(FieldUtils.getClass(entity), entity, split[0], true);
+                                return (EntityDataAccessor<?>) ReflectionUtils.getPrivateFieldValue(ReflectionUtils.getClass(entity), entity, split[0], true);
                             }
-                            Class<?> decl = FieldUtils.getClass(split[0]);
+                            Class<?> decl = ReflectionUtils.getClass(split[0]);
                             if (decl == null || !decl.isInstance(entity)) {
                                 return null;
                             }
-                            return (EntityDataAccessor<?>) FieldUtils.getPrivateFieldValue(decl, entity, split[1]);
+                            return (EntityDataAccessor<?>) ReflectionUtils.getPrivateFieldValue(decl, entity, split[1]);
                         } catch (Throwable ignored) {
                             return null;
                         }

@@ -21,11 +21,11 @@ import xin.vanilla.aotake.AotakeLang;
 import xin.vanilla.aotake.config.CommonConfig;
 import xin.vanilla.aotake.data.ConcurrentShuffleList;
 import xin.vanilla.aotake.data.DropStatistics;
-import xin.vanilla.banira.BaniraCodex;
 import xin.vanilla.banira.common.data.Component;
 import xin.vanilla.banira.common.data.KeyValue;
 import xin.vanilla.banira.common.data.WorldCoordinate;
 import xin.vanilla.banira.common.enums.EnumMCColor;
+import xin.vanilla.banira.common.util.BaniraServerUtils;
 import xin.vanilla.banira.common.util.DateUtils;
 
 import javax.annotation.ParametersAreNonnullByDefault;
@@ -83,7 +83,7 @@ public class WorldTrashData extends SavedData {
         data.setDrops(drops);
 
         String todayStr = DateUtils.toString(new Date());
-        MinecraftServer server = BaniraCodex.serverInstance().val() ? BaniraCodex.serverInstance().key() : null;
+        MinecraftServer server = BaniraServerUtils.isRunning() ? BaniraServerUtils.currentServer() : null;
         Queue<DropStatistics> dropCounts = DropStatisticsStorage.loadByDate(server, todayStr);
         // 若 NBT 中有 dropCount 且当日 JSON 为空，则迁移至 JSON
         if (dropCounts.isEmpty() && nbt.contains("dropCount")) {
@@ -130,8 +130,8 @@ public class WorldTrashData extends SavedData {
         nbt.put("dropList", dropsNBT);
 
         String todayStr = DateUtils.toString(new Date());
-        if (BaniraCodex.serverInstance().val()) {
-            MinecraftServer server = BaniraCodex.serverInstance().key();
+        if (BaniraServerUtils.isRunning()) {
+            MinecraftServer server = BaniraServerUtils.currentServer();
             rolloverDropStatisticsIfNeeded(server, todayStr);
             DropStatisticsStorage.saveByDate(server, todayStr, this.dropCount);
         }
@@ -187,7 +187,7 @@ public class WorldTrashData extends SavedData {
     }
 
     public static WorldTrashData get() {
-        return get(BaniraCodex.serverInstance().key().getAllLevels().iterator().next());
+        return get(BaniraServerUtils.currentServer().getAllLevels().iterator().next());
     }
 
     public static WorldTrashData get(ServerPlayer player) {
