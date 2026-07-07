@@ -1,44 +1,40 @@
 package xin.vanilla.aotake.network.packet;
 
-import net.minecraft.network.FriendlyByteBuf;
-import net.minecraft.network.RegistryFriendlyByteBuf;
-import net.minecraft.network.codec.StreamCodec;
-import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
-import net.neoforged.api.distmarker.Dist;
-import net.neoforged.api.distmarker.OnlyIn;
-import net.neoforged.neoforge.network.handling.IPayloadContext;
-import org.jetbrains.annotations.NotNull;
-import xin.vanilla.aotake.Identifier;
+import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.api.distmarker.OnlyIn;
 import xin.vanilla.aotake.network.NetworkPacket;
 import xin.vanilla.aotake.screen.DustbinRender;
-import xin.vanilla.banira.internal.network.BaniraStreamCodecs;
+import xin.vanilla.banira.common.network.BaniraNetworkContext;
+import xin.vanilla.banira.common.network.BaniraPacketBuffer;
 
-public record ChunkVaultPageSyncToClient(int currentPage, int totalPage) implements NetworkPacket {
-    public final static CustomPacketPayload.Type<ChunkVaultPageSyncToClient> TYPE = new CustomPacketPayload.Type<>(Identifier.id().create("chunk_vault_page_sync"));
-    public final static StreamCodec<RegistryFriendlyByteBuf, ChunkVaultPageSyncToClient> STREAM_CODEC = BaniraStreamCodecs.registryBuf(ChunkVaultPageSyncToClient::toBytes, ChunkVaultPageSyncToClient::new);
+public class ChunkVaultPageSyncToClient implements NetworkPacket {
+    private final int currentPage;
+    private final int totalPage;
 
-    public ChunkVaultPageSyncToClient(FriendlyByteBuf buf) {
-        this(buf.readInt(), buf.readInt());
+    public ChunkVaultPageSyncToClient(int currentPage, int totalPage) {
+        this.currentPage = currentPage;
+        this.totalPage = totalPage;
     }
 
-    public void toBytes(FriendlyByteBuf buf) {
-        buf.writeInt(this.currentPage());
-        buf.writeInt(this.totalPage());
+    public ChunkVaultPageSyncToClient(BaniraPacketBuffer buf) {
+        this.currentPage = buf.readInt();
+        this.totalPage = buf.readInt();
     }
 
-    @Override
-    public @NotNull Type<? extends CustomPacketPayload> type() {
-        return TYPE;
+    public void toBytes(BaniraPacketBuffer buf) {
+        buf.writeInt(this.currentPage);
+        buf.writeInt(this.totalPage);
     }
 
-    public static void handle(ChunkVaultPageSyncToClient packet, IPayloadContext ctx) {
+    public static void handle(ChunkVaultPageSyncToClient packet, BaniraNetworkContext ctx) {
         ctx.enqueueWork(() -> ClientSide.handle(packet));
+        ctx.markHandled();
     }
 
     @OnlyIn(Dist.CLIENT)
     private static final class ClientSide {
         private static void handle(ChunkVaultPageSyncToClient packet) {
-            DustbinRender.updateChunkVaultPage(packet.currentPage(), packet.totalPage());
+            DustbinRender.updateChunkVaultPage(packet.currentPage, packet.totalPage);
         }
     }
 }

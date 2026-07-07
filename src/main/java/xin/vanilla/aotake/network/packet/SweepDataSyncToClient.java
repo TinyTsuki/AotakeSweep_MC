@@ -1,54 +1,68 @@
 package xin.vanilla.aotake.network.packet;
 
-import net.minecraft.network.FriendlyByteBuf;
-import net.minecraft.network.RegistryFriendlyByteBuf;
-import net.minecraft.network.codec.StreamCodec;
-import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import lombok.Getter;
 import net.minecraft.server.level.ServerPlayer;
-import net.neoforged.neoforge.network.handling.IPayloadContext;
-import org.jetbrains.annotations.NotNull;
 import xin.vanilla.aotake.AotakeSweep;
-import xin.vanilla.aotake.Identifier;
 import xin.vanilla.aotake.config.CommonConfig;
 import xin.vanilla.aotake.data.player.PlayerSweepData;
 import xin.vanilla.aotake.event.EventHandlerProxy;
 import xin.vanilla.aotake.network.NetworkPacket;
-import xin.vanilla.banira.internal.network.BaniraStreamCodecs;
+import xin.vanilla.banira.common.network.BaniraNetworkContext;
+import xin.vanilla.banira.common.network.BaniraPacketBuffer;
 
-public record SweepDataSyncToClient(long currentTime, long nextSweepTime, long sweepInterval, boolean showSweepResult, boolean enableWarningVoice) implements NetworkPacket {
-    public final static CustomPacketPayload.Type<SweepDataSyncToClient> TYPE = new CustomPacketPayload.Type<>(Identifier.id().create("sweep_data_sync"));
-    public final static StreamCodec<RegistryFriendlyByteBuf, SweepDataSyncToClient> STREAM_CODEC = BaniraStreamCodecs.registryBuf(SweepDataSyncToClient::toBytes, SweepDataSyncToClient::new);
+@Getter
+public class SweepDataSyncToClient implements NetworkPacket {
+    /**
+     * 当前时间
+     */
+    private final long currentTime;
+
+    /**
+     * 下次清理时间
+     */
+    private final long nextSweepTime;
+
+    /**
+     * 扫地间隔
+     */
+    private final long sweepInterval;
+    /**
+     * 与 {@link PlayerSweepData} 一致，供客户端偏好界面使用（由 {@link SweepDataSyncToClient} 更新 {@link AotakeSweep} 侧缓存）。
+     */
+    private final boolean showSweepResult;
+    private final boolean enableWarningVoice;
 
     public SweepDataSyncToClient(ServerPlayer player) {
-        this(System.currentTimeMillis()
-                , EventHandlerProxy.getNextSweepTime()
-                , CommonConfig.get().base().sweep().sweepInterval()
-                , PlayerSweepData.getData(player).isShowSweepResult()
-                , PlayerSweepData.getData(player).isEnableWarningVoice());
+        this.currentTime = System.currentTimeMillis();
+        this.nextSweepTime = EventHandlerProxy.getNextSweepTime();
+        this.sweepInterval = CommonConfig.get().base().sweep().sweepInterval();
+        PlayerSweepData data = PlayerSweepData.getData(player);
+        this.showSweepResult = data.isShowSweepResult();
+        this.enableWarningVoice = data.isEnableWarningVoice();
     }
 
-    public SweepDataSyncToClient(FriendlyByteBuf buf) {
-        this(buf.readLong(), buf.readLong(), buf.readLong(), buf.readBoolean(), buf.readBoolean());
+    public SweepDataSyncToClient(BaniraPacketBuffer buf) {
+        this.currentTime = buf.readLong();
+        this.nextSweepTime = buf.readLong();
+        this.sweepInterval = buf.readLong();
+        this.showSweepResult = buf.readBoolean();
+        this.enableWarningVoice = buf.readBoolean();
     }
 
-    public void toBytes(FriendlyByteBuf buf) {
-        buf.writeLong(this.currentTime());
-        buf.writeLong(this.nextSweepTime());
-        buf.writeLong(this.sweepInterval());
-        buf.writeBoolean(this.showSweepResult());
-        buf.writeBoolean(this.enableWarningVoice());
+    public void toBytes(BaniraPacketBuffer buf) {
+        buf.writeLong(this.currentTime);
+        buf.writeLong(this.nextSweepTime);
+        buf.writeLong(this.sweepInterval);
+        buf.writeBoolean(this.showSweepResult);
+        buf.writeBoolean(this.enableWarningVoice);
     }
 
-    @Override
-    public @NotNull Type<? extends CustomPacketPayload> type() {
-        return TYPE;
-    }
-
-    public static void handle(SweepDataSyncToClient packet, IPayloadContext ctx) {
+    public static void handle(SweepDataSyncToClient packet, BaniraNetworkContext ctx) {
         ctx.enqueueWork(() -> {
-            AotakeSweep.getClientServerTime().key(System.currentTimeMillis()).value(packet.currentTime());
-            AotakeSweep.getSweepTime().key(packet.sweepInterval()).value(packet.nextSweepTime());
-            AotakeSweep.setClientCachedPlayerSweepPrefs(packet.showSweepResult(), packet.enableWarningVoice());
+            AotakeSweep.getClientServerTime().key(System.currentTimeMillis()).value(packet.getCurrentTime());
+            AotakeSweep.getSweepTime().key(packet.getSweepInterval()).value(packet.getNextSweepTime());
+            AotakeSweep.setClientCachedPlayerSweepPrefs(packet.isShowSweepResult(), packet.isEnableWarningVoice());
         });
+        ctx.markHandled();
     }
 }

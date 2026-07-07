@@ -4,17 +4,17 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.experimental.Accessors;
-import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.item.Items;
-import net.neoforged.fml.config.ModConfig;
+import net.minecraftforge.registries.ForgeRegistries;
 import xin.vanilla.aotake.AotakeSweep;
 import xin.vanilla.aotake.config.access.CommonConfigAccess;
 import xin.vanilla.aotake.enums.*;
 import xin.vanilla.aotake.util.AotakeUtils;
+import xin.vanilla.banira.api.BaniraConfigs;
 import xin.vanilla.banira.common.config.ConfigData;
 import xin.vanilla.banira.common.config.ConfigHolder;
-import xin.vanilla.banira.common.config.ForgeConfigAdapter;
+import xin.vanilla.banira.common.config.ConfigScope;
 import xin.vanilla.banira.common.config.annotation.Config;
 import xin.vanilla.banira.common.config.annotation.ConfigEntry;
 
@@ -23,7 +23,7 @@ import java.util.*;
 /**
  * 通用配置
  */
-@Config(name = AotakeSweep.MODID + "-common", type = ModConfig.Type.COMMON)
+@Config(name = AotakeSweep.MODID + "-common", type = ConfigScope.COMMON)
 public class CommonConfig implements ConfigData {
 
     @Getter(AccessLevel.NONE)
@@ -54,14 +54,18 @@ public class CommonConfig implements ConfigData {
     }
 
     public static RootView get() {
-        return CommonConfigAccess.root(ForgeConfigAdapter.getHolder(CommonConfig.class));
+        return CommonConfigAccess.root(holder());
     }
 
     public static void save() {
-        ConfigHolder h = ForgeConfigAdapter.getHolder(CommonConfig.class);
-        if (h != null) {
-            h.save();
-        }
+        BaniraConfigs.save(CommonConfig.class);
+    }
+
+    /**
+     * 配置编辑器仍使用详细元数据，因此转换集中在这一处。
+     */
+    private static ConfigHolder holder() {
+        return (ConfigHolder) BaniraConfigs.requireHandle(CommonConfig.class);
     }
 
     public interface RootView {
@@ -778,9 +782,9 @@ public class CommonConfig implements ConfigData {
 
     private static List<String> defaultEntityList() {
         List<String> l = new ArrayList<>();
-        l.add(BuiltInRegistries.ENTITY_TYPE.getKey(EntityType.ARROW).toString());
-        l.add(BuiltInRegistries.ENTITY_TYPE.getKey(EntityType.SPECTRAL_ARROW).toString());
-        l.add(BuiltInRegistries.ENTITY_TYPE.getKey(EntityType.EXPERIENCE_ORB).toString());
+        l.add(ForgeRegistries.ENTITY_TYPES.getKey(EntityType.ARROW).toString());
+        l.add(ForgeRegistries.ENTITY_TYPES.getKey(EntityType.SPECTRAL_ARROW).toString());
+        l.add(ForgeRegistries.ENTITY_TYPES.getKey(EntityType.EXPERIENCE_ORB).toString());
         l.add("tick, clazz, itemClazz, createProcessing = [CreateData.Processing.Time]"
                 + " -> "
                 + "tick >= 5 && clazz :> itemClazz && (createProcessing <= 0 || createProcessing == null)");
@@ -797,9 +801,9 @@ public class CommonConfig implements ConfigData {
 
     private static List<String> defaultCatchItem() {
         return new ArrayList<>(Arrays.asList(
-                BuiltInRegistries.ITEM.getKey(Items.SNOWBALL).toString(),
-                BuiltInRegistries.ITEM.getKey(Items.GLASS_BOTTLE).toString(),
-                BuiltInRegistries.ITEM.getKey(Items.MUSIC_DISC_13).toString()
+                ForgeRegistries.ITEMS.getKey(Items.SNOWBALL).toString(),
+                ForgeRegistries.ITEMS.getKey(Items.GLASS_BOTTLE).toString(),
+                ForgeRegistries.ITEMS.getKey(Items.MUSIC_DISC_13).toString()
         ));
     }
 
@@ -948,9 +952,9 @@ public class CommonConfig implements ConfigData {
 
     private static List<String> defaultEntityListReset() {
         List<String> l = new ArrayList<>();
-        l.add(BuiltInRegistries.ENTITY_TYPE.getKey(EntityType.ARROW).toString());
-        l.add(BuiltInRegistries.ENTITY_TYPE.getKey(EntityType.SPECTRAL_ARROW).toString());
-        l.add(BuiltInRegistries.ENTITY_TYPE.getKey(EntityType.EXPERIENCE_ORB).toString());
+        l.add(ForgeRegistries.ENTITY_TYPES.getKey(EntityType.ARROW).toString());
+        l.add(ForgeRegistries.ENTITY_TYPES.getKey(EntityType.SPECTRAL_ARROW).toString());
+        l.add(ForgeRegistries.ENTITY_TYPES.getKey(EntityType.EXPERIENCE_ORB).toString());
         l.add("tick, clazz, itemClazz, createProcessing = CreateData.Processing.Time"
                 + " -> "
                 + "tick >= 5 && clazz :> itemClazz && (createProcessing <= 0 || createProcessing == null)");

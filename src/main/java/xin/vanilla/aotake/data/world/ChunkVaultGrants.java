@@ -8,7 +8,8 @@ import net.minecraft.server.level.ServerPlayer;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import xin.vanilla.aotake.AotakeSweep;
-import xin.vanilla.banira.BaniraCodex;
+import xin.vanilla.banira.api.BaniraDataPaths;
+import xin.vanilla.banira.common.util.BaniraServerUtils;
 import xin.vanilla.banira.common.util.JsonUtils;
 import xin.vanilla.banira.common.util.PlayerUtils;
 
@@ -23,7 +24,7 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * 分组查看权限：存储于 {@code BANIRA_WORLD_DATA_PATH / MODID / chunk_vault_grants.json}
+ * 分组查看权限：存储于 {@code BaniraDataPaths.worldDataPath() / MODID / chunk_vault_grants.json}
  */
 public final class ChunkVaultGrants {
     private static final Logger LOGGER = LogManager.getLogger();
@@ -32,7 +33,7 @@ public final class ChunkVaultGrants {
     private static final ConcurrentHashMap<String, Set<String>> CACHE = new ConcurrentHashMap<>();
 
     /**
-     * 已为其从磁盘加载过授权表的服务器实例（{@link BaniraCodex#serverInstance()} 在 ServerStarting 阶段可能尚未绑定，故延迟到 tick）。
+     * 已为其从磁盘加载过授权表的服务器实例；服务端运行时在 ServerStarting 后才稳定，故延迟到 tick。
      */
     @Nullable
     private static volatile MinecraftServer grantsLoadedForServer;
@@ -45,7 +46,7 @@ public final class ChunkVaultGrants {
      */
     public static void bootstrapWhenServerReady(MinecraftServer server) {
         if (server == null || !server.isRunning()) return;
-        if (!BaniraCodex.serverInstance().val() || BaniraCodex.serverInstance().key() != server) return;
+        if (!BaniraServerUtils.isRunning() || BaniraServerUtils.currentServer() != server) return;
         if (grantsLoadedForServer == server) return;
         synchronized (ChunkVaultGrants.class) {
             if (grantsLoadedForServer == server) return;
@@ -56,10 +57,10 @@ public final class ChunkVaultGrants {
 
     @Nullable
     public static Path grantsFileOrNull() {
-        if (!BaniraCodex.serverInstance().val()) return null;
-        MinecraftServer s = BaniraCodex.serverInstance().key();
+        if (!BaniraServerUtils.isRunning()) return null;
+        MinecraftServer s = BaniraServerUtils.currentServer();
         if (s == null) return null;
-        return BaniraCodex.BANIRA_WORLD_DATA_PATH.get().resolve(AotakeSweep.MODID).resolve(FILE_NAME);
+        return BaniraDataPaths.worldDataPath().resolve(AotakeSweep.MODID).resolve(FILE_NAME);
     }
 
     public static Path grantsFile() {

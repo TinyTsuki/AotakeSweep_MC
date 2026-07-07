@@ -46,7 +46,6 @@ import xin.vanilla.aotake.network.packet.SweepDataSyncToClient;
 import xin.vanilla.aotake.notification.AotakeNotificationTypes;
 import xin.vanilla.aotake.util.AotakeUtils;
 import xin.vanilla.aotake.util.EntitySweeper;
-import xin.vanilla.banira.BaniraCodex;
 import xin.vanilla.banira.common.data.Component;
 import xin.vanilla.banira.common.data.KeyValue;
 import xin.vanilla.banira.common.data.WorldCoordinate;
@@ -96,7 +95,7 @@ public class EventHandlerProxy {
     public static void onServerTick(ServerTickEvent event) {
         if (!(event instanceof ServerTickEvent.Post)) return;
         if (AotakeSweep.isDisable()) return;
-        MinecraftServer server = BaniraCodex.serverInstance().key();
+        MinecraftServer server = BaniraServerUtils.currentServer();
         if (server == null || !server.isRunning()) return;
         ChunkVaultGrants.bootstrapWhenServerReady(server);
 
@@ -109,7 +108,7 @@ public class EventHandlerProxy {
         if (AotakeUtils.hasWarning(warnKey)) {
             if (!Objects.equals(lastCountdownWarningDispatchKey, warnKey)) {
                 lastCountdownWarningDispatchKey = warnKey;
-                for (ServerPlayer player : BaniraCodex.serverInstance().key()
+                for (ServerPlayer player : BaniraServerUtils.currentServer()
                         .getPlayerList()
                         .getPlayers()
                 ) {
@@ -128,7 +127,7 @@ public class EventHandlerProxy {
         // 扫地前提示音效
         if (AotakeUtils.hasWarningVoice(warnKey) && lastVoiceTime + 1010 < now) {
             lastVoiceTime = now;
-            for (ServerPlayer player : BaniraCodex.serverInstance().key()
+            for (ServerPlayer player : BaniraServerUtils.currentServer()
                     .getPlayerList()
                     .getPlayers()
             ) {
@@ -546,7 +545,7 @@ public class EventHandlerProxy {
                             back.stopRiding();
                         }
                         back.startRiding(entity, true);
-                        PacketUtils.broadcastPacket(new ClientboundSetPassengersPacket(entity));
+                        player.server.getPlayerList().broadcastAll(new ClientboundSetPassengersPacket(entity));
                         suppressUseItemTick.put(uuid, tick);
                         event.setCanceled(true);
                         event.setCancellationResult(InteractionResult.SUCCESS);
@@ -847,7 +846,7 @@ public class EventHandlerProxy {
             return null;
         }
         try {
-            MinecraftServer server = BaniraCodex.serverInstance().key();
+            MinecraftServer server = BaniraServerUtils.currentServer();
             return server == null ? null : net.minecraft.network.chat.Component.Serializer.fromJson(json, server.registryAccess());
         } catch (Exception e) {
             return null;

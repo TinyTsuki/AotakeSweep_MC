@@ -10,7 +10,7 @@ import org.apache.logging.log4j.Logger;
 import xin.vanilla.aotake.AotakeSweep;
 import xin.vanilla.aotake.config.CommonConfig;
 import xin.vanilla.aotake.data.DropStatistics;
-import xin.vanilla.banira.BaniraCodex;
+import xin.vanilla.banira.api.BaniraDataPaths;
 import xin.vanilla.banira.common.util.JsonUtils;
 
 import java.io.IOException;
@@ -37,7 +37,7 @@ public class DropStatisticsStorage {
      * 获取当日统计文件的存储路径
      */
     public static Path getStatsDir(MinecraftServer server) {
-        Path newDir = BaniraCodex.BANIRA_WORLD_DATA_PATH.get().resolve(AotakeSweep.MODID).resolve("drop_stats");
+        Path newDir = BaniraDataPaths.worldDataPath().resolve(AotakeSweep.MODID).resolve("drop_stats");
         if (server != null) {
             migrateLegacyStatsDirAndDelete(server, newDir);
         }

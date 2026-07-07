@@ -1,39 +1,32 @@
 package xin.vanilla.aotake.network.packet;
 
-import net.minecraft.network.FriendlyByteBuf;
-import net.minecraft.network.RegistryFriendlyByteBuf;
-import net.minecraft.network.codec.StreamCodec;
-import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.server.level.ServerPlayer;
-import net.neoforged.neoforge.network.handling.IPayloadContext;
-import org.jetbrains.annotations.NotNull;
-import xin.vanilla.aotake.Identifier;
 import xin.vanilla.aotake.data.world.ChunkVaultSession;
 import xin.vanilla.aotake.network.NetworkPacket;
-import xin.vanilla.banira.internal.network.BaniraStreamCodecs;
+import xin.vanilla.banira.common.network.BaniraNetworkContext;
+import xin.vanilla.banira.common.network.BaniraPacketBuffer;
 
-public record ChunkVaultNavigateToServer(int offset) implements NetworkPacket {
-    public final static CustomPacketPayload.Type<ChunkVaultNavigateToServer> TYPE = new CustomPacketPayload.Type<>(Identifier.id().create("chunk_vault_navigate"));
-    public final static StreamCodec<RegistryFriendlyByteBuf, ChunkVaultNavigateToServer> STREAM_CODEC = BaniraStreamCodecs.registryBuf(ChunkVaultNavigateToServer::toBytes, ChunkVaultNavigateToServer::new);
+public class ChunkVaultNavigateToServer implements NetworkPacket {
+    private final int offset;
 
-    public ChunkVaultNavigateToServer(FriendlyByteBuf buf) {
-        this(buf.readInt());
+    public ChunkVaultNavigateToServer(int offset) {
+        this.offset = offset;
     }
 
-    public void toBytes(FriendlyByteBuf buf) {
-        buf.writeInt(this.offset());
+    public ChunkVaultNavigateToServer(BaniraPacketBuffer buf) {
+        this.offset = buf.readInt();
     }
 
-    @Override
-    public @NotNull Type<? extends CustomPacketPayload> type() {
-        return TYPE;
+    public void toBytes(BaniraPacketBuffer buf) {
+        buf.writeInt(this.offset);
     }
 
-    public static void handle(ChunkVaultNavigateToServer packet, IPayloadContext ctx) {
+    public static void handle(ChunkVaultNavigateToServer packet, BaniraNetworkContext ctx) {
         ctx.enqueueWork(() -> {
-            if (ctx.player() instanceof ServerPlayer player) {
-                ChunkVaultSession.navigateOrReload(player, packet.offset());
-            }
+            ServerPlayer player = ctx.senderAs(ServerPlayer.class);
+            if (player == null) return;
+            ChunkVaultSession.navigateOrReload(player, packet.offset);
         });
+        ctx.markHandled();
     }
 }

@@ -1,33 +1,26 @@
 package xin.vanilla.aotake.network.packet;
 
-import io.netty.buffer.ByteBuf;
-import net.minecraft.network.codec.StreamCodec;
-import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.world.entity.Entity;
-import net.neoforged.api.distmarker.Dist;
-import net.neoforged.api.distmarker.OnlyIn;
-import net.neoforged.neoforge.network.handling.IPayloadContext;
-import org.jetbrains.annotations.NotNull;
-import xin.vanilla.aotake.Identifier;
+import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.api.distmarker.OnlyIn;
 import xin.vanilla.aotake.network.NetworkPacket;
+import xin.vanilla.banira.common.network.BaniraNetworkContext;
+import xin.vanilla.banira.common.network.BaniraPacketBuffer;
 
-public record GhostCameraToClient(int entityId, boolean reset) implements NetworkPacket {
-    public static final CustomPacketPayload.Type<GhostCameraToClient> TYPE = new CustomPacketPayload.Type<>(Identifier.id().create("ghost_camera"));
-    public static final StreamCodec<ByteBuf, GhostCameraToClient> STREAM_CODEC = StreamCodec.of(
-            (buf, packet) -> {
-                buf.writeInt(packet.entityId());
-                buf.writeBoolean(packet.reset());
-            },
-            buf -> new GhostCameraToClient(buf.readInt(), buf.readBoolean())
-    );
+public record GhostCameraToClient(int entityId, boolean reset) implements NetworkPacket{
 
-    @Override
-    public @NotNull Type<? extends CustomPacketPayload> type() {
-        return TYPE;
+    public GhostCameraToClient(BaniraPacketBuffer buf) {
+        this(buf.readInt(), buf.readBoolean());
     }
 
-    public static void handle(GhostCameraToClient packet, IPayloadContext ctx) {
+    public void toBytes(BaniraPacketBuffer buf) {
+        buf.writeInt(this.entityId());
+        buf.writeBoolean(this.reset());
+    }
+
+    public static void handle(GhostCameraToClient packet, BaniraNetworkContext ctx) {
         ctx.enqueueWork(() -> ClientSide.handle(packet));
+        ctx.markHandled();
     }
 
     @OnlyIn(Dist.CLIENT)
