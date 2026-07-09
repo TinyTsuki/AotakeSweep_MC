@@ -31,6 +31,12 @@ runs {
     client {
         // Comma-separated list of namespaces to load gametests from. Empty = all namespaces.
         systemProperty 'forge.enabledGameTestNamespaces', project.mod_id
+        def uiSmoke = (project.findProperty('aotake.uiSmoke') ?: System.getProperty('aotake.uiSmoke') ?: 'false').toString()
+        def uiSmokeExit = (project.findProperty('aotake.uiSmoke.exitOnFinish') ?: System.getProperty('aotake.uiSmoke.exitOnFinish') ?: 'false').toString()
+        def uiSmokeWorld = (project.findProperty('aotake.uiSmoke.world') ?: System.getProperty('aotake.uiSmoke.world') ?: '').toString()
+        systemProperty 'aotake.uiSmoke', uiSmoke
+        systemProperty 'aotake.uiSmoke.exitOnFinish', uiSmokeExit
+        systemProperty 'aotake.uiSmoke.world', uiSmokeWorld
     }
 
     server {
