@@ -29,28 +29,59 @@ public class EntityFilter {
     private static final Map<String, DataParameter<?>> accessorCache = new ConcurrentHashMap<>();
     // 缓存已解析的 ACCESSOR_KEY 路径（key 为完整 accessorPath 字符串）
     private static final Map<String, AccessorPath> accessorPathCache = new ConcurrentHashMap<>();
+    private final ThreadLocal<Map<String, Object>> variableBuffer =
+            ThreadLocal.withInitial(() -> new HashMap<>(24));
+    private final Matcher emptyMatcher = new Matcher(Collections.emptyList());
 
     public void clear() {
         filterCache.clear();
+        variableBuffer.remove();
     }
 
     public boolean validEntity(List<? extends String> config, Entity entity) {
-        if (CollectionUtils.isNullOrEmpty(config)) return false;
+        return compile(config).matches(entity);
+    }
 
-        Map<String, Object> vars = new HashMap<>(24);
-
+    /**
+     * 将一组规则预编译为可重复使用的匹配器，供单次全量扫描复用。
+     */
+    public Matcher compile(List<? extends String> config) {
+        if (CollectionUtils.isNullOrEmpty(config)) {
+            return emptyMatcher;
+        }
+        List<FilterSpec> specs = new ArrayList<>(config.size());
         for (String raw : config) {
             String fullKey = convertExpression(raw);
-            FilterSpec spec = filterCache.computeIfAbsent(fullKey, this::compileSpec);
+            specs.add(filterCache.computeIfAbsent(fullKey, this::compileSpec));
+        }
+        return new Matcher(Collections.unmodifiableList(specs));
+    }
 
-            vars.clear();
-            fillVarsForEntity(spec.varDescriptors, entity, vars);
+    public final class Matcher {
+        private final List<FilterSpec> specs;
 
-            if (spec.evaluator.evaluateBoolean(vars)) {
-                return true;
+        private Matcher(List<FilterSpec> specs) {
+            this.specs = specs;
+        }
+
+        public boolean matches(Entity entity) {
+            if (specs.isEmpty() || entity == null) {
+                return false;
+            }
+            Map<String, Object> vars = variableBuffer.get();
+            try {
+                for (FilterSpec spec : specs) {
+                    vars.clear();
+                    fillVarsForEntity(spec.varDescriptors, entity, vars);
+                    if (spec.evaluator.evaluateBoolean(vars)) {
+                        return true;
+                    }
+                }
+                return false;
+            } finally {
+                vars.clear();
             }
         }
-        return false;
     }
 
     private FilterSpec compileSpec(String fullKey) {
