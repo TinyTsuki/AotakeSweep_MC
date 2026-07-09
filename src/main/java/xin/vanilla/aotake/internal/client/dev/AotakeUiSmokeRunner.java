@@ -15,6 +15,7 @@ import xin.vanilla.aotake.config.CommonConfig;
 import xin.vanilla.aotake.event.ClientModEventHandler;
 import xin.vanilla.aotake.network.packet.OpenDustbinToServer;
 import xin.vanilla.aotake.screen.PlayerConfigScreen;
+import xin.vanilla.aotake.util.AotakeUtils;
 import xin.vanilla.banira.client.gui.ConfigEditorScreen;
 import xin.vanilla.banira.common.util.EnvironmentUtils;
 import xin.vanilla.banira.common.util.PacketUtils;
@@ -29,6 +30,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
+import java.util.concurrent.CompletableFuture;
 import java.util.function.Supplier;
 
 /**
@@ -58,6 +60,7 @@ public final class AotakeUiSmokeRunner {
     private int stepTick;
     private int phaseTick;
     private int readyTick;
+    private CompletableFuture<EntityScanResult> entityScan;
 
     private AotakeUiSmokeRunner(@Nonnull Path outputDir, boolean exitOnFinish, @Nonnull String worldName) {
         this.outputDir = outputDir;
@@ -114,6 +117,9 @@ public final class AotakeUiSmokeRunner {
                 break;
             case WORLD_LOADING:
                 runWorldLoadingTick(client);
+                break;
+            case ENTITY_SCAN:
+                runEntityScanTick(client);
                 break;
             case HUD_NORMAL:
                 runNormalHudTick(client);
@@ -228,6 +234,34 @@ public final class AotakeUiSmokeRunner {
 
         appendStatus("PASS world-load");
         appendStatus("PASS login-sync");
+        entityScan = CompletableFuture.supplyAsync(() -> {
+            long start = System.nanoTime();
+            List<net.minecraft.world.entity.Entity> all = AotakeUtils.getAllEntities();
+            int filtered = AotakeUtils.getAllEntitiesByFilter(all, false).size();
+            long elapsedNanos = System.nanoTime() - start;
+            return new EntityScanResult(all.size(), filtered, elapsedNanos);
+        }, client.getSingleplayerServer());
+        phase = Phase.ENTITY_SCAN;
+        phaseTick = 0;
+    }
+
+    private void runEntityScanTick(@Nonnull Minecraft client) {
+        phaseTick++;
+        if (!entityScan.isDone()) {
+            if (phaseTick >= NETWORK_SYNC_TIMEOUT_TICKS) {
+                fail(client, "entity-scan", new IllegalStateException("Entity scan timed out"));
+            }
+            return;
+        }
+        try {
+            EntityScanResult result = entityScan.join();
+            appendStatus(String.format(Locale.ROOT,
+                    "PASS entity-scan total=%d filtered=%d elapsedMs=%.3f",
+                    result.total, result.filtered, result.elapsedNanos / 1_000_000.0));
+        } catch (RuntimeException e) {
+            fail(client, "entity-scan", e);
+            return;
+        }
         phase = Phase.HUD_NORMAL;
         phaseTick = 0;
     }
@@ -328,10 +362,23 @@ public final class AotakeUiSmokeRunner {
         }
     }
 
+    private static final class EntityScanResult {
+        private final int total;
+        private final int filtered;
+        private final long elapsedNanos;
+
+        private EntityScanResult(int total, int filtered, long elapsedNanos) {
+            this.total = total;
+            this.filtered = filtered;
+            this.elapsedNanos = elapsedNanos;
+        }
+    }
+
     private enum Phase {
         WAITING,
         UI,
         WORLD_LOADING,
+        ENTITY_SCAN,
         HUD_NORMAL,
         HUD_HELD,
         DUSTBIN,

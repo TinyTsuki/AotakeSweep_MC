@@ -220,56 +220,69 @@ public class AotakeUtils {
 
     // region 扫地
 
-    private static List<BlockState> SAFE_BLOCKS_STATE;
-    private static List<String> SAFE_BLOCKS;
-    private static List<BlockState> SAFE_BLOCKS_BELOW_STATE;
-    private static List<String> SAFE_BLOCKS_BELOW;
-    private static List<BlockState> SAFE_BLOCKS_ABOVE_STATE;
-    private static List<String> SAFE_BLOCKS_ABOVE;
+    private static Set<BlockState> SAFE_BLOCKS_STATE;
+    private static Set<String> SAFE_BLOCKS;
+    private static Set<BlockState> SAFE_BLOCKS_BELOW_STATE;
+    private static Set<String> SAFE_BLOCKS_BELOW;
+    private static Set<BlockState> SAFE_BLOCKS_ABOVE_STATE;
+    private static Set<String> SAFE_BLOCKS_ABOVE;
 
     private static void initSafeBlocks() {
         if (SAFE_BLOCKS_STATE == null) {
-            SAFE_BLOCKS_STATE = CommonConfig.get().base().safe().safeBlocks().stream()
+            SAFE_BLOCKS_STATE = new HashSet<>(CommonConfig.get().base().safe().safeBlocks().stream()
                     .map(BlockUtils::deserializeBlockState)
                     .filter(Objects::nonNull)
                     .distinct()
-                    .toList();
+                    .toList());
         }
         if (SAFE_BLOCKS == null) {
-            SAFE_BLOCKS = CommonConfig.get().base().safe().safeBlocks().stream()
+            SAFE_BLOCKS = new HashSet<>(CommonConfig.get().base().safe().safeBlocks().stream()
                     .filter(Objects::nonNull)
                     .map(s -> (String) s)
                     .distinct()
-                    .toList();
+                    .toList());
         }
         if (SAFE_BLOCKS_BELOW_STATE == null) {
-            SAFE_BLOCKS_BELOW_STATE = CommonConfig.get().base().safe().safeBlocksBelow().stream()
+            SAFE_BLOCKS_BELOW_STATE = new HashSet<>(CommonConfig.get().base().safe().safeBlocksBelow().stream()
                     .map(BlockUtils::deserializeBlockState)
                     .filter(Objects::nonNull)
                     .distinct()
-                    .toList();
+                    .toList());
         }
         if (SAFE_BLOCKS_BELOW == null) {
-            SAFE_BLOCKS_BELOW = CommonConfig.get().base().safe().safeBlocksBelow().stream()
+            SAFE_BLOCKS_BELOW = new HashSet<>(CommonConfig.get().base().safe().safeBlocksBelow().stream()
                     .filter(Objects::nonNull)
                     .map(s -> (String) s)
                     .distinct()
-                    .toList();
+                    .toList());
         }
         if (SAFE_BLOCKS_ABOVE_STATE == null) {
-            SAFE_BLOCKS_ABOVE_STATE = CommonConfig.get().base().safe().safeBlocksAbove().stream()
+            SAFE_BLOCKS_ABOVE_STATE = new HashSet<>(CommonConfig.get().base().safe().safeBlocksAbove().stream()
                     .map(BlockUtils::deserializeBlockState)
                     .filter(Objects::nonNull)
                     .distinct()
-                    .toList();
+                    .toList());
         }
         if (SAFE_BLOCKS_ABOVE == null) {
-            SAFE_BLOCKS_ABOVE = CommonConfig.get().base().safe().safeBlocksAbove().stream()
+            SAFE_BLOCKS_ABOVE = new HashSet<>(CommonConfig.get().base().safe().safeBlocksAbove().stream()
                     .filter(Objects::nonNull)
                     .map(s -> (String) s)
                     .distinct()
-                    .toList();
+                    .toList());
         }
+    }
+
+    /**
+     * 配置重载后清理派生集合，避免继续使用旧安全方块规则。
+     */
+    public static void clearEntityFilterCaches() {
+        SAFE_BLOCKS_STATE = null;
+        SAFE_BLOCKS = null;
+        SAFE_BLOCKS_BELOW_STATE = null;
+        SAFE_BLOCKS_BELOW = null;
+        SAFE_BLOCKS_ABOVE_STATE = null;
+        SAFE_BLOCKS_ABOVE = null;
+        AotakeSweep.getEntityFilter().clear();
     }
 
     public static List<Entity> getAllEntities() {
@@ -284,67 +297,57 @@ public class AotakeUtils {
     }
 
     public static boolean isJunkEntity(Entity entity, boolean chuck) {
-        boolean result = false;
-        if (entity != null && !(entity instanceof Player)) {
-            if (chuck) {
-                // 空列表
-                if (CollectionUtils.isNullOrEmpty(CommonConfig.get().base().chunk().chunkCheckEntityList())) {
-                    result = CommonConfig.get().base().chunk().chunkCheckEntityListMode() == EnumListType.WHITE;
-                }
-                // 黑名单模式
-                else if (CommonConfig.get().base().chunk().chunkCheckEntityListMode() == EnumListType.BLACK) {
-                    result = AotakeSweep.getEntityFilter().validEntity(CommonConfig.get().base().chunk().chunkCheckEntityList(), entity);
-                }
-                // 白名单模式
-                else {
-                    result = !AotakeSweep.getEntityFilter().validEntity(CommonConfig.get().base().chunk().chunkCheckEntityList(), entity);
-                }
-            } else {
-                // 空列表
-                if (CollectionUtils.isNullOrEmpty(CommonConfig.get().base().sweep().entityList())) {
-                    result = CommonConfig.get().base().sweep().entityListMode() == EnumListType.WHITE;
-                }
-                // 黑名单模式
-                else if (CommonConfig.get().base().sweep().entityListMode() == EnumListType.BLACK) {
-                    result = AotakeSweep.getEntityFilter().validEntity(CommonConfig.get().base().sweep().entityList(), entity);
-                }
-                // 白名单模式
-                else {
-                    result = !AotakeSweep.getEntityFilter().validEntity(CommonConfig.get().base().sweep().entityList(), entity);
-                }
-            }
-        }
-        return result;
+        CommonConfig.BaseView base = CommonConfig.get().base();
+        List<String> rules = chuck ? base.chunk().chunkCheckEntityList() : base.sweep().entityList();
+        EnumListType mode = chuck ? base.chunk().chunkCheckEntityListMode() : base.sweep().entityListMode();
+        return isJunkEntity(entity, CollectionUtils.isNullOrEmpty(rules), mode,
+                AotakeSweep.getEntityFilter().compile(rules));
     }
 
-    public static boolean isSafeEntity(Map<KeyValue<Level, BlockPos>, BlockState> blockStateCache, Entity entity) {
+    private static boolean isJunkEntity(Entity entity, boolean emptyRules, EnumListType mode,
+                                        EntityFilter.Matcher matcher) {
+        if (entity == null || entity instanceof Player) {
+            return false;
+        }
+        if (emptyRules) {
+            return mode == EnumListType.WHITE;
+        }
+        boolean matched = matcher.matches(entity);
+        return mode == EnumListType.BLACK ? matched : !matched;
+    }
+
+    public static boolean isSafeEntity(Map<Level, Map<BlockPos, BlockState>> blockStateCache, Entity entity) {
         Level level = entity.level;
+        BlockPos position = entity.blockPosition();
 
         boolean stateFlag = false;
         if (!SAFE_BLOCKS.isEmpty() || !SAFE_BLOCKS_STATE.isEmpty()) {
-            BlockState state = blockStateCache.computeIfAbsent(new KeyValue<>(level, entity.blockPosition())
-                    , pair -> pair.key().getBlockState(pair.value()));
+            BlockState state = cachedBlockState(blockStateCache, level, position);
             stateFlag = SAFE_BLOCKS.contains(BlockUtils.getBlockRegistryString(state))
                     || SAFE_BLOCKS_STATE.contains(state);
         }
 
         boolean belowFlag = false;
         if (!SAFE_BLOCKS_BELOW.isEmpty() || !SAFE_BLOCKS_BELOW_STATE.isEmpty()) {
-            BlockState below = blockStateCache.computeIfAbsent(new KeyValue<>(level, entity.blockPosition().below())
-                    , pair -> pair.key().getBlockState(pair.value()));
+            BlockState below = cachedBlockState(blockStateCache, level, position.below());
             belowFlag = SAFE_BLOCKS_BELOW.contains(BlockUtils.getBlockRegistryString(below))
                     || SAFE_BLOCKS_BELOW_STATE.contains(below);
         }
 
         boolean aboveFlag = false;
         if (!SAFE_BLOCKS_ABOVE.isEmpty() || !SAFE_BLOCKS_ABOVE_STATE.isEmpty()) {
-            BlockState above = blockStateCache.computeIfAbsent(new KeyValue<>(level, entity.blockPosition().above())
-                    , pair -> pair.key().getBlockState(pair.value()));
+            BlockState above = cachedBlockState(blockStateCache, level, position.above());
             aboveFlag = SAFE_BLOCKS_ABOVE.contains(BlockUtils.getBlockRegistryString(above))
                     || SAFE_BLOCKS_ABOVE_STATE.contains(above);
         }
 
         return stateFlag || belowFlag || aboveFlag;
+    }
+
+    private static BlockState cachedBlockState(Map<Level, Map<BlockPos, BlockState>> cache,
+                                               Level level, BlockPos position) {
+        return cache.computeIfAbsent(level, ignored -> new HashMap<>())
+                .computeIfAbsent(position, level::getBlockState);
     }
 
     public static List<Entity> getAllEntitiesByFilter(@Nullable List<Entity> entities, boolean chuck) {
@@ -354,7 +357,12 @@ public class AotakeUtils {
         }
         initSafeBlocks();
 
-        Map<KeyValue<Level, BlockPos>, BlockState> blockStateCache = new HashMap<>();
+        Map<Level, Map<BlockPos, BlockState>> blockStateCache = new IdentityHashMap<>();
+        CommonConfig.BaseView base = CommonConfig.get().base();
+        List<String> rules = chuck ? base.chunk().chunkCheckEntityList() : base.sweep().entityList();
+        EnumListType listMode = chuck ? base.chunk().chunkCheckEntityListMode() : base.sweep().entityListMode();
+        boolean emptyRules = CollectionUtils.isNullOrEmpty(rules);
+        EntityFilter.Matcher matcher = AotakeSweep.getEntityFilter().compile(rules);
 
         boolean hasSafeRules = !SAFE_BLOCKS.isEmpty()
                 || !SAFE_BLOCKS_STATE.isEmpty()
@@ -363,38 +371,32 @@ public class AotakeUtils {
                 || !SAFE_BLOCKS_ABOVE.isEmpty()
                 || !SAFE_BLOCKS_ABOVE_STATE.isEmpty();
 
-        List<Entity> filtered = new ArrayList<>(entities.size());
+        List<EntityScanEntry> scanned = new ArrayList<>(entities.size());
         Map<String, Integer> nonJunkTypeCounts = new HashMap<>();
         Map<ChunkKey, Integer> safeChunkCounts = new HashMap<>();
-        IdentityHashMap<Entity, Boolean> junkCache = new IdentityHashMap<>();
-        IdentityHashMap<Entity, Boolean> safeCache = new IdentityHashMap<>();
-        IdentityHashMap<Entity, String> typeCache = new IdentityHashMap<>();
-        IdentityHashMap<Entity, ChunkKey> chunkKeyCache = new IdentityHashMap<>();
 
         LOGGER.debug("Entity exceeded filter started at {}", System.currentTimeMillis());
         for (Entity entity : entities) {
             if (entity instanceof Player) continue;
-            filtered.add(entity);
 
             boolean safe = hasSafeRules && isSafeEntity(blockStateCache, entity);
-            safeCache.put(entity, safe);
+            ChunkKey chunkKey = null;
             if (safe) {
-                ChunkKey key = ChunkKey.of(entity);
-                chunkKeyCache.put(entity, key);
-                safeChunkCounts.merge(key, 1, Integer::sum);
+                chunkKey = ChunkKey.of(entity);
+                safeChunkCounts.merge(chunkKey, 1, Integer::sum);
             }
 
-            boolean junk = isJunkEntity(entity, chuck);
-            junkCache.put(entity, junk);
+            boolean junk = isJunkEntity(entity, emptyRules, listMode, matcher);
+            String type = null;
             if (!junk) {
-                String type = EntityUtils.getEntityRegistryString(entity);
-                typeCache.put(entity, type);
+                type = EntityUtils.getEntityRegistryString(entity);
                 nonJunkTypeCounts.merge(type, 1, Integer::sum);
             }
+            scanned.add(new EntityScanEntry(entity, safe, junk, type, chunkKey));
         }
 
         LOGGER.debug("Entity safe filter started at {}", System.currentTimeMillis());
-        int typeLimit = CommonConfig.get().base().sweep().entityListLimit();
+        int typeLimit = base.sweep().entityListLimit();
         Set<String> exceededTypes = new HashSet<>();
         for (Map.Entry<String, Integer> entry : nonJunkTypeCounts.entrySet()) {
             if (entry.getValue() > typeLimit) {
@@ -402,7 +404,7 @@ public class AotakeUtils {
             }
         }
 
-        int safeLimit = CommonConfig.get().base().safe().safeBlocksEntityLimit();
+        int safeLimit = base.safe().safeBlocksEntityLimit();
         Set<ChunkKey> exceededChunks = new HashSet<>();
         for (Map.Entry<ChunkKey, Integer> entry : safeChunkCounts.entrySet()) {
             if (entry.getValue() > safeLimit) {
@@ -412,33 +414,32 @@ public class AotakeUtils {
 
         LOGGER.debug("Entity junk filter started at {}", System.currentTimeMillis());
         List<Entity> entityList = new ArrayList<>();
-        for (Entity entity : filtered) {
-            boolean safe = safeCache.getOrDefault(entity, false);
-            boolean junk = junkCache.getOrDefault(entity, false);
-            boolean exceededType = false;
-            if (!junk && !exceededTypes.isEmpty()) {
-                String type = typeCache.get(entity);
-                if (type == null) {
-                    type = EntityUtils.getEntityRegistryString(entity);
-                    typeCache.put(entity, type);
-                }
-                exceededType = exceededTypes.contains(type);
-            }
-            boolean exceededSafe = false;
-            if (safe && !exceededChunks.isEmpty()) {
-                ChunkKey key = chunkKeyCache.get(entity);
-                if (key == null) {
-                    key = ChunkKey.of(entity);
-                    chunkKeyCache.put(entity, key);
-                }
-                exceededSafe = exceededChunks.contains(key);
-            }
-            if ((!safe && junk) || exceededType || exceededSafe) {
-                entityList.add(entity);
+        for (EntityScanEntry entry : scanned) {
+            boolean exceededType = !entry.junk && exceededTypes.contains(entry.type);
+            boolean exceededSafe = entry.safe && exceededChunks.contains(entry.chunkKey);
+            if ((!entry.safe && entry.junk) || exceededType || exceededSafe) {
+                entityList.add(entry.entity);
             }
         }
         LOGGER.debug("Entity filter finished at {}", System.currentTimeMillis());
         return entityList;
+    }
+
+    private static final class EntityScanEntry {
+        private final Entity entity;
+        private final boolean safe;
+        private final boolean junk;
+        private final String type;
+        private final ChunkKey chunkKey;
+
+        private EntityScanEntry(Entity entity, boolean safe, boolean junk,
+                                String type, ChunkKey chunkKey) {
+            this.entity = entity;
+            this.safe = safe;
+            this.junk = junk;
+            this.type = type;
+            this.chunkKey = chunkKey;
+        }
     }
 
     public static void sweep() {
