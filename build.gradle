@@ -53,8 +53,10 @@ minecraft {
             property 'forge.enabledGameTestNamespaces', mod_id
             def uiSmoke = (project.findProperty('aotake.uiSmoke') ?: System.getProperty('aotake.uiSmoke') ?: 'false').toString()
             def uiSmokeExit = (project.findProperty('aotake.uiSmoke.exitOnFinish') ?: System.getProperty('aotake.uiSmoke.exitOnFinish') ?: 'false').toString()
+            def uiSmokeWorld = (project.findProperty('aotake.uiSmoke.world') ?: System.getProperty('aotake.uiSmoke.world') ?: '').toString()
             property 'aotake.uiSmoke', uiSmoke
             property 'aotake.uiSmoke.exitOnFinish', uiSmokeExit
+            property 'aotake.uiSmoke.world', uiSmokeWorld
         }
 
         server {
