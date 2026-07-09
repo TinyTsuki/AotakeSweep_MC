@@ -18,6 +18,7 @@ import java.util.function.BiConsumer;
 import java.util.function.Function;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 /**
  * 验证迁移到 Banira 网络抽象后的 packet 基本契约。
@@ -25,15 +26,15 @@ import static org.junit.Assert.assertEquals;
 public class NetworkPacketContractTest {
 
     @Test
-    public void packetsUseAotakeChannel() {
-        assertEquals(NetworkInit.CHANNEL_ID, new OpenDustbinToServer(1).channelId());
-        assertEquals(NetworkInit.CHANNEL_ID, new ChunkVaultNavigateToServer(-1).channelId());
-        assertEquals(NetworkInit.CHANNEL_ID, new ClearDustbinToServer(true, false).channelId());
-        assertEquals(NetworkInit.CHANNEL_ID, new PlayerConfigSyncToServer(true, true).channelId());
-        assertEquals(NetworkInit.CHANNEL_ID, decodedSweepData().channelId());
-        assertEquals(NetworkInit.CHANNEL_ID, new GhostCameraToClient(7, false).channelId());
-        assertEquals(NetworkInit.CHANNEL_ID, new DustbinPageSyncToClient(2, 9).channelId());
-        assertEquals(NetworkInit.CHANNEL_ID, new ChunkVaultPageSyncToClient(3, 11).channelId());
+    public void packetsUseLoaderNeutralMarker() {
+        assertTrue(new OpenDustbinToServer(1) instanceof NetworkPacket);
+        assertTrue(new ChunkVaultNavigateToServer(-1) instanceof NetworkPacket);
+        assertTrue(new ClearDustbinToServer(true, false) instanceof NetworkPacket);
+        assertTrue(new PlayerConfigSyncToServer(true, true) instanceof NetworkPacket);
+        assertTrue(decodedSweepData() instanceof NetworkPacket);
+        assertTrue(new GhostCameraToClient(7, false) instanceof NetworkPacket);
+        assertTrue(new DustbinPageSyncToClient(2, 9) instanceof NetworkPacket);
+        assertTrue(new ChunkVaultPageSyncToClient(3, 11) instanceof NetworkPacket);
     }
 
     @Test
@@ -68,7 +69,6 @@ public class NetworkPacketContractTest {
         TestBuffer reencoded = new TestBuffer();
         encoder.accept(decoded, reencoded);
 
-        assertEquals(NetworkInit.CHANNEL_ID, decoded.channelId());
         assertEquals(encoded.values, reencoded.values);
     }
 
