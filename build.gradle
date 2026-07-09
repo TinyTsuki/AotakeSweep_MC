@@ -49,7 +49,12 @@ minecraft {
             }
         }
 
-        client {}
+        client {
+            def uiSmoke = (project.findProperty('aotake.uiSmoke') ?: System.getProperty('aotake.uiSmoke') ?: 'false').toString()
+            def uiSmokeExit = (project.findProperty('aotake.uiSmoke.exitOnFinish') ?: System.getProperty('aotake.uiSmoke.exitOnFinish') ?: 'false').toString()
+            property 'aotake.uiSmoke', uiSmoke
+            property 'aotake.uiSmoke.exitOnFinish', uiSmokeExit
+        }
 
         server {
             // args '--nogui'
