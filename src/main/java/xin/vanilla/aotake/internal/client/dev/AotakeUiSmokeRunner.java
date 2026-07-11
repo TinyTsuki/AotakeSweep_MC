@@ -210,7 +210,7 @@ public final class AotakeUiSmokeRunner {
         appendStatus("LOAD world " + worldName);
         LOGGER.info("Aotake UI smoke loading world: {}", worldName);
         try {
-            client.createWorldOpenFlows().loadLevel(client.screen, worldName);
+            client.createWorldOpenFlows().openWorld(worldName, () -> client.setScreen(null));
         } catch (Throwable t) {
             fail(client, "world-load", t);
         }
