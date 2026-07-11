@@ -10,7 +10,7 @@ import xin.vanilla.banira.common.network.BaniraPacketBuffer;
 import xin.vanilla.banira.common.util.CommandUtils;
 import xin.vanilla.banira.common.util.PlayerUtils;
 
-public record OpenDustbinToServer(int offset)implements NetworkPacket {
+public record OpenDustbinToServer(int offset) implements NetworkPacket {
 
     public OpenDustbinToServer(BaniraPacketBuffer buf) {
         this(buf.readInt());
@@ -30,7 +30,7 @@ public record OpenDustbinToServer(int offset)implements NetworkPacket {
                 if (i > 0 && i <= AotakeUtils.getDustbinTotalPage()) {
                     player.closeContainer();
                 }
-                CommandUtils.executeCommand(player, String.format("/%s %s"
+                CommandUtils.executeCommand(player, String.format("%s %s"
                         , AotakeUtils.getCommand(EnumCommandType.DUSTBIN_OPEN)
                         , i
                 ));

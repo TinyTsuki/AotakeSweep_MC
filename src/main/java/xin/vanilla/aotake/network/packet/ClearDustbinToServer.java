@@ -10,7 +10,7 @@ import xin.vanilla.banira.common.network.BaniraPacketBuffer;
 import xin.vanilla.banira.common.util.CommandUtils;
 import xin.vanilla.banira.common.util.PlayerUtils;
 
-public record ClearDustbinToServer(boolean all, boolean cache) implements NetworkPacket{
+public record ClearDustbinToServer(boolean all, boolean cache) implements NetworkPacket {
 
     public ClearDustbinToServer(BaniraPacketBuffer buf) {
         this(buf.readBoolean(), buf.readBoolean());
@@ -29,13 +29,13 @@ public record ClearDustbinToServer(boolean all, boolean cache) implements Networ
                 int page = AotakeSweep.getPlayerDustbinPage().getOrDefault(playerUUID, 1);
                 // 缓存区
                 if (packet.cache()) {
-                    CommandUtils.executeCommand(player, String.format("/%s"
+                    CommandUtils.executeCommand(player, String.format("%s"
                             , AotakeUtils.getCommand(EnumCommandType.CACHE_CLEAR))
                     );
                 }
                 // 垃圾箱
                 else {
-                    CommandUtils.executeCommand(player, String.format("/%s%s"
+                    CommandUtils.executeCommand(player, String.format("%s%s"
                             , AotakeUtils.getCommand(EnumCommandType.DUSTBIN_CLEAR)
                             , packet.all() ? "" : " " + page)
                     );
