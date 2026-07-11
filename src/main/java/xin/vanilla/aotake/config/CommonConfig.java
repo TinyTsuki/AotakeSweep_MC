@@ -6,7 +6,7 @@ import lombok.Setter;
 import lombok.experimental.Accessors;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.item.Items;
-import net.minecraftforge.registries.ForgeRegistries;
+import net.minecraft.core.registries.BuiltInRegistries;
 import xin.vanilla.aotake.AotakeSweep;
 import xin.vanilla.aotake.config.access.CommonConfigAccess;
 import xin.vanilla.aotake.enums.*;
@@ -782,9 +782,9 @@ public class CommonConfig implements ConfigData {
 
     private static List<String> defaultEntityList() {
         List<String> l = new ArrayList<>();
-        l.add(ForgeRegistries.ENTITY_TYPES.getKey(EntityType.ARROW).toString());
-        l.add(ForgeRegistries.ENTITY_TYPES.getKey(EntityType.SPECTRAL_ARROW).toString());
-        l.add(ForgeRegistries.ENTITY_TYPES.getKey(EntityType.EXPERIENCE_ORB).toString());
+        l.add(BuiltInRegistries.ENTITY_TYPE.getKey(EntityType.ARROW).toString());
+        l.add(BuiltInRegistries.ENTITY_TYPE.getKey(EntityType.SPECTRAL_ARROW).toString());
+        l.add(BuiltInRegistries.ENTITY_TYPE.getKey(EntityType.EXPERIENCE_ORB).toString());
         l.add("tick, clazz, itemClazz, createProcessing = [CreateData.Processing.Time]"
                 + " -> "
                 + "tick >= 5 && clazz :> itemClazz && (createProcessing <= 0 || createProcessing == null)");
@@ -801,9 +801,9 @@ public class CommonConfig implements ConfigData {
 
     private static List<String> defaultCatchItem() {
         return new ArrayList<>(Arrays.asList(
-                ForgeRegistries.ITEMS.getKey(Items.SNOWBALL).toString(),
-                ForgeRegistries.ITEMS.getKey(Items.GLASS_BOTTLE).toString(),
-                ForgeRegistries.ITEMS.getKey(Items.MUSIC_DISC_13).toString()
+                BuiltInRegistries.ITEM.getKey(Items.SNOWBALL).toString(),
+                BuiltInRegistries.ITEM.getKey(Items.GLASS_BOTTLE).toString(),
+                BuiltInRegistries.ITEM.getKey(Items.MUSIC_DISC_13).toString()
         ));
     }
 
@@ -952,9 +952,9 @@ public class CommonConfig implements ConfigData {
 
     private static List<String> defaultEntityListReset() {
         List<String> l = new ArrayList<>();
-        l.add(ForgeRegistries.ENTITY_TYPES.getKey(EntityType.ARROW).toString());
-        l.add(ForgeRegistries.ENTITY_TYPES.getKey(EntityType.SPECTRAL_ARROW).toString());
-        l.add(ForgeRegistries.ENTITY_TYPES.getKey(EntityType.EXPERIENCE_ORB).toString());
+        l.add(BuiltInRegistries.ENTITY_TYPE.getKey(EntityType.ARROW).toString());
+        l.add(BuiltInRegistries.ENTITY_TYPE.getKey(EntityType.SPECTRAL_ARROW).toString());
+        l.add(BuiltInRegistries.ENTITY_TYPE.getKey(EntityType.EXPERIENCE_ORB).toString());
         l.add("tick, clazz, itemClazz, createProcessing = CreateData.Processing.Time"
                 + " -> "
                 + "tick >= 5 && clazz :> itemClazz && (createProcessing <= 0 || createProcessing == null)");
