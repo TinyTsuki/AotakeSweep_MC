@@ -85,6 +85,9 @@ public final class AotakeUiSmokeRunner {
             LOGGER.warn("Aotake UI smoke requested outside development environment; ignored");
             return;
         }
+        if (instance != null) {
+            return;
+        }
         Minecraft client = Minecraft.getInstance();
         Path outputDir = client.gameDirectory.toPath()
                 .resolve("screenshots")

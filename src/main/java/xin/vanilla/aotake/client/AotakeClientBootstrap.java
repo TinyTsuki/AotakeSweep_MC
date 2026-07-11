@@ -31,6 +31,7 @@ public final class AotakeClientBootstrap {
 
     public static void init() {
         ClientGameEventHandler.register();
+        AotakeUiSmokeRunner.register();
 
         BaniraClientEvents.ModLifecycle.onClientSetup(event -> {
             ClientModEventHandler.bootstrap();
