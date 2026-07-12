@@ -31,7 +31,7 @@ import xin.vanilla.aotake.enums.EnumDustbinMode;
 import xin.vanilla.aotake.enums.EnumOverflowMode;
 import xin.vanilla.aotake.enums.EnumSelfCleanMode;
 import xin.vanilla.aotake.notification.AotakeNotificationTypes;
-import xin.vanilla.banira.BaniraCodex;
+import xin.vanilla.banira.common.util.BaniraServerUtils;
 import xin.vanilla.banira.common.data.Component;
 import xin.vanilla.banira.common.data.KeyValue;
 import xin.vanilla.banira.common.data.WorldCoordinate;
@@ -79,7 +79,7 @@ public class EntitySweeper {
             if (lists.size() > 1) {
                 for (int i = 1; i < lists.size(); i++) {
                     List<Entity> entityList = lists.get(i);
-                    BaniraScheduler.schedule(BaniraCodex.serverInstance().key()
+                    BaniraScheduler.schedule(BaniraServerUtils.currentServer()
                             , context.sweepEntityInterval * i
                             , () -> AotakeSweep.getEntitySweeper().addDrops(entityList, result)
                     );
@@ -114,9 +114,9 @@ public class EntitySweeper {
 
         if (result.getBatch().get() >= result.getTotalBatch()) {
             LOGGER.debug("AddDrops finished at {}", System.currentTimeMillis());
-            ChunkVaultStorage.flushPending(BaniraCodex.serverInstance().key());
+            ChunkVaultStorage.flushPending(BaniraServerUtils.currentServer());
 
-            List<ServerPlayerEntity> players = BaniraCodex.serverInstance().key().getPlayerList().getPlayers();
+            List<ServerPlayerEntity> players = BaniraServerUtils.currentServer().getPlayerList().getPlayers();
             for (ServerPlayerEntity p : players) {
                 String language = AotakeLang.getPlayerLanguage(p);
                 Component msg = AotakeUtils.getWarningMessage(result.isEmpty() ? "fail" : "success"

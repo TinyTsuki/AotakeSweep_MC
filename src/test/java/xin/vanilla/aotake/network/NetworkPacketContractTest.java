@@ -14,6 +14,7 @@ import xin.vanilla.banira.common.network.BaniraPacketBuffer;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
 
@@ -139,6 +140,46 @@ public class NetworkPacketContractTest {
 
         @Override
         public void writeBoolean(boolean value) {
+            values.add(value);
+        }
+
+        @Override
+        public byte readByte() {
+            return (Byte) next();
+        }
+
+        @Override
+        public void writeByte(int value) {
+            values.add((byte) value);
+        }
+
+        @Override
+        public double readDouble() {
+            return (Double) next();
+        }
+
+        @Override
+        public void writeDouble(double value) {
+            values.add(value);
+        }
+
+        @Override
+        public UUID readUuid() {
+            return (UUID) next();
+        }
+
+        @Override
+        public void writeUuid(UUID value) {
+            values.add(value);
+        }
+
+        @Override
+        public <T extends Enum<T>> T readEnum(Class<T> enumClass) {
+            return enumClass.cast(next());
+        }
+
+        @Override
+        public void writeEnum(Enum<?> value) {
             values.add(value);
         }
 

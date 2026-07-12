@@ -22,7 +22,7 @@ import xin.vanilla.aotake.data.world.ChunkVaultStorage;
 import xin.vanilla.aotake.enums.EnumCommandType;
 import xin.vanilla.aotake.notification.AotakeNotificationTypes;
 import xin.vanilla.aotake.util.AotakeUtils;
-import xin.vanilla.banira.BaniraCodex;
+import xin.vanilla.banira.common.util.BaniraServerUtils;
 import xin.vanilla.banira.common.data.Component;
 import xin.vanilla.banira.common.util.*;
 
@@ -33,10 +33,10 @@ import java.util.stream.Collectors;
 public final class ChunkVaultCommand {
 
     private static final SuggestionProvider<CommandSource> VAULT_ID_SUGGEST = (context, builder) -> {
-        if (!BaniraCodex.serverInstance().val()) {
+        if (!BaniraServerUtils.isRunning()) {
             return builder.buildFuture();
         }
-        for (String id : ChunkVaultStorage.listVaultIds(BaniraCodex.serverInstance().key())) {
+        for (String id : ChunkVaultStorage.listVaultIds(BaniraServerUtils.currentServer())) {
             if (StringUtils.isNullOrEmptyEx(id)) continue;
             builder.suggest(id);
         }

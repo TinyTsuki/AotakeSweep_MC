@@ -4,7 +4,7 @@ import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.entity.player.ServerPlayerEntity;
 import net.minecraft.nbt.CompoundNBT;
 import xin.vanilla.aotake.AotakeSweep;
-import xin.vanilla.banira.BaniraCodex;
+import xin.vanilla.banira.common.util.BaniraServerUtils;
 import xin.vanilla.banira.common.api.ICommandNotify;
 import xin.vanilla.banira.common.network.BaniraPacketBuffer;
 import xin.vanilla.banira.common.player.IPlayerData;
@@ -28,7 +28,7 @@ public final class PlayerSweepData implements IPlayerData<PlayerSweepData>, ICom
     private PlayerSweepData(PlayerEntity player) {
         this.player = player;
         if (this.player instanceof ServerPlayerEntity) {
-            this.deserializeNBT(BaniraCodex.playerDataManager.getOrCreate(player.getUUID(), AotakeSweep.MODID).copy(), false);
+            this.deserializeNBT(BaniraServerUtils.playerDataManager().getOrCreate(player.getUUID(), AotakeSweep.MODID).copy(), false);
         }
     }
 
@@ -114,7 +114,7 @@ public final class PlayerSweepData implements IPlayerData<PlayerSweepData>, ICom
     @Override
     public void save() {
         if (this.player instanceof ServerPlayerEntity) {
-            BaniraCodex.playerDataManager.put(player.getUUID(), AotakeSweep.MODID, serializeNBT());
+            BaniraServerUtils.playerDataManager().put(player.getUUID(), AotakeSweep.MODID, serializeNBT());
         }
     }
 

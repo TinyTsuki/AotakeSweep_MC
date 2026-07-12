@@ -27,7 +27,7 @@ import xin.vanilla.aotake.notification.AotakeNotificationTypes;
 import xin.vanilla.aotake.util.AotakeUtils;
 import xin.vanilla.aotake.util.EntityFilter;
 import xin.vanilla.aotake.util.EntitySweeper;
-import xin.vanilla.banira.BaniraCodex;
+import xin.vanilla.banira.common.util.BaniraServerUtils;
 import xin.vanilla.banira.common.config.BaniraConfig;
 import xin.vanilla.banira.common.config.ConfigHolder;
 import xin.vanilla.banira.common.data.KeyValue;
@@ -143,7 +143,7 @@ public class AotakeSweep {
         try {
             ModConfig cfg = event.getConfig();
             ConfigHolder commonHolder = BaniraConfig.holder(CommonConfig.class);
-            if (commonHolder != null && cfg.getFileName().contains(commonHolder.getConfigName()) && BaniraCodex.serverInstance().val()) {
+            if (commonHolder != null && cfg.getFileName().contains(commonHolder.getConfigName()) && BaniraServerUtils.isRunning()) {
                 AotakeUtils.clearEntityFilterCaches();
             }
         } catch (Exception ignored) {

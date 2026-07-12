@@ -7,7 +7,6 @@ import net.minecraft.client.entity.player.ClientPlayerEntity;
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.gui.screen.inventory.ChestScreen;
 import net.minecraft.client.gui.widget.button.Button;
-import net.minecraft.client.settings.KeyBinding;
 import net.minecraft.util.ResourceLocation;
 import net.minecraftforge.client.event.GuiScreenEvent;
 import xin.vanilla.aotake.AotakeComponent;
@@ -29,7 +28,7 @@ import xin.vanilla.banira.client.data.FontDrawArgs;
 import xin.vanilla.banira.client.gui.component.Text;
 import xin.vanilla.banira.client.gui.widget.ButtonWidget;
 import xin.vanilla.banira.client.gui.widget.TooltipWidget;
-import xin.vanilla.banira.client.util.BaniraKeyHandle;
+import xin.vanilla.banira.api.client.BaniraKeyHandle;
 import xin.vanilla.banira.client.util.AbstractGuiUtils;
 import xin.vanilla.banira.client.util.ClientThemeManager;
 import xin.vanilla.banira.client.util.InputStateManager;
@@ -575,8 +574,7 @@ public final class DustbinRender {
     }
 
     private static int keyCode(BaniraKeyHandle handle) {
-        KeyBinding binding = handle.nativeBinding(KeyBinding.class);
-        return binding != null ? binding.getKey().getValue() : handle.defaultKey();
+        return handle.currentKey();
     }
 
     private static Button newButton(int x, int y, int width, int height,

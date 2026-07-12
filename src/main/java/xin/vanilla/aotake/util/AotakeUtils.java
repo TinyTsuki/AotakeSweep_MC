@@ -48,9 +48,8 @@ import xin.vanilla.aotake.enums.EnumSelfCleanMode;
 import xin.vanilla.aotake.event.EventHandlerProxy;
 import xin.vanilla.aotake.network.packet.DustbinPageSyncToClient;
 import xin.vanilla.aotake.notification.AotakeNotificationTypes;
-import xin.vanilla.banira.BaniraCodex;
 import xin.vanilla.banira.common.data.Component;
-import xin.vanilla.banira.common.data.KeyValue;
+import xin.vanilla.banira.common.util.BaniraServerUtils;
 import xin.vanilla.banira.common.data.WorldCoordinate;
 import xin.vanilla.banira.common.enums.EnumMCColor;
 import xin.vanilla.banira.common.util.*;
@@ -501,11 +500,11 @@ public class AotakeUtils {
      * @param chunkOverloadVault 为 true 时，回收物品写入区块暂存目录（若配置启用），而非全局垃圾箱。
      */
     public static void sweep(List<Entity> entities, boolean filtered, boolean chunkOverloadVault) {
-        KeyValue<MinecraftServer, Boolean> serverInstance = BaniraCodex.serverInstance();
+        MinecraftServer server = BaniraServerUtils.currentServer();
         // 服务器已关闭
-        if (!serverInstance.val()) return;
+        if (!BaniraServerUtils.isRunning() || server == null) return;
 
-        List<ServerPlayerEntity> players = serverInstance.key().getPlayerList().getPlayers();
+        List<ServerPlayerEntity> players = server.getPlayerList().getPlayers();
 
         try {
             // 若服务器没有玩家
@@ -1019,7 +1018,7 @@ public class AotakeUtils {
      */
     public static ItemStack addItemToBlock(ItemStack stack, WorldCoordinate coordinate) {
         if (stack == null || stack.isEmpty()) return ItemStack.EMPTY;
-        ServerWorld level = BaniraCodex.serverInstance().key().getLevel(coordinate.dimension());
+        ServerWorld level = BaniraServerUtils.currentServer().getLevel(coordinate.dimension());
         if (level == null) return stack;
 
         BlockPos pos = coordinate.toBlockPos();
@@ -1048,7 +1047,7 @@ public class AotakeUtils {
      * 获取指定的方块容器
      */
     public static IItemHandler getBlockItemHandler(WorldCoordinate coordinate) {
-        ServerWorld level = BaniraCodex.serverInstance().key().getLevel(coordinate.dimension());
+        ServerWorld level = BaniraServerUtils.currentServer().getLevel(coordinate.dimension());
         if (level == null) return null;
 
         BlockPos pos = coordinate.toBlockPos();
