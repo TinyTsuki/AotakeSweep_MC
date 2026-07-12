@@ -2,6 +2,7 @@
 .idea/
 .cursor/
 .vscode/
+build_.bat
 
 *.iml
 *.ipr
