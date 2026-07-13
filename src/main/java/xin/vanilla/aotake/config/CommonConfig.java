@@ -11,7 +11,7 @@ import xin.vanilla.aotake.AotakeSweep;
 import xin.vanilla.aotake.config.access.CommonConfigAccess;
 import xin.vanilla.aotake.enums.*;
 import xin.vanilla.aotake.util.AotakeUtils;
-import xin.vanilla.banira.common.config.BaniraConfig;
+import xin.vanilla.banira.api.BaniraConfigs;
 import xin.vanilla.banira.common.config.ConfigData;
 import xin.vanilla.banira.common.config.ConfigHolder;
 import xin.vanilla.banira.common.config.ConfigScope;
@@ -54,11 +54,11 @@ public class CommonConfig implements ConfigData {
     }
 
     public static RootView get() {
-        return CommonConfigAccess.root(BaniraConfig.holder(CommonConfig.class));
+        return CommonConfigAccess.root(BaniraConfigs.holder(CommonConfig.class));
     }
 
     public static void save() {
-        ConfigHolder h = BaniraConfig.holder(CommonConfig.class);
+        ConfigHolder h = BaniraConfigs.holder(CommonConfig.class);
         if (h != null) {
             h.save();
         }

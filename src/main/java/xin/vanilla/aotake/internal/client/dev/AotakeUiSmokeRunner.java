@@ -6,12 +6,16 @@ import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.client.gui.screens.inventory.ContainerScreen;
 import com.mojang.blaze3d.platform.NativeImage;
 import net.fabricmc.fabric.api.client.screen.v1.Screens;
+import net.fabricmc.fabric.api.event.player.UseItemCallback;
 import net.minecraft.client.KeyMapping;
 import com.mojang.blaze3d.platform.InputConstants;
-import net.minecraft.core.Registry;
 import net.minecraft.core.RegistryAccess;
 import net.minecraft.world.Difficulty;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
 import net.minecraft.world.level.DataPackConfig;
 import net.minecraft.world.level.GameRules;
 import net.minecraft.world.level.GameType;
@@ -255,7 +259,7 @@ public final class AotakeUiSmokeRunner {
 
     /** 创建不含 Forge 数据包残留的专用 Fabric 烟测世界。 */
     private void createSmokeWorld(@Nonnull Minecraft client) {
-        RegistryAccess.RegistryHolder registries = RegistryAccess.builtin();
+        RegistryAccess.Writable registries = RegistryAccess.builtinCopy();
         LevelSettings levelSettings = new LevelSettings(
                 worldName,
                 GameType.SURVIVAL,
@@ -265,11 +269,7 @@ public final class AotakeUiSmokeRunner {
                 new GameRules(),
                 DataPackConfig.DEFAULT
         );
-        WorldGenSettings worldGenSettings = WorldGenSettings.makeDefault(
-                registries.dimensionTypes(),
-                registries.registryOrThrow(Registry.BIOME_REGISTRY),
-                registries.registryOrThrow(Registry.NOISE_GENERATOR_SETTINGS_REGISTRY)
-        );
+        WorldGenSettings worldGenSettings = WorldGenSettings.makeDefault(registries);
         client.createLevel(worldName, levelSettings, registries, worldGenSettings);
     }
 
@@ -298,7 +298,8 @@ public final class AotakeUiSmokeRunner {
             long start = System.nanoTime();
             List<Entity> all = xin.vanilla.banira.common.util.EntityUtils.getAllEntities();
             int filtered = AotakeUtils.getAllEntitiesByFilter(all, false).size();
-            return new EntityScanResult(all.size(), filtered, System.nanoTime() - start);
+            boolean vanillaItemUsePasses = verifyVanillaItemUsePasses(client);
+            return new EntityScanResult(all.size(), filtered, System.nanoTime() - start, vanillaItemUsePasses);
         }, client.getSingleplayerServer());
         phase = Phase.ENTITY_SCAN;
         phaseTick = 0;
@@ -320,6 +321,10 @@ public final class AotakeUiSmokeRunner {
             appendStatus(String.format(Locale.ROOT,
                     "PASS entity-scan total=%d filtered=%d elapsedMs=%.3f",
                     result.total, result.filtered, result.elapsedNanos / 1_000_000.0));
+            if (!result.vanillaItemUsePasses) {
+                throw new IllegalStateException("Fabric item-use callback consumed a normal item");
+            }
+            appendStatus("PASS vanilla-item-use");
         } catch (RuntimeException e) {
             fail(client, "entity-scan", e);
             return;
@@ -332,6 +337,21 @@ public final class AotakeUiSmokeRunner {
         resetHudObservations();
         phase = Phase.HUD_NORMAL;
         phaseTick = 0;
+    }
+
+    private boolean verifyVanillaItemUsePasses(@Nonnull Minecraft client) {
+        net.minecraft.server.MinecraftServer server = client.getSingleplayerServer();
+        if (server == null || server.getPlayerList().getPlayers().isEmpty()) return false;
+        net.minecraft.server.level.ServerPlayer player = server.getPlayerList().getPlayers().get(0);
+        ItemStack original = player.getMainHandItem().copy();
+        try {
+            player.setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(Items.DIAMOND_PICKAXE));
+            return UseItemCallback.EVENT.invoker()
+                    .interact(player, player.getLevel(), InteractionHand.MAIN_HAND)
+                    .getResult() == InteractionResult.PASS;
+        } finally {
+            player.setItemInHand(InteractionHand.MAIN_HAND, original);
+        }
     }
 
     private void runNormalHudTick(@Nonnull Minecraft client) {
@@ -482,8 +502,7 @@ public final class AotakeUiSmokeRunner {
 
     private void capture(@Nonnull Minecraft client, @Nonnull String name) {
         Path file = outputDir.resolve(name + ".png");
-        try (NativeImage image = Screenshot.takeScreenshot(
-                client.getWindow().getWidth(), client.getWindow().getHeight(), client.getMainRenderTarget())) {
+        try (NativeImage image = Screenshot.takeScreenshot(client.getMainRenderTarget())) {
             image.writeToFile(file);
             appendStatus("PASS " + name);
             LOGGER.info("Aotake UI smoke screenshot: {}", file);
@@ -548,11 +567,13 @@ public final class AotakeUiSmokeRunner {
         private final int total;
         private final int filtered;
         private final long elapsedNanos;
+        private final boolean vanillaItemUsePasses;
 
-        private EntityScanResult(int total, int filtered, long elapsedNanos) {
+        private EntityScanResult(int total, int filtered, long elapsedNanos, boolean vanillaItemUsePasses) {
             this.total = total;
             this.filtered = filtered;
             this.elapsedNanos = elapsedNanos;
+            this.vanillaItemUsePasses = vanillaItemUsePasses;
         }
     }
 

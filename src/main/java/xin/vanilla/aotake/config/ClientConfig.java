@@ -10,7 +10,7 @@ import xin.vanilla.aotake.enums.EnumDustbinClientUiStyle;
 import xin.vanilla.aotake.enums.EnumProgressBarTextAlignH;
 import xin.vanilla.aotake.enums.EnumProgressBarTextAlignV;
 import xin.vanilla.aotake.enums.EnumProgressBarType;
-import xin.vanilla.banira.common.config.BaniraConfig;
+import xin.vanilla.banira.api.BaniraConfigs;
 import xin.vanilla.banira.common.config.ConfigData;
 import xin.vanilla.banira.common.config.ConfigHolder;
 import xin.vanilla.banira.common.config.ConfigScope;
@@ -43,7 +43,7 @@ public class ClientConfig implements ConfigData {
     }
 
     public static RootView get() {
-        return ClientConfigAccess.root(BaniraConfig.holder(ClientConfig.class));
+        return ClientConfigAccess.root(BaniraConfigs.holder(ClientConfig.class));
     }
 
     public interface RootView {

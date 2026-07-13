@@ -16,9 +16,11 @@ import xin.vanilla.banira.platform.BaniraLogoService;
 import xin.vanilla.banira.platform.BaniraNetworkService;
 import xin.vanilla.banira.platform.BaniraNotificationService;
 import xin.vanilla.banira.platform.BaniraPathService;
+import xin.vanilla.banira.platform.BaniraPlayerDataService;
 import xin.vanilla.banira.platform.BaniraPlatform;
 import xin.vanilla.banira.platform.BaniraPlatforms;
 import xin.vanilla.banira.platform.BaniraRegistryService;
+import xin.vanilla.banira.platform.BaniraServerService;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
@@ -226,6 +228,18 @@ public class CommandConfigContractTest {
         @Override
         public BaniraConfigService configService() {
             return configService;
+        }
+
+        @Nonnull
+        @Override
+        public BaniraServerService serverService() {
+            return noop(BaniraServerService.class);
+        }
+
+        @Nonnull
+        @Override
+        public BaniraPlayerDataService playerDataService() {
+            return noop(BaniraPlayerDataService.class);
         }
 
         @Nonnull

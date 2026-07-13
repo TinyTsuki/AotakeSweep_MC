@@ -13,9 +13,9 @@ import xin.vanilla.aotake.network.packet.SweepDataSyncToClient;
 import xin.vanilla.aotake.notification.AotakeNotificationTypes;
 import xin.vanilla.aotake.util.EntityFilter;
 import xin.vanilla.aotake.util.EntitySweeper;
-import xin.vanilla.banira.common.config.BaniraConfig;
+import xin.vanilla.banira.api.BaniraConfigs;
 import xin.vanilla.banira.common.data.KeyValue;
-import xin.vanilla.banira.common.network.ModLoadedPresence;
+import xin.vanilla.banira.api.BaniraModPresence;
 import xin.vanilla.banira.api.event.BaniraEvents;
 import xin.vanilla.banira.common.util.CommandUtils;
 import xin.vanilla.banira.common.util.PacketUtils;
@@ -87,8 +87,8 @@ public class AotakeSweep {
     /** 加载器入口安装好 Banira 平台后调用；业务初始化在所有分支保持一致。 */
     public static void bootstrapCommon() {
         if (!bootstrapped.compareAndSet(false, true)) return;
-        BaniraConfig.register(CommonConfig.class, MODID);
-        BaniraConfig.register(ClientConfig.class, MODID);
+        BaniraConfigs.register(CommonConfig.class, MODID);
+        BaniraConfigs.register(ClientConfig.class, MODID);
         NetworkInit.registerPackets();
         AotakeNotificationTypes.registerAllOnServer();
 
@@ -98,7 +98,7 @@ public class AotakeSweep {
         BaniraEvents.Player.onLoggedIn(event -> EventHandlerProxy.onPlayerLoggedIn(event.playerAs(ServerPlayer.class)));
         BaniraEvents.Player.onLoggedOut(event -> EventHandlerProxy.onPlayerLoggedOut(event.playerAs(ServerPlayer.class)));
 
-        ModLoadedPresence.register(MODID, player -> {
+        BaniraModPresence.register(MODID, player -> {
             if (!(player instanceof ServerPlayer)) return;
             ServerPlayer serverPlayer = (ServerPlayer) player;
             PacketUtils.sendPacketToPlayer(new SweepDataSyncToClient(serverPlayer), serverPlayer);

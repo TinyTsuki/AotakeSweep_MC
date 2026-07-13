@@ -16,7 +16,7 @@ import xin.vanilla.aotake.enums.EnumCommandType;
 import xin.vanilla.aotake.network.packet.SweepDataSyncToClient;
 import xin.vanilla.aotake.notification.AotakeNotificationTypes;
 import xin.vanilla.aotake.util.AotakeUtils;
-import xin.vanilla.banira.common.config.BaniraConfig;
+import xin.vanilla.banira.api.BaniraConfigs;
 import xin.vanilla.banira.common.enums.EnumI18nType;
 import xin.vanilla.banira.common.util.*;
 
@@ -82,18 +82,18 @@ public class ConfigCommand {
                                 .suggests((context, builder) -> {
                                     String input = CommandUtils.getStringEmpty(context, "configKey");
                                     CommandUtils.configKeySuggestion(
-                                            BaniraConfig.holder(CommonConfig.class), builder, input);
+                                            BaniraConfigs.holder(CommonConfig.class), builder, input);
                                     return builder.buildFuture();
                                 })
                                 .then(Commands.argument("configValue", StringArgumentType.word())
                                         .suggests((context, builder) -> {
                                             String configKey = StringArgumentType.getString(context, "configKey");
                                             CommandUtils.configValueSuggestion(
-                                                    BaniraConfig.holder(CommonConfig.class), builder, configKey);
+                                                    BaniraConfigs.holder(CommonConfig.class), builder, configKey);
                                             return builder.buildFuture();
                                         })
                                         .executes(context -> CommandUtils.executeModifyConfig(
-                                                BaniraConfig.holder(CommonConfig.class), context))
+                                                BaniraConfigs.holder(CommonConfig.class), context))
                                 )
                         )
                 )// endregion 修改server配置
@@ -104,18 +104,18 @@ public class ConfigCommand {
                                 .suggests((context, builder) -> {
                                     String input = CommandUtils.getStringEmpty(context, "configKey");
                                     CommandUtils.configKeySuggestion(
-                                            BaniraConfig.holder(CommonConfig.class), builder, input);
+                                            BaniraConfigs.holder(CommonConfig.class), builder, input);
                                     return builder.buildFuture();
                                 })
                                 .then(Commands.argument("configValue", StringArgumentType.word())
                                         .suggests((context, builder) -> {
                                             String configKey = StringArgumentType.getString(context, "configKey");
                                             CommandUtils.configValueSuggestion(
-                                                    BaniraConfig.holder(CommonConfig.class), builder, configKey);
+                                                    BaniraConfigs.holder(CommonConfig.class), builder, configKey);
                                             return builder.buildFuture();
                                         })
                                         .executes(context -> CommandUtils.executeModifyConfig(
-                                                BaniraConfig.holder(CommonConfig.class), context))
+                                                BaniraConfigs.holder(CommonConfig.class), context))
                                 )
                         )
                 )// endregion 修改common配置

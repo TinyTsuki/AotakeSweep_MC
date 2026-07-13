@@ -21,7 +21,7 @@ import xin.vanilla.aotake.AotakeLang;
 import xin.vanilla.aotake.config.CommonConfig;
 import xin.vanilla.aotake.data.ConcurrentShuffleList;
 import xin.vanilla.aotake.data.DropStatistics;
-import xin.vanilla.banira.common.util.BaniraServerUtils;
+import xin.vanilla.aotake.internal.common.AotakeServerRuntime;
 import xin.vanilla.banira.common.data.Component;
 import xin.vanilla.banira.common.data.KeyValue;
 import xin.vanilla.banira.common.data.WorldCoordinate;
@@ -58,18 +58,17 @@ public class WorldTrashData extends SavedData {
     private String dropStatsDate;
 
     public WorldTrashData() {
-        super(DATA_NAME);
     }
 
-    @Override
-    public void load(CompoundTag nbt) {
+    public static WorldTrashData load(CompoundTag nbt) {
+        WorldTrashData data = new WorldTrashData();
         // 未开启持久化直接返回
         try {
-            if (!CommonConfig.get().base().dustbin().dustbinPersistent()) return;
+            if (!CommonConfig.get().base().dustbin().dustbinPersistent()) return data;
         } catch (Throwable ignored) {
         }
 
-        this.dropList = new ConcurrentShuffleList<>();
+        data.dropList = new ConcurrentShuffleList<>();
         ListTag dropListNBT = nbt.getList("dropList", 10);
         ConcurrentShuffleList<KeyValue<WorldCoordinate, ItemStack>> drops = new ConcurrentShuffleList<>();
         for (int i = 0; i < dropListNBT.size(); i++) {
@@ -80,10 +79,10 @@ public class WorldTrashData extends SavedData {
                     , item
             ));
         }
-        this.setDrops(drops);
+        data.setDrops(drops);
 
         String todayStr = DateUtils.toString(new Date());
-        MinecraftServer server = BaniraServerUtils.isRunning() ? BaniraServerUtils.currentServer() : null;
+        MinecraftServer server = AotakeServerRuntime.isRunning() ? AotakeServerRuntime.currentServer() : null;
         Queue<DropStatistics> dropCounts = DropStatisticsStorage.loadByDate(server, todayStr);
         // 若 NBT 中有 dropCount 且当日 JSON 为空，则迁移至 JSON
         if (dropCounts.isEmpty() && nbt.contains("dropCount")) {
@@ -96,17 +95,17 @@ public class WorldTrashData extends SavedData {
             }
             nbt.remove("dropCount");
         }
-        this.setDropCount(dropCounts);
-        this.dropStatsDate = todayStr;
+        data.setDropCount(dropCounts);
+        data.dropStatsDate = todayStr;
 
-        this.inventoryList = new ArrayList<>();
+        data.inventoryList = new ArrayList<>();
         ListTag inventoryListNBT = nbt.getList("inventoryList", 9);
         for (Tag inbt : inventoryListNBT) {
             SimpleContainer inventory = new SimpleContainer(6 * 9);
             inventory.fromTag((ListTag) inbt);
-            this.inventoryList.add(inventory);
+            data.inventoryList.add(inventory);
         }
-
+        return data;
     }
 
     @Override
@@ -129,8 +128,8 @@ public class WorldTrashData extends SavedData {
         nbt.put("dropList", dropsNBT);
 
         String todayStr = DateUtils.toString(new Date());
-        if (BaniraServerUtils.isRunning()) {
-            MinecraftServer server = BaniraServerUtils.currentServer();
+        if (AotakeServerRuntime.isRunning()) {
+            MinecraftServer server = AotakeServerRuntime.currentServer();
             rolloverDropStatisticsIfNeeded(server, todayStr);
             DropStatisticsStorage.saveByDate(server, todayStr, this.dropCount);
         }
@@ -186,7 +185,7 @@ public class WorldTrashData extends SavedData {
     }
 
     public static WorldTrashData get() {
-        return get(BaniraServerUtils.currentServer().getAllLevels().iterator().next());
+        return get(AotakeServerRuntime.currentServer().getAllLevels().iterator().next());
     }
 
     public static WorldTrashData get(ServerPlayer player) {
@@ -194,7 +193,7 @@ public class WorldTrashData extends SavedData {
     }
 
     public static WorldTrashData get(ServerLevel world) {
-        return world.getDataStorage().computeIfAbsent(WorldTrashData::new, DATA_NAME);
+        return world.getDataStorage().computeIfAbsent(WorldTrashData::load, WorldTrashData::new, DATA_NAME);
     }
 
     public static MenuProvider getTrashContainer(ServerPlayer player, int page) {

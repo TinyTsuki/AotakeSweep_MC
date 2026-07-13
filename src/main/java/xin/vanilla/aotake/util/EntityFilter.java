@@ -10,6 +10,8 @@ import net.minecraft.nbt.NumericTag;
 import net.minecraft.network.syncher.EntityDataAccessor;
 import com.mojang.authlib.GameProfile;
 import xin.vanilla.aotake.AotakeComponent;
+import xin.vanilla.aotake.internal.common.AotakeReflectionAccess;
+import xin.vanilla.aotake.internal.common.AotakeServerRuntime;
 import xin.vanilla.banira.common.data.Component;
 import xin.vanilla.banira.common.enums.IEnumDescribable;
 import xin.vanilla.banira.common.util.*;
@@ -363,11 +365,11 @@ public class EntityFilter {
             Object cur;
             int startIdx;
             if (ap.className != null) {
-                Class<?> decl = ReflectionUtils.getClass(ap.className);
+                Class<?> decl = AotakeReflectionAccess.classByName(ap.className);
                 if (decl == null || !decl.isInstance(entity)) {
                     return null;
                 }
-                cur = ReflectionUtils.getPrivateFieldValue(decl, entity, ap.chain.get(0), true);
+                cur = AotakeReflectionAccess.fieldValue(decl, entity, ap.chain.get(0), true);
                 startIdx = 1;
             } else {
                 cur = entity;
@@ -446,7 +448,7 @@ public class EntityFilter {
                 }
                 return null;
             }
-            return ReflectionUtils.getPrivateFieldValue(obj.getClass(), obj, segment, true);
+            return AotakeReflectionAccess.fieldValue(obj.getClass(), obj, segment, true);
         } catch (Throwable ignored) {
             return null;
         }
@@ -525,13 +527,13 @@ public class EntityFilter {
                         try {
                             String[] split = firstPartKey.split(":", 2);
                             if (split.length == 1) {
-                                return (EntityDataAccessor<?>) ReflectionUtils.getPrivateFieldValue(ReflectionUtils.getClass(entity), entity, split[0], true);
+                                return (EntityDataAccessor<?>) AotakeReflectionAccess.fieldValue(AotakeReflectionAccess.classOf(entity), entity, split[0], true);
                             }
-                            Class<?> decl = ReflectionUtils.getClass(split[0]);
+                            Class<?> decl = AotakeReflectionAccess.classByName(split[0]);
                             if (decl == null || !decl.isInstance(entity)) {
                                 return null;
                             }
-                            return (EntityDataAccessor<?>) ReflectionUtils.getPrivateFieldValue(decl, entity, split[1]);
+                            return (EntityDataAccessor<?>) AotakeReflectionAccess.fieldValue(decl, entity, split[1]);
                         } catch (Throwable ignored) {
                             return null;
                         }
@@ -675,9 +677,10 @@ public class EntityFilter {
                                 if (entity instanceof TamableAnimal) {
                                     ownerUUID = ((TamableAnimal) entity).getOwnerUUID();
                                 }
-                                if (ownerUUID != null && BaniraServerUtils.currentServer() != null) {
-                                    GameProfile profile = BaniraServerUtils.currentServer().getProfileCache().get(ownerUUID);
-                                    ownerName = profile != null ? profile.getName() : null;
+                                if (ownerUUID != null && AotakeServerRuntime.currentServer() != null) {
+                                    ownerName = AotakeServerRuntime.currentServer().getProfileCache().get(ownerUUID)
+                                            .map(GameProfile::getName)
+                                            .orElse(null);
                                 }
                             }
                             varsOut.put(key, ownerName);

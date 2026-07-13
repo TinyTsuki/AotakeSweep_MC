@@ -16,7 +16,8 @@ public final class AotakeLang extends Translator {
     public static final AotakeLang INSTANCE = new AotakeLang();
 
     private AotakeLang() {
-        super(AotakeSweep.class);
+        // Fabric 的加载器入口与共享主类不同，显式 mod id 才能保持跨加载器一致。
+        super(AotakeSweep.MODID, AotakeSweep.class);
         registerInCache();
     }
 

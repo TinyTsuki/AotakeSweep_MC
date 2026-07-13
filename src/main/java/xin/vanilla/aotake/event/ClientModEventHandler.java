@@ -5,10 +5,10 @@ import xin.vanilla.aotake.AotakeSweep;
 import xin.vanilla.aotake.notification.AotakeNotificationTypes;
 import xin.vanilla.banira.api.client.BaniraInput;
 import xin.vanilla.banira.api.client.BaniraKeyHandle;
-import xin.vanilla.banira.client.notification.NotificationTypeRegistry;
+import xin.vanilla.banira.api.client.notification.BaniraClientNotificationTypes;
 
 /**
- * 客户端：Banira 键位入队 + {@link BaniraClientEventHub} 回调注册（不在此类上使用 Forge {@code @SubscribeEvent}）
+ * 客户端：注册 Banira 键位与通知类型。
  */
 public final class ClientModEventHandler {
 
@@ -38,7 +38,7 @@ public final class ClientModEventHandler {
      */
     public static void bootstrap() {
         for (String id : AotakeNotificationTypes.ALL_TYPE_IDS) {
-            NotificationTypeRegistry.register(id);
+            BaniraClientNotificationTypes.register(id);
         }
     }
 }

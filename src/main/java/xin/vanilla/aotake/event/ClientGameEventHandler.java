@@ -11,11 +11,11 @@ import xin.vanilla.aotake.screen.ProgressRender;
 import xin.vanilla.banira.api.client.hud.BaniraHudEvents;
 import xin.vanilla.banira.api.client.hud.BaniraHudRenderEvent;
 import xin.vanilla.banira.api.client.hud.HudOverlayElement;
-import xin.vanilla.banira.client.event.BaniraClientEventHub;
+import xin.vanilla.banira.api.client.event.BaniraClientEvents;
 import xin.vanilla.banira.common.util.PacketUtils;
 
 /**
- * 客户端 Game 逻辑；通过 {@link BaniraClientEventHub} 订阅，在 {@link xin.vanilla.aotake.client.AotakeClientBootstrap} 中注册。
+ * 客户端 Game 逻辑；通过 Banira 客户端事件门面订阅。
  */
 public final class ClientGameEventHandler {
     private static final Logger LOGGER = LogManager.getLogger();
@@ -27,8 +27,8 @@ public final class ClientGameEventHandler {
     }
 
     public static void register() {
-        BaniraClientEventHub.Player.onClientLoggedOut(player -> LOGGER.debug("Client: Player logged out."));
-        BaniraClientEventHub.Client.onClientTick(event -> onClientTick());
+        BaniraClientEvents.Player.onClientLoggedOut(player -> LOGGER.debug("Client: Player logged out."));
+        BaniraClientEvents.Client.onClientTick(event -> onClientTick());
         BaniraHudEvents.onElementPreRender(HudOverlayElement.EXPERIENCE_BAR, ClientGameEventHandler::interceptExperience);
         BaniraHudEvents.onElementPreRender(HudOverlayElement.EXPERIENCE_TEXT, ClientGameEventHandler::interceptExperience);
     }
