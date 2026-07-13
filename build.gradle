@@ -3,7 +3,7 @@ plugins {
     id 'maven-publish'
 }
 
-def javaVer = 8
+def javaVer = 17
 
 group = 'xin.vanilla.aotake'
 
