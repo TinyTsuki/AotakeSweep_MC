@@ -5,6 +5,8 @@ import com.mojang.blaze3d.platform.InputConstants;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.Screenshot;
+import net.minecraft.client.gui.components.Button;
+import net.minecraft.client.gui.screens.BackupConfirmScreen;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.inventory.ContainerScreen;
 import org.apache.logging.log4j.LogManager;
@@ -218,11 +220,13 @@ public final class AotakeUiSmokeRunner {
 
     private void runWorldLoadingTick(@Nonnull Minecraft client) {
         phaseTick++;
+        continuePastWorldBackupPrompt(client);
         boolean ready = client.player != null && client.level != null
                 && client.getSingleplayerServer() != null && client.screen == null;
         if (!ready) {
             if (phaseTick >= WORLD_LOAD_TIMEOUT_TICKS) {
-                fail(client, "world-load", new IllegalStateException("Timed out loading world " + worldName));
+                fail(client, "world-load", new IllegalStateException("Timed out loading world " + worldName
+                        + "; screen=" + describeScreen(client.screen)));
             }
             return;
         }
@@ -246,6 +250,29 @@ public final class AotakeUiSmokeRunner {
         }, client.getSingleplayerServer());
         phase = Phase.ENTITY_SCAN;
         phaseTick = 0;
+    }
+
+    /** 开发存档跨版本升级时跳过备份，避免自动烟测停在确认界面。 */
+    private void continuePastWorldBackupPrompt(Minecraft client) {
+        if (!(client.screen instanceof BackupConfirmScreen)) {
+            return;
+        }
+        Button skipButton = client.screen.children().stream()
+                .filter(Button.class::isInstance)
+                .map(Button.class::cast)
+                .filter(button -> button.getMessage().getString().equals(
+                        net.minecraft.network.chat.Component.translatable("selectWorld.backupJoinSkipButton").getString()))
+                .findFirst()
+                .orElse(null);
+        if (skipButton == null) {
+            return;
+        }
+        skipButton.onPress();
+        appendStatus("CONTINUE world-backup-prompt (skip backup)");
+    }
+
+    private static String describeScreen(Screen screen) {
+        return screen == null ? "none" : screen.getClass().getName() + "[" + screen.getTitle().getString() + "]";
     }
 
     private void runEntityScanTick(@Nonnull Minecraft client) {
