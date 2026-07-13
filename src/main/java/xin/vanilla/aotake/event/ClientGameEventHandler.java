@@ -8,6 +8,9 @@ import xin.vanilla.aotake.config.ClientConfig;
 import xin.vanilla.aotake.internal.client.dev.AotakeUiSmokeRunner;
 import xin.vanilla.aotake.network.packet.OpenDustbinToServer;
 import xin.vanilla.aotake.screen.ProgressRender;
+import xin.vanilla.banira.api.client.hud.BaniraHudEvents;
+import xin.vanilla.banira.api.client.hud.BaniraHudRenderEvent;
+import xin.vanilla.banira.api.client.hud.HudOverlayElement;
 import xin.vanilla.banira.client.event.BaniraClientEventHub;
 import xin.vanilla.banira.common.util.PacketUtils;
 
@@ -26,6 +29,8 @@ public final class ClientGameEventHandler {
     public static void register() {
         BaniraClientEventHub.Player.onClientLoggedOut(player -> LOGGER.debug("Client: Player logged out."));
         BaniraClientEventHub.Client.onClientTick(event -> onClientTick());
+        BaniraHudEvents.onElementPreRender(HudOverlayElement.EXPERIENCE_BAR, ClientGameEventHandler::interceptExperience);
+        BaniraHudEvents.onElementPreRender(HudOverlayElement.EXPERIENCE_TEXT, ClientGameEventHandler::interceptExperience);
     }
 
     private static void onClientTick() {
@@ -48,5 +53,13 @@ public final class ClientGameEventHandler {
 
     public static void renderHud(PoseStack stack, float partialTick) {
         ProgressRender.render(stack, showProgress);
+    }
+
+    /** 按住进度键时由 Aotake 接管原版经验区，普通状态仍保留原版绘制。 */
+    private static void interceptExperience(BaniraHudRenderEvent event) {
+        Minecraft minecraft = Minecraft.getInstance();
+        if (showProgress && minecraft.player != null && minecraft.screen == null && !minecraft.options.hideGui) {
+            event.cancel();
+        }
     }
 }

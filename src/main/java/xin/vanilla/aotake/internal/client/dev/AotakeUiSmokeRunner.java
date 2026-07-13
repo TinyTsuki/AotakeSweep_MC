@@ -6,7 +6,15 @@ import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import com.mojang.blaze3d.platform.NativeImage;
 import net.minecraft.client.KeyMapping;
 import com.mojang.blaze3d.platform.InputConstants;
+import net.minecraft.core.Registry;
+import net.minecraft.core.RegistryAccess;
+import net.minecraft.world.Difficulty;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.level.DataPackConfig;
+import net.minecraft.world.level.GameRules;
+import net.minecraft.world.level.GameType;
+import net.minecraft.world.level.LevelSettings;
+import net.minecraft.world.level.levelgen.WorldGenSettings;
 import net.minecraft.client.Screenshot;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -17,6 +25,9 @@ import xin.vanilla.aotake.event.ClientModEventHandler;
 import xin.vanilla.aotake.network.packet.OpenDustbinToServer;
 import xin.vanilla.aotake.screen.PlayerConfigScreen;
 import xin.vanilla.aotake.util.AotakeUtils;
+import xin.vanilla.banira.api.client.hud.BaniraHudEvents;
+import xin.vanilla.banira.api.client.hud.BaniraHudRenderEvent;
+import xin.vanilla.banira.api.client.hud.HudOverlayElement;
 import xin.vanilla.banira.client.gui.ConfigEditorScreen;
 import xin.vanilla.banira.common.util.EnvironmentUtils;
 import xin.vanilla.banira.common.util.PacketUtils;
@@ -61,6 +72,10 @@ public final class AotakeUiSmokeRunner {
     private int stepTick;
     private int phaseTick;
     private int readyTick;
+    private int experienceBarEvents;
+    private int experienceTextEvents;
+    private int canceledExperienceBarEvents;
+    private int canceledExperienceTextEvents;
     private CompletableFuture<EntityScanResult> entityScan;
 
     private AotakeUiSmokeRunner(@Nonnull Path outputDir, boolean exitOnFinish, @Nonnull String worldName) {
@@ -93,6 +108,8 @@ public final class AotakeUiSmokeRunner {
                 .resolve(DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss").format(LocalDateTime.now()));
         instance = new AotakeUiSmokeRunner(outputDir, Boolean.getBoolean(EXIT_PROPERTY),
                 System.getProperty(WORLD_PROPERTY, "").trim());
+        BaniraHudEvents.onElementPreRender(HudOverlayElement.EXPERIENCE_BAR, event -> observeHudEvent(event, true));
+        BaniraHudEvents.onElementPreRender(HudOverlayElement.EXPERIENCE_TEXT, event -> observeHudEvent(event, false));
         LOGGER.info("Aotake UI smoke registered; output directory: {}", outputDir);
     }
 
@@ -208,10 +225,35 @@ public final class AotakeUiSmokeRunner {
         appendStatus("LOAD world " + worldName);
         LOGGER.info("Aotake UI smoke loading world: {}", worldName);
         try {
-            client.loadLevel(worldName);
+            Path levelData = client.gameDirectory.toPath().resolve("saves").resolve(worldName).resolve("level.dat");
+            if (Files.isRegularFile(levelData)) {
+                client.loadLevel(worldName);
+            } else {
+                createSmokeWorld(client);
+            }
         } catch (Throwable t) {
             fail(client, "world-load", t);
         }
+    }
+
+    /** 创建不含 Forge 数据包残留的专用 Fabric 烟测世界。 */
+    private void createSmokeWorld(@Nonnull Minecraft client) {
+        RegistryAccess.RegistryHolder registries = RegistryAccess.builtin();
+        LevelSettings levelSettings = new LevelSettings(
+                worldName,
+                GameType.SURVIVAL,
+                false,
+                Difficulty.NORMAL,
+                true,
+                new GameRules(),
+                DataPackConfig.DEFAULT
+        );
+        WorldGenSettings worldGenSettings = WorldGenSettings.makeDefault(
+                registries.dimensionTypes(),
+                registries.registryOrThrow(Registry.BIOME_REGISTRY),
+                registries.registryOrThrow(Registry.NOISE_GENERATOR_SETTINGS_REGISTRY)
+        );
+        client.createLevel(worldName, levelSettings, registries, worldGenSettings);
     }
 
     private void runWorldLoadingTick(@Nonnull Minecraft client) {
@@ -265,6 +307,12 @@ public final class AotakeUiSmokeRunner {
             fail(client, "entity-scan", e);
             return;
         }
+        if (client.player != null) {
+            // 非零等级才会走到 1.16.5 的经验文本绘制分支。
+            client.player.experienceLevel = 7;
+            client.player.experienceProgress = 0.5F;
+        }
+        resetHudObservations();
         phase = Phase.HUD_NORMAL;
         phaseTick = 0;
     }
@@ -272,8 +320,16 @@ public final class AotakeUiSmokeRunner {
     private void runNormalHudTick(@Nonnull Minecraft client) {
         phaseTick++;
         if (phaseTick == 30) {
+            try {
+                assertHudContract(false);
+            } catch (RuntimeException e) {
+                fail(client, "hud-normal-events", e);
+                return;
+            }
+            appendStatus("PASS hud-normal-events");
             capture(client, "04-gameplay-hud-normal");
             setProgressKey(true);
+            resetHudObservations();
             phase = Phase.HUD_HELD;
             phaseTick = 0;
         }
@@ -282,6 +338,13 @@ public final class AotakeUiSmokeRunner {
     private void runHeldHudTick(@Nonnull Minecraft client) {
         phaseTick++;
         if (phaseTick == 30) {
+            try {
+                assertHudContract(true);
+            } catch (RuntimeException e) {
+                fail(client, "hud-held-events", e);
+                return;
+            }
+            appendStatus("PASS hud-held-events");
             capture(client, "05-gameplay-hud-progress");
             setProgressKey(false);
             PacketUtils.sendPacketToServer(new OpenDustbinToServer(0));
@@ -312,6 +375,42 @@ public final class AotakeUiSmokeRunner {
     private static void setProgressKey(boolean down) {
         int keyCode = ClientModEventHandler.PROGRESS_KEY.currentKey();
         KeyMapping.set(InputConstants.Type.KEYSYM.getOrCreate(keyCode), down);
+    }
+
+    private static void observeHudEvent(BaniraHudRenderEvent event, boolean bar) {
+        AotakeUiSmokeRunner runner = instance;
+        if (runner == null) {
+            return;
+        }
+        if (bar) {
+            runner.experienceBarEvents++;
+            if (event.canceled()) runner.canceledExperienceBarEvents++;
+        } else {
+            runner.experienceTextEvents++;
+            if (event.canceled()) runner.canceledExperienceTextEvents++;
+        }
+    }
+
+    private void resetHudObservations() {
+        experienceBarEvents = 0;
+        experienceTextEvents = 0;
+        canceledExperienceBarEvents = 0;
+        canceledExperienceTextEvents = 0;
+    }
+
+    private void assertHudContract(boolean expectedCanceled) {
+        if (experienceBarEvents <= 0 || experienceTextEvents <= 0) {
+            throw new IllegalStateException("Experience HUD events were not both observed: bar="
+                    + experienceBarEvents + ", text=" + experienceTextEvents);
+        }
+        boolean allCanceled = canceledExperienceBarEvents == experienceBarEvents
+                && canceledExperienceTextEvents == experienceTextEvents;
+        boolean noneCanceled = canceledExperienceBarEvents == 0 && canceledExperienceTextEvents == 0;
+        if ((expectedCanceled && !allCanceled) || (!expectedCanceled && !noneCanceled)) {
+            throw new IllegalStateException("Unexpected experience HUD cancellation state: bar="
+                    + canceledExperienceBarEvents + "/" + experienceBarEvents + ", text="
+                    + canceledExperienceTextEvents + "/" + experienceTextEvents);
+        }
     }
 
     private void capture(@Nonnull Minecraft client, @Nonnull String name) {
