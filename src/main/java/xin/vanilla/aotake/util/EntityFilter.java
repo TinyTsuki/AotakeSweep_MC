@@ -1,13 +1,17 @@
 package xin.vanilla.aotake.util;
 
-import com.mojang.authlib.GameProfile;
-import net.minecraft.network.syncher.EntityDataAccessor;
-import net.minecraft.server.MinecraftServer;
-import net.minecraft.server.players.GameProfileCache;
 import net.minecraft.world.entity.Entity;
-import net.minecraft.world.entity.TamableAnimal;
 import net.minecraft.world.entity.item.ItemEntity;
+import net.minecraft.world.entity.TamableAnimal;
+import net.minecraft.nbt.CollectionTag;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.Tag;
+import net.minecraft.nbt.NumericTag;
+import net.minecraft.network.syncher.EntityDataAccessor;
+import com.mojang.authlib.GameProfile;
 import xin.vanilla.aotake.AotakeComponent;
+import xin.vanilla.aotake.internal.common.AotakeReflectionAccess;
+import xin.vanilla.aotake.internal.common.AotakeServerRuntime;
 import xin.vanilla.banira.common.data.Component;
 import xin.vanilla.banira.common.enums.IEnumDescribable;
 import xin.vanilla.banira.common.util.*;
@@ -28,28 +32,59 @@ public class EntityFilter {
     private static final Map<String, EntityDataAccessor<?>> accessorCache = new ConcurrentHashMap<>();
     // 缓存已解析的 ACCESSOR_KEY 路径（key 为完整 accessorPath 字符串）
     private static final Map<String, AccessorPath> accessorPathCache = new ConcurrentHashMap<>();
+    private final ThreadLocal<Map<String, Object>> variableBuffer =
+            ThreadLocal.withInitial(() -> new HashMap<>(24));
+    private final Matcher emptyMatcher = new Matcher(Collections.emptyList());
 
     public void clear() {
         filterCache.clear();
+        variableBuffer.remove();
     }
 
     public boolean validEntity(List<? extends String> config, Entity entity) {
-        if (CollectionUtils.isNullOrEmpty(config)) return false;
+        return compile(config).matches(entity);
+    }
 
-        Map<String, Object> vars = new HashMap<>(24);
-
+    /**
+     * 将一组规则预编译为可重复使用的匹配器，供单次全量扫描复用。
+     */
+    public Matcher compile(List<? extends String> config) {
+        if (CollectionUtils.isNullOrEmpty(config)) {
+            return emptyMatcher;
+        }
+        List<FilterSpec> specs = new ArrayList<>(config.size());
         for (String raw : config) {
             String fullKey = convertExpression(raw);
-            FilterSpec spec = filterCache.computeIfAbsent(fullKey, this::compileSpec);
+            specs.add(filterCache.computeIfAbsent(fullKey, this::compileSpec));
+        }
+        return new Matcher(Collections.unmodifiableList(specs));
+    }
 
-            vars.clear();
-            fillVarsForEntity(spec.varDescriptors, entity, vars);
+    public final class Matcher {
+        private final List<FilterSpec> specs;
 
-            if (spec.evaluator.evaluateBoolean(vars)) {
-                return true;
+        private Matcher(List<FilterSpec> specs) {
+            this.specs = specs;
+        }
+
+        public boolean matches(Entity entity) {
+            if (specs.isEmpty() || entity == null) {
+                return false;
+            }
+            Map<String, Object> vars = variableBuffer.get();
+            try {
+                for (FilterSpec spec : specs) {
+                    vars.clear();
+                    fillVarsForEntity(spec.varDescriptors, entity, vars);
+                    if (spec.evaluator.evaluateBoolean(vars)) {
+                        return true;
+                    }
+                }
+                return false;
+            } finally {
+                vars.clear();
             }
         }
-        return false;
     }
 
     private FilterSpec compileSpec(String fullKey) {
@@ -330,11 +365,11 @@ public class EntityFilter {
             Object cur;
             int startIdx;
             if (ap.className != null) {
-                Class<?> decl = FieldUtils.getClass(ap.className);
+                Class<?> decl = AotakeReflectionAccess.classByName(ap.className);
                 if (decl == null || !decl.isInstance(entity)) {
                     return null;
                 }
-                cur = FieldUtils.getPrivateFieldValue(decl, entity, ap.chain.get(0), true);
+                cur = AotakeReflectionAccess.fieldValue(decl, entity, ap.chain.get(0), true);
                 startIdx = 1;
             } else {
                 cur = entity;
@@ -413,7 +448,7 @@ public class EntityFilter {
                 }
                 return null;
             }
-            return FieldUtils.getPrivateFieldValue(obj.getClass(), obj, segment, true);
+            return AotakeReflectionAccess.fieldValue(obj.getClass(), obj, segment, true);
         } catch (Throwable ignored) {
             return null;
         }
@@ -472,6 +507,7 @@ public class EntityFilter {
         Boolean hasOwner = null;
         UUID ownerUUID = null;
         String ownerName = null;
+        CompoundTag entityNbt = null;
 
         for (VarDescriptor d : descriptors) {
             String key = d.name;
@@ -491,13 +527,13 @@ public class EntityFilter {
                         try {
                             String[] split = firstPartKey.split(":", 2);
                             if (split.length == 1) {
-                                return (EntityDataAccessor<?>) FieldUtils.getPrivateFieldValue(FieldUtils.getClass(entity), entity, split[0], true);
+                                return (EntityDataAccessor<?>) AotakeReflectionAccess.fieldValue(AotakeReflectionAccess.classOf(entity), entity, split[0], true);
                             }
-                            Class<?> decl = FieldUtils.getClass(split[0]);
+                            Class<?> decl = AotakeReflectionAccess.classByName(split[0]);
                             if (decl == null || !decl.isInstance(entity)) {
                                 return null;
                             }
-                            return (EntityDataAccessor<?>) FieldUtils.getPrivateFieldValue(decl, entity, split[1]);
+                            return (EntityDataAccessor<?>) AotakeReflectionAccess.fieldValue(decl, entity, split[1]);
                         } catch (Throwable ignored) {
                             return null;
                         }
@@ -525,20 +561,22 @@ public class EntityFilter {
                     varsOut.put(key, normalizeFieldValue(walkReflectChainFromEntity(entity, fp)));
                     break;
                 case NBT_PATH:
-                    // if (NBTUtils.has(entity.getPersistentData(), d.payload)) {
-                    //     Tag tag = NBTUtils.getTagByPath(entity.getPersistentData(), d.payload);
-                    //     if (tag instanceof NumericTag n) {
-                    //         varsOut.put(key, n.getAsNumber());
-                    //     } else if (tag instanceof CollectionTag<?> c) {
-                    //         varsOut.put(key, c.toArray());
-                    //     } else if (tag != null) {
-                    //         varsOut.put(key, tag.getAsString());
-                    //     } else {
-                    //         varsOut.put(key, null);
-                    //     }
-                    // } else {
-                    //     varsOut.put(key, null);
-                    // }
+                    // Fabric 没有 Forge persistentData；同一次匹配只序列化一次完整实体 NBT。
+                    if (entityNbt == null) entityNbt = entity.saveWithoutId(new CompoundTag());
+                    if (NBTUtils.has(entityNbt, d.payload)) {
+                        Tag tag = NBTUtils.getTagByPath(entityNbt, d.payload);
+                        if (tag instanceof NumericTag) {
+                            varsOut.put(key, ((NumericTag) tag).getAsNumber());
+                        } else if (tag instanceof CollectionTag) {
+                            varsOut.put(key, ((CollectionTag<?>) tag).toArray());
+                        } else if (tag != null) {
+                            varsOut.put(key, tag.getAsString());
+                        } else {
+                            varsOut.put(key, null);
+                        }
+                    } else {
+                        varsOut.put(key, null);
+                    }
                     break;
                 case PREDEFINED:
                     switch (d.payload) {
@@ -598,7 +636,7 @@ public class EntityFilter {
                             break;
                         case "num":
                             if (num == null) {
-                                if (entity instanceof ItemEntity item) num = item.getItem().getCount();
+                                if (entity instanceof ItemEntity) num = ((ItemEntity) entity).getItem().getCount();
                                 else num = 1;
                             }
                             varsOut.put(key, num);
@@ -630,26 +668,19 @@ public class EntityFilter {
                             break;
                         case "hasOwner":
                             if (hasOwner == null) {
-                                hasOwner = entity instanceof TamableAnimal t && t.getOwnerUUID() != null;
+                                hasOwner = entity instanceof TamableAnimal && ((TamableAnimal) entity).getOwnerUUID() != null;
                             }
                             varsOut.put(key, hasOwner);
                             break;
                         case "ownerName":
                             if (ownerName == null) {
-                                if (entity instanceof TamableAnimal t) {
-                                    ownerUUID = t.getOwnerUUID();
+                                if (entity instanceof TamableAnimal) {
+                                    ownerUUID = ((TamableAnimal) entity).getOwnerUUID();
                                 }
-                                if (ownerUUID != null) {
-                                    MinecraftServer server = entity.getServer();
-                                    if (server != null) {
-                                        GameProfileCache profileCache = server.getProfileCache();
-                                        if (profileCache != null) {
-                                            Optional<GameProfile> gameProfile = profileCache.get(ownerUUID);
-                                            if (gameProfile.isPresent()) {
-                                                ownerName = gameProfile.get().getName();
-                                            }
-                                        }
-                                    }
+                                if (ownerUUID != null && AotakeServerRuntime.currentServer() != null) {
+                                    ownerName = AotakeServerRuntime.currentServer().getProfileCache().get(ownerUUID)
+                                            .map(GameProfile::getName)
+                                            .orElse(null);
                                 }
                             }
                             varsOut.put(key, ownerName);

@@ -5,24 +5,21 @@
   "name": "${mod_name}",
   "description": "${mod_desc}",
   "authors": [
-    "Tsuki Maaii"
+    "${mod_authors}"
   ],
   "contact": {
-    "sources": "https://github.com/TinyTsuki/AotakeSweep_MC",
-    "issues": "https://github.com/TinyTsuki/AotakeSweep_MC/issues"
+    "sources": "${sources_url}",
+    "issues": "${issues_url}"
   },
-  "license": "MIT",
+  "license": "${license}",
   "icon": "pack.png",
   "environment": "*",
   "entrypoints": {
-    "client": [
-      "xin.vanilla.aotake.event.ClientEventHandler"
-    ],
     "main": [
-      "xin.vanilla.aotake.AotakeSweep"
+      "xin.vanilla.aotake.internal.fabric.FabricAotakeEntry"
     ],
-    "modmenu": [
-      "xin.vanilla.aotake.modmenu.ModMenuIntegration"
+    "client": [
+      "xin.vanilla.aotake.internal.fabric.client.FabricAotakeClientEntry"
     ]
   },
   "mixins": [

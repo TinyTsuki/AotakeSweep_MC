@@ -6,9 +6,9 @@ import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.commands.arguments.DimensionArgument;
-import net.minecraft.server.level.ServerLevel;
-import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.server.level.ServerLevel;
 import xin.vanilla.aotake.AotakeComponent;
 import xin.vanilla.aotake.AotakeLang;
 import xin.vanilla.aotake.AotakeSweep;
@@ -19,6 +19,7 @@ import xin.vanilla.aotake.util.AotakeUtils;
 import xin.vanilla.banira.common.data.Component;
 import xin.vanilla.banira.common.util.BaniraScheduler;
 import xin.vanilla.banira.common.util.CommandUtils;
+import xin.vanilla.banira.common.util.EntityUtils;
 import xin.vanilla.banira.common.util.NumberUtils;
 
 import java.util.ArrayList;
@@ -34,6 +35,7 @@ public class SweepCommand {
                 Component modName = AotakeComponent.get().trans("key.aotake_sweep.categories").languageCode(AotakeLang.getPlayerLanguage(player));
                 CommandUtils.notifyHelp(context, PlayerSweepData.getData(player), modName, "/" + AotakeUtils.getCommandPrefix());
             }
+
             int range = CommandUtils.getIntDefault(context, "range", 0);
             if (range == 0)
                 range = NumberUtils.toInt(CommandUtils.replaceResourcePath(CommandUtils.getStringEx(context, "dimension", "")));
@@ -43,11 +45,11 @@ public class SweepCommand {
                 ServerPlayer player = context.getSource().getPlayerOrException();
                 entities = new ArrayList<>(player.level.getEntitiesOfClass(Entity.class, player.getBoundingBox().inflate(range)));
             } else if (dimension != null) {
-                entities = AotakeUtils.getAllEntities().stream()
+                entities = EntityUtils.getAllEntities().stream()
                         .filter(entity -> entity.level == dimension)
                         .collect(Collectors.toList());
             } else {
-                entities = AotakeUtils.getAllEntities();
+                entities = EntityUtils.getAllEntities();
             }
 
             BaniraScheduler.schedule(context.getSource().getServer(), 1, () -> AotakeUtils.sweep(entities, false));

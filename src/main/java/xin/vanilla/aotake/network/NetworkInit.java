@@ -1,15 +1,15 @@
 package xin.vanilla.aotake.network;
 
+import xin.vanilla.aotake.AotakeSweep;
 import xin.vanilla.aotake.Identifier;
 import xin.vanilla.aotake.network.packet.*;
+import xin.vanilla.banira.api.BaniraIdentifier;
 import xin.vanilla.banira.common.network.NetworkHandler;
 
-public final class NetworkInit {
+public class NetworkInit {
+    public static final String CHANNEL_ID = AotakeSweep.MODID + ":main_network";
 
-    public static final NetworkHandler HANDLER = NetworkHandler.create("main_network", Identifier.id());
-
-    private NetworkInit() {
-    }
+    private static final NetworkHandler HANDLER = NetworkHandler.create("main_network", BaniraIdentifier.of(Identifier.id().modId(), "main_network"));
 
     public static void registerPackets() {
         HANDLER.register(OpenDustbinToServer.class, OpenDustbinToServer::toBytes, OpenDustbinToServer::new, OpenDustbinToServer::handle);
@@ -21,14 +21,5 @@ public final class NetworkInit {
         HANDLER.register(GhostCameraToClient.class, GhostCameraToClient::toBytes, GhostCameraToClient::new, GhostCameraToClient::handle);
         HANDLER.register(DustbinPageSyncToClient.class, DustbinPageSyncToClient::toBytes, DustbinPageSyncToClient::new, DustbinPageSyncToClient::handle);
         HANDLER.register(ChunkVaultPageSyncToClient.class, ChunkVaultPageSyncToClient::toBytes, ChunkVaultPageSyncToClient::new, ChunkVaultPageSyncToClient::handle);
-
-        HANDLER.registerServerReceiver();
-    }
-
-    /**
-     * 客户端须在入口调用一次（与 Banira {@code NetworkInit.registerClientReceivers()} 对齐）。
-     */
-    public static void registerClientReceivers() {
-        HANDLER.registerClientReceiver();
     }
 }

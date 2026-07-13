@@ -1,40 +1,32 @@
 package xin.vanilla.aotake.network.packet;
 
-import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.server.level.ServerPlayer;
 import xin.vanilla.aotake.data.world.ChunkVaultSession;
-import xin.vanilla.aotake.network.AotakeNetworkPacket;
-import xin.vanilla.banira.common.network.NetworkContext;
+import xin.vanilla.aotake.network.NetworkPacket;
+import xin.vanilla.banira.common.network.BaniraNetworkContext;
+import xin.vanilla.banira.common.network.BaniraPacketBuffer;
 
-public class ChunkVaultNavigateToServer implements AotakeNetworkPacket {
+public class ChunkVaultNavigateToServer implements NetworkPacket {
     private final int offset;
 
     public ChunkVaultNavigateToServer(int offset) {
         this.offset = offset;
     }
 
-    public ChunkVaultNavigateToServer(FriendlyByteBuf buf) {
+    public ChunkVaultNavigateToServer(BaniraPacketBuffer buf) {
         this.offset = buf.readInt();
     }
 
-    public void toBytes(FriendlyByteBuf buf) {
+    public void toBytes(BaniraPacketBuffer buf) {
         buf.writeInt(this.offset);
     }
 
-    public int offset() {
-        return offset;
-    }
-
-    public static void handle(ChunkVaultNavigateToServer packet, NetworkContext ctx) {
+    public static void handle(ChunkVaultNavigateToServer packet, BaniraNetworkContext ctx) {
         ctx.enqueueWork(() -> {
-            if (!ctx.isServerSide()) {
-                return;
-            }
-            ServerPlayer player = ctx.sender();
-            if (player == null) {
-                return;
-            }
+            ServerPlayer player = ctx.senderAs(ServerPlayer.class);
+            if (player == null) return;
             ChunkVaultSession.navigateOrReload(player, packet.offset);
         });
+        ctx.markHandled();
     }
 }

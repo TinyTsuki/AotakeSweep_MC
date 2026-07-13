@@ -9,9 +9,9 @@ import com.mojang.brigadier.suggestion.SuggestionProvider;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.commands.arguments.EntityArgument;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.network.chat.ClickEvent;
 import net.minecraft.network.chat.HoverEvent;
-import net.minecraft.server.level.ServerPlayer;
 import xin.vanilla.aotake.AotakeComponent;
 import xin.vanilla.aotake.AotakeLang;
 import xin.vanilla.aotake.AotakeSweep;
@@ -22,7 +22,7 @@ import xin.vanilla.aotake.data.world.ChunkVaultStorage;
 import xin.vanilla.aotake.enums.EnumCommandType;
 import xin.vanilla.aotake.notification.AotakeNotificationTypes;
 import xin.vanilla.aotake.util.AotakeUtils;
-import xin.vanilla.banira.BaniraCodex;
+import xin.vanilla.aotake.internal.common.AotakeServerRuntime;
 import xin.vanilla.banira.common.data.Component;
 import xin.vanilla.banira.common.util.*;
 
@@ -33,10 +33,10 @@ import java.util.stream.Collectors;
 public final class ChunkVaultCommand {
 
     private static final SuggestionProvider<CommandSourceStack> VAULT_ID_SUGGEST = (context, builder) -> {
-        if (!BaniraCodex.serverInstance().val()) {
+        if (!AotakeServerRuntime.isRunning()) {
             return builder.buildFuture();
         }
-        for (String id : ChunkVaultStorage.listVaultIds(BaniraCodex.serverInstance().key())) {
+        for (String id : ChunkVaultStorage.listVaultIds(AotakeServerRuntime.currentServer())) {
             if (StringUtils.isNullOrEmptyEx(id)) continue;
             builder.suggest(id);
         }

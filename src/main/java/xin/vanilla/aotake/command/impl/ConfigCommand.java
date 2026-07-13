@@ -10,19 +10,15 @@ import net.minecraft.server.level.ServerPlayer;
 import xin.vanilla.aotake.AotakeComponent;
 import xin.vanilla.aotake.AotakeLang;
 import xin.vanilla.aotake.AotakeSweep;
-import xin.vanilla.aotake.command.EditableConfigCommandUtils;
 import xin.vanilla.aotake.config.CommonConfig;
 import xin.vanilla.aotake.data.player.PlayerSweepData;
 import xin.vanilla.aotake.enums.EnumCommandType;
 import xin.vanilla.aotake.network.packet.SweepDataSyncToClient;
 import xin.vanilla.aotake.notification.AotakeNotificationTypes;
 import xin.vanilla.aotake.util.AotakeUtils;
+import xin.vanilla.banira.api.BaniraConfigs;
 import xin.vanilla.banira.common.enums.EnumI18nType;
-import xin.vanilla.banira.common.util.CommandUtils;
-import xin.vanilla.banira.common.util.MessageUtils;
-import xin.vanilla.banira.common.util.PlayerUtils;
-import xin.vanilla.banira.common.util.Translator;
-import xin.vanilla.banira.editable.EditableConfigRegistry;
+import xin.vanilla.banira.common.util.*;
 
 public class ConfigCommand {
     public static LiteralArgumentBuilder<CommandSourceStack> config() {
@@ -68,7 +64,7 @@ public class ConfigCommand {
                         .requires(source -> AotakeUtils.hasCommandPermission(source, EnumCommandType.CONFIG))
                         .then(Commands.argument("disable", BoolArgumentType.bool())
                                 .executes(context -> {
-                                    AotakeSweep.disable(BoolArgumentType.getBool(context, "disable"));
+                                    AotakeSweep.setDisable(BoolArgumentType.getBool(context, "disable"));
                                     MessageUtils.broadcastNotification(AotakeComponent.get().trans(EnumI18nType.FORMAT
                                                     , "mod_status"
                                                     , AotakeComponent.get().trans(EnumI18nType.PLAIN, "key.aotake_sweep.categories")
@@ -79,28 +75,50 @@ public class ConfigCommand {
                                 })
                         )
                 )
-                // region 修改 common（与 Forge aotake_sweep-common.toml：base / command / concise / permission）
-                .then(Commands.literal("common")
+                // region 修改server配置
+                .then(Commands.literal("server")
                         .requires(source -> AotakeUtils.hasCommandPermission(source, EnumCommandType.CONFIG))
                         .then(Commands.argument("configKey", StringArgumentType.word())
                                 .suggests((context, builder) -> {
                                     String input = CommandUtils.getStringEmpty(context, "configKey");
-                                    EditableConfigCommandUtils.configKeySuggestion(
-                                            EditableConfigRegistry.getRequired(CommonConfig.class), builder, input);
+                                    CommandUtils.configKeySuggestion(
+                                            BaniraConfigs.holder(CommonConfig.class), builder, input);
                                     return builder.buildFuture();
                                 })
                                 .then(Commands.argument("configValue", StringArgumentType.word())
                                         .suggests((context, builder) -> {
                                             String configKey = StringArgumentType.getString(context, "configKey");
-                                            EditableConfigCommandUtils.configValueSuggestion(
-                                                    EditableConfigRegistry.getRequired(CommonConfig.class), builder, configKey);
+                                            CommandUtils.configValueSuggestion(
+                                                    BaniraConfigs.holder(CommonConfig.class), builder, configKey);
                                             return builder.buildFuture();
                                         })
-                                        .executes(context -> EditableConfigCommandUtils.executeModifyConfig(
-                                                EditableConfigRegistry.getRequired(CommonConfig.class), context))
+                                        .executes(context -> CommandUtils.executeModifyConfig(
+                                                BaniraConfigs.holder(CommonConfig.class), context))
                                 )
                         )
-                ) // endregion 修改 common
+                )// endregion 修改server配置
+                // region 修改common配置
+                .then(Commands.literal("common")
+                        .requires(source -> AotakeUtils.hasCommandPermission(source, EnumCommandType.CONFIG))
+                        .then(Commands.argument("configKey", StringArgumentType.word())
+                                .suggests((context, builder) -> {
+                                    String input = CommandUtils.getStringEmpty(context, "configKey");
+                                    CommandUtils.configKeySuggestion(
+                                            BaniraConfigs.holder(CommonConfig.class), builder, input);
+                                    return builder.buildFuture();
+                                })
+                                .then(Commands.argument("configValue", StringArgumentType.word())
+                                        .suggests((context, builder) -> {
+                                            String configKey = StringArgumentType.getString(context, "configKey");
+                                            CommandUtils.configValueSuggestion(
+                                                    BaniraConfigs.holder(CommonConfig.class), builder, configKey);
+                                            return builder.buildFuture();
+                                        })
+                                        .executes(context -> CommandUtils.executeModifyConfig(
+                                                BaniraConfigs.holder(CommonConfig.class), context))
+                                )
+                        )
+                )// endregion 修改common配置
                 // region 修改玩家配置
                 .then(Commands.literal("player")
                         .then(Commands.literal("showSweepResult")
@@ -129,7 +147,7 @@ public class ConfigCommand {
                                                     )
                                                     , AotakeNotificationTypes.PLAYER_PREFERENCE);
                                             if (PlayerUtils.isRemoteClientModInstalled(player, AotakeSweep.MODID)) {
-                                                AotakeUtils.sendPacketToPlayer(new SweepDataSyncToClient(player), player);
+                                                PacketUtils.sendPacketToPlayer(new SweepDataSyncToClient(player), player);
                                             }
                                             return 1;
                                         })
@@ -162,7 +180,7 @@ public class ConfigCommand {
                                                     )
                                                     , AotakeNotificationTypes.PLAYER_PREFERENCE);
                                             if (PlayerUtils.isRemoteClientModInstalled(player, AotakeSweep.MODID)) {
-                                                AotakeUtils.sendPacketToPlayer(new SweepDataSyncToClient(player), player);
+                                                PacketUtils.sendPacketToPlayer(new SweepDataSyncToClient(player), player);
                                             }
                                             return 1;
                                         })

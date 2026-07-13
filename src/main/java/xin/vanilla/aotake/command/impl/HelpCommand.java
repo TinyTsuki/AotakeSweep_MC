@@ -6,9 +6,9 @@ import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.suggestion.SuggestionProvider;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.network.chat.ClickEvent;
 import net.minecraft.network.chat.HoverEvent;
-import net.minecraft.server.level.ServerPlayer;
 import xin.vanilla.aotake.AotakeComponent;
 import xin.vanilla.aotake.command.AotakeCommand;
 import xin.vanilla.aotake.config.CommonConfig;
@@ -22,6 +22,7 @@ import xin.vanilla.banira.common.util.*;
 
 import java.util.Arrays;
 import java.util.Comparator;
+import java.util.stream.Collectors;
 
 public class HelpCommand {
     public static LiteralArgumentBuilder<CommandSourceStack> help() {
@@ -121,7 +122,7 @@ public class HelpCommand {
                     .filter(type -> !type.name().toLowerCase().contains("concise"))
                     .filter(type -> isInputEmpty || type.name().toLowerCase().contains(input.toLowerCase()))
                     .sorted(Comparator.comparing(EnumCommandType::getSort))
-                    .toList()) {
+                    .collect(Collectors.toList())) {
                 builder.suggest(type.name());
             }
             return builder.buildFuture();

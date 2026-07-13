@@ -5,24 +5,21 @@ import com.mojang.brigadier.arguments.LongArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
-import net.minecraft.network.chat.HoverEvent;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.network.chat.HoverEvent;
 import xin.vanilla.aotake.AotakeComponent;
 import xin.vanilla.aotake.AotakeLang;
 import xin.vanilla.aotake.AotakeSweep;
 import xin.vanilla.aotake.config.CommonConfig;
 import xin.vanilla.aotake.data.player.PlayerSweepData;
 import xin.vanilla.aotake.enums.EnumCommandType;
-import xin.vanilla.aotake.event.ServerEventHandler;
+import xin.vanilla.aotake.event.EventHandlerProxy;
 import xin.vanilla.aotake.network.packet.SweepDataSyncToClient;
 import xin.vanilla.aotake.notification.AotakeNotificationTypes;
 import xin.vanilla.aotake.util.AotakeUtils;
-import xin.vanilla.banira.BaniraCodex;
+import xin.vanilla.aotake.internal.common.AotakeServerRuntime;
 import xin.vanilla.banira.common.data.Component;
-import xin.vanilla.banira.common.util.CommandUtils;
-import xin.vanilla.banira.common.util.DateUtils;
-import xin.vanilla.banira.common.util.MessageUtils;
-import xin.vanilla.banira.common.util.PlayerUtils;
+import xin.vanilla.banira.common.util.*;
 
 import java.util.Date;
 
@@ -40,28 +37,28 @@ public class DelayCommand {
             Date current = new Date();
             long delay = CommandUtils.getLongDefault(context, "seconds", CommonConfig.get().base().sweep().sweepInterval() / 1000);
             if (delay > 0) {
-                ServerEventHandler.setNextSweepTime(current.getTime() + delay * 1000);
+                EventHandlerProxy.setNextSweepTime(current.getTime() + delay * 1000);
             } else {
-                long nextSweepTime = ServerEventHandler.getNextSweepTime() + delay * 1000;
+                long nextSweepTime = EventHandlerProxy.getNextSweepTime() + delay * 1000;
                 if (nextSweepTime < current.getTime())
                     nextSweepTime = current.getTime() + CommonConfig.get().base().sweep().sweepInterval();
-                ServerEventHandler.setNextSweepTime(nextSweepTime);
+                EventHandlerProxy.setNextSweepTime(nextSweepTime);
             }
             // 给已声明客户端 mod 且尚未完成数据同步的玩家同步扫地倒计时与玩家偏好
-            for (ServerPlayer player : BaniraCodex.serverInstance().key().getPlayerList().getPlayers()) {
+            for (ServerPlayer player : AotakeServerRuntime.currentServer().getPlayerList().getPlayers()) {
                 if (PlayerUtils.isPlayerDataSynced(player, AotakeSweep.MODID)) continue;
-                AotakeUtils.sendPacketToPlayer(new SweepDataSyncToClient(player), player);
+                PacketUtils.sendPacketToPlayer(new SweepDataSyncToClient(player), player);
             }
-            long seconds = (ServerEventHandler.getNextSweepTime() - current.getTime()) / 1000;
+            long seconds = (EventHandlerProxy.getNextSweepTime() - current.getTime()) / 1000;
             Component message = AotakeComponent.get().transAuto("next_sweep_time_set"
                     , context.getSource().getEntity() instanceof ServerPlayer
                             ? context.getSource().getPlayerOrException().getDisplayName().getString()
                             : "server"
                     , AotakeComponent.get().literal(String.valueOf(seconds)).hoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT
-                            , AotakeComponent.get().literal(DateUtils.toDateTimeString(new Date(ServerEventHandler.getNextSweepTime())) + " (Server Time)").toVanilla())
+                            , AotakeComponent.get().literal(DateUtils.toDateTimeString(new Date(EventHandlerProxy.getNextSweepTime())) + " (Server Time)").toVanilla())
                     )
             );
-            BaniraCodex.serverInstance().key()
+            AotakeServerRuntime.currentServer()
                     .getPlayerList()
                     .getPlayers()
                     .forEach(p -> MessageUtils.sendNotification(p, message, AotakeNotificationTypes.ADMIN_BROADCAST));

@@ -418,7 +418,7 @@ public class WarningConfig {
             return null;
         }
         try {
-            return JsonUtils.GSON.fromJson(Files.readString(file.toPath()), JsonObject.class);
+            return JsonUtils.GSON.fromJson(new String(Files.readAllBytes(file.toPath()), StandardCharsets.UTF_8), JsonObject.class);
         } catch (Exception e) {
             LOGGER.error("Failed to read warning config: {}", file.getAbsolutePath(), e);
             return null;
@@ -454,11 +454,32 @@ public class WarningConfig {
         }
     }
 
-    public record WarningConfigRaw(String contentRaw, String voiceRaw, boolean needSave, boolean configFileExists) {
+    @Getter
+    @Accessors(fluent = true)
+    public static class WarningConfigRaw {
+        private final String contentRaw;
+        private final String voiceRaw;
+        private final boolean needSave;
+        private final boolean configFileExists;
+
+        public WarningConfigRaw(String contentRaw, String voiceRaw, boolean needSave, boolean configFileExists) {
+            this.contentRaw = contentRaw;
+            this.voiceRaw = voiceRaw;
+            this.needSave = needSave;
+            this.configFileExists = configFileExists;
+        }
     }
 
-    public record WarningGroupData(List<Map<String, List<String>>> contentGroups,
-                                   List<Map<String, List<String>>> voiceGroups) {
+    @Getter
+    @Accessors(fluent = true)
+    public static class WarningGroupData {
+        private final List<Map<String, List<String>>> contentGroups;
+        private final List<Map<String, List<String>>> voiceGroups;
+
+        public WarningGroupData(List<Map<String, List<String>>> contentGroups, List<Map<String, List<String>>> voiceGroups) {
+            this.contentGroups = contentGroups;
+            this.voiceGroups = voiceGroups;
+        }
     }
 
     @Getter
@@ -472,7 +493,17 @@ public class WarningConfig {
         }
     }
 
-    private record WarningContentLoadResult(List<Map<String, List<String>>> groups, boolean writeFile,
-                                            boolean clearLegacy) {
+    @Getter
+    @Accessors(fluent = true)
+    private static class WarningContentLoadResult {
+        private final List<Map<String, List<String>>> groups;
+        private final boolean writeFile;
+        private final boolean clearLegacy;
+
+        public WarningContentLoadResult(List<Map<String, List<String>>> groups, boolean writeFile, boolean clearLegacy) {
+            this.groups = groups;
+            this.writeFile = writeFile;
+            this.clearLegacy = clearLegacy;
+        }
     }
 }

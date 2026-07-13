@@ -2,33 +2,32 @@ package xin.vanilla.aotake.data.world;
 
 import lombok.Getter;
 import lombok.NonNull;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.entity.player.Inventory;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.SimpleContainer;
+import net.minecraft.world.inventory.ChestMenu;
+import net.minecraft.world.inventory.AbstractContainerMenu;
+import net.minecraft.world.MenuProvider;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.Tag;
+import net.minecraft.nbt.ListTag;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
-import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.MenuProvider;
-import net.minecraft.world.SimpleContainer;
-import net.minecraft.world.entity.player.Inventory;
-import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.inventory.AbstractContainerMenu;
-import net.minecraft.world.inventory.ChestMenu;
-import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.saveddata.SavedData;
 import xin.vanilla.aotake.AotakeComponent;
 import xin.vanilla.aotake.AotakeLang;
 import xin.vanilla.aotake.config.CommonConfig;
 import xin.vanilla.aotake.data.ConcurrentShuffleList;
 import xin.vanilla.aotake.data.DropStatistics;
-import xin.vanilla.banira.BaniraCodex;
+import xin.vanilla.aotake.internal.common.AotakeServerRuntime;
 import xin.vanilla.banira.common.data.Component;
 import xin.vanilla.banira.common.data.KeyValue;
 import xin.vanilla.banira.common.data.WorldCoordinate;
 import xin.vanilla.banira.common.enums.EnumMCColor;
 import xin.vanilla.banira.common.util.DateUtils;
 
-import javax.annotation.ParametersAreNonnullByDefault;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
@@ -70,10 +69,10 @@ public class WorldTrashData extends SavedData {
         }
 
         data.dropList = new ConcurrentShuffleList<>();
-        ListTag dropListTag = nbt.getList("dropList", 10);
+        ListTag dropListNBT = nbt.getList("dropList", 10);
         ConcurrentShuffleList<KeyValue<WorldCoordinate, ItemStack>> drops = new ConcurrentShuffleList<>();
-        for (int i = 0; i < dropListTag.size(); i++) {
-            CompoundTag drop = dropListTag.getCompound(i);
+        for (int i = 0; i < dropListNBT.size(); i++) {
+            CompoundTag drop = dropListNBT.getCompound(i);
             ItemStack item = ItemStack.of(drop.getCompound("item"));
             drops.add(new KeyValue<>(
                     WorldCoordinate.fromTag(drop.getCompound("coordinate"))
@@ -83,7 +82,7 @@ public class WorldTrashData extends SavedData {
         data.setDrops(drops);
 
         String todayStr = DateUtils.toString(new Date());
-        MinecraftServer server = BaniraCodex.serverInstance().val() ? BaniraCodex.serverInstance().key() : null;
+        MinecraftServer server = AotakeServerRuntime.isRunning() ? AotakeServerRuntime.currentServer() : null;
         Queue<DropStatistics> dropCounts = DropStatisticsStorage.loadByDate(server, todayStr);
         // 若 NBT 中有 dropCount 且当日 JSON 为空，则迁移至 JSON
         if (dropCounts.isEmpty() && nbt.contains("dropCount")) {
@@ -100,8 +99,8 @@ public class WorldTrashData extends SavedData {
         data.dropStatsDate = todayStr;
 
         data.inventoryList = new ArrayList<>();
-        ListTag inventoryListTag = nbt.getList("inventoryList", 9);
-        for (Tag inbt : inventoryListTag) {
+        ListTag inventoryListNBT = nbt.getList("inventoryList", 9);
+        for (Tag inbt : inventoryListNBT) {
             SimpleContainer inventory = new SimpleContainer(6 * 9);
             inventory.fromTag((ListTag) inbt);
             data.inventoryList.add(inventory);
@@ -109,9 +108,8 @@ public class WorldTrashData extends SavedData {
         return data;
     }
 
-    @NonNull
     @Override
-    @ParametersAreNonnullByDefault
+    @NonNull
     public CompoundTag save(CompoundTag nbt) {
         // 未开启持久化直接返回
         try {
@@ -130,8 +128,8 @@ public class WorldTrashData extends SavedData {
         nbt.put("dropList", dropsNBT);
 
         String todayStr = DateUtils.toString(new Date());
-        if (BaniraCodex.serverInstance().val()) {
-            MinecraftServer server = BaniraCodex.serverInstance().key();
+        if (AotakeServerRuntime.isRunning()) {
+            MinecraftServer server = AotakeServerRuntime.currentServer();
             rolloverDropStatisticsIfNeeded(server, todayStr);
             DropStatisticsStorage.saveByDate(server, todayStr, this.dropCount);
         }
@@ -187,7 +185,7 @@ public class WorldTrashData extends SavedData {
     }
 
     public static WorldTrashData get() {
-        return get(BaniraCodex.serverInstance().key().getAllLevels().iterator().next());
+        return get(AotakeServerRuntime.currentServer().getAllLevels().iterator().next());
     }
 
     public static WorldTrashData get(ServerPlayer player) {
@@ -282,7 +280,7 @@ public class WorldTrashData extends SavedData {
         // 合并到已有的相同物品槽
         for (int i = 0; i < inventory.getContainerSize(); i++) {
             ItemStack slot = inventory.getItem(i);
-            if (ItemStack.isSameItemSameTags(slot, stack) && slot.getCount() < slot.getMaxStackSize()) {
+            if (ItemStack.isSame(slot, stack) && slot.getCount() < slot.getMaxStackSize()) {
                 int transferable = Math.min(stack.getCount(), slot.getMaxStackSize() - slot.getCount());
                 slot.grow(transferable);
                 stack.shrink(transferable);

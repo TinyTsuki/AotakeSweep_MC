@@ -1,23 +1,23 @@
 package xin.vanilla.aotake.data.world;
 
-import net.minecraft.network.chat.Component;
-import net.minecraft.server.MinecraftServer;
-import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.MenuProvider;
-import net.minecraft.world.SimpleContainer;
-import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.inventory.AbstractContainerMenu;
+import net.minecraft.world.entity.player.Inventory;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.SimpleContainer;
 import net.minecraft.world.inventory.ChestMenu;
+import net.minecraft.world.inventory.AbstractContainerMenu;
+import net.minecraft.world.MenuProvider;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.server.MinecraftServer;
+import net.minecraft.network.chat.Component;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import xin.vanilla.aotake.AotakeComponent;
 import xin.vanilla.aotake.AotakeLang;
 import xin.vanilla.aotake.AotakeSweep;
 import xin.vanilla.aotake.network.packet.ChunkVaultPageSyncToClient;
-import xin.vanilla.aotake.util.AotakeUtils;
 import xin.vanilla.banira.common.util.BaniraScheduler;
+import xin.vanilla.banira.common.util.PacketUtils;
 import xin.vanilla.banira.common.util.PlayerUtils;
 
 import javax.annotation.Nonnull;
@@ -56,7 +56,7 @@ public final class ChunkVaultSession {
         player.openMenu(holder.createMenuProvider(player, page, total));
         AotakeSweep.getPlayerChunkVaultId().put(uuid, vaultId);
         AotakeSweep.getPlayerChunkVaultPage().put(uuid, page);
-        AotakeUtils.sendPacketToPlayer(new ChunkVaultPageSyncToClient(page, total), player);
+        PacketUtils.sendPacketToPlayer(new ChunkVaultPageSyncToClient(page, total), player);
     }
 
     /**
@@ -94,9 +94,7 @@ public final class ChunkVaultSession {
     }
 
     public static void onPlayerCloseContainer(ServerPlayer player) {
-        if (player == null) {
-            return;
-        }
+        if (player == null) return;
         String uuid = PlayerUtils.getPlayerUUIDString(player);
         Holder holder = OPEN.get(uuid);
         if (holder == null) return;
@@ -132,7 +130,7 @@ public final class ChunkVaultSession {
         player.openMenu(holder.createMenuProvider(player, page, total));
         AotakeSweep.getPlayerChunkVaultId().put(uuid, holder.vaultId);
         AotakeSweep.getPlayerChunkVaultPage().put(uuid, page);
-        AotakeUtils.sendPacketToPlayer(new ChunkVaultPageSyncToClient(page, total), player);
+        PacketUtils.sendPacketToPlayer(new ChunkVaultPageSyncToClient(page, total), player);
     }
 
     private static List<ItemStack> flattenInventories(List<SimpleContainer> pages) {
@@ -159,7 +157,7 @@ public final class ChunkVaultSession {
         for (ItemStack raw : all) {
             ItemStack stack = raw.copy();
             while (!stack.isEmpty()) {
-                ItemStack leftover = tryFillSimpleContainer(cur, stack);
+                ItemStack leftover = tryFillInventory(cur, stack);
                 stack = leftover;
                 if (!stack.isEmpty()) {
                     cur = new SimpleContainer(54);
@@ -170,9 +168,9 @@ public final class ChunkVaultSession {
         return pages;
     }
 
-    private static ItemStack tryFillSimpleContainer(SimpleContainer SimpleContainer, ItemStack stack) {
-        for (int i = 0; i < SimpleContainer.getContainerSize(); i++) {
-            ItemStack slot = SimpleContainer.getItem(i);
+    private static ItemStack tryFillInventory(SimpleContainer inventory, ItemStack stack) {
+        for (int i = 0; i < inventory.getContainerSize(); i++) {
+            ItemStack slot = inventory.getItem(i);
             if (ItemStack.isSame(slot, stack) && slot.getCount() < slot.getMaxStackSize()) {
                 int transferable = Math.min(stack.getCount(), slot.getMaxStackSize() - slot.getCount());
                 slot.grow(transferable);
@@ -180,12 +178,12 @@ public final class ChunkVaultSession {
                 if (stack.isEmpty()) return ItemStack.EMPTY;
             }
         }
-        for (int i = 0; i < SimpleContainer.getContainerSize(); i++) {
-            if (SimpleContainer.getItem(i).isEmpty()) {
+        for (int i = 0; i < inventory.getContainerSize(); i++) {
+            if (inventory.getItem(i).isEmpty()) {
                 int transferable = Math.min(stack.getCount(), stack.getMaxStackSize());
                 ItemStack toInsert = stack.copy();
                 toInsert.setCount(transferable);
-                SimpleContainer.setItem(i, toInsert);
+                inventory.setItem(i, toInsert);
                 stack.shrink(transferable);
                 if (stack.isEmpty()) return ItemStack.EMPTY;
             }
@@ -222,8 +220,8 @@ public final class ChunkVaultSession {
 
                 @Nullable
                 @Override
-                public AbstractContainerMenu createMenu(int id, @Nonnull Inventory playerSimpleContainer, @Nonnull Player p) {
-                    return ChestMenu.sixRows(id, playerSimpleContainer, inv);
+                public AbstractContainerMenu createMenu(int id, @Nonnull Inventory playerInventory, @Nonnull Player p) {
+                    return ChestMenu.sixRows(id, playerInventory, inv);
                 }
             };
         }

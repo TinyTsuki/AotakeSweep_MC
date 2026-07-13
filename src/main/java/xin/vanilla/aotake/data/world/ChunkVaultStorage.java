@@ -1,16 +1,17 @@
 package xin.vanilla.aotake.data.world;
 
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.server.MinecraftServer;
-import net.minecraft.world.item.ItemStack;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import xin.vanilla.aotake.AotakeSweep;
 import xin.vanilla.aotake.config.CommonConfig;
 import xin.vanilla.aotake.data.ChunkKey;
 import xin.vanilla.aotake.data.SweepResult;
-import xin.vanilla.banira.BaniraCodex;
+import xin.vanilla.banira.api.BaniraDataPaths;
+import xin.vanilla.aotake.internal.common.AotakeServerRuntime;
 import xin.vanilla.banira.common.util.NBTUtils;
 
 import javax.annotation.Nullable;
@@ -44,10 +45,10 @@ public final class ChunkVaultStorage {
 
     @Nullable
     public static Path getVaultDirOrNull() {
-        if (!BaniraCodex.serverInstance().val()) return null;
-        MinecraftServer bound = BaniraCodex.serverInstance().key();
+        if (!AotakeServerRuntime.isRunning()) return null;
+        MinecraftServer bound = AotakeServerRuntime.currentServer();
         if (bound == null) return null;
-        return BaniraCodex.BANIRA_WORLD_DATA_PATH.get().resolve(AotakeSweep.MODID).resolve(SUBDIR);
+        return BaniraDataPaths.worldDataPath().resolve(AotakeSweep.MODID).resolve(SUBDIR);
     }
 
     public static Path getVaultDir() {
@@ -125,7 +126,7 @@ public final class ChunkVaultStorage {
     public static void queueRecycledItem(net.minecraft.world.entity.Entity sourceEntity, ItemStack stack, @Nullable SweepResult batchContext) {
         if (stack == null || stack.isEmpty()) return;
         if (!CommonConfig.get().base().chunk().chunkVaultEnabled()) return;
-        if (BaniraCodex.serverInstance().key() == null) return;
+        if (AotakeServerRuntime.currentServer() == null) return;
         ChunkKey key = chunkKeyFromEntity(sourceEntity);
         String vaultId = resolveVaultId(key, batchContext);
         PENDING.computeIfAbsent(vaultId, k -> Collections.synchronizedList(new ArrayList<>())).add(stack.copy());

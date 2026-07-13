@@ -5,10 +5,10 @@ import com.mojang.brigadier.arguments.BoolArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
-import net.minecraft.server.level.ServerLevel;
-import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.server.level.ServerLevel;
 import xin.vanilla.aotake.AotakeComponent;
 import xin.vanilla.aotake.AotakeLang;
 import xin.vanilla.aotake.AotakeSweep;
@@ -18,7 +18,7 @@ import xin.vanilla.aotake.data.world.WorldTrashData;
 import xin.vanilla.aotake.enums.EnumCommandType;
 import xin.vanilla.aotake.notification.AotakeNotificationTypes;
 import xin.vanilla.aotake.util.AotakeUtils;
-import xin.vanilla.banira.BaniraCodex;
+import xin.vanilla.aotake.internal.common.AotakeServerRuntime;
 import xin.vanilla.banira.common.data.Component;
 import xin.vanilla.banira.common.data.KeyValue;
 import xin.vanilla.banira.common.data.WorldCoordinate;
@@ -38,6 +38,7 @@ public class CacheCommand {
                 Component modName = AotakeComponent.get().trans("key.aotake_sweep.categories").languageCode(AotakeLang.getPlayerLanguage(player));
                 CommandUtils.notifyHelp(context, PlayerSweepData.getData(player), modName, "/" + AotakeUtils.getCommandPrefix());
             }
+
             WorldTrashData.get().getDropList().clear();
             WorldTrashData.get().setDirty();
             Component message = AotakeComponent.get().transAuto("cache_cleared"
@@ -45,7 +46,7 @@ public class CacheCommand {
                             ? context.getSource().getPlayerOrException().getDisplayName().getString()
                             : "server"
             );
-            BaniraCodex.serverInstance().key()
+            AotakeServerRuntime.currentServer()
                     .getPlayerList()
                     .getPlayers()
                     .forEach(p -> MessageUtils.sendNotification(p, message, AotakeNotificationTypes.ADMIN_BROADCAST));
@@ -65,6 +66,7 @@ public class CacheCommand {
                 Component modName = AotakeComponent.get().trans("key.aotake_sweep.categories").languageCode(AotakeLang.getPlayerLanguage(player));
                 CommandUtils.notifyHelp(context, PlayerSweepData.getData(player), modName, "/" + AotakeUtils.getCommandPrefix());
             }
+
             boolean originalPos = CommandUtils.getBooleanDefault(context, "originalPos", false);
             ServerPlayer player = context.getSource().getPlayerOrException();
             List<KeyValue<WorldCoordinate, ItemStack>> items = WorldTrashData.get().getDropList().snapshot();
@@ -89,7 +91,7 @@ public class CacheCommand {
                             ? context.getSource().getPlayerOrException().getDisplayName().getString()
                             : "server"
             );
-            BaniraCodex.serverInstance().key()
+            AotakeServerRuntime.currentServer()
                     .getPlayerList()
                     .getPlayers()
                     .forEach(p -> MessageUtils.sendNotification(p, message, AotakeNotificationTypes.ADMIN_BROADCAST));
