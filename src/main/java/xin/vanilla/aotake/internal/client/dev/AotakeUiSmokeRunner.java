@@ -6,14 +6,19 @@ import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.Screenshot;
 import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.client.gui.screens.inventory.ContainerScreen;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import xin.vanilla.aotake.AotakeSweep;
 import xin.vanilla.aotake.config.ClientConfig;
 import xin.vanilla.aotake.config.CommonConfig;
+import xin.vanilla.aotake.config.DustbinGuiLayoutCache;
+import xin.vanilla.aotake.enums.EnumDustbinClientUiStyle;
 import xin.vanilla.aotake.event.ClientModEventHandler;
+import xin.vanilla.aotake.mixin.ContainerScreenAccessor;
 import xin.vanilla.aotake.network.packet.OpenDustbinToServer;
+import xin.vanilla.aotake.screen.DustbinRender;
 import xin.vanilla.aotake.screen.PlayerConfigScreen;
 import xin.vanilla.aotake.util.AotakeUtils;
 import xin.vanilla.banira.client.gui.ConfigEditorScreen;
@@ -47,6 +52,11 @@ public final class AotakeUiSmokeRunner {
     private static final int WORLD_LOAD_TIMEOUT_TICKS = 1200;
     private static final int NETWORK_SYNC_TIMEOUT_TICKS = 240;
     private static final int DUSTBIN_TIMEOUT_TICKS = 240;
+    private static final EnumDustbinClientUiStyle[] DUSTBIN_STYLES = {
+            EnumDustbinClientUiStyle.VANILLA,
+            EnumDustbinClientUiStyle.TEXTURED,
+            EnumDustbinClientUiStyle.BANIRA_THEME
+    };
 
     private static AotakeUiSmokeRunner instance;
 
@@ -60,6 +70,8 @@ public final class AotakeUiSmokeRunner {
     private int stepTick;
     private int phaseTick;
     private int readyTick;
+    private int dustbinStyleIndex;
+    private EnumDustbinClientUiStyle originalDustbinStyle;
     private CompletableFuture<EntityScanResult> entityScan;
 
     private AotakeUiSmokeRunner(@Nonnull Path outputDir, boolean exitOnFinish, @Nonnull String worldName) {
@@ -284,28 +296,77 @@ public final class AotakeUiSmokeRunner {
         if (phaseTick == 30) {
             capture(client, "05-gameplay-hud-progress");
             setProgressKey(false);
-            PacketUtils.sendPacketToServer(new OpenDustbinToServer(0));
-            appendStatus("SEND open-dustbin");
+            originalDustbinStyle = ClientConfig.get().dustbin().dustbinUiStyle();
+            dustbinStyleIndex = 0;
             phase = Phase.DUSTBIN;
-            phaseTick = 0;
-            readyTick = 0;
+            openDustbinStyle(client);
         }
     }
 
     private void runDustbinTick(@Nonnull Minecraft client) {
         phaseTick++;
-        if (client.screen instanceof ContainerScreen) {
+        if (client.screen instanceof AbstractContainerScreen) {
             readyTick++;
             if (readyTick >= 20) {
-                capture(client, "06-dustbin");
-                appendStatus("PASS open-dustbin");
-                finish(client);
+                EnumDustbinClientUiStyle style = DUSTBIN_STYLES[dustbinStyleIndex];
+                try {
+                    assertDustbinStyle((AbstractContainerScreen<?>) client.screen, style);
+                } catch (RuntimeException e) {
+                    fail(client, "dustbin-" + style.name().toLowerCase(Locale.ROOT), e);
+                    return;
+                }
+                String name = String.format(Locale.ROOT, "%02d-dustbin-%s",
+                        6 + dustbinStyleIndex, style.name().toLowerCase(Locale.ROOT));
+                capture(client, name);
+                appendStatus("PASS dustbin-" + style.name().toLowerCase(Locale.ROOT));
+                dustbinStyleIndex++;
+                if (dustbinStyleIndex >= DUSTBIN_STYLES.length) {
+                    finish(client);
+                } else {
+                    openDustbinStyle(client);
+                }
             }
             return;
         }
         readyTick = 0;
         if (phaseTick >= DUSTBIN_TIMEOUT_TICKS) {
             fail(client, "open-dustbin", new IllegalStateException("Dustbin container did not open"));
+        }
+    }
+
+    /** 每种样式都重新初始化容器，同时覆盖布局 Mixin 与按钮注入。 */
+    private void openDustbinStyle(@Nonnull Minecraft client) {
+        EnumDustbinClientUiStyle style = DUSTBIN_STYLES[dustbinStyleIndex];
+        ClientConfig.get().dustbin().dustbinUiStyle(style);
+        DustbinGuiLayoutCache.invalidate();
+        client.setScreen(null);
+        PacketUtils.sendPacketToServer(new OpenDustbinToServer(0));
+        appendStatus("SEND open-dustbin style=" + style.name());
+        phaseTick = 0;
+        readyTick = 0;
+    }
+
+    private static void assertDustbinStyle(AbstractContainerScreen<?> screen,
+                                           EnumDustbinClientUiStyle style) {
+        if (!(screen instanceof ContainerScreen) || !DustbinRender.isDustbinTitle(screen.getTitle().getString())) {
+            throw new IllegalStateException("Opened container was not recognized as dustbin: "
+                    + screen.getTitle().getString());
+        }
+        if (ClientConfig.get().dustbin().dustbinUiStyle() != style) {
+            throw new IllegalStateException("Dustbin style did not switch to " + style);
+        }
+        if (style == EnumDustbinClientUiStyle.VANILLA) {
+            int left = ((ContainerScreenAccessor) screen).aotake$getLeftPos();
+            long sidebarButtons = screen.children().stream()
+                    .filter(child -> child instanceof Button && ((Button) child).x < left)
+                    .count();
+            if (sidebarButtons < 3) {
+                throw new IllegalStateException("Vanilla dustbin sidebar is incomplete: " + sidebarButtons);
+            }
+        } else if (style == EnumDustbinClientUiStyle.TEXTURED
+                && (!DustbinGuiLayoutCache.valid || DustbinGuiLayoutCache.drawWidth <= 0
+                || DustbinGuiLayoutCache.drawHeight <= 0)) {
+            throw new IllegalStateException("Textured dustbin layout was not initialized");
         }
     }
 
@@ -328,6 +389,7 @@ public final class AotakeUiSmokeRunner {
     private void finish(@Nonnull Minecraft client) {
         phase = Phase.FINISHED;
         setProgressKey(false);
+        restoreDustbinStyle();
         appendStatus("FINISHED " + LocalDateTime.now());
         LOGGER.info("Aotake UI smoke finished; screenshots are in {}", outputDir);
         client.setScreen(null);
@@ -339,10 +401,18 @@ public final class AotakeUiSmokeRunner {
     private void fail(@Nonnull Minecraft client, @Nonnull String step, @Nonnull Throwable error) {
         phase = Phase.FINISHED;
         setProgressKey(false);
+        restoreDustbinStyle();
         appendStatus("FAILED " + step + ": " + error);
         LOGGER.error("Aotake UI smoke failed at {}", step, error);
         if (exitOnFinish) {
             client.stop();
+        }
+    }
+
+    private void restoreDustbinStyle() {
+        if (originalDustbinStyle != null) {
+            ClientConfig.get().dustbin().dustbinUiStyle(originalDustbinStyle);
+            originalDustbinStyle = null;
         }
     }
 
