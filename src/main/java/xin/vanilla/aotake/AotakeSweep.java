@@ -16,7 +16,7 @@ import xin.vanilla.aotake.util.EntitySweeper;
 import xin.vanilla.banira.common.config.BaniraConfig;
 import xin.vanilla.banira.common.data.KeyValue;
 import xin.vanilla.banira.common.network.ModLoadedPresence;
-import xin.vanilla.banira.common.util.BaniraEventBus;
+import xin.vanilla.banira.api.event.BaniraEvents;
 import xin.vanilla.banira.common.util.CommandUtils;
 import xin.vanilla.banira.common.util.PacketUtils;
 
@@ -92,11 +92,11 @@ public class AotakeSweep {
         NetworkInit.registerPackets();
         AotakeNotificationTypes.registerAllOnServer();
 
-        BaniraEventBus.Server.onStarting(event -> entitySweeper.clear());
-        BaniraEventBus.Server.onTick(event -> EventHandlerProxy.onServerTick(event.serverAs(net.minecraft.server.MinecraftServer.class)));
-        BaniraEventBus.WorldEvents.onTick(event -> EventHandlerProxy.onWorldTick(event.worldAs(net.minecraft.server.level.ServerLevel.class)));
-        BaniraEventBus.PlayerEvents.onLoggedIn(event -> EventHandlerProxy.onPlayerLoggedIn(event.playerAs(ServerPlayer.class)));
-        BaniraEventBus.PlayerEvents.onLoggedOut(event -> EventHandlerProxy.onPlayerLoggedOut(event.playerAs(ServerPlayer.class)));
+        BaniraEvents.Server.onStarting(event -> entitySweeper.clear());
+        BaniraEvents.Server.onTick(event -> EventHandlerProxy.onServerTick(event.serverAs(net.minecraft.server.MinecraftServer.class)));
+        BaniraEvents.World.onTick(event -> EventHandlerProxy.onWorldTick(event.worldAs(net.minecraft.server.level.ServerLevel.class)));
+        BaniraEvents.Player.onLoggedIn(event -> EventHandlerProxy.onPlayerLoggedIn(event.playerAs(ServerPlayer.class)));
+        BaniraEvents.Player.onLoggedOut(event -> EventHandlerProxy.onPlayerLoggedOut(event.playerAs(ServerPlayer.class)));
 
         ModLoadedPresence.register(MODID, player -> {
             if (!(player instanceof ServerPlayer)) return;
