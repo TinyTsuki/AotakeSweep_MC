@@ -28,11 +28,11 @@ import xin.vanilla.aotake.notification.AotakeNotificationTypes;
 import xin.vanilla.aotake.util.EntityFilter;
 import xin.vanilla.aotake.util.EntitySweeper;
 import xin.vanilla.aotake.util.AotakeUtils;
+import xin.vanilla.banira.api.event.BaniraEvents;
 import xin.vanilla.banira.common.config.BaniraConfig;
 import xin.vanilla.banira.common.config.ConfigHolder;
 import xin.vanilla.banira.common.data.KeyValue;
 import xin.vanilla.banira.common.network.ModLoadedPresence;
-import xin.vanilla.banira.common.util.BaniraEventBus;
 import xin.vanilla.banira.common.util.BaniraServerUtils;
 import xin.vanilla.banira.common.util.CommandUtils;
 import xin.vanilla.banira.common.util.PacketUtils;
@@ -104,7 +104,7 @@ public class AotakeSweep {
         // Banira 平台在 common setup 阶段完成安装，配置与网络注册需要延后到那里执行。
         FMLJavaModLoadingContext.get().getModEventBus().addListener(this::onCommonSetup);
 
-        BaniraEventBus.Server.onStarting(server -> entitySweeper.clear());
+        BaniraEvents.Server.onStarting(server -> entitySweeper.clear());
         MinecraftForge.EVENT_BUS.addListener((RegisterCommandsEvent event) -> AotakeCommand.register(event.getDispatcher()));
 
         MinecraftForge.EVENT_BUS.addListener((TickEvent.ServerTickEvent event) -> EventHandlerProxy.onServerTick(event));
