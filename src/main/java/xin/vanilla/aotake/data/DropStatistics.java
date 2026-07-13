@@ -3,7 +3,7 @@ package xin.vanilla.aotake.data;
 import com.google.gson.JsonObject;
 import lombok.Data;
 import lombok.experimental.Accessors;
-import net.minecraft.nbt.CompoundNBT;
+import net.minecraft.nbt.CompoundTag;
 import xin.vanilla.banira.common.data.WorldCoordinate;
 import xin.vanilla.banira.common.util.JsonUtils;
 
@@ -16,8 +16,8 @@ public class DropStatistics {
     private final long itemCount;
     private final long entityCount;
 
-    public CompoundNBT serializeNBT() {
-        CompoundNBT tag = new CompoundNBT();
+    public CompoundTag serializeNBT() {
+        CompoundTag tag = new CompoundTag();
         tag.put("coordinate", coordinate.toTag());
         tag.putString("name", name);
         tag.putLong("time", time);
@@ -26,7 +26,7 @@ public class DropStatistics {
         return tag;
     }
 
-    public static DropStatistics deserializeNBT(CompoundNBT tag) {
+    public static DropStatistics deserializeNBT(CompoundTag tag) {
         return new DropStatistics(
                 WorldCoordinate.fromTag(tag.getCompound("coordinate"))
                 , tag.getString("name")

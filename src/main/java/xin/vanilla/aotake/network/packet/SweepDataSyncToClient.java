@@ -1,7 +1,7 @@
 package xin.vanilla.aotake.network.packet;
 
 import lombok.Getter;
-import net.minecraft.entity.player.ServerPlayerEntity;
+import net.minecraft.server.level.ServerPlayer;
 import xin.vanilla.aotake.AotakeSweep;
 import xin.vanilla.aotake.config.CommonConfig;
 import xin.vanilla.aotake.data.player.PlayerSweepData;
@@ -32,7 +32,7 @@ public class SweepDataSyncToClient implements NetworkPacket {
     private final boolean showSweepResult;
     private final boolean enableWarningVoice;
 
-    public SweepDataSyncToClient(ServerPlayerEntity player) {
+    public SweepDataSyncToClient(ServerPlayer player) {
         this.currentTime = System.currentTimeMillis();
         this.nextSweepTime = EventHandlerProxy.getNextSweepTime();
         this.sweepInterval = CommonConfig.get().base().sweep().sweepInterval();

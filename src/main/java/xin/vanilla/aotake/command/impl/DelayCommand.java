@@ -3,10 +3,10 @@ package xin.vanilla.aotake.command.impl;
 import com.mojang.brigadier.Command;
 import com.mojang.brigadier.arguments.LongArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
-import net.minecraft.command.CommandSource;
-import net.minecraft.command.Commands;
-import net.minecraft.entity.player.ServerPlayerEntity;
-import net.minecraft.util.text.event.HoverEvent;
+import net.minecraft.commands.CommandSourceStack;
+import net.minecraft.commands.Commands;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.network.chat.HoverEvent;
 import xin.vanilla.aotake.AotakeComponent;
 import xin.vanilla.aotake.AotakeLang;
 import xin.vanilla.aotake.AotakeSweep;
@@ -25,11 +25,11 @@ import java.util.Date;
 
 @SuppressWarnings("resource")
 public class DelayCommand {
-    public static LiteralArgumentBuilder<CommandSource> delay() {
-        Command<CommandSource> delaySweepCommand = context -> {
+    public static LiteralArgumentBuilder<CommandSourceStack> delay() {
+        Command<CommandSourceStack> delaySweepCommand = context -> {
             if (CommandUtils.checkModStatus(context, AotakeSweep::isDisable)) return 0;
-            if (context.getSource().getEntity() instanceof ServerPlayerEntity) {
-                ServerPlayerEntity player = context.getSource().getPlayerOrException();
+            if (context.getSource().getEntity() instanceof ServerPlayer) {
+                ServerPlayer player = context.getSource().getPlayerOrException();
                 Component modName = AotakeComponent.get().trans("key.aotake_sweep.categories").languageCode(AotakeLang.getPlayerLanguage(player));
                 CommandUtils.notifyHelp(context, PlayerSweepData.getData(player), modName, "/" + AotakeUtils.getCommandPrefix());
             }
@@ -45,13 +45,13 @@ public class DelayCommand {
                 EventHandlerProxy.setNextSweepTime(nextSweepTime);
             }
             // 给已声明客户端 mod 且尚未完成数据同步的玩家同步扫地倒计时与玩家偏好
-            for (ServerPlayerEntity player : BaniraServerUtils.currentServer().getPlayerList().getPlayers()) {
+            for (ServerPlayer player : BaniraServerUtils.currentServer().getPlayerList().getPlayers()) {
                 if (PlayerUtils.isPlayerDataSynced(player, AotakeSweep.MODID)) continue;
                 PacketUtils.sendPacketToPlayer(new SweepDataSyncToClient(player), player);
             }
             long seconds = (EventHandlerProxy.getNextSweepTime() - current.getTime()) / 1000;
             Component message = AotakeComponent.get().transAuto("next_sweep_time_set"
-                    , context.getSource().getEntity() instanceof ServerPlayerEntity
+                    , context.getSource().getEntity() instanceof ServerPlayer
                             ? context.getSource().getPlayerOrException().getDisplayName().getString()
                             : "server"
                     , AotakeComponent.get().literal(String.valueOf(seconds)).hoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT

@@ -6,7 +6,7 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
 import lombok.Getter;
 import lombok.experimental.Accessors;
-import net.minecraftforge.fml.loading.FMLPaths;
+import net.fabricmc.loader.api.FabricLoader;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import xin.vanilla.banira.common.util.CollectionUtils;
@@ -111,7 +111,7 @@ public class WarningConfig {
     }
 
     private static Path getWarningConfigPath() {
-        return FMLPaths.CONFIGDIR.get().resolve(FILE_NAME);
+        return FabricLoader.getInstance().getConfigDir().resolve(FILE_NAME);
     }
 
     private static String getElementString(JsonElement element) {

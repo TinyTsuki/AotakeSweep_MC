@@ -4,7 +4,7 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import net.minecraft.server.MinecraftServer;
-import net.minecraft.world.storage.FolderName;
+import net.minecraft.world.level.storage.LevelResource;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import xin.vanilla.aotake.AotakeSweep;
@@ -48,7 +48,7 @@ public class DropStatisticsStorage {
      * 自原 {@code stats/} 下本 mod 子目录迁移至 Banira世界数据根下的同名子目录，并删除旧目录
      */
     private static void migrateLegacyStatsDirAndDelete(MinecraftServer server, Path newDir) {
-        Path oldDir = server.getWorldPath(FolderName.PLAYER_STATS_DIR).resolve(AotakeSweep.MODID);
+        Path oldDir = server.getWorldPath(LevelResource.PLAYER_STATS_DIR).resolve(AotakeSweep.MODID);
         synchronized (LEGACY_MIGRATE_LOCK) {
             try {
                 if (!Files.exists(oldDir) || !Files.isDirectory(oldDir)) {

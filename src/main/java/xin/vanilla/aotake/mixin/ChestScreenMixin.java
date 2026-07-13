@@ -1,10 +1,10 @@
 package xin.vanilla.aotake.mixin;
 
-import com.mojang.blaze3d.matrix.MatrixStack;
+import com.mojang.blaze3d.vertex.PoseStack;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.screen.inventory.ChestScreen;
-import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.util.ResourceLocation;
+import net.minecraft.client.gui.screens.inventory.ContainerScreen;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.resources.ResourceLocation;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
@@ -21,7 +21,7 @@ import xin.vanilla.banira.client.util.AbstractGuiUtils;
 import xin.vanilla.banira.client.util.ClientThemeManager;
 import xin.vanilla.banira.client.util.TextureUtils;
 
-@Mixin(ChestScreen.class)
+@Mixin(ContainerScreen.class)
 public abstract class ChestScreenMixin {
 
     @Inject(
@@ -29,11 +29,11 @@ public abstract class ChestScreenMixin {
             at = @At("HEAD"),
             cancellable = true
     )
-    private void aotake$interceptRenderBg(MatrixStack stack, float partialTicks, int mouseX, int mouseY, CallbackInfo ci) {
+    private void aotake$interceptRenderBg(PoseStack stack, float partialTicks, int mouseX, int mouseY, CallbackInfo ci) {
         Minecraft mc = Minecraft.getInstance();
-        PlayerEntity player = mc.player;
+        Player player = mc.player;
         if (player == null) return;
-        ChestScreen screen = (ChestScreen) (Object) this;
+        ContainerScreen screen = (ContainerScreen) (Object) this;
         if (!aotake$isDustbinScreen(screen)) return;
         EnumDustbinClientUiStyle ui = ClientConfig.get().dustbin().dustbinUiStyle();
         if (ui == EnumDustbinClientUiStyle.VANILLA) return;
@@ -76,8 +76,8 @@ public abstract class ChestScreenMixin {
     }
 
     @Unique
-    private boolean aotake$isDustbinScreen(ChestScreen screen) {
-        PlayerEntity player = Minecraft.getInstance().player;
+    private boolean aotake$isDustbinScreen(ContainerScreen screen) {
+        Player player = Minecraft.getInstance().player;
         if (player == null) return false;
         String t = screen.getTitle().getString();
         return DustbinRender.isDustbinTitle(t) || DustbinRender.isChunkVaultTitle(t);

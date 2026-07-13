@@ -1,6 +1,6 @@
 package xin.vanilla.aotake.network.packet;
 
-import net.minecraft.entity.player.ServerPlayerEntity;
+import net.minecraft.server.level.ServerPlayer;
 import xin.vanilla.aotake.AotakeSweep;
 import xin.vanilla.aotake.enums.EnumCommandType;
 import xin.vanilla.aotake.network.NetworkPacket;
@@ -27,7 +27,7 @@ public class OpenDustbinToServer implements NetworkPacket {
 
     public static void handle(OpenDustbinToServer packet, BaniraNetworkContext ctx) {
         ctx.enqueueWork(() -> {
-            ServerPlayerEntity player = ctx.senderAs(ServerPlayerEntity.class);
+            ServerPlayer player = ctx.senderAs(ServerPlayer.class);
             if (player != null) {
                 String playerUUID = PlayerUtils.getPlayerUUIDString(player);
                 Integer page = AotakeSweep.getPlayerDustbinPage().getOrDefault(playerUUID, 1);

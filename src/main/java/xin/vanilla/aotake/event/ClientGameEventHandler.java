@@ -1,16 +1,12 @@
 package xin.vanilla.aotake.event;
 
+import com.mojang.blaze3d.vertex.PoseStack;
 import net.minecraft.client.Minecraft;
-import net.minecraftforge.client.event.GuiScreenEvent;
-import net.minecraftforge.client.event.RenderGameOverlayEvent;
-import net.minecraftforge.common.MinecraftForge;
-import net.minecraftforge.event.TickEvent;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import xin.vanilla.aotake.config.ClientConfig;
 import xin.vanilla.aotake.internal.client.dev.AotakeUiSmokeRunner;
 import xin.vanilla.aotake.network.packet.OpenDustbinToServer;
-import xin.vanilla.aotake.screen.DustbinRender;
 import xin.vanilla.aotake.screen.ProgressRender;
 import xin.vanilla.banira.client.event.BaniraClientEventHub;
 import xin.vanilla.banira.common.util.PacketUtils;
@@ -29,16 +25,10 @@ public final class ClientGameEventHandler {
 
     public static void register() {
         BaniraClientEventHub.Player.onClientLoggedOut(player -> LOGGER.debug("Client: Player logged out."));
-        MinecraftForge.EVENT_BUS.addListener((TickEvent.ClientTickEvent event) -> ClientGameEventHandler.onClientTick(event));
-        MinecraftForge.EVENT_BUS.addListener((GuiScreenEvent event) -> DustbinRender.handleGuiScreen(event));
-        MinecraftForge.EVENT_BUS.addListener((RenderGameOverlayEvent.Pre event) -> ClientGameEventHandler.onRenderOverlayPre(event));
-        MinecraftForge.EVENT_BUS.addListener((RenderGameOverlayEvent.Post event) -> ClientGameEventHandler.onRenderOverlayPost(event));
+        BaniraClientEventHub.Client.onClientTick(event -> onClientTick());
     }
 
-    private static void onClientTick(TickEvent.ClientTickEvent event) {
-        if (event.phase != TickEvent.Phase.END) {
-            return;
-        }
+    private static void onClientTick() {
         AotakeUiSmokeRunner.tick(Minecraft.getInstance());
         if (Minecraft.getInstance().screen == null) {
             if (ClientModEventHandler.DUSTBIN_KEY.isDown() && System.currentTimeMillis() - lastTime > 100) {
@@ -56,15 +46,7 @@ public final class ClientGameEventHandler {
         }
     }
 
-    private static void onRenderOverlayPre(RenderGameOverlayEvent.Pre event) {
-        if (event.getType() == RenderGameOverlayEvent.ElementType.EXPERIENCE) {
-            ProgressRender.render(event, showProgress);
-        }
-    }
-
-    private static void onRenderOverlayPost(RenderGameOverlayEvent.Post event) {
-        if (event.getType() == RenderGameOverlayEvent.ElementType.EXPERIENCE) {
-            ProgressRender.render(event, showProgress);
-        }
+    public static void renderHud(PoseStack stack, float partialTick) {
+        ProgressRender.render(stack, showProgress);
     }
 }

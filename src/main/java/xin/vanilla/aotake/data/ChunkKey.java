@@ -2,7 +2,7 @@ package xin.vanilla.aotake.data;
 
 import lombok.Getter;
 import lombok.experimental.Accessors;
-import net.minecraft.entity.Entity;
+import net.minecraft.world.entity.Entity;
 
 import java.util.Objects;
 

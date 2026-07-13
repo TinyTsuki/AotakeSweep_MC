@@ -4,9 +4,9 @@ import com.mojang.brigadier.arguments.BoolArgumentType;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
-import net.minecraft.command.CommandSource;
-import net.minecraft.command.Commands;
-import net.minecraft.entity.player.ServerPlayerEntity;
+import net.minecraft.commands.CommandSourceStack;
+import net.minecraft.commands.Commands;
+import net.minecraft.server.level.ServerPlayer;
 import xin.vanilla.aotake.AotakeComponent;
 import xin.vanilla.aotake.AotakeLang;
 import xin.vanilla.aotake.AotakeSweep;
@@ -21,7 +21,7 @@ import xin.vanilla.banira.common.enums.EnumI18nType;
 import xin.vanilla.banira.common.util.*;
 
 public class ConfigCommand {
-    public static LiteralArgumentBuilder<CommandSource> config() {
+    public static LiteralArgumentBuilder<CommandSourceStack> config() {
         return Commands.literal("config")
                 // 设置配置模式
                 .then(Commands.literal("mode")
@@ -35,7 +35,7 @@ public class ConfigCommand {
                                 })
                                 .executes(context -> {
                                     int mode = IntegerArgumentType.getInteger(context, "mode");
-                                    CommandSource source = context.getSource();
+                                    CommandSourceStack source = context.getSource();
                                     String lang = CommandUtils.getLanguage(source);
                                     switch (mode) {
                                         case 0:
@@ -131,7 +131,7 @@ public class ConfigCommand {
                                             return suggestion.buildFuture();
                                         })
                                         .executes(context -> {
-                                            ServerPlayerEntity player = context.getSource().getPlayerOrException();
+                                            ServerPlayer player = context.getSource().getPlayerOrException();
                                             if (CommandUtils.checkModStatus(context, AotakeSweep::isDisable))
                                                 return 0;
                                             CommandUtils.notifyHelp(context, PlayerSweepData.getData(player), AotakeComponent.get().trans(EnumI18nType.WORD, "title"), String.format("/%s help", AotakeUtils.getCommandPrefix()));
@@ -164,7 +164,7 @@ public class ConfigCommand {
                                             return suggestion.buildFuture();
                                         })
                                         .executes(context -> {
-                                            ServerPlayerEntity player = context.getSource().getPlayerOrException();
+                                            ServerPlayer player = context.getSource().getPlayerOrException();
                                             if (CommandUtils.checkModStatus(context, AotakeSweep::isDisable))
                                                 return 0;
                                             CommandUtils.notifyHelp(context, PlayerSweepData.getData(player), AotakeComponent.get().trans(EnumI18nType.WORD, "title"), String.format("/%s help", AotakeUtils.getCommandPrefix()));

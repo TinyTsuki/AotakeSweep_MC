@@ -4,8 +4,8 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import lombok.Getter;
 import net.minecraft.client.Minecraft;
-import net.minecraft.resources.IResource;
-import net.minecraft.util.ResourceLocation;
+import net.minecraft.server.packs.resources.Resource;
+import net.minecraft.resources.ResourceLocation;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import xin.vanilla.aotake.Identifier;
@@ -38,7 +38,7 @@ public final class DustbinGuiConfig {
 
     public static void reload() {
         try {
-            IResource resource = Minecraft.getInstance().getResourceManager().getResource(CONFIG_LOCATION);
+            Resource resource = Minecraft.getInstance().getResourceManager().getResource(CONFIG_LOCATION);
             try (InputStreamReader reader = new InputStreamReader(resource.getInputStream(), StandardCharsets.UTF_8)) {
                 JsonObject json = JsonUtils.parseObject(reader);
                 if (json.has("scale_mode")) {

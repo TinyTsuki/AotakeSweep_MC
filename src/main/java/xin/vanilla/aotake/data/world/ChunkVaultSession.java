@@ -1,16 +1,15 @@
 package xin.vanilla.aotake.data.world;
 
-import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.entity.player.PlayerInventory;
-import net.minecraft.entity.player.ServerPlayerEntity;
-import net.minecraft.inventory.Inventory;
-import net.minecraft.inventory.container.ChestContainer;
-import net.minecraft.inventory.container.Container;
-import net.minecraft.inventory.container.INamedContainerProvider;
-import net.minecraft.item.ItemStack;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.entity.player.Inventory;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.SimpleContainer;
+import net.minecraft.world.inventory.ChestMenu;
+import net.minecraft.world.inventory.AbstractContainerMenu;
+import net.minecraft.world.MenuProvider;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.server.MinecraftServer;
-import net.minecraft.util.text.ITextComponent;
-import net.minecraftforge.event.entity.player.PlayerContainerEvent;
+import net.minecraft.network.chat.Component;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import xin.vanilla.aotake.AotakeComponent;
@@ -37,18 +36,18 @@ public final class ChunkVaultSession {
     private ChunkVaultSession() {
     }
 
-    public static boolean hasOpenSession(ServerPlayerEntity player) {
+    public static boolean hasOpenSession(ServerPlayer player) {
         return OPEN.containsKey(PlayerUtils.getPlayerUUIDString(player));
     }
 
-    public static void open(ServerPlayerEntity player, String vaultId, int page1Based) {
+    public static void open(ServerPlayer player, String vaultId, int page1Based) {
         MinecraftServer server = player.getServer();
         if (server == null) return;
         if (!ChunkVaultStorage.vaultExists(vaultId)) {
             return;
         }
         List<ItemStack> items = ChunkVaultStorage.readAllItems(server, vaultId);
-        List<Inventory> pages = distributeIntoPages(items);
+        List<SimpleContainer> pages = distributeIntoPages(items);
         int total = Math.max(1, pages.size());
         int page = Math.min(Math.max(page1Based, 1), total);
         String uuid = PlayerUtils.getPlayerUUIDString(player);
@@ -63,7 +62,7 @@ public final class ChunkVaultSession {
     /**
      * 翻页或刷新（offset 0）：复用内存中的分页数据，避免每次关箱都写盘并全量重读 NBT。
      */
-    public static void navigateOrReload(ServerPlayerEntity player, int offset) {
+    public static void navigateOrReload(ServerPlayer player, int offset) {
         MinecraftServer server = player.getServer();
         if (server == null) return;
         String uuid = PlayerUtils.getPlayerUUIDString(player);
@@ -80,7 +79,7 @@ public final class ChunkVaultSession {
         }
         if (offset == 0) {
             List<ItemStack> items = ChunkVaultStorage.readAllItems(server, holder.vaultId);
-            List<Inventory> newPages = distributeIntoPages(items);
+            List<SimpleContainer> newPages = distributeIntoPages(items);
             holder.replacePages(newPages);
             int total = Math.max(1, holder.pages.size());
             holder.currentPage = Math.min(Math.max(holder.currentPage, 1), total);
@@ -94,9 +93,8 @@ public final class ChunkVaultSession {
         player.closeContainer();
     }
 
-    public static void onContainerClose(PlayerContainerEvent.Close event) {
-        if (!(event.getPlayer() instanceof ServerPlayerEntity)) return;
-        ServerPlayerEntity player = (ServerPlayerEntity) event.getPlayer();
+    public static void onPlayerCloseContainer(ServerPlayer player) {
+        if (player == null) return;
         String uuid = PlayerUtils.getPlayerUUIDString(player);
         Holder holder = OPEN.get(uuid);
         if (holder == null) return;
@@ -122,7 +120,7 @@ public final class ChunkVaultSession {
         }
     }
 
-    private static void reopenAfterPageChange(ServerPlayerEntity player, String uuid) {
+    private static void reopenAfterPageChange(ServerPlayer player, String uuid) {
         if (!player.isAlive()) return;
         Holder holder = OPEN.get(uuid);
         if (holder == null) return;
@@ -135,9 +133,9 @@ public final class ChunkVaultSession {
         PacketUtils.sendPacketToPlayer(new ChunkVaultPageSyncToClient(page, total), player);
     }
 
-    private static List<ItemStack> flattenInventories(List<Inventory> pages) {
+    private static List<ItemStack> flattenInventories(List<SimpleContainer> pages) {
         List<ItemStack> out = new ArrayList<>();
-        for (Inventory inv : pages) {
+        for (SimpleContainer inv : pages) {
             for (int i = 0; i < inv.getContainerSize(); i++) {
                 ItemStack s = inv.getItem(i);
                 if (!s.isEmpty()) {
@@ -148,13 +146,13 @@ public final class ChunkVaultSession {
         return out;
     }
 
-    private static List<Inventory> distributeIntoPages(List<ItemStack> all) {
+    private static List<SimpleContainer> distributeIntoPages(List<ItemStack> all) {
         if (all == null || all.isEmpty()) {
-            Inventory one = new Inventory(54);
+            SimpleContainer one = new SimpleContainer(54);
             return new ArrayList<>(Collections.singletonList(one));
         }
-        List<Inventory> pages = new ArrayList<>();
-        Inventory cur = new Inventory(54);
+        List<SimpleContainer> pages = new ArrayList<>();
+        SimpleContainer cur = new SimpleContainer(54);
         pages.add(cur);
         for (ItemStack raw : all) {
             ItemStack stack = raw.copy();
@@ -162,7 +160,7 @@ public final class ChunkVaultSession {
                 ItemStack leftover = tryFillInventory(cur, stack);
                 stack = leftover;
                 if (!stack.isEmpty()) {
-                    cur = new Inventory(54);
+                    cur = new SimpleContainer(54);
                     pages.add(cur);
                 }
             }
@@ -170,7 +168,7 @@ public final class ChunkVaultSession {
         return pages;
     }
 
-    private static ItemStack tryFillInventory(Inventory inventory, ItemStack stack) {
+    private static ItemStack tryFillInventory(SimpleContainer inventory, ItemStack stack) {
         for (int i = 0; i < inventory.getContainerSize(); i++) {
             ItemStack slot = inventory.getItem(i);
             if (ItemStack.isSame(slot, stack) && slot.getCount() < slot.getMaxStackSize()) {
@@ -195,26 +193,26 @@ public final class ChunkVaultSession {
 
     private static final class Holder {
         final String vaultId;
-        List<Inventory> pages;
+        List<SimpleContainer> pages;
         int currentPage;
         boolean skipPersistOnNextClose;
 
-        Holder(String vaultId, List<Inventory> pages, int currentPage1Based) {
+        Holder(String vaultId, List<SimpleContainer> pages, int currentPage1Based) {
             this.vaultId = vaultId;
             this.pages = pages;
             this.currentPage = currentPage1Based;
         }
 
-        void replacePages(List<Inventory> newPages) {
+        void replacePages(List<SimpleContainer> newPages) {
             this.pages = newPages;
         }
 
-        INamedContainerProvider createMenuProvider(ServerPlayerEntity player, int page, int totalPages) {
-            Inventory inv = pages.get(page - 1);
-            return new INamedContainerProvider() {
+        MenuProvider createMenuProvider(ServerPlayer player, int page, int totalPages) {
+            SimpleContainer inv = pages.get(page - 1);
+            return new MenuProvider() {
                 @Nonnull
                 @Override
-                public ITextComponent getDisplayName() {
+                public Component getDisplayName() {
                     return AotakeComponent.get().transAuto("chunk_vault_title")
                             .append(AotakeComponent.get().literal(String.format(" (%s/%s)", page, totalPages)))
                             .toVanilla(AotakeLang.getPlayerLanguage(player));
@@ -222,8 +220,8 @@ public final class ChunkVaultSession {
 
                 @Nullable
                 @Override
-                public Container createMenu(int id, @Nonnull PlayerInventory playerInventory, @Nonnull PlayerEntity p) {
-                    return ChestContainer.sixRows(id, playerInventory, inv);
+                public AbstractContainerMenu createMenu(int id, @Nonnull Inventory playerInventory, @Nonnull Player p) {
+                    return ChestMenu.sixRows(id, playerInventory, inv);
                 }
             };
         }

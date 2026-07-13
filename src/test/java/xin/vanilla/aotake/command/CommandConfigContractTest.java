@@ -12,6 +12,7 @@ import xin.vanilla.banira.common.config.ConfigValueStore;
 import xin.vanilla.banira.platform.BaniraConfigHandle;
 import xin.vanilla.banira.platform.BaniraConfigService;
 import xin.vanilla.banira.platform.BaniraInputService;
+import xin.vanilla.banira.platform.BaniraLogoService;
 import xin.vanilla.banira.platform.BaniraNetworkService;
 import xin.vanilla.banira.platform.BaniraNotificationService;
 import xin.vanilla.banira.platform.BaniraPathService;
@@ -249,6 +250,12 @@ public class CommandConfigContractTest {
         @Override
         public BaniraNotificationService notificationService() {
             return noop(BaniraNotificationService.class);
+        }
+
+        @Nonnull
+        @Override
+        public BaniraLogoService logoService() {
+            return noop(BaniraLogoService.class);
         }
     }
 

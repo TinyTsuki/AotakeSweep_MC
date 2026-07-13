@@ -2,8 +2,8 @@ package xin.vanilla.aotake.command;
 
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
-import net.minecraft.command.CommandSource;
-import net.minecraft.command.Commands;
+import net.minecraft.commands.CommandSourceStack;
+import net.minecraft.commands.Commands;
 import xin.vanilla.aotake.command.impl.HelpCommand;
 import xin.vanilla.aotake.enums.EnumCommandType;
 import xin.vanilla.aotake.util.AotakeUtils;
@@ -37,12 +37,12 @@ public class AotakeCommand {
      *
      * @param dispatcher 命令调度器
      */
-    public static void register(CommandDispatcher<CommandSource> dispatcher) {
+    public static void register(CommandDispatcher<CommandSourceStack> dispatcher) {
         // 刷新帮助信息
         refreshHelpMessage();
 
         // 注册有前缀的指令
-        LiteralArgumentBuilder<CommandSource> mainCommand = Commands.literal(AotakeUtils.getCommandPrefix());
+        LiteralArgumentBuilder<CommandSourceStack> mainCommand = Commands.literal(AotakeUtils.getCommandPrefix());
 
         // 主指令直接执行显示帮助
         mainCommand.executes(HelpCommand.help().getCommand());

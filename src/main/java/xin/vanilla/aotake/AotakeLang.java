@@ -1,7 +1,7 @@
 package xin.vanilla.aotake;
 
 import lombok.NonNull;
-import net.minecraft.entity.player.ServerPlayerEntity;
+import net.minecraft.server.level.ServerPlayer;
 import xin.vanilla.aotake.config.CommonConfig;
 import xin.vanilla.banira.common.data.Component;
 import xin.vanilla.banira.common.data.ScopedComponent;
@@ -36,7 +36,7 @@ public final class AotakeLang extends Translator {
         return CommonConfig.get().base().common().defaultLanguage();
     }
 
-    public static String getServerPlayerLanguage(ServerPlayerEntity player) {
+    public static String getServerPlayerLanguage(ServerPlayer player) {
         return Translator.getServerPlayerLanguage(player);
     }
 

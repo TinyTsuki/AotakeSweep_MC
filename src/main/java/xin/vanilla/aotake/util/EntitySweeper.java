@@ -1,19 +1,19 @@
 package xin.vanilla.aotake.util;
 
 import lombok.NonNull;
-import net.minecraft.entity.Entity;
-import net.minecraft.entity.item.ItemEntity;
-import net.minecraft.entity.player.ServerPlayerEntity;
-import net.minecraft.inventory.Inventory;
-import net.minecraft.item.ItemStack;
-import net.minecraft.nbt.CompoundNBT;
-import net.minecraft.util.RegistryKey;
-import net.minecraft.util.text.event.ClickEvent;
-import net.minecraft.util.text.event.HoverEvent;
-import net.minecraft.world.World;
-import net.minecraft.world.server.ServerWorld;
-import net.minecraftforge.entity.PartEntity;
-import net.minecraftforge.items.IItemHandler;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.boss.EnderDragonPart;
+import net.minecraft.world.entity.item.ItemEntity;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.Container;
+import net.minecraft.world.SimpleContainer;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.resources.ResourceKey;
+import net.minecraft.network.chat.ClickEvent;
+import net.minecraft.network.chat.HoverEvent;
+import net.minecraft.world.level.Level;
+import net.minecraft.server.level.ServerLevel;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import xin.vanilla.aotake.AotakeComponent;
@@ -46,9 +46,9 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 public class EntitySweeper {
     private static final Logger LOGGER = LogManager.getLogger();
 
-    private static final Map<RegistryKey<World>, Queue<KeyValue<Entity, Boolean>>> pendingRemovals = new ConcurrentHashMap<>();
+    private static final Map<ResourceKey<Level>, Queue<KeyValue<Entity, Boolean>>> pendingRemovals = new ConcurrentHashMap<>();
 
-    private List<Inventory> inventoryList;
+    private List<SimpleContainer> inventoryList;
     private ConcurrentShuffleList<KeyValue<WorldCoordinate, ItemStack>> dropList;
 
     private final Set<Entity> entitiesToRemove = Collections.newSetFromMap(new IdentityHashMap<>());
@@ -93,7 +93,7 @@ public class EntitySweeper {
 
         Set<Entity> seenEntities = Collections.newSetFromMap(new IdentityHashMap<>());
         for (Entity entity : entities) {
-            Entity canonical = (entity instanceof PartEntity) ? ((PartEntity<?>) entity).getParent() : entity;
+            Entity canonical = canonicalEntity(entity);
             if (seenEntities.add(canonical)) {
                 result.add(this.processDrop(entity, result, context));
             }
@@ -101,7 +101,7 @@ public class EntitySweeper {
 
         if (!entitiesToRemove.isEmpty()) {
             for (Entity entity : entitiesToRemove) {
-                if (entity.isAlive() && entity.level instanceof ServerWorld) {
+                if (entity.isAlive() && entity.level instanceof ServerLevel) {
                     scheduleRemoveEntity(entity, false);
                 }
             }
@@ -116,8 +116,8 @@ public class EntitySweeper {
             LOGGER.debug("AddDrops finished at {}", System.currentTimeMillis());
             ChunkVaultStorage.flushPending(BaniraServerUtils.currentServer());
 
-            List<ServerPlayerEntity> players = BaniraServerUtils.currentServer().getPlayerList().getPlayers();
-            for (ServerPlayerEntity p : players) {
+            List<ServerPlayer> players = BaniraServerUtils.currentServer().getPlayerList().getPlayers();
+            for (ServerPlayer p : players) {
                 String language = AotakeLang.getPlayerLanguage(p);
                 Component msg = AotakeUtils.getWarningMessage(result.isEmpty() ? "fail" : "success"
                         , language
@@ -161,7 +161,7 @@ public class EntitySweeper {
     private SweepResult processDrop(@NonNull Entity original, SweepResult batchResult, SweepContext context) {
         SweepResult result = new SweepResult();
         WorldCoordinate coordinate = new WorldCoordinate(original);
-        Entity entity = (original instanceof PartEntity) ? ((PartEntity<?>) original).getParent() : original;
+        Entity entity = canonicalEntity(original);
 
         String typeKey = (entity instanceof ItemEntity)
                 ? ItemUtils.getItemRegistryString(((ItemEntity) entity).getItem())
@@ -187,13 +187,13 @@ public class EntitySweeper {
             ) {
                 String randomItem = CollectionUtils.getRandomElement(context.catchItems);
                 itemToRecycle = ItemUtils.deserializeItemStack(randomItem);
-                CompoundNBT tag = itemToRecycle.getOrCreateTag();
-                CompoundNBT aotake = new CompoundNBT();
+                CompoundTag tag = itemToRecycle.getOrCreateTag();
+                CompoundTag aotake = new CompoundTag();
                 aotake.putBoolean("byPlayer", false);
                 if (entity.isPassenger()) {
                     entity.stopRiding();
                 }
-                CompoundNBT entityTag = new CompoundNBT();
+                CompoundTag entityTag = new CompoundTag();
                 entity.save(entityTag);
                 AotakeUtils.sanitizeCapturedEntityTag(entityTag);
                 aotake.put("entity", entityTag);
@@ -284,7 +284,7 @@ public class EntitySweeper {
 
     private void selfCleanVirtualDustbin() {
         if (CollectionUtils.isNullOrEmpty(this.inventoryList)) return;
-        Inventory inv = this.inventoryList.get(AotakeSweep.RANDOM.nextInt(this.inventoryList.size()));
+        SimpleContainer inv = this.inventoryList.get(AotakeSweep.RANDOM.nextInt(this.inventoryList.size()));
         for (int i = 0; i < inv.getContainerSize(); i++) {
             if (!inv.getItem(i).isEmpty()) {
                 inv.setItem(i, ItemStack.EMPTY);
@@ -295,11 +295,11 @@ public class EntitySweeper {
 
     private void selfCleanDustbinBlock(SweepContext context) {
         for (WorldCoordinate dustbinPos : context.blockPositions) {
-            IItemHandler handler = AotakeUtils.getBlockItemHandler(dustbinPos);
+            Container handler = AotakeUtils.getBlockItemHandler(dustbinPos);
             if (handler != null) {
-                for (int i = 0; i < handler.getSlots(); i++) {
-                    if (!handler.getStackInSlot(i).isEmpty()) {
-                        handler.extractItem(i, handler.getSlotLimit(i), false);
+                for (int i = 0; i < handler.getContainerSize(); i++) {
+                    if (!handler.getItem(i).isEmpty()) {
+                        handler.removeItemNoUpdate(i);
                         break;
                     }
                 }
@@ -309,7 +309,7 @@ public class EntitySweeper {
 
     private ItemStack addItemToVirtualDustbin(ItemStack item) {
         ItemStack remaining = item;
-        for (Inventory inv : this.inventoryList) {
+        for (SimpleContainer inv : this.inventoryList) {
             if (remaining.isEmpty()) break;
 
             while (!remaining.isEmpty() && inv.canAddItem(remaining)) {
@@ -345,7 +345,7 @@ public class EntitySweeper {
                     case VIRTUAL:
                     case VIRTUAL_BLOCK: {
                         if (CollectionUtils.isNullOrEmpty(this.inventoryList)) break;
-                        Inventory inv = this.inventoryList.get(AotakeSweep.RANDOM.nextInt(this.inventoryList.size()));
+                        SimpleContainer inv = this.inventoryList.get(AotakeSweep.RANDOM.nextInt(this.inventoryList.size()));
                         int slot = AotakeSweep.RANDOM.nextInt(inv.getContainerSize());
                         inv.setItem(slot, item.copy());
                     }
@@ -354,11 +354,11 @@ public class EntitySweeper {
                     case BLOCK_VIRTUAL: {
                         WorldCoordinate dustbinPos = CollectionUtils.getRandomElement(context.blockPositions);
                         if (dustbinPos == null) break;
-                        IItemHandler handler = AotakeUtils.getBlockItemHandler(dustbinPos);
+                        Container handler = AotakeUtils.getBlockItemHandler(dustbinPos);
                         if (handler != null) {
-                            int slot = AotakeSweep.RANDOM.nextInt(handler.getSlots());
-                            handler.extractItem(slot, handler.getSlotLimit(slot), false);
-                            handler.insertItem(slot, item.copy(), false);
+                            int slot = AotakeSweep.RANDOM.nextInt(handler.getContainerSize());
+                            handler.setItem(slot, item.copy());
+                            handler.setChanged();
                         }
                     }
                     break;
@@ -426,38 +426,30 @@ public class EntitySweeper {
     }
 
     public static void scheduleRemoveEntity(Entity entity, boolean keepData) {
-        if (!(entity.level instanceof ServerWorld)) return;
-        RegistryKey<World> dimensionKey = entity.level.dimension();
+        if (!(entity.level instanceof ServerLevel)) return;
+        ResourceKey<Level> dimensionKey = entity.level.dimension();
 
-        if (entity instanceof PartEntity) {
-            entity = ((PartEntity<?>) entity).getParent();
-        }
-        if (entity.isMultipartEntity()) {
-            PartEntity<?>[] parts = entity.getParts();
-            if (CollectionUtils.isNotNullOrEmpty(parts)) {
-                for (PartEntity<?> part : parts) {
-                    pendingRemovals
-                            .computeIfAbsent(dimensionKey, k -> new ConcurrentLinkedQueue<>())
-                            .add(new KeyValue<>(part, keepData));
-                }
-            }
-        } else {
-            pendingRemovals
-                    .computeIfAbsent(dimensionKey, k -> new ConcurrentLinkedQueue<>())
-                    .add(new KeyValue<>(entity, keepData));
-        }
+        Entity canonical = canonicalEntity(entity);
+        pendingRemovals
+                .computeIfAbsent(dimensionKey, k -> new ConcurrentLinkedQueue<>())
+                .add(new KeyValue<>(canonical, keepData));
     }
 
-    public static void flushPendingRemovals(ServerWorld world) {
+    public static void flushPendingRemovals(ServerLevel world) {
         Queue<KeyValue<Entity, Boolean>> queue = pendingRemovals.get(world.dimension());
         if (queue == null) return;
 
         KeyValue<Entity, Boolean> keyValue;
         while ((keyValue = queue.poll()) != null) {
             if (keyValue.key().isAlive()) {
-                world.removeEntity(keyValue.key(), keyValue.value());
+                keyValue.key().remove();
             }
         }
+    }
+
+    /** 原版 Fabric 仅暴露末影龙部件，清理时统一回收到主体实体。 */
+    private static Entity canonicalEntity(Entity entity) {
+        return entity instanceof EnderDragonPart ? ((EnderDragonPart) entity).parentMob : entity;
     }
 
 }

@@ -6,12 +6,12 @@ import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.context.CommandContext;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import com.mojang.brigadier.suggestion.SuggestionProvider;
-import net.minecraft.command.CommandSource;
-import net.minecraft.command.Commands;
-import net.minecraft.command.arguments.EntityArgument;
-import net.minecraft.entity.player.ServerPlayerEntity;
-import net.minecraft.util.text.event.ClickEvent;
-import net.minecraft.util.text.event.HoverEvent;
+import net.minecraft.commands.CommandSourceStack;
+import net.minecraft.commands.Commands;
+import net.minecraft.commands.arguments.EntityArgument;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.network.chat.ClickEvent;
+import net.minecraft.network.chat.HoverEvent;
 import xin.vanilla.aotake.AotakeComponent;
 import xin.vanilla.aotake.AotakeLang;
 import xin.vanilla.aotake.AotakeSweep;
@@ -32,7 +32,7 @@ import java.util.stream.Collectors;
 
 public final class ChunkVaultCommand {
 
-    private static final SuggestionProvider<CommandSource> VAULT_ID_SUGGEST = (context, builder) -> {
+    private static final SuggestionProvider<CommandSourceStack> VAULT_ID_SUGGEST = (context, builder) -> {
         if (!BaniraServerUtils.isRunning()) {
             return builder.buildFuture();
         }
@@ -43,8 +43,8 @@ public final class ChunkVaultCommand {
         return builder.buildFuture();
     };
 
-    public static LiteralArgumentBuilder<CommandSource> register() {
-        LiteralArgumentBuilder<CommandSource> root = Commands.literal(CommonConfig.get().command().commandChunkVault());
+    public static LiteralArgumentBuilder<CommandSourceStack> register() {
+        LiteralArgumentBuilder<CommandSourceStack> root = Commands.literal(CommonConfig.get().command().commandChunkVault());
 
         root.then(Commands.literal("list")
                 .requires(src -> AotakeUtils.hasCommandPermission(src, EnumCommandType.CHUNK_VAULT))
@@ -70,7 +70,7 @@ public final class ChunkVaultCommand {
                                         EntityArgument.getPlayers(ctx, "players"))))));
 
         root.then(Commands.literal("view")
-                .requires(src -> src.getEntity() instanceof ServerPlayerEntity)
+                .requires(src -> src.getEntity() instanceof ServerPlayer)
                 .then(Commands.argument("id", StringArgumentType.string())
                         .suggests(VAULT_ID_SUGGEST)
                         .executes(ctx -> viewVault(ctx, StringArgumentType.getString(ctx, "id"), 1))
@@ -81,14 +81,14 @@ public final class ChunkVaultCommand {
         return root;
     }
 
-    private static boolean canOpen(ServerPlayerEntity player, String vaultId) {
+    private static boolean canOpen(ServerPlayer player, String vaultId) {
         return AotakeUtils.hasCommandPermission(player, EnumCommandType.CHUNK_VAULT)
                 || ChunkVaultGrants.isGranted(player, vaultId);
     }
 
-    private static int list(CommandContext<CommandSource> context, int page) throws CommandSyntaxException {
+    private static int list(CommandContext<CommandSourceStack> context, int page) throws CommandSyntaxException {
         if (CommandUtils.checkModStatus(context, AotakeSweep::isDisable)) return 0;
-        ServerPlayerEntity player = context.getSource().getPlayerOrException();
+        ServerPlayer player = context.getSource().getPlayerOrException();
         List<String> ids = ChunkVaultStorage.listVaultIds(player.getServer());
         if (CollectionUtils.isNullOrEmpty(ids)) {
             MessageUtils.sendNotification(player, AotakeComponent.get().transAuto("chunk_vault_list_empty"), AotakeNotificationTypes.CHUNK_VAULT_LIST);
@@ -117,9 +117,9 @@ public final class ChunkVaultCommand {
         return 1;
     }
 
-    private static int openVault(CommandContext<CommandSource> context, String vaultId, int page) throws CommandSyntaxException {
+    private static int openVault(CommandContext<CommandSourceStack> context, String vaultId, int page) throws CommandSyntaxException {
         if (CommandUtils.checkModStatus(context, AotakeSweep::isDisable)) return 0;
-        ServerPlayerEntity player = context.getSource().getPlayerOrException();
+        ServerPlayer player = context.getSource().getPlayerOrException();
         if (!AotakeUtils.hasCommandPermission(player, EnumCommandType.CHUNK_VAULT)) {
             context.getSource().sendFailure(AotakeComponent.get().transAuto("command_no_permission").toVanilla(Translator.getServerPlayerLanguage(player)));
             return 0;
@@ -132,9 +132,9 @@ public final class ChunkVaultCommand {
         return 1;
     }
 
-    private static int viewVault(CommandContext<CommandSource> context, String vaultId, int page) throws CommandSyntaxException {
+    private static int viewVault(CommandContext<CommandSourceStack> context, String vaultId, int page) throws CommandSyntaxException {
         if (CommandUtils.checkModStatus(context, AotakeSweep::isDisable)) return 0;
-        ServerPlayerEntity player = context.getSource().getPlayerOrException();
+        ServerPlayer player = context.getSource().getPlayerOrException();
         if (!canOpen(player, vaultId)) {
             MessageUtils.sendNotification(player, AotakeComponent.get().transAuto("chunk_vault_no_access", vaultId), AotakeNotificationTypes.DUSTBIN);
             return 0;
@@ -147,14 +147,14 @@ public final class ChunkVaultCommand {
         return 1;
     }
 
-    private static int grant(CommandContext<CommandSource> context, String vaultId, Collection<ServerPlayerEntity> targets) throws CommandSyntaxException {
+    private static int grant(CommandContext<CommandSourceStack> context, String vaultId, Collection<ServerPlayer> targets) throws CommandSyntaxException {
         if (CommandUtils.checkModStatus(context, AotakeSweep::isDisable)) return 0;
-        ServerPlayerEntity admin = context.getSource().getPlayerOrException();
+        ServerPlayer admin = context.getSource().getPlayerOrException();
         if (!ChunkVaultStorage.vaultExists(vaultId)) {
             MessageUtils.sendNotification(admin, AotakeComponent.get().transAuto("chunk_vault_not_found", vaultId), AotakeNotificationTypes.DUSTBIN);
             return 0;
         }
-        for (ServerPlayerEntity target : targets) {
+        for (ServerPlayer target : targets) {
             ChunkVaultGrants.grant(admin.getServer(), vaultId, target);
             MessageUtils.sendNotification(target, AotakeComponent.get().transAuto("chunk_vault_granted", vaultId), AotakeNotificationTypes.DUSTBIN);
         }

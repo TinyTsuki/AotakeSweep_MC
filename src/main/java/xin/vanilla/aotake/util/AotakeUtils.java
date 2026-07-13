@@ -1,35 +1,31 @@
 package xin.vanilla.aotake.util;
 
 import lombok.NonNull;
-import net.minecraft.block.BlockState;
-import net.minecraft.command.CommandSource;
-import net.minecraft.entity.Entity;
-import net.minecraft.entity.EntityType;
-import net.minecraft.entity.item.ItemEntity;
-import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.entity.player.ServerPlayerEntity;
-import net.minecraft.inventory.Inventory;
-import net.minecraft.inventory.container.INamedContainerProvider;
-import net.minecraft.item.ItemStack;
-import net.minecraft.nbt.CompoundNBT;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.commands.CommandSourceStack;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.item.ItemEntity;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.Container;
+import net.minecraft.world.SimpleContainer;
+import net.minecraft.world.MenuProvider;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.MinecraftServer;
-import net.minecraft.tileentity.TileEntity;
-import net.minecraft.util.ActionResultType;
-import net.minecraft.util.Direction;
-import net.minecraft.util.Hand;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.BlockRayTraceResult;
-import net.minecraft.util.math.vector.Vector3d;
-import net.minecraft.util.text.event.ClickEvent;
-import net.minecraft.util.text.event.HoverEvent;
-import net.minecraft.world.World;
-import net.minecraft.world.server.ServerWorld;
-import net.minecraftforge.common.util.LazyOptional;
-import net.minecraftforge.fml.ModList;
-import net.minecraftforge.items.CapabilityItemHandler;
-import net.minecraftforge.items.IItemHandler;
-import net.minecraftforge.items.ItemHandlerHelper;
-import net.minecraftforge.items.ItemStackHandler;
+import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.world.InteractionResult;
+import net.minecraft.core.Direction;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.core.BlockPos;
+import net.minecraft.world.phys.BlockHitResult;
+import net.minecraft.world.phys.Vec3;
+import net.minecraft.network.chat.ClickEvent;
+import net.minecraft.network.chat.HoverEvent;
+import net.minecraft.world.level.Level;
+import net.minecraft.server.level.ServerLevel;
+import net.fabricmc.loader.api.FabricLoader;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import xin.vanilla.aotake.AotakeComponent;
@@ -230,14 +226,14 @@ public class AotakeUtils {
     /**
      * 判断是否拥有指令权限
      */
-    public static boolean hasCommandPermission(CommandSource source, EnumCommandType type) {
+    public static boolean hasCommandPermission(CommandSourceStack source, EnumCommandType type) {
         return source.hasPermission(getCommandPermissionLevel(type)) || CommandUtils.hasVirtualPermission(source.getEntity(), type);
     }
 
     /**
      * 判断是否拥有指令权限
      */
-    public static boolean hasCommandPermission(PlayerEntity player, EnumCommandType type) {
+    public static boolean hasCommandPermission(Player player, EnumCommandType type) {
         return player.hasPermissions(getCommandPermissionLevel(type)) || CommandUtils.hasVirtualPermission(player, type);
     }
 
@@ -245,7 +241,7 @@ public class AotakeUtils {
      * 获取传送指令
      */
     public static String genTeleportCommand(WorldCoordinate coordinate) {
-        if (ModList.get().isLoaded("narcissus_farewell")) {
+        if (FabricLoader.getInstance().isModLoaded("narcissus_farewell")) {
             return String.format("/%s %s %s %s safe %s"
                     , CompatNarcissus.getTpCommand()
                     , coordinate.xInt()
@@ -343,7 +339,7 @@ public class AotakeUtils {
 
     private static boolean isJunkEntity(Entity entity, boolean emptyRules, EnumListType mode,
                                         EntityFilter.Matcher matcher) {
-        if (entity == null || entity instanceof PlayerEntity) {
+        if (entity == null || entity instanceof Player) {
             return false;
         }
         if (emptyRules) {
@@ -353,8 +349,8 @@ public class AotakeUtils {
         return mode == EnumListType.BLACK ? matched : !matched;
     }
 
-    public static boolean isSafeEntity(Map<World, Map<BlockPos, BlockState>> blockStateCache, Entity entity) {
-        World level = entity.level;
+    public static boolean isSafeEntity(Map<Level, Map<BlockPos, BlockState>> blockStateCache, Entity entity) {
+        Level level = entity.level;
         BlockPos position = entity.blockPosition();
 
         boolean stateFlag = false;
@@ -381,8 +377,8 @@ public class AotakeUtils {
         return stateFlag || belowFlag || aboveFlag;
     }
 
-    private static BlockState cachedBlockState(Map<World, Map<BlockPos, BlockState>> cache,
-                                               World level, BlockPos position) {
+    private static BlockState cachedBlockState(Map<Level, Map<BlockPos, BlockState>> cache,
+                                               Level level, BlockPos position) {
         return cache.computeIfAbsent(level, ignored -> new HashMap<>())
                 .computeIfAbsent(position, level::getBlockState);
     }
@@ -394,7 +390,7 @@ public class AotakeUtils {
         }
         initSafeBlocks();
 
-        Map<World, Map<BlockPos, BlockState>> blockStateCache = new IdentityHashMap<>();
+        Map<Level, Map<BlockPos, BlockState>> blockStateCache = new IdentityHashMap<>();
         CommonConfig.BaseView base = CommonConfig.get().base();
         List<String> rules = chuck ? base.chunk().chunkCheckEntityList() : base.sweep().entityList();
         EnumListType listMode = chuck ? base.chunk().chunkCheckEntityListMode() : base.sweep().entityListMode();
@@ -414,7 +410,7 @@ public class AotakeUtils {
 
         LOGGER.debug("Entity exceeded filter started at {}", System.currentTimeMillis());
         for (Entity entity : entities) {
-            if (entity instanceof PlayerEntity) continue;
+            if (entity instanceof Player) continue;
 
             boolean safe = hasSafeRules && isSafeEntity(blockStateCache, entity);
             ChunkKey chunkKey = null;
@@ -504,7 +500,7 @@ public class AotakeUtils {
         // 服务器已关闭
         if (!BaniraServerUtils.isRunning() || server == null) return;
 
-        List<ServerPlayerEntity> players = server.getPlayerList().getPlayers();
+        List<ServerPlayer> players = server.getPlayerList().getPlayers();
 
         try {
             // 若服务器没有玩家
@@ -543,7 +539,7 @@ public class AotakeUtils {
 
         } catch (Exception e) {
             LOGGER.error(e);
-            for (ServerPlayerEntity p : players) {
+            for (ServerPlayer p : players) {
                 String language = AotakeLang.getPlayerLanguage(p);
                 Component msg = getWarningMessage("error", language, null);
                 PlayerSweepData playerData = PlayerSweepData.getData(p);
@@ -575,8 +571,8 @@ public class AotakeUtils {
 
     private static void clearVirtualDustbin() {
         WorldTrashData.get().getDropList().clear();
-        List<Inventory> inventories = WorldTrashData.get().getInventoryList();
-        if (CollectionUtils.isNotNullOrEmpty(inventories)) inventories.forEach(Inventory::clearContent);
+        List<SimpleContainer> inventories = WorldTrashData.get().getInventoryList();
+        if (CollectionUtils.isNotNullOrEmpty(inventories)) inventories.forEach(SimpleContainer::clearContent);
         WorldTrashData.get().setDirty();
     }
 
@@ -584,11 +580,9 @@ public class AotakeUtils {
         for (String pos : CommonConfig.get().base().dustbin().dustbinBlockPositions()) {
             WorldCoordinate coordinate = WorldCoordinate.fromString(pos);
             if (coordinate != null) {
-                IItemHandler handler = getBlockItemHandler(coordinate);
+                Container handler = getBlockItemHandler(coordinate);
                 if (handler != null) {
-                    for (int i = 0; i < handler.getSlots(); i++) {
-                        handler.extractItem(i, handler.getSlotLimit(i), false);
-                    }
+                    handler.clearContent();
                 }
             }
         }
@@ -604,12 +598,12 @@ public class AotakeUtils {
     /**
      * 将物品转为实体
      */
-    public static Entity getEntityFromItem(ServerWorld level, ItemStack itemStack) {
+    public static Entity getEntityFromItem(ServerLevel level, ItemStack itemStack) {
         Entity result = null;
 
-        CompoundNBT tag = itemStack.getTag();
+        CompoundTag tag = itemStack.getTag();
         if (tag != null && tag.contains(AotakeSweep.MODID)) {
-            CompoundNBT aotake = tag.getCompound(AotakeSweep.MODID);
+            CompoundTag aotake = tag.getCompound(AotakeSweep.MODID);
             if (aotake.contains("entity")) {
                 try {
                     result = EntityType.loadEntityRecursive(aotake.getCompound("entity"), level, e -> e);
@@ -625,8 +619,8 @@ public class AotakeUtils {
         return result;
     }
 
-    public static CompoundNBT sanitizeCapturedEntityTag(CompoundNBT entityTag) {
-        if (entityTag == null) return new CompoundNBT();
+    public static CompoundTag sanitizeCapturedEntityTag(CompoundTag entityTag) {
+        if (entityTag == null) return new CompoundTag();
         entityTag.remove("Passengers");
         entityTag.remove("Vehicle");
         entityTag.remove("RootVehicle");
@@ -753,7 +747,7 @@ public class AotakeUtils {
 
     // region 垃圾箱相关
 
-    public static int dustbin(@NonNull ServerPlayerEntity player, int page) {
+    public static int dustbin(@NonNull ServerPlayer player, int page) {
         int result = 0;
         int vPage = CommonConfig.get().base().dustbin().dustbinPageLimit();
         int bPage = CommonConfig.get().base().dustbin().dustbinBlockPositions().size();
@@ -800,8 +794,8 @@ public class AotakeUtils {
         return result;
     }
 
-    private static int openVirtualDustbin(@NonNull ServerPlayerEntity player, int page) {
-        INamedContainerProvider trashContainer = WorldTrashData.getTrashContainer(player, page);
+    private static int openVirtualDustbin(@NonNull ServerPlayer player, int page) {
+        MenuProvider trashContainer = WorldTrashData.getTrashContainer(player, page);
         if (trashContainer == null) return 0;
         int result = player.openMenu(trashContainer).orElse(0);
 
@@ -809,7 +803,7 @@ public class AotakeUtils {
         return result;
     }
 
-    private static int openDustbinBlock(@NonNull ServerPlayerEntity player, int page) {
+    private static int openDustbinBlock(@NonNull ServerPlayer player, int page) {
         int result = 0;
         List<? extends String> positions = CommonConfig.get().base().dustbin().dustbinBlockPositions();
         if (CollectionUtils.isNotNullOrEmpty(positions) && positions.size() >= page) {
@@ -818,13 +812,13 @@ public class AotakeUtils {
             Direction direction = coordinate.direction();
             if (direction == null) direction = Direction.UP;
             // 命中点：方块中心或面上
-            Vector3d center = coordinate.toVector3d().add(0.5, 0.5, 0.5);
-            Vector3d hitVec = center.add(direction.getStepX() * 0.500001, direction.getStepY() * 0.500001, direction.getStepZ() * 0.500001);
+            Vec3 center = coordinate.toVector3d().add(0.5, 0.5, 0.5);
+            Vec3 hitVec = center.add(direction.getStepX() * 0.500001, direction.getStepY() * 0.500001, direction.getStepZ() * 0.500001);
 
-            BlockRayTraceResult ray = new BlockRayTraceResult(hitVec, direction, coordinate.toBlockPos(), false);
+            BlockHitResult ray = new BlockHitResult(hitVec, direction, coordinate.toBlockPos(), false);
 
             BlockState state = player.getLevel().getBlockState(coordinate.toBlockPos());
-            ActionResultType res = state.use(player.getLevel(), player, Hand.MAIN_HAND, ray);
+            InteractionResult res = state.use(player.getLevel(), player, InteractionHand.MAIN_HAND, ray);
             if (res.consumesAction()) {
                 result = 1;
             }
@@ -835,11 +829,11 @@ public class AotakeUtils {
     }
 
     public static void clearVirtualDustbin(int page) {
-        List<Inventory> inventories = WorldTrashData.get().getInventoryList();
+        List<SimpleContainer> inventories = WorldTrashData.get().getInventoryList();
         if (page == 0) {
-            inventories.forEach(Inventory::clearContent);
+            inventories.forEach(SimpleContainer::clearContent);
         } else {
-            Inventory inventory = CollectionUtils.getOrDefault(inventories, page - 1, null);
+            SimpleContainer inventory = CollectionUtils.getOrDefault(inventories, page - 1, null);
             if (inventory != null) inventory.clearContent();
         }
         WorldTrashData.get().setDirty();
@@ -850,34 +844,30 @@ public class AotakeUtils {
             for (String pos : CommonConfig.get().base().dustbin().dustbinBlockPositions()) {
                 WorldCoordinate coordinate = WorldCoordinate.fromString(pos);
                 if (coordinate != null) {
-                    IItemHandler handler = AotakeUtils.getBlockItemHandler(coordinate);
+                    Container handler = AotakeUtils.getBlockItemHandler(coordinate);
                     if (handler != null) {
-                        for (int i = 0; i < handler.getSlots(); i++) {
-                            handler.extractItem(i, handler.getSlotLimit(i), false);
-                        }
+                        handler.clearContent();
                     }
                 }
             }
         } else {
             WorldCoordinate coordinate = WorldCoordinate.fromString(CommonConfig.get().base().dustbin().dustbinBlockPositions().get(page - 1));
             if (coordinate != null) {
-                IItemHandler handler = AotakeUtils.getBlockItemHandler(coordinate);
+                Container handler = AotakeUtils.getBlockItemHandler(coordinate);
                 if (handler != null) {
-                    for (int i = 0; i < handler.getSlots(); i++) {
-                        handler.extractItem(i, handler.getSlotLimit(i), false);
-                    }
+                    handler.clearContent();
                 }
             }
         }
     }
 
-    public static void dropVirtualDustbin(ServerPlayerEntity player, int page) {
-        List<Inventory> inventoryList = new ArrayList<>();
-        List<Inventory> inventories = WorldTrashData.get().getInventoryList();
+    public static void dropVirtualDustbin(ServerPlayer player, int page) {
+        List<SimpleContainer> inventoryList = new ArrayList<>();
+        List<SimpleContainer> inventories = WorldTrashData.get().getInventoryList();
         if (page == 0) {
             if (CollectionUtils.isNotNullOrEmpty(inventories)) inventoryList.addAll(inventories);
         } else {
-            Inventory inventory = CollectionUtils.getOrDefault(inventories, page - 1, null);
+            SimpleContainer inventory = CollectionUtils.getOrDefault(inventories, page - 1, null);
             if (inventory != null) inventoryList.add(inventory);
         }
         inventoryList.forEach(inventory -> inventory.removeAllItems()
@@ -892,15 +882,15 @@ public class AotakeUtils {
         WorldTrashData.get().setDirty();
     }
 
-    public static void dropDustbinBlock(ServerPlayerEntity player, int page) {
+    public static void dropDustbinBlock(ServerPlayer player, int page) {
         if (page == 0) {
             for (String pos : CommonConfig.get().base().dustbin().dustbinBlockPositions()) {
                 WorldCoordinate coordinate = WorldCoordinate.fromString(pos);
                 if (coordinate != null) {
-                    IItemHandler handler = AotakeUtils.getBlockItemHandler(coordinate);
+                    Container handler = AotakeUtils.getBlockItemHandler(coordinate);
                     if (handler != null) {
-                        for (int i = 0; i < handler.getSlots(); i++) {
-                            ItemStack stack = handler.extractItem(i, handler.getSlotLimit(i), false);
+                        for (int i = 0; i < handler.getContainerSize(); i++) {
+                            ItemStack stack = handler.removeItemNoUpdate(i);
                             if (!stack.isEmpty()) {
                                 Entity entity = AotakeUtils.getEntityFromItem(player.getLevel(), stack);
                                 entity.moveTo(player.getX(), player.getY(), player.getZ(), player.yRot, player.xRot);
@@ -913,10 +903,10 @@ public class AotakeUtils {
         } else {
             WorldCoordinate coordinate = WorldCoordinate.fromString(CommonConfig.get().base().dustbin().dustbinBlockPositions().get(page - 1));
             if (coordinate != null) {
-                IItemHandler handler = AotakeUtils.getBlockItemHandler(coordinate);
+                Container handler = AotakeUtils.getBlockItemHandler(coordinate);
                 if (handler != null) {
-                    for (int i = 0; i < handler.getSlots(); i++) {
-                        ItemStack stack = handler.extractItem(i, handler.getSlotLimit(i), false);
+                    for (int i = 0; i < handler.getContainerSize(); i++) {
+                        ItemStack stack = handler.removeItemNoUpdate(i);
                         if (!stack.isEmpty()) {
                             Entity entity = AotakeUtils.getEntityFromItem(player.getLevel(), stack);
                             entity.moveTo(player.getX(), player.getY(), player.getZ(), player.yRot, player.xRot);
@@ -958,34 +948,34 @@ public class AotakeUtils {
 
     public static boolean hasAotakeTag(ItemStack item) {
         if (item == null) return false;
-        CompoundNBT tag = item.getTag();
+        CompoundTag tag = item.getTag();
         return tag != null && tag.contains(AotakeSweep.MODID);
     }
 
-    public static CompoundNBT getAotakeTag(@NonNull ItemStack item) {
-        CompoundNBT tag = item.getTag();
+    public static CompoundTag getAotakeTag(@NonNull ItemStack item) {
+        CompoundTag tag = item.getTag();
         if (tag == null) {
-            tag = new CompoundNBT();
+            tag = new CompoundTag();
             item.setTag(tag);
         }
         if (!tag.contains(AotakeSweep.MODID)) {
-            tag.put(AotakeSweep.MODID, new CompoundNBT());
+            tag.put(AotakeSweep.MODID, new CompoundTag());
         }
         return tag.getCompound(AotakeSweep.MODID);
     }
 
-    public static void setAotakeTag(@NonNull ItemStack item, CompoundNBT aotakeTag) {
-        CompoundNBT tag = item.getTag();
+    public static void setAotakeTag(@NonNull ItemStack item, CompoundTag aotakeTag) {
+        CompoundTag tag = item.getTag();
         if (tag == null) {
-            tag = new CompoundNBT();
+            tag = new CompoundTag();
             item.setTag(tag);
         }
         tag.put(AotakeSweep.MODID, aotakeTag);
     }
 
-    public static CompoundNBT clearAotakeTag(ItemStack item) {
+    public static CompoundTag clearAotakeTag(ItemStack item) {
         if (item == null) return null;
-        CompoundNBT tag = item.getTag();
+        CompoundTag tag = item.getTag();
         if (tag != null) {
             tag.remove(AotakeSweep.MODID);
         }
@@ -994,7 +984,7 @@ public class AotakeUtils {
 
     public static void clearItemTag(ItemStack item) {
         if (item == null) return;
-        CompoundNBT tag = item.getTag();
+        CompoundTag tag = item.getTag();
         if (tag != null && tag.isEmpty()) {
             item.setTag(null);
         }
@@ -1002,7 +992,7 @@ public class AotakeUtils {
 
     public static void clearItemTagEx(ItemStack item) {
         if (item == null) return;
-        CompoundNBT tag = clearAotakeTag(item);
+        CompoundTag tag = clearAotakeTag(item);
         if (tag != null && tag.isEmpty()) {
             item.setTag(null);
         }
@@ -1018,55 +1008,57 @@ public class AotakeUtils {
      */
     public static ItemStack addItemToBlock(ItemStack stack, WorldCoordinate coordinate) {
         if (stack == null || stack.isEmpty()) return ItemStack.EMPTY;
-        ServerWorld level = BaniraServerUtils.currentServer().getLevel(coordinate.dimension());
+        ServerLevel level = BaniraServerUtils.currentServer().getLevel(coordinate.dimension());
         if (level == null) return stack;
 
         BlockPos pos = coordinate.toBlockPos();
         if (!level.isLoaded(pos)) return stack;
 
-        TileEntity te = level.getBlockEntity(pos);
+        BlockEntity te = level.getBlockEntity(pos);
         if (te == null) return stack;
 
-        try {
-            LazyOptional<IItemHandler> capOpt = te.getCapability(CapabilityItemHandler.ITEM_HANDLER_CAPABILITY, coordinate.direction());
-            if (capOpt.isPresent()) {
-                if (capOpt.isPresent()) {
-                    IItemHandler handler = capOpt.orElse(new ItemStackHandler());
-                    ItemStack remaining = ItemHandlerHelper.insertItem(handler, stack.copy(), false);
-                    te.setChanged();
-                    return remaining;
-                }
-            }
-        } catch (Throwable ignored) {
-        }
-
-        return stack;
+        if (!(te instanceof Container)) return stack;
+        ItemStack remaining = insertIntoContainer((Container) te, stack.copy());
+        te.setChanged();
+        return remaining;
     }
 
     /**
      * 获取指定的方块容器
      */
-    public static IItemHandler getBlockItemHandler(WorldCoordinate coordinate) {
-        ServerWorld level = BaniraServerUtils.currentServer().getLevel(coordinate.dimension());
+    public static Container getBlockItemHandler(WorldCoordinate coordinate) {
+        ServerLevel level = BaniraServerUtils.currentServer().getLevel(coordinate.dimension());
         if (level == null) return null;
 
         BlockPos pos = coordinate.toBlockPos();
         if (!level.isLoaded(pos)) return null;
 
-        TileEntity te = level.getBlockEntity(pos);
+        BlockEntity te = level.getBlockEntity(pos);
         if (te == null) return null;
 
-        try {
-            LazyOptional<IItemHandler> capOpt = te.getCapability(CapabilityItemHandler.ITEM_HANDLER_CAPABILITY, coordinate.direction());
-            if (capOpt.isPresent()) {
-                if (capOpt.isPresent()) {
-                    return capOpt.orElse(new ItemStackHandler());
-                }
-            }
-        } catch (Throwable ignored) {
-        }
+        return te instanceof Container ? (Container) te : null;
+    }
 
-        return null;
+    /** Fabric 1.16 没有 Forge item capability，使用原版容器语义完成合并与插入。 */
+    private static ItemStack insertIntoContainer(Container container, ItemStack stack) {
+        for (int i = 0; i < container.getContainerSize() && !stack.isEmpty(); i++) {
+            ItemStack slot = container.getItem(i);
+            if (!slot.isEmpty() && ItemStack.isSame(slot, stack) && slot.getCount() < slot.getMaxStackSize()) {
+                int moved = Math.min(stack.getCount(), slot.getMaxStackSize() - slot.getCount());
+                slot.grow(moved);
+                stack.shrink(moved);
+            }
+        }
+        for (int i = 0; i < container.getContainerSize() && !stack.isEmpty(); i++) {
+            if (!container.getItem(i).isEmpty()) continue;
+            int moved = Math.min(stack.getCount(), stack.getMaxStackSize());
+            ItemStack inserted = stack.copy();
+            inserted.setCount(moved);
+            container.setItem(i, inserted);
+            stack.shrink(moved);
+        }
+        container.setChanged();
+        return stack;
     }
 
     public static <T> List<T> singleList(T value) {

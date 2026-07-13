@@ -1,8 +1,8 @@
 package xin.vanilla.aotake.data.player;
 
-import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.entity.player.ServerPlayerEntity;
-import net.minecraft.nbt.CompoundNBT;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.nbt.CompoundTag;
 import xin.vanilla.aotake.AotakeSweep;
 import xin.vanilla.banira.common.util.BaniraServerUtils;
 import xin.vanilla.banira.common.api.ICommandNotify;
@@ -22,12 +22,12 @@ public final class PlayerSweepData implements IPlayerData<PlayerSweepData>, ICom
     // region override
 
     private static final Map<UUID, PlayerSweepData> CACHE = Collections.synchronizedMap(new WeakHashMap<>());
-    private final PlayerEntity player;
+    private final Player player;
     private boolean dirty = false;
 
-    private PlayerSweepData(PlayerEntity player) {
+    private PlayerSweepData(Player player) {
         this.player = player;
-        if (this.player instanceof ServerPlayerEntity) {
+        if (this.player instanceof ServerPlayer) {
             this.deserializeNBT(BaniraServerUtils.playerDataManager().getOrCreate(player.getUUID(), AotakeSweep.MODID).copy(), false);
         }
     }
@@ -35,7 +35,7 @@ public final class PlayerSweepData implements IPlayerData<PlayerSweepData>, ICom
     /**
      * 获取或创建 PlayerSweepData
      */
-    public static PlayerSweepData getData(PlayerEntity player) {
+    public static PlayerSweepData getData(Player player) {
         return CACHE.computeIfAbsent(player.getUUID(), k -> new PlayerSweepData(player));
     }
 
@@ -77,8 +77,8 @@ public final class PlayerSweepData implements IPlayerData<PlayerSweepData>, ICom
     }
 
     @Override
-    public CompoundNBT serializeNBT() {
-        CompoundNBT tag = new CompoundNBT();
+    public CompoundTag serializeNBT() {
+        CompoundTag tag = new CompoundTag();
         tag.putBoolean("notified", this.isNotified());
         tag.putBoolean("showSweepResult", this.isShowSweepResult());
         tag.putBoolean("enableWarningVoice", this.isEnableWarningVoice());
@@ -86,7 +86,7 @@ public final class PlayerSweepData implements IPlayerData<PlayerSweepData>, ICom
     }
 
     @Override
-    public void deserializeNBT(CompoundNBT nbt, boolean dirty) {
+    public void deserializeNBT(CompoundTag nbt, boolean dirty) {
         this.notified = nbt.getBoolean("notified");
         // 默认显示
         this.showSweepResult = !nbt.contains("showSweepResult") || nbt.getBoolean("showSweepResult");
@@ -113,7 +113,7 @@ public final class PlayerSweepData implements IPlayerData<PlayerSweepData>, ICom
 
     @Override
     public void save() {
-        if (this.player instanceof ServerPlayerEntity) {
+        if (this.player instanceof ServerPlayer) {
             BaniraServerUtils.playerDataManager().put(player.getUUID(), AotakeSweep.MODID, serializeNBT());
         }
     }

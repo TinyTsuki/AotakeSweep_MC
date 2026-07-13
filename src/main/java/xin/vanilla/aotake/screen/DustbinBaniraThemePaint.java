@@ -1,6 +1,6 @@
 package xin.vanilla.aotake.screen;
 
-import com.mojang.blaze3d.matrix.MatrixStack;
+import com.mojang.blaze3d.vertex.PoseStack;
 import xin.vanilla.banira.client.data.BaniraColorConfig;
 import xin.vanilla.banira.client.util.AbstractGuiUtils;
 
@@ -24,7 +24,7 @@ public final class DustbinBaniraThemePaint {
         return (chestRows - 4) * SLOT_STEP;
     }
 
-    public static void renderFullThemeBackground(MatrixStack stack, int guiLeft, int guiTop, int imageW, int imageH,
+    public static void renderFullThemeBackground(PoseStack stack, int guiLeft, int guiTop, int imageW, int imageH,
                                                  BaniraColorConfig t, int chestRows) {
         int off = chestRowsPlayerYOffset(chestRows);
         int gl = guiLeft + SLOT_ORIGIN_X - SLOT_GRID_NUDGE;
@@ -48,12 +48,12 @@ public final class DustbinBaniraThemePaint {
         drawSlotCellGrid(stack, guiLeft, guiTop, chestRows, off, t);
     }
 
-    private static void drawRegionBoundary(MatrixStack stack, int x, int y, int w, int h, int accentRgbLike, BaniraColorConfig t) {
+    private static void drawRegionBoundary(PoseStack stack, int x, int y, int w, int h, int accentRgbLike, BaniraColorConfig t) {
         AbstractGuiUtils.fillOutLine(stack, x, y, w, h, 2, accentRgbLike);
         AbstractGuiUtils.fillOutLine(stack, x + 2, y + 2, w - 4, h - 4, 1, t.border());
     }
 
-    private static void drawSlotCellGrid(MatrixStack stack, int guiLeft, int guiTop, int chestRows, int playerOff, BaniraColorConfig t) {
+    private static void drawSlotCellGrid(PoseStack stack, int guiLeft, int guiTop, int chestRows, int playerOff, BaniraColorConfig t) {
         int slotLine = blendArgb(t.border(), 0.42f);
         int slotFill = blendArgb(t.bgQuaternary(), 0.55f);
         int gl = guiLeft + SLOT_ORIGIN_X - SLOT_GRID_NUDGE;
@@ -75,7 +75,7 @@ public final class DustbinBaniraThemePaint {
         }
     }
 
-    private static void drawOneSlotCell(MatrixStack stack, int x, int y, int innerFill, int line) {
+    private static void drawOneSlotCell(PoseStack stack, int x, int y, int innerFill, int line) {
         AbstractGuiUtils.fill(stack, x + 1, y + 1, SLOT_STEP - 2, SLOT_STEP - 2, innerFill);
         AbstractGuiUtils.fillOutLine(stack, x, y, SLOT_STEP, SLOT_STEP, 1, line);
     }

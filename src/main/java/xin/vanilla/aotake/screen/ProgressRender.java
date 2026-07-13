@@ -1,10 +1,9 @@
 package xin.vanilla.aotake.screen;
 
-import com.mojang.blaze3d.matrix.MatrixStack;
+import com.mojang.blaze3d.vertex.PoseStack;
 import net.minecraft.client.Minecraft;
-import net.minecraft.util.ResourceLocation;
-import net.minecraft.util.math.vector.Vector3f;
-import net.minecraftforge.client.event.RenderGameOverlayEvent;
+import net.minecraft.resources.ResourceLocation;
+import com.mojang.math.Vector3f;
 import xin.vanilla.aotake.AotakeSweep;
 import xin.vanilla.aotake.Identifier;
 import xin.vanilla.aotake.config.ClientConfig;
@@ -34,32 +33,20 @@ public final class ProgressRender {
     private ProgressRender() {
     }
 
-    public static void render(RenderGameOverlayEvent event, boolean showProgressHeld) {
+    public static void render(PoseStack ms, boolean showProgressHeld) {
         ClientConfig.ProgressBarView cp = ClientConfig.get().progressBar();
         ClientConfig.ProgressBarLeafView cpl = cp.leaf();
         ClientConfig.ProgressBarPoleView cpp = cp.pole();
         ClientConfig.ProgressBarTextView cpt = cp.text();
-        if (event instanceof RenderGameOverlayEvent.Post
-                && ((cpp.hideExperienceBarPole() && cp.progressBarDisplayNormal().contains(EnumProgressBarType.POLE))
-                || (cpt.hideExperienceBarText() && cp.progressBarDisplayNormal().contains(EnumProgressBarType.TEXT))
-                || (cpl.hideExperienceBarLeaf() && cp.progressBarDisplayNormal().contains(EnumProgressBarType.LEAF)))
-        ) {
-            return;
-        }
-
         Minecraft mc = Minecraft.getInstance();
         if (mc.options.hideGui) return;
         if (mc.player == null) return;
-        MatrixStack ms = event.getMatrixStack();
         boolean hold = showProgressHeld && mc.screen == null;
         List<EnumProgressBarType> displayList = hold ? cp.progressBarDisplayHold() : cp.progressBarDisplayNormal();
 
         double scale = cpt.progressBarTextSize() / 16.0;
 
         if (displayList.contains(EnumProgressBarType.POLE)) {
-            if (cpp.hideExperienceBarPole()) {
-                event.setCanceled(true);
-            }
             int width = cpp.progressBarPoleWidth();
             int height = cpp.progressBarPoleHeight();
             int drawX = getPoleX();
@@ -78,16 +65,10 @@ public final class ProgressRender {
         }
 
         if (displayList.contains(EnumProgressBarType.TEXT)) {
-            if (cpt.hideExperienceBarText()) {
-                event.setCanceled(true);
-            }
             drawProgressCountdownText(mc, ms, cpt, scale);
         }
 
         if (displayList.contains(EnumProgressBarType.LEAF)) {
-            if (cpl.hideExperienceBarLeaf()) {
-                event.setCanceled(true);
-            }
             int poleW = cpp.progressBarPoleWidth();
 
             int width = cpl.progressBarLeafWidth();
@@ -111,7 +92,7 @@ public final class ProgressRender {
         }
     }
 
-    private static void blitProgressAtlas(MatrixStack ms, ResourceLocation texture, int x, int y, int destW, int destH) {
+    private static void blitProgressAtlas(PoseStack ms, ResourceLocation texture, int x, int y, int destW, int destH) {
         KeyValue<Integer, Integer> dim = TextureUtils.getTextureSize(texture);
         int texW = dim.key();
         int texH = dim.val();
@@ -248,7 +229,7 @@ public final class ProgressRender {
     /**
      * 倒计时文字
      */
-    private static void drawProgressCountdownText(Minecraft mc, MatrixStack stack, ClientConfig.ProgressBarTextView cpt, double scale) {
+    private static void drawProgressCountdownText(Minecraft mc, PoseStack stack, ClientConfig.ProgressBarTextView cpt, double scale) {
         String line = getText();
         if (line.isEmpty()) {
             return;

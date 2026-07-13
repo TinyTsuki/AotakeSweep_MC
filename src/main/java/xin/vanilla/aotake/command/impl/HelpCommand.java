@@ -4,11 +4,11 @@ import com.mojang.brigadier.Command;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.suggestion.SuggestionProvider;
-import net.minecraft.command.CommandSource;
-import net.minecraft.command.Commands;
-import net.minecraft.entity.player.ServerPlayerEntity;
-import net.minecraft.util.text.event.ClickEvent;
-import net.minecraft.util.text.event.HoverEvent;
+import net.minecraft.commands.CommandSourceStack;
+import net.minecraft.commands.Commands;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.network.chat.ClickEvent;
+import net.minecraft.network.chat.HoverEvent;
 import xin.vanilla.aotake.AotakeComponent;
 import xin.vanilla.aotake.command.AotakeCommand;
 import xin.vanilla.aotake.config.CommonConfig;
@@ -25,9 +25,9 @@ import java.util.Comparator;
 import java.util.stream.Collectors;
 
 public class HelpCommand {
-    public static LiteralArgumentBuilder<CommandSource> help() {
-        Command<CommandSource> helpCommand = context -> {
-            ServerPlayerEntity player = context.getSource().getPlayerOrException();
+    public static LiteralArgumentBuilder<CommandSourceStack> help() {
+        Command<CommandSourceStack> helpCommand = context -> {
+            ServerPlayer player = context.getSource().getPlayerOrException();
             String command;
             int page;
             try {
@@ -109,7 +109,7 @@ public class HelpCommand {
             MessageUtils.sendMessage(player, helpInfo);
             return 1;
         };
-        SuggestionProvider<CommandSource> helpSuggestions = (context, builder) -> {
+        SuggestionProvider<CommandSourceStack> helpSuggestions = (context, builder) -> {
             String input = CommandUtils.getStringEmpty(context, "command");
             boolean isInputEmpty = StringUtils.isNullOrEmpty(input);
             int totalPages = (int) Math.ceil((double) AotakeCommand.HELP_MESSAGE.size() / CommonConfig.get().base().common().helpInfoNumPerPage());

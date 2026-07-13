@@ -2,21 +2,20 @@ package xin.vanilla.aotake.data.world;
 
 import lombok.Getter;
 import lombok.NonNull;
-import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.entity.player.PlayerInventory;
-import net.minecraft.entity.player.ServerPlayerEntity;
-import net.minecraft.inventory.Inventory;
-import net.minecraft.inventory.container.ChestContainer;
-import net.minecraft.inventory.container.Container;
-import net.minecraft.inventory.container.INamedContainerProvider;
-import net.minecraft.item.ItemStack;
-import net.minecraft.nbt.CompoundNBT;
-import net.minecraft.nbt.INBT;
-import net.minecraft.nbt.ListNBT;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.entity.player.Inventory;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.SimpleContainer;
+import net.minecraft.world.inventory.ChestMenu;
+import net.minecraft.world.inventory.AbstractContainerMenu;
+import net.minecraft.world.MenuProvider;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.Tag;
+import net.minecraft.nbt.ListTag;
 import net.minecraft.server.MinecraftServer;
-import net.minecraft.util.text.ITextComponent;
-import net.minecraft.world.server.ServerWorld;
-import net.minecraftforge.common.util.WorldCapabilityData;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.level.saveddata.SavedData;
 import xin.vanilla.aotake.AotakeComponent;
 import xin.vanilla.aotake.AotakeLang;
 import xin.vanilla.aotake.config.CommonConfig;
@@ -40,10 +39,10 @@ import java.util.concurrent.ConcurrentLinkedQueue;
  */
 @Getter
 @SuppressWarnings("resource")
-public class WorldTrashData extends WorldCapabilityData {
+public class WorldTrashData extends SavedData {
     private static final String DATA_NAME = "world_trash_data";
 
-    private List<Inventory> inventoryList = new ArrayList<>();
+    private List<SimpleContainer> inventoryList = new ArrayList<>();
 
     /**
      * 掉落物列表
@@ -62,7 +61,8 @@ public class WorldTrashData extends WorldCapabilityData {
         super(DATA_NAME);
     }
 
-    public void load(CompoundNBT nbt) {
+    @Override
+    public void load(CompoundTag nbt) {
         // 未开启持久化直接返回
         try {
             if (!CommonConfig.get().base().dustbin().dustbinPersistent()) return;
@@ -70,10 +70,10 @@ public class WorldTrashData extends WorldCapabilityData {
         }
 
         this.dropList = new ConcurrentShuffleList<>();
-        ListNBT dropListNBT = nbt.getList("dropList", 10);
+        ListTag dropListNBT = nbt.getList("dropList", 10);
         ConcurrentShuffleList<KeyValue<WorldCoordinate, ItemStack>> drops = new ConcurrentShuffleList<>();
         for (int i = 0; i < dropListNBT.size(); i++) {
-            CompoundNBT drop = dropListNBT.getCompound(i);
+            CompoundTag drop = dropListNBT.getCompound(i);
             ItemStack item = ItemStack.of(drop.getCompound("item"));
             drops.add(new KeyValue<>(
                     WorldCoordinate.fromTag(drop.getCompound("coordinate"))
@@ -87,7 +87,7 @@ public class WorldTrashData extends WorldCapabilityData {
         Queue<DropStatistics> dropCounts = DropStatisticsStorage.loadByDate(server, todayStr);
         // 若 NBT 中有 dropCount 且当日 JSON 为空，则迁移至 JSON
         if (dropCounts.isEmpty() && nbt.contains("dropCount")) {
-            ListNBT dropCountNBT = nbt.getList("dropCount", 10);
+            ListTag dropCountNBT = nbt.getList("dropCount", 10);
             for (int i = 0; i < dropCountNBT.size(); i++) {
                 dropCounts.add(DropStatistics.deserializeNBT(dropCountNBT.getCompound(i)));
             }
@@ -100,10 +100,10 @@ public class WorldTrashData extends WorldCapabilityData {
         this.dropStatsDate = todayStr;
 
         this.inventoryList = new ArrayList<>();
-        ListNBT inventoryListNBT = nbt.getList("inventoryList", 9);
-        for (INBT inbt : inventoryListNBT) {
-            Inventory inventory = new Inventory(6 * 9);
-            inventory.fromTag((ListNBT) inbt);
+        ListTag inventoryListNBT = nbt.getList("inventoryList", 9);
+        for (Tag inbt : inventoryListNBT) {
+            SimpleContainer inventory = new SimpleContainer(6 * 9);
+            inventory.fromTag((ListTag) inbt);
             this.inventoryList.add(inventory);
         }
 
@@ -111,18 +111,18 @@ public class WorldTrashData extends WorldCapabilityData {
 
     @Override
     @NonNull
-    public CompoundNBT save(CompoundNBT nbt) {
+    public CompoundTag save(CompoundTag nbt) {
         // 未开启持久化直接返回
         try {
             if (!CommonConfig.get().base().dustbin().dustbinPersistent()) return nbt;
         } catch (Throwable ignored) {
         }
 
-        ListNBT dropsNBT = new ListNBT();
+        ListTag dropsNBT = new ListTag();
         for (KeyValue<WorldCoordinate, ItemStack> drop : this.getDropList()) {
             if (drop == null || drop.value() == null) continue;
-            CompoundNBT dropTag = new CompoundNBT();
-            dropTag.put("item", drop.value().serializeNBT());
+            CompoundTag dropTag = new CompoundTag();
+            dropTag.put("item", drop.value().save(new CompoundTag()));
             dropTag.put("coordinate", drop.key().toTag());
             dropsNBT.add(dropTag);
         }
@@ -135,8 +135,8 @@ public class WorldTrashData extends WorldCapabilityData {
             DropStatisticsStorage.saveByDate(server, todayStr, this.dropCount);
         }
 
-        ListNBT inventoryNBT = new ListNBT();
-        for (Inventory inventory : this.getInventoryList()) {
+        ListTag inventoryNBT = new ListTag();
+        for (SimpleContainer inventory : this.getInventoryList()) {
             inventoryNBT.add(inventory.createTag());
         }
         nbt.put("inventoryList", inventoryNBT);
@@ -189,21 +189,21 @@ public class WorldTrashData extends WorldCapabilityData {
         return get(BaniraServerUtils.currentServer().getAllLevels().iterator().next());
     }
 
-    public static WorldTrashData get(ServerPlayerEntity player) {
+    public static WorldTrashData get(ServerPlayer player) {
         return get(player.getLevel());
     }
 
-    public static WorldTrashData get(ServerWorld world) {
+    public static WorldTrashData get(ServerLevel world) {
         return world.getDataStorage().computeIfAbsent(WorldTrashData::new, DATA_NAME);
     }
 
-    public static INamedContainerProvider getTrashContainer(ServerPlayerEntity player, int page) {
+    public static MenuProvider getTrashContainer(ServerPlayer player, int page) {
         int limit = CommonConfig.get().base().dustbin().dustbinPageLimit();
-        List<Inventory> inventories = get().getInventoryList();
+        List<SimpleContainer> inventories = get().getInventoryList();
         int size = inventories.size();
         if (inventories.isEmpty() || size < limit) {
             for (int i = 0; i < limit - size; i++) {
-                inventories.add(new Inventory(6 * 9));
+                inventories.add(new SimpleContainer(6 * 9));
             }
         } else if (size > limit) {
             for (int i = size - limit; i > 0; i--) {
@@ -216,15 +216,15 @@ public class WorldTrashData extends WorldCapabilityData {
         }
 
         // 将当前页垃圾箱填充满
-        Inventory inventory = inventories.get(page - 1);
+        SimpleContainer inventory = inventories.get(page - 1);
         ConcurrentShuffleList<KeyValue<WorldCoordinate, ItemStack>> drops = get().getDropList();
 
         fillInventory(inventory, drops);
 
-        return new INamedContainerProvider() {
+        return new MenuProvider() {
             @NonNull
             @Override
-            public ITextComponent getDisplayName() {
+            public net.minecraft.network.chat.Component getDisplayName() {
                 Component title = AotakeComponent.get().transAuto("title")
                         .color(0x5DA530);
                 Component vComponent = AotakeComponent.get().literal(String.format("(%s/%s)", page, limit))
@@ -251,13 +251,13 @@ public class WorldTrashData extends WorldCapabilityData {
             }
 
             @Override
-            public Container createMenu(int id, @NonNull PlayerInventory playerInventory, @NonNull PlayerEntity p) {
-                return ChestContainer.sixRows(id, playerInventory, inventory);
+            public AbstractContainerMenu createMenu(int id, @NonNull Inventory playerInventory, @NonNull Player p) {
+                return ChestMenu.sixRows(id, playerInventory, inventory);
             }
         };
     }
 
-    private static void fillInventory(Inventory inventory, ConcurrentShuffleList<KeyValue<WorldCoordinate, ItemStack>> drops) {
+    private static void fillInventory(SimpleContainer inventory, ConcurrentShuffleList<KeyValue<WorldCoordinate, ItemStack>> drops) {
         List<KeyValue<WorldCoordinate, ItemStack>> leftovers = new ArrayList<>();
 
         for (KeyValue<WorldCoordinate, ItemStack> drop : drops.snapshot()) {
@@ -277,7 +277,7 @@ public class WorldTrashData extends WorldCapabilityData {
         drops.addAll(leftovers);
     }
 
-    private static ItemStack tryFillInventory(Inventory inventory, ItemStack stack) {
+    private static ItemStack tryFillInventory(SimpleContainer inventory, ItemStack stack) {
         // 合并到已有的相同物品槽
         for (int i = 0; i < inventory.getContainerSize(); i++) {
             ItemStack slot = inventory.getItem(i);

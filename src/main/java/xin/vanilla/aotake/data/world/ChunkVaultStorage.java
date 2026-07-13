@@ -1,8 +1,8 @@
 package xin.vanilla.aotake.data.world;
 
-import net.minecraft.item.ItemStack;
-import net.minecraft.nbt.CompoundNBT;
-import net.minecraft.nbt.ListNBT;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.ListTag;
 import net.minecraft.server.MinecraftServer;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -114,7 +114,7 @@ public final class ChunkVaultStorage {
         return bucketStart.format(HOUR_BUCKET);
     }
 
-    public static ChunkKey chunkKeyFromEntity(net.minecraft.entity.Entity entity) {
+    public static ChunkKey chunkKeyFromEntity(net.minecraft.world.entity.Entity entity) {
         return ChunkKey.of(entity);
     }
 
@@ -123,7 +123,7 @@ public final class ChunkVaultStorage {
      *
      * @param batchContext 非空且含 {@link SweepResult#getChunkVaultRunId()} 时，按「本轮清理」分文件；否则沿用仅时间桶+区块的旧 vault 名（兼容）。
      */
-    public static void queueRecycledItem(net.minecraft.entity.Entity sourceEntity, ItemStack stack, @Nullable SweepResult batchContext) {
+    public static void queueRecycledItem(net.minecraft.world.entity.Entity sourceEntity, ItemStack stack, @Nullable SweepResult batchContext) {
         if (stack == null || stack.isEmpty()) return;
         if (!CommonConfig.get().base().chunk().chunkVaultEnabled()) return;
         if (BaniraServerUtils.currentServer() == null) return;
@@ -151,9 +151,9 @@ public final class ChunkVaultStorage {
         synchronized (lockFor(vaultId)) {
             try {
                 Files.createDirectories(dir);
-                CompoundNBT root = Files.exists(file)
+                CompoundTag root = Files.exists(file)
                         ? NBTUtils.readCompressed(file.toFile())
-                        : new CompoundNBT();
+                        : new CompoundTag();
                 root.putString("VaultId", vaultId);
                 root.putLong("UpdatedAt", System.currentTimeMillis());
                 if (!root.contains("CreatedAt")) {
@@ -162,10 +162,10 @@ public final class ChunkVaultStorage {
                 if (!root.contains("Kind")) {
                     root.putString("Kind", "chunk_overload");
                 }
-                ListNBT list = root.getList("Items", 10);
+                ListTag list = root.getList("Items", 10);
                 for (ItemStack s : stacks) {
                     if (s.isEmpty()) continue;
-                    list.add(s.save(new CompoundNBT()));
+                    list.add(s.save(new CompoundTag()));
                 }
                 root.put("Items", list);
                 NBTUtils.writeCompressed(root, file.toFile());
@@ -186,7 +186,7 @@ public final class ChunkVaultStorage {
         }
         synchronized (lockFor(vaultId)) {
             try {
-                CompoundNBT root = NBTUtils.readCompressed(file.toFile());
+                CompoundTag root = NBTUtils.readCompressed(file.toFile());
                 return readItemsFromRoot(root);
             } catch (Exception e) {
                 LOGGER.warn("Failed to read chunk vault {}: {}", vaultId, e.getMessage());
@@ -195,8 +195,8 @@ public final class ChunkVaultStorage {
         }
     }
 
-    public static List<ItemStack> readItemsFromRoot(CompoundNBT root) {
-        ListNBT list = root.getList("Items", 10);
+    public static List<ItemStack> readItemsFromRoot(CompoundTag root) {
+        ListTag list = root.getList("Items", 10);
         List<ItemStack> out = new ArrayList<>(list.size());
         for (int i = 0; i < list.size(); i++) {
             ItemStack st = ItemStack.of(list.getCompound(i));
@@ -217,18 +217,18 @@ public final class ChunkVaultStorage {
         synchronized (lockFor(vaultId)) {
             try {
                 Files.createDirectories(dir);
-                CompoundNBT root = Files.exists(file)
+                CompoundTag root = Files.exists(file)
                         ? NBTUtils.readCompressed(file.toFile())
-                        : new CompoundNBT();
+                        : new CompoundTag();
                 root.putString("VaultId", vaultId);
                 root.putLong("UpdatedAt", System.currentTimeMillis());
                 if (!root.contains("CreatedAt")) {
                     root.putLong("CreatedAt", System.currentTimeMillis());
                 }
-                ListNBT list = new ListNBT();
+                ListTag list = new ListTag();
                 for (ItemStack s : stacks) {
                     if (s.isEmpty()) continue;
-                    list.add(s.save(new CompoundNBT()));
+                    list.add(s.save(new CompoundTag()));
                 }
                 root.put("Items", list);
                 if (list.isEmpty()) {

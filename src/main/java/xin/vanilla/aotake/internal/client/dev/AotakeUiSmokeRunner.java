@@ -1,13 +1,13 @@
 package xin.vanilla.aotake.internal.client.dev;
 
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.screen.Screen;
-import net.minecraft.client.gui.screen.inventory.ContainerScreen;
-import net.minecraft.client.renderer.texture.NativeImage;
-import net.minecraft.client.settings.KeyBinding;
-import net.minecraft.client.util.InputMappings;
-import net.minecraft.entity.Entity;
-import net.minecraft.util.ScreenShotHelper;
+import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
+import com.mojang.blaze3d.platform.NativeImage;
+import net.minecraft.client.KeyMapping;
+import com.mojang.blaze3d.platform.InputConstants;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.client.Screenshot;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import xin.vanilla.aotake.AotakeSweep;
@@ -294,7 +294,7 @@ public final class AotakeUiSmokeRunner {
 
     private void runDustbinTick(@Nonnull Minecraft client) {
         phaseTick++;
-        if (client.screen instanceof ContainerScreen) {
+        if (client.screen instanceof AbstractContainerScreen) {
             readyTick++;
             if (readyTick >= 20) {
                 capture(client, "06-dustbin");
@@ -311,12 +311,12 @@ public final class AotakeUiSmokeRunner {
 
     private static void setProgressKey(boolean down) {
         int keyCode = ClientModEventHandler.PROGRESS_KEY.currentKey();
-        KeyBinding.set(InputMappings.Type.KEYSYM.getOrCreate(keyCode), down);
+        KeyMapping.set(InputConstants.Type.KEYSYM.getOrCreate(keyCode), down);
     }
 
     private void capture(@Nonnull Minecraft client, @Nonnull String name) {
         Path file = outputDir.resolve(name + ".png");
-        try (NativeImage image = ScreenShotHelper.takeScreenshot(
+        try (NativeImage image = Screenshot.takeScreenshot(
                 client.getWindow().getWidth(), client.getWindow().getHeight(), client.getMainRenderTarget())) {
             image.writeToFile(file);
             appendStatus("PASS " + name);

@@ -1,8 +1,8 @@
 package xin.vanilla.aotake.mixin;
 
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.screen.Screen;
-import net.minecraft.client.gui.screen.inventory.ChestScreen;
+import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.gui.screens.inventory.ContainerScreen;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
@@ -16,14 +16,14 @@ public abstract class MinecraftMixin {
             method = "setScreen",
             at = @At(
                     value = "INVOKE",
-                    target = "Lnet/minecraft/client/MouseHelper;releaseMouse()V",
+                    target = "Lnet/minecraft/client/MouseHandler;releaseMouse()V",
                     shift = At.Shift.AFTER
             )
     )
     private void aotake$restoreDustbinCursorAfterReleaseMouseInSetScreen(Screen guiScreen, CallbackInfo ci) {
         Minecraft mc = (Minecraft) (Object) this;
         Screen s = mc.screen;
-        if (!(s instanceof ChestScreen)) {
+        if (!(s instanceof ContainerScreen)) {
             return;
         }
         if (!DustbinRender.isDustbinTitle(s.getTitle().getString())

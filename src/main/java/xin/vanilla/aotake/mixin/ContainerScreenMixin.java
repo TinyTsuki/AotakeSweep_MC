@@ -1,9 +1,9 @@
 package xin.vanilla.aotake.mixin;
 
-import net.minecraft.client.gui.screen.inventory.ChestScreen;
-import net.minecraft.client.gui.screen.inventory.ContainerScreen;
-import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.util.ResourceLocation;
+import net.minecraft.client.gui.screens.inventory.ContainerScreen;
+import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.resources.ResourceLocation;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
@@ -18,17 +18,17 @@ import xin.vanilla.aotake.screen.DustbinRender;
 import xin.vanilla.banira.client.util.TextureUtils;
 import xin.vanilla.banira.common.data.KeyValue;
 
-@Mixin(ContainerScreen.class)
+@Mixin(AbstractContainerScreen.class)
 public abstract class ContainerScreenMixin {
 
     @Inject(method = "init", at = @At("TAIL"))
     private void aotake$adjustDustbinLayout(CallbackInfo ci) {
-        ContainerScreen screen = (ContainerScreen) (Object) this;
-        if (!(screen instanceof ChestScreen)) {
+        AbstractContainerScreen screen = (AbstractContainerScreen) (Object) this;
+        if (!(screen instanceof ContainerScreen)) {
             DustbinGuiLayoutCache.invalidate();
             return;
         }
-        if (!aotake$isDustbinScreen((ChestScreen) screen)) {
+        if (!aotake$isDustbinScreen((ContainerScreen) screen)) {
             DustbinGuiLayoutCache.invalidate();
             return;
         }
@@ -60,8 +60,8 @@ public abstract class ContainerScreenMixin {
     }
 
     @Unique
-    private boolean aotake$isDustbinScreen(ChestScreen screen) {
-        PlayerEntity player = net.minecraft.client.Minecraft.getInstance().player;
+    private boolean aotake$isDustbinScreen(ContainerScreen screen) {
+        Player player = net.minecraft.client.Minecraft.getInstance().player;
         if (player == null) return false;
         String t = screen.getTitle().getString();
         return DustbinRender.isDustbinTitle(t) || DustbinRender.isChunkVaultTitle(t);

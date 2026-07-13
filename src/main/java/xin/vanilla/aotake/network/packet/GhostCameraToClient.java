@@ -1,8 +1,6 @@
 package xin.vanilla.aotake.network.packet;
 
-import net.minecraft.entity.Entity;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.api.distmarker.OnlyIn;
+import net.minecraft.world.entity.Entity;
 import xin.vanilla.aotake.network.NetworkPacket;
 import xin.vanilla.banira.common.network.BaniraNetworkContext;
 import xin.vanilla.banira.common.network.BaniraPacketBuffer;
@@ -33,7 +31,6 @@ public class GhostCameraToClient implements NetworkPacket {
         ctx.markHandled();
     }
 
-    @OnlyIn(Dist.CLIENT)
     private static final class ClientSide {
         private static void handle(GhostCameraToClient packet) {
             net.minecraft.client.Minecraft client = net.minecraft.client.Minecraft.getInstance();

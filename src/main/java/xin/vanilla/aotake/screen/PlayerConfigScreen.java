@@ -1,10 +1,10 @@
 package xin.vanilla.aotake.screen;
 
-import com.mojang.blaze3d.matrix.MatrixStack;
+import com.mojang.blaze3d.vertex.PoseStack;
 import lombok.Data;
 import lombok.experimental.Accessors;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.screen.Screen;
+import net.minecraft.client.gui.screens.Screen;
 import xin.vanilla.aotake.AotakeComponent;
 import xin.vanilla.aotake.AotakeSweep;
 import xin.vanilla.aotake.network.packet.PlayerConfigSyncToServer;
@@ -330,7 +330,7 @@ public class PlayerConfigScreen extends BaniraScreen {
     }
 
     @Override
-    protected void renderWidgets(MatrixStack stack, float partialTicks) {
+    protected void renderWidgets(PoseStack stack, float partialTicks) {
         BaniraColorConfig theme = getEffectiveTheme();
         int cardBg = ColorUtils.applyAlphaToArgb(theme.bgSurface(), CARD_ALPHA);
         int btnAreaH = BUTTON_HEIGHT + CARD_INNER;
@@ -390,7 +390,7 @@ public class PlayerConfigScreen extends BaniraScreen {
     }
 
     @Override
-    protected void onRender(MatrixStack stack, float partialTicks) {
+    protected void onRender(PoseStack stack, float partialTicks) {
         renderWidgets(stack, partialTicks);
     }
 
@@ -453,7 +453,7 @@ public class PlayerConfigScreen extends BaniraScreen {
         }
 
         @Override
-        public void render(MatrixStack stack, float partialTicks) {
+        public void render(PoseStack stack, float partialTicks) {
             if (!visible()) {
                 return;
             }

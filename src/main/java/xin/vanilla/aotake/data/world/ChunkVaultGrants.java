@@ -3,7 +3,7 @@ package xin.vanilla.aotake.data.world;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
-import net.minecraft.entity.player.ServerPlayerEntity;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.MinecraftServer;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -71,21 +71,21 @@ public final class ChunkVaultGrants {
         return p;
     }
 
-    public static boolean isGranted(ServerPlayerEntity player, String vaultId) {
+    public static boolean isGranted(ServerPlayer player, String vaultId) {
         bootstrapWhenServerReady(player.getServer());
         Set<String> set = CACHE.get(vaultId);
         if (set == null || set.isEmpty()) return false;
         return set.contains(PlayerUtils.getPlayerUUIDString(player));
     }
 
-    public static void grant(MinecraftServer server, String vaultId, ServerPlayerEntity target) {
+    public static void grant(MinecraftServer server, String vaultId, ServerPlayer target) {
         bootstrapWhenServerReady(server);
         String uuid = PlayerUtils.getPlayerUUIDString(target);
         CACHE.computeIfAbsent(vaultId, k -> ConcurrentHashMap.newKeySet()).add(uuid);
         save(server);
     }
 
-    public static void revoke(MinecraftServer server, String vaultId, ServerPlayerEntity target) {
+    public static void revoke(MinecraftServer server, String vaultId, ServerPlayer target) {
         bootstrapWhenServerReady(server);
         String uuid = PlayerUtils.getPlayerUUIDString(target);
         Set<String> set = CACHE.get(vaultId);

@@ -1,6 +1,6 @@
 package xin.vanilla.aotake.network.packet;
 
-import net.minecraft.entity.player.ServerPlayerEntity;
+import net.minecraft.server.level.ServerPlayer;
 import xin.vanilla.aotake.data.world.ChunkVaultSession;
 import xin.vanilla.aotake.network.NetworkPacket;
 import xin.vanilla.banira.common.network.BaniraNetworkContext;
@@ -23,7 +23,7 @@ public class ChunkVaultNavigateToServer implements NetworkPacket {
 
     public static void handle(ChunkVaultNavigateToServer packet, BaniraNetworkContext ctx) {
         ctx.enqueueWork(() -> {
-            ServerPlayerEntity player = ctx.senderAs(ServerPlayerEntity.class);
+            ServerPlayer player = ctx.senderAs(ServerPlayer.class);
             if (player == null) return;
             ChunkVaultSession.navigateOrReload(player, packet.offset);
         });

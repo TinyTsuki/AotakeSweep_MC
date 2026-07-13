@@ -34,7 +34,7 @@ public final class ClientModEventHandler {
     }
 
     /**
-     * 由主模组构造函数经 {@link net.minecraftforge.fml.DistExecutor} 在客户端触发类初始化
+     * 由加载器客户端入口触发按键与通知类型注册。
      */
     public static void bootstrap() {
         for (String id : AotakeNotificationTypes.ALL_TYPE_IDS) {

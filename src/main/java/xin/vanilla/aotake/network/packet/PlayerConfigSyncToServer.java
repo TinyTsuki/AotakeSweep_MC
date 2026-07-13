@@ -1,6 +1,6 @@
 package xin.vanilla.aotake.network.packet;
 
-import net.minecraft.entity.player.ServerPlayerEntity;
+import net.minecraft.server.level.ServerPlayer;
 import xin.vanilla.aotake.AotakeSweep;
 import xin.vanilla.aotake.data.player.PlayerSweepData;
 import xin.vanilla.aotake.network.NetworkPacket;
@@ -31,7 +31,7 @@ public class PlayerConfigSyncToServer implements NetworkPacket {
 
     public static void handle(PlayerConfigSyncToServer packet, BaniraNetworkContext ctx) {
         ctx.enqueueWork(() -> {
-            ServerPlayerEntity player = ctx.senderAs(ServerPlayerEntity.class);
+            ServerPlayer player = ctx.senderAs(ServerPlayer.class);
             if (player == null) return;
             PlayerSweepData data = PlayerSweepData.getData(player);
             data.setShowSweepResult(packet.showSweepResult);

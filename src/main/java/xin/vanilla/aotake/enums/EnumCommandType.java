@@ -2,12 +2,12 @@ package xin.vanilla.aotake.enums;
 
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import lombok.Getter;
-import net.minecraft.command.CommandSource;
+import net.minecraft.commands.CommandSourceStack;
 import xin.vanilla.aotake.AotakeComponent;
 import xin.vanilla.aotake.AotakeSweep;
 import xin.vanilla.aotake.command.impl.*;
 import xin.vanilla.banira.command.BaniraCommand;
-import xin.vanilla.banira.common.api.IVirtualPermissionType;
+import xin.vanilla.banira.api.permission.BaniraVirtualPermission;
 import xin.vanilla.banira.common.data.Component;
 import xin.vanilla.banira.common.enums.IEnumDescribable;
 import xin.vanilla.banira.common.util.EnumDescriptionHelper;
@@ -16,7 +16,7 @@ import javax.annotation.Nullable;
 import java.util.function.Supplier;
 
 @Getter
-public enum EnumCommandType implements IVirtualPermissionType, IEnumDescribable {
+public enum EnumCommandType implements BaniraVirtualPermission, IEnumDescribable {
     HELP(HelpCommand::help, false, false),
     LANGUAGE(() -> commandNode(BaniraCommand.LANGUAGE), false, false),
     LANGUAGE_CONCISE(),
@@ -59,7 +59,7 @@ public enum EnumCommandType implements IVirtualPermissionType, IEnumDescribable 
      */
     private final boolean op;
 
-    private final Supplier<LiteralArgumentBuilder<CommandSource>> instance;
+    private final Supplier<LiteralArgumentBuilder<CommandSourceStack>> instance;
 
     EnumCommandType() {
         this.instance = null;
@@ -73,13 +73,13 @@ public enum EnumCommandType implements IVirtualPermissionType, IEnumDescribable 
         this.op = !this.concise;
     }
 
-    EnumCommandType(@Nullable Supplier<LiteralArgumentBuilder<CommandSource>> instance) {
+    EnumCommandType(@Nullable Supplier<LiteralArgumentBuilder<CommandSourceStack>> instance) {
         this.instance = instance;
         this.ignore = false;
         this.op = !this.concise;
     }
 
-    EnumCommandType(@Nullable Supplier<LiteralArgumentBuilder<CommandSource>> instance, boolean ig, boolean op) {
+    EnumCommandType(@Nullable Supplier<LiteralArgumentBuilder<CommandSourceStack>> instance, boolean ig, boolean op) {
         this.instance = instance;
         this.ignore = ig;
         this.op = !this.concise && op;
@@ -89,7 +89,7 @@ public enum EnumCommandType implements IVirtualPermissionType, IEnumDescribable 
         return this.ordinal();
     }
 
-    // region IVirtualPermissionType
+    // region BaniraVirtualPermission
     @Override
     public String modId() {
         return AotakeSweep.MODID;
@@ -124,7 +124,7 @@ public enum EnumCommandType implements IVirtualPermissionType, IEnumDescribable 
     }
 
     @SuppressWarnings("unchecked")
-    private static LiteralArgumentBuilder<CommandSource> commandNode(Object node) {
-        return (LiteralArgumentBuilder<CommandSource>) node;
+    private static LiteralArgumentBuilder<CommandSourceStack> commandNode(Object node) {
+        return (LiteralArgumentBuilder<CommandSourceStack>) node;
     }
 }

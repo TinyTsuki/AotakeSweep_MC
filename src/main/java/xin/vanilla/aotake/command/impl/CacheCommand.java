@@ -3,12 +3,12 @@ package xin.vanilla.aotake.command.impl;
 import com.mojang.brigadier.Command;
 import com.mojang.brigadier.arguments.BoolArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
-import net.minecraft.command.CommandSource;
-import net.minecraft.command.Commands;
-import net.minecraft.entity.Entity;
-import net.minecraft.entity.player.ServerPlayerEntity;
-import net.minecraft.item.ItemStack;
-import net.minecraft.world.server.ServerWorld;
+import net.minecraft.commands.CommandSourceStack;
+import net.minecraft.commands.Commands;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.server.level.ServerLevel;
 import xin.vanilla.aotake.AotakeComponent;
 import xin.vanilla.aotake.AotakeLang;
 import xin.vanilla.aotake.AotakeSweep;
@@ -30,11 +30,11 @@ import java.util.List;
 
 @SuppressWarnings("resource")
 public class CacheCommand {
-    public static LiteralArgumentBuilder<CommandSource> clear() {
-        Command<CommandSource> clearCacheCommand = context -> {
+    public static LiteralArgumentBuilder<CommandSourceStack> clear() {
+        Command<CommandSourceStack> clearCacheCommand = context -> {
             if (CommandUtils.checkModStatus(context, AotakeSweep::isDisable)) return 0;
-            if (context.getSource().getEntity() instanceof ServerPlayerEntity) {
-                ServerPlayerEntity player = context.getSource().getPlayerOrException();
+            if (context.getSource().getEntity() instanceof ServerPlayer) {
+                ServerPlayer player = context.getSource().getPlayerOrException();
                 Component modName = AotakeComponent.get().trans("key.aotake_sweep.categories").languageCode(AotakeLang.getPlayerLanguage(player));
                 CommandUtils.notifyHelp(context, PlayerSweepData.getData(player), modName, "/" + AotakeUtils.getCommandPrefix());
             }
@@ -42,7 +42,7 @@ public class CacheCommand {
             WorldTrashData.get().getDropList().clear();
             WorldTrashData.get().setDirty();
             Component message = AotakeComponent.get().transAuto("cache_cleared"
-                    , context.getSource().getEntity() instanceof ServerPlayerEntity
+                    , context.getSource().getEntity() instanceof ServerPlayer
                             ? context.getSource().getPlayerOrException().getDisplayName().getString()
                             : "server"
             );
@@ -58,17 +58,17 @@ public class CacheCommand {
                 .executes(clearCacheCommand);
     }
 
-    public static LiteralArgumentBuilder<CommandSource> drop() {
-        Command<CommandSource> dropCacheCommand = context -> {
+    public static LiteralArgumentBuilder<CommandSourceStack> drop() {
+        Command<CommandSourceStack> dropCacheCommand = context -> {
             if (CommandUtils.checkModStatus(context, AotakeSweep::isDisable)) return 0;
-            if (context.getSource().getEntity() instanceof ServerPlayerEntity) {
-                ServerPlayerEntity player = context.getSource().getPlayerOrException();
+            if (context.getSource().getEntity() instanceof ServerPlayer) {
+                ServerPlayer player = context.getSource().getPlayerOrException();
                 Component modName = AotakeComponent.get().trans("key.aotake_sweep.categories").languageCode(AotakeLang.getPlayerLanguage(player));
                 CommandUtils.notifyHelp(context, PlayerSweepData.getData(player), modName, "/" + AotakeUtils.getCommandPrefix());
             }
 
             boolean originalPos = CommandUtils.getBooleanDefault(context, "originalPos", false);
-            ServerPlayerEntity player = context.getSource().getPlayerOrException();
+            ServerPlayer player = context.getSource().getPlayerOrException();
             List<KeyValue<WorldCoordinate, ItemStack>> items = WorldTrashData.get().getDropList().snapshot();
             WorldTrashData.get().getDropList().clear();
             items.forEach(kv -> {
@@ -79,7 +79,7 @@ public class CacheCommand {
                     } else {
                         coordinate = new WorldCoordinate(player);
                     }
-                    ServerWorld level = DimensionUtils.getLevel(coordinate.dimension());
+                    ServerLevel level = DimensionUtils.getLevel(coordinate.dimension());
                     Entity entity = AotakeUtils.getEntityFromItem(level, kv.value());
                     entity.moveTo(coordinate.x(), coordinate.y(), coordinate.z(), (float) coordinate.yaw(), (float) coordinate.pitch());
                     level.addFreshEntity(entity);
@@ -87,7 +87,7 @@ public class CacheCommand {
             });
             WorldTrashData.get().setDirty();
             Component message = AotakeComponent.get().transAuto("cache_dropped"
-                    , context.getSource().getEntity() instanceof ServerPlayerEntity
+                    , context.getSource().getEntity() instanceof ServerPlayer
                             ? context.getSource().getPlayerOrException().getDisplayName().getString()
                             : "server"
             );

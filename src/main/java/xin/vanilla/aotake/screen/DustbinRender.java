@@ -1,14 +1,14 @@
 package xin.vanilla.aotake.screen;
 
-import com.mojang.blaze3d.matrix.MatrixStack;
+import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.systems.RenderSystem;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.entity.player.ClientPlayerEntity;
-import net.minecraft.client.gui.screen.Screen;
-import net.minecraft.client.gui.screen.inventory.ChestScreen;
-import net.minecraft.client.gui.widget.button.Button;
-import net.minecraft.util.ResourceLocation;
-import net.minecraftforge.client.event.GuiScreenEvent;
+import net.minecraft.client.player.LocalPlayer;
+import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.gui.screens.inventory.ContainerScreen;
+import net.minecraft.client.gui.components.Button;
+import net.minecraft.resources.ResourceLocation;
+import net.fabricmc.fabric.api.client.screen.v1.Screens;
 import xin.vanilla.aotake.AotakeComponent;
 import xin.vanilla.aotake.AotakeLang;
 import xin.vanilla.aotake.Identifier;
@@ -44,7 +44,7 @@ import javax.annotation.Nullable;
 import java.util.function.Consumer;
 
 /**
- * 垃圾箱 {@link ChestScreen} 的侧栏控件绘制与快捷键处理
+ * 垃圾箱 {@link ContainerScreen} 的侧栏控件绘制与快捷键处理
  */
 public final class DustbinRender {
 
@@ -103,13 +103,13 @@ public final class DustbinRender {
     }
 
     private static boolean isOurDustbinChestScreen(Screen screen, Minecraft mc) {
-        return screen instanceof ChestScreen
+        return screen instanceof ContainerScreen
                 && mc.player != null
                 && isDustbinTitle(screen.getTitle().getString());
     }
 
     private static boolean isOurSpecialChestScreen(Screen screen, Minecraft mc) {
-        return screen instanceof ChestScreen
+        return screen instanceof ContainerScreen
                 && mc.player != null
                 && (isDustbinTitle(screen.getTitle().getString())
                 || isChunkVaultTitle(screen.getTitle().getString()));
@@ -137,7 +137,7 @@ public final class DustbinRender {
         InputStateManager.setMouseRawPos(rx, ry);
     }
 
-    public static void handleGuiScreen(GuiScreenEvent event) {
+    public static void handleGuiScreen(ScreenEvent event) {
         Screen screen = event.getGui();
         Minecraft mc = Minecraft.getInstance();
         if (!isOurSpecialChestScreen(screen, mc)) {
@@ -145,10 +145,10 @@ public final class DustbinRender {
             return;
         }
 
-        if (event instanceof GuiScreenEvent.InitGuiEvent.Post) {
+        if (event instanceof InitPost) {
             if (ClientConfig.get().dustbin().dustbinUiStyle() == EnumDustbinClientUiStyle.VANILLA) {
-                GuiScreenEvent.InitGuiEvent.Post eve = (GuiScreenEvent.InitGuiEvent.Post) event;
-                ClientPlayerEntity player = mc.player;
+                InitPost eve = (InitPost) event;
+                LocalPlayer player = mc.player;
                 ContainerScreenAccessor accessor = (ContainerScreenAccessor) screen;
                 int baseX = accessor.aotake$getLeftPos();
                 int baseY = accessor.aotake$getTopPos();
@@ -244,7 +244,7 @@ public final class DustbinRender {
                 dustbinNextButton = nextButton;
                 eve.addWidget(nextButton);
             }
-        } else if (event instanceof GuiScreenEvent.DrawScreenEvent.Post) {
+        } else if (event instanceof DrawPost) {
             if (ClientConfig.get().dustbin().dustbinUiStyle() == EnumDustbinClientUiStyle.VANILLA) {
                 boolean chunkVault = isChunkVaultTitle(screen.getTitle().getString());
                 int curPage = chunkVault ? chunkVaultPage : dustbinPage;
@@ -264,12 +264,12 @@ public final class DustbinRender {
             }
             EnumDustbinClientUiStyle dustbinUi = ClientConfig.get().dustbin().dustbinUiStyle();
             if (dustbinUi == EnumDustbinClientUiStyle.TEXTURED || dustbinUi == EnumDustbinClientUiStyle.BANIRA_THEME) {
-                GuiScreenEvent.DrawScreenEvent.Post eve = (GuiScreenEvent.DrawScreenEvent.Post) event;
-                ClientPlayerEntity player = mc.player;
+                DrawPost eve = (DrawPost) event;
+                LocalPlayer player = mc.player;
                 int mouseX = eve.getMouseX();
                 int mouseY = eve.getMouseY();
 
-                MatrixStack stack = eve.getMatrixStack();
+                PoseStack stack = eve.getPoseStack();
                 BaniraColorConfig baniraTheme = dustbinUi == EnumDustbinClientUiStyle.BANIRA_THEME
                         ? ClientThemeManager.getEffectiveTheme() : null;
                 int baseW = 16;
@@ -510,10 +510,10 @@ public final class DustbinRender {
                     }
                 }
             }
-        } else if (event instanceof GuiScreenEvent.KeyboardKeyPressedEvent.Pre) {
-            GuiScreenEvent.KeyboardKeyPressedEvent.Pre keyEvent = (GuiScreenEvent.KeyboardKeyPressedEvent.Pre) event;
+        } else if (event instanceof KeyPressedPre) {
+            KeyPressedPre keyEvent = (KeyPressedPre) event;
             if (keyEvent.getModifiers() != 0) return;
-            boolean chunkKeys = screen instanceof ChestScreen
+            boolean chunkKeys = screen instanceof ContainerScreen
                     && isChunkVaultTitle(screen.getTitle().getString());
             if (keyEvent.getKeyCode() == keyCode(ClientModEventHandler.DUSTBIN_KEY)) {
                 if (System.currentTimeMillis() - lastDustbinScreenKeyTime > 200) {
@@ -544,7 +544,7 @@ public final class DustbinRender {
         }
     }
 
-    private static void dustbinDrawToolbarAppearance(MatrixStack stack,
+    private static void dustbinDrawToolbarAppearance(PoseStack stack,
                                                      EnumDustbinClientUiStyle dustbinUi,
                                                      BaniraColorConfig baniraTheme,
                                                      int x, int y, int w, int h,
@@ -582,5 +582,81 @@ public final class DustbinRender {
                                     Consumer<Button> onPress,
                                     Component tooltip) {
         return new Button(x, y, width, height, label.toVanilla(), onPress::accept);
+    }
+
+    /** 加载器 adapter 只需构造这三类事件，UI 主体不再依赖 Forge/Fabric 类型。 */
+    public abstract static class ScreenEvent {
+        private final Screen gui;
+
+        protected ScreenEvent(Screen gui) {
+            this.gui = gui;
+        }
+
+        public Screen getGui() {
+            return gui;
+        }
+    }
+
+    public static final class InitPost extends ScreenEvent {
+        public InitPost(Screen gui) {
+            super(gui);
+        }
+
+        public void addWidget(Button button) {
+            Screens.getButtons(getGui()).add(button);
+        }
+    }
+
+    public static final class DrawPost extends ScreenEvent {
+        private final PoseStack poseStack;
+        private final int mouseX;
+        private final int mouseY;
+
+        public DrawPost(Screen gui, PoseStack poseStack, int mouseX, int mouseY) {
+            super(gui);
+            this.poseStack = poseStack;
+            this.mouseX = mouseX;
+            this.mouseY = mouseY;
+        }
+
+        public PoseStack getPoseStack() {
+            return poseStack;
+        }
+
+        public int getMouseX() {
+            return mouseX;
+        }
+
+        public int getMouseY() {
+            return mouseY;
+        }
+    }
+
+    public static final class KeyPressedPre extends ScreenEvent {
+        private final int keyCode;
+        private final int modifiers;
+        private boolean canceled;
+
+        public KeyPressedPre(Screen gui, int keyCode, int modifiers) {
+            super(gui);
+            this.keyCode = keyCode;
+            this.modifiers = modifiers;
+        }
+
+        public int getKeyCode() {
+            return keyCode;
+        }
+
+        public int getModifiers() {
+            return modifiers;
+        }
+
+        public void setCanceled(boolean canceled) {
+            this.canceled = canceled;
+        }
+
+        public boolean isCanceled() {
+            return canceled;
+        }
     }
 }

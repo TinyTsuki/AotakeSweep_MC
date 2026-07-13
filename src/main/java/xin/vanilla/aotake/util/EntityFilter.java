@@ -1,13 +1,14 @@
 package xin.vanilla.aotake.util;
 
-import net.minecraft.entity.Entity;
-import net.minecraft.entity.item.ItemEntity;
-import net.minecraft.entity.passive.TameableEntity;
-import net.minecraft.nbt.CollectionNBT;
-import net.minecraft.nbt.INBT;
-import net.minecraft.nbt.NumberNBT;
-import net.minecraft.network.datasync.DataParameter;
-import net.minecraftforge.common.UsernameCache;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.item.ItemEntity;
+import net.minecraft.world.entity.TamableAnimal;
+import net.minecraft.nbt.CollectionTag;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.Tag;
+import net.minecraft.nbt.NumericTag;
+import net.minecraft.network.syncher.EntityDataAccessor;
+import com.mojang.authlib.GameProfile;
 import xin.vanilla.aotake.AotakeComponent;
 import xin.vanilla.banira.common.data.Component;
 import xin.vanilla.banira.common.enums.IEnumDescribable;
@@ -26,7 +27,7 @@ public class EntityFilter {
     // 缓存已解析的 filter spec（key 为 convertExpression 后的最终字符串）
     private final Map<String, FilterSpec> filterCache = new ConcurrentHashMap<>();
     // 缓存已解析的 EntityDataAccessor（无显式类名时 key 含实体类名，避免跨类型错误复用）
-    private static final Map<String, DataParameter<?>> accessorCache = new ConcurrentHashMap<>();
+    private static final Map<String, EntityDataAccessor<?>> accessorCache = new ConcurrentHashMap<>();
     // 缓存已解析的 ACCESSOR_KEY 路径（key 为完整 accessorPath 字符串）
     private static final Map<String, AccessorPath> accessorPathCache = new ConcurrentHashMap<>();
     private final ThreadLocal<Map<String, Object>> variableBuffer =
@@ -504,6 +505,7 @@ public class EntityFilter {
         Boolean hasOwner = null;
         UUID ownerUUID = null;
         String ownerName = null;
+        CompoundTag entityNbt = null;
 
         for (VarDescriptor d : descriptors) {
             String key = d.name;
@@ -519,17 +521,17 @@ public class EntityFilter {
                     }
                     String firstPartKey = ap.className != null ? ap.className + ":" + ap.chain.get(0) : ap.chain.get(0);
                     String accessorCacheKey = entity.getClass().getName() + "::" + firstPartKey;
-                    DataParameter<?> accessor = accessorCache.computeIfAbsent(accessorCacheKey, k -> {
+                    EntityDataAccessor<?> accessor = accessorCache.computeIfAbsent(accessorCacheKey, k -> {
                         try {
                             String[] split = firstPartKey.split(":", 2);
                             if (split.length == 1) {
-                                return (DataParameter<?>) ReflectionUtils.getPrivateFieldValue(ReflectionUtils.getClass(entity), entity, split[0], true);
+                                return (EntityDataAccessor<?>) ReflectionUtils.getPrivateFieldValue(ReflectionUtils.getClass(entity), entity, split[0], true);
                             }
                             Class<?> decl = ReflectionUtils.getClass(split[0]);
                             if (decl == null || !decl.isInstance(entity)) {
                                 return null;
                             }
-                            return (DataParameter<?>) ReflectionUtils.getPrivateFieldValue(decl, entity, split[1]);
+                            return (EntityDataAccessor<?>) ReflectionUtils.getPrivateFieldValue(decl, entity, split[1]);
                         } catch (Throwable ignored) {
                             return null;
                         }
@@ -557,12 +559,14 @@ public class EntityFilter {
                     varsOut.put(key, normalizeFieldValue(walkReflectChainFromEntity(entity, fp)));
                     break;
                 case NBT_PATH:
-                    if (NBTUtils.has(entity.getPersistentData(), d.payload)) {
-                        INBT tag = NBTUtils.getTagByPath(entity.getPersistentData(), d.payload);
-                        if (tag instanceof NumberNBT) {
-                            varsOut.put(key, ((NumberNBT) tag).getAsNumber());
-                        } else if (tag instanceof CollectionNBT) {
-                            varsOut.put(key, ((CollectionNBT<?>) tag).toArray());
+                    // Fabric 没有 Forge persistentData；同一次匹配只序列化一次完整实体 NBT。
+                    if (entityNbt == null) entityNbt = entity.saveWithoutId(new CompoundTag());
+                    if (NBTUtils.has(entityNbt, d.payload)) {
+                        Tag tag = NBTUtils.getTagByPath(entityNbt, d.payload);
+                        if (tag instanceof NumericTag) {
+                            varsOut.put(key, ((NumericTag) tag).getAsNumber());
+                        } else if (tag instanceof CollectionTag) {
+                            varsOut.put(key, ((CollectionTag<?>) tag).toArray());
                         } else if (tag != null) {
                             varsOut.put(key, tag.getAsString());
                         } else {
@@ -662,16 +666,19 @@ public class EntityFilter {
                             break;
                         case "hasOwner":
                             if (hasOwner == null) {
-                                hasOwner = entity instanceof TameableEntity && ((TameableEntity) entity).getOwnerUUID() != null;
+                                hasOwner = entity instanceof TamableAnimal && ((TamableAnimal) entity).getOwnerUUID() != null;
                             }
                             varsOut.put(key, hasOwner);
                             break;
                         case "ownerName":
                             if (ownerName == null) {
-                                if (entity instanceof TameableEntity) {
-                                    ownerUUID = ((TameableEntity) entity).getOwnerUUID();
+                                if (entity instanceof TamableAnimal) {
+                                    ownerUUID = ((TamableAnimal) entity).getOwnerUUID();
                                 }
-                                if (ownerUUID != null) ownerName = UsernameCache.getLastKnownUsername(ownerUUID);
+                                if (ownerUUID != null && BaniraServerUtils.currentServer() != null) {
+                                    GameProfile profile = BaniraServerUtils.currentServer().getProfileCache().get(ownerUUID);
+                                    ownerName = profile != null ? profile.getName() : null;
+                                }
                             }
                             varsOut.put(key, ownerName);
                             break;

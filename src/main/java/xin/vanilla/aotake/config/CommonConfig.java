@@ -4,8 +4,9 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.experimental.Accessors;
-import net.minecraft.entity.EntityType;
-import net.minecraft.item.Items;
+import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.item.Items;
+import net.minecraft.core.Registry;
 import xin.vanilla.aotake.AotakeSweep;
 import xin.vanilla.aotake.config.access.CommonConfigAccess;
 import xin.vanilla.aotake.enums.*;
@@ -777,9 +778,9 @@ public class CommonConfig implements ConfigData {
 
     private static List<String> defaultEntityList() {
         List<String> l = new ArrayList<>();
-        l.add(EntityType.ARROW.getRegistryName().toString());
-        l.add(EntityType.SPECTRAL_ARROW.getRegistryName().toString());
-        l.add(EntityType.EXPERIENCE_ORB.getRegistryName().toString());
+        l.add(Registry.ENTITY_TYPE.getKey(EntityType.ARROW).toString());
+        l.add(Registry.ENTITY_TYPE.getKey(EntityType.SPECTRAL_ARROW).toString());
+        l.add(Registry.ENTITY_TYPE.getKey(EntityType.EXPERIENCE_ORB).toString());
         l.add("tick, clazz, itemClazz, createProcessing = [CreateData.Processing.Time]"
                 + " -> "
                 + "tick >= 5 && clazz :> itemClazz && (createProcessing <= 0 || createProcessing == null)");
@@ -796,9 +797,9 @@ public class CommonConfig implements ConfigData {
 
     private static List<String> defaultCatchItem() {
         return new ArrayList<>(Arrays.asList(
-                Items.SNOWBALL.getRegistryName().toString(),
-                Items.GLASS_BOTTLE.getRegistryName().toString(),
-                Items.MUSIC_DISC_13.getRegistryName().toString()
+                Registry.ITEM.getKey(Items.SNOWBALL).toString(),
+                Registry.ITEM.getKey(Items.GLASS_BOTTLE).toString(),
+                Registry.ITEM.getKey(Items.MUSIC_DISC_13).toString()
         ));
     }
 
@@ -947,9 +948,9 @@ public class CommonConfig implements ConfigData {
 
     private static List<String> defaultEntityListReset() {
         List<String> l = new ArrayList<>();
-        l.add(EntityType.ARROW.getRegistryName().toString());
-        l.add(EntityType.SPECTRAL_ARROW.getRegistryName().toString());
-        l.add(EntityType.EXPERIENCE_ORB.getRegistryName().toString());
+        l.add(Registry.ENTITY_TYPE.getKey(EntityType.ARROW).toString());
+        l.add(Registry.ENTITY_TYPE.getKey(EntityType.SPECTRAL_ARROW).toString());
+        l.add(Registry.ENTITY_TYPE.getKey(EntityType.EXPERIENCE_ORB).toString());
         l.add("tick, clazz, itemClazz, createProcessing = CreateData.Processing.Time"
                 + " -> "
                 + "tick >= 5 && clazz :> itemClazz && (createProcessing <= 0 || createProcessing == null)");

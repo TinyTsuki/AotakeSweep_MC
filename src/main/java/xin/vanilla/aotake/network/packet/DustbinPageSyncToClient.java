@@ -1,7 +1,5 @@
 package xin.vanilla.aotake.network.packet;
 
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.api.distmarker.OnlyIn;
 import xin.vanilla.aotake.network.NetworkPacket;
 import xin.vanilla.aotake.screen.DustbinRender;
 import xin.vanilla.banira.common.network.BaniraNetworkContext;
@@ -31,7 +29,6 @@ public class DustbinPageSyncToClient implements NetworkPacket {
         ctx.markHandled();
     }
 
-    @OnlyIn(Dist.CLIENT)
     private static final class ClientSide {
         private static void handle(DustbinPageSyncToClient packet) {
             DustbinRender.updateDustbinPage(packet.currentPage, packet.totalPage);
