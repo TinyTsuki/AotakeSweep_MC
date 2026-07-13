@@ -8,7 +8,6 @@ import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.inventory.ContainerScreen;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.resources.ResourceLocation;
-import net.fabricmc.fabric.api.client.screen.v1.Screens;
 import xin.vanilla.aotake.AotakeComponent;
 import xin.vanilla.aotake.AotakeLang;
 import xin.vanilla.aotake.Identifier;
@@ -598,12 +597,15 @@ public final class DustbinRender {
     }
 
     public static final class InitPost extends ScreenEvent {
-        public InitPost(Screen gui) {
+        private final Consumer<Button> widgetAdder;
+
+        public InitPost(Screen gui, Consumer<Button> widgetAdder) {
             super(gui);
+            this.widgetAdder = widgetAdder;
         }
 
         public void addWidget(Button button) {
-            Screens.getButtons(getGui()).add(button);
+            widgetAdder.accept(button);
         }
     }
 
