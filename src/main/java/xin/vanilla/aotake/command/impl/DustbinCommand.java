@@ -8,6 +8,7 @@ import com.mojang.brigadier.suggestion.SuggestionProvider;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.commands.arguments.EntityArgument;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.SimpleContainer;
 import xin.vanilla.aotake.AotakeComponent;
@@ -19,8 +20,8 @@ import xin.vanilla.aotake.data.world.WorldTrashData;
 import xin.vanilla.aotake.enums.EnumCommandType;
 import xin.vanilla.aotake.notification.AotakeNotificationTypes;
 import xin.vanilla.aotake.util.AotakeUtils;
+import xin.vanilla.banira.api.BaniraServer;
 import xin.vanilla.banira.common.data.Component;
-import xin.vanilla.banira.common.util.BaniraServerUtils;
 import xin.vanilla.banira.common.util.CollectionUtils;
 import xin.vanilla.banira.common.util.CommandUtils;
 import xin.vanilla.banira.common.util.MessageUtils;
@@ -173,7 +174,7 @@ public class DustbinCommand {
                             ? context.getSource().getPlayerOrException().getDisplayName().getString()
                             : "server"
             );
-            BaniraServerUtils.currentServer()
+            BaniraServer.require(MinecraftServer.class)
                     .getPlayerList()
                     .getPlayers()
                     .forEach(p -> MessageUtils.sendNotification(p, message, AotakeNotificationTypes.DUSTBIN));
@@ -249,7 +250,7 @@ public class DustbinCommand {
                             ? context.getSource().getPlayerOrException().getDisplayName().getString()
                             : "server"
             );
-            BaniraServerUtils.currentServer()
+            BaniraServer.require(MinecraftServer.class)
                     .getPlayerList()
                     .getPlayers()
                     .forEach(p -> MessageUtils.sendNotification(p, message, AotakeNotificationTypes.DUSTBIN));

@@ -42,12 +42,12 @@ import xin.vanilla.aotake.network.packet.SweepDataSyncToClient;
 import xin.vanilla.aotake.notification.AotakeNotificationTypes;
 import xin.vanilla.aotake.util.AotakeUtils;
 import xin.vanilla.aotake.util.EntitySweeper;
+import xin.vanilla.banira.api.BaniraServer;
 import xin.vanilla.banira.common.data.Component;
 import xin.vanilla.banira.common.data.KeyValue;
 import xin.vanilla.banira.common.data.WorldCoordinate;
 import xin.vanilla.banira.common.enums.*;
 import xin.vanilla.banira.common.util.*;
-import xin.vanilla.banira.internal.config.CustomConfig;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -64,8 +64,6 @@ public class EventHandlerProxy {
     @Setter
     private static long nextSweepTime = System.currentTimeMillis() - 1;
     private static long lastSelfCleanTime = System.currentTimeMillis();
-    private static long lastSaveConfTime = System.currentTimeMillis();
-    private static long lastReadConfTime = System.currentTimeMillis();
     private static long lastChunkCheckTime = System.currentTimeMillis();
     private static long lastChunkVaultPruneTime = System.currentTimeMillis();
     private static long lastVoiceTime = System.currentTimeMillis();
@@ -90,7 +88,7 @@ public class EventHandlerProxy {
 
     public static void onServerTick(TickEvent.ServerTickEvent event) {
         if (event.phase != TickEvent.Phase.END || AotakeSweep.isDisable()) return;
-        MinecraftServer server = BaniraServerUtils.currentServer();
+        MinecraftServer server = BaniraServer.currentAs(MinecraftServer.class);
         if (server == null || !server.isRunning()) return;
         ChunkVaultGrants.bootstrapWhenServerReady(server);
 
@@ -103,7 +101,7 @@ public class EventHandlerProxy {
         if (AotakeUtils.hasWarning(warnKey)) {
             if (!Objects.equals(lastCountdownWarningDispatchKey, warnKey)) {
                 lastCountdownWarningDispatchKey = warnKey;
-                for (ServerPlayer player : BaniraServerUtils.currentServer()
+                for (ServerPlayer player : server
                         .getPlayerList()
                         .getPlayers()
                 ) {
@@ -122,7 +120,7 @@ public class EventHandlerProxy {
         // 扫地前提示音效
         if (AotakeUtils.hasWarningVoice(warnKey) && lastVoiceTime + 1010 < now) {
             lastVoiceTime = now;
-            for (ServerPlayer player : BaniraServerUtils.currentServer()
+            for (ServerPlayer player : server
                     .getPlayerList()
                     .getPlayers()
             ) {
@@ -315,16 +313,6 @@ public class EventHandlerProxy {
             }
         }
 
-        // 保存通用配置
-        if (now - lastSaveConfTime >= 10 * 1000) {
-            lastSaveConfTime = now;
-            CustomConfig.saveCustomConfig();
-        }
-        // 读取通用配置
-        else if (now - lastReadConfTime >= 2 * 60 * 1000) {
-            lastReadConfTime = now;
-            CustomConfig.loadCustomConfig(true);
-        }
         updateGhostTargets(server);
         clampGhostMovement(server);
 
@@ -341,18 +329,6 @@ public class EventHandlerProxy {
             return String.format("Dimension: %s, Chunk: %s %s, EntityType: %s", key.dimension(), key.chunkX(), key.chunkZ(), key.entityType());
         }
         return String.format("Dimension: %s, Chunk: %s %s", key.dimension(), key.chunkX(), key.chunkZ());
-    }
-
-    public static void onPlayerCloned(PlayerEvent.Clone event) {
-        if (event.getPlayer() instanceof ServerPlayer) {
-            ServerPlayer original = (ServerPlayer) event.getOriginal();
-            ServerPlayer newPlayer = (ServerPlayer) event.getPlayer();
-            original.revive();
-            String lang = CustomConfig.getPlayerLanguage(PlayerUtils.getPlayerUUIDString(original));
-            if (StringUtils.isNotNullOrEmpty(lang)) {
-                CustomConfig.setPlayerLanguage(PlayerUtils.getPlayerUUIDString(newPlayer), lang);
-            }
-        }
     }
 
     public static void onPlayerUseItem(PlayerInteractEvent.RightClickItem event) {
