@@ -110,7 +110,6 @@ public class AotakeSweep {
 
         BaniraEventBus.Server.onTick(EventHandlerProxy::onServerTick);
         BaniraEventBus.WorldEvents.onTick(EventHandlerProxy::onWorldTick);
-        BaniraEventBus.Player.onClone(EventHandlerProxy::onPlayerCloned);
         BaniraEventBus.Player.onPlayerEvent(event -> {
             if (event instanceof PlayerEvent.Clone) return;
             EventHandlerProxy.onPlayerUseItem(event);

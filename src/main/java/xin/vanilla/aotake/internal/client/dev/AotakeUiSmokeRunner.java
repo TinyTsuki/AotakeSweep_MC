@@ -358,7 +358,7 @@ public final class AotakeUiSmokeRunner {
         if (style == EnumDustbinClientUiStyle.VANILLA) {
             int left = ((ContainerScreenAccessor) screen).aotake$getLeftPos();
             long sidebarButtons = screen.children().stream()
-                    .filter(child -> child instanceof Button && ((Button) child).x < left)
+                    .filter(child -> child instanceof Button && ((Button) child).getX() < left)
                     .count();
             if (sidebarButtons < 3) {
                 throw new IllegalStateException("Vanilla dustbin sidebar is incomplete: " + sidebarButtons);
@@ -373,6 +373,8 @@ public final class AotakeUiSmokeRunner {
     private static void setProgressKey(boolean down) {
         int keyCode = ClientModEventHandler.PROGRESS_KEY.currentKey();
         KeyMapping.set(InputConstants.Type.KEYSYM.getOrCreate(keyCode), down);
+        LOGGER.info("Aotake UI smoke progress key={} down={} vanillaPlayerListDown={}", keyCode, down,
+                Minecraft.getInstance().options.keyPlayerList.isDown());
     }
 
     private void capture(@Nonnull Minecraft client, @Nonnull String name) {

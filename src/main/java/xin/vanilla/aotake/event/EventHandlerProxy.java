@@ -52,7 +52,6 @@ import xin.vanilla.banira.common.data.KeyValue;
 import xin.vanilla.banira.common.data.WorldCoordinate;
 import xin.vanilla.banira.common.enums.*;
 import xin.vanilla.banira.common.util.*;
-import xin.vanilla.banira.internal.config.CustomConfig;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -69,8 +68,6 @@ public class EventHandlerProxy {
     @Setter
     private static long nextSweepTime = System.currentTimeMillis() - 1;
     private static long lastSelfCleanTime = System.currentTimeMillis();
-    private static long lastSaveConfTime = System.currentTimeMillis();
-    private static long lastReadConfTime = System.currentTimeMillis();
     private static long lastChunkCheckTime = System.currentTimeMillis();
     private static long lastChunkVaultPruneTime = System.currentTimeMillis();
     private static long lastVoiceTime = System.currentTimeMillis();
@@ -320,16 +317,6 @@ public class EventHandlerProxy {
             }
         }
 
-        // 保存通用配置
-        if (now - lastSaveConfTime >= 10 * 1000) {
-            lastSaveConfTime = now;
-            CustomConfig.saveCustomConfig();
-        }
-        // 读取通用配置
-        else if (now - lastReadConfTime >= 2 * 60 * 1000) {
-            lastReadConfTime = now;
-            CustomConfig.loadCustomConfig(true);
-        }
         updateGhostTargets(server);
         clampGhostMovement(server);
 
@@ -349,18 +336,7 @@ public class EventHandlerProxy {
         return String.format("Dimension: %s, Chunk: %s %s", key.dimension(), key.chunkX(), key.chunkZ());
     }
 
-    public static void onPlayerCloned(PlayerEvent.Clone event) {
-        if (event.getEntity() instanceof ServerPlayer newPlayer) {
-            ServerPlayer original = (ServerPlayer) event.getOriginal();
-            original.revive();
-            String lang = CustomConfig.getPlayerLanguage(PlayerUtils.getPlayerUUIDString(original));
-            if (StringUtils.isNotNullOrEmpty(lang)) {
-                CustomConfig.setPlayerLanguage(PlayerUtils.getPlayerUUIDString(newPlayer), lang);
-            }
-        }
-    }
-
-    public static void onArrowNockEvent(PlayerInteractEvent.RightClickItem event) {
+    public static void onPlayerUseItem(PlayerInteractEvent.RightClickItem event) {
         if (AotakeSweep.isDisable()) return;
         if (event.getEntity() instanceof ServerPlayer player) {
             ItemStack stack = event.getItemStack();
