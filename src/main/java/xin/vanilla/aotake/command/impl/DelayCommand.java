@@ -6,6 +6,7 @@ import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.network.chat.HoverEvent;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import xin.vanilla.aotake.AotakeComponent;
 import xin.vanilla.aotake.AotakeLang;
@@ -17,6 +18,7 @@ import xin.vanilla.aotake.event.EventHandlerProxy;
 import xin.vanilla.aotake.network.packet.SweepDataSyncToClient;
 import xin.vanilla.aotake.notification.AotakeNotificationTypes;
 import xin.vanilla.aotake.util.AotakeUtils;
+import xin.vanilla.banira.api.BaniraServer;
 import xin.vanilla.banira.common.data.Component;
 import xin.vanilla.banira.common.util.*;
 
@@ -44,7 +46,7 @@ public class DelayCommand {
                 EventHandlerProxy.setNextSweepTime(nextSweepTime);
             }
             // 给已声明客户端 mod 且尚未完成数据同步的玩家同步扫地倒计时与玩家偏好
-            for (ServerPlayer player : BaniraServerUtils.currentServer().getPlayerList().getPlayers()) {
+            for (ServerPlayer player : BaniraServer.require(MinecraftServer.class).getPlayerList().getPlayers()) {
                 if (PlayerUtils.isPlayerDataSynced(player, AotakeSweep.MODID)) continue;
                 PacketUtils.sendPacketToPlayer(new SweepDataSyncToClient(player), player);
             }
@@ -57,7 +59,7 @@ public class DelayCommand {
                             , AotakeComponent.get().literal(DateUtils.toDateTimeString(new Date(EventHandlerProxy.getNextSweepTime())) + " (Server Time)").toVanilla())
                     )
             );
-            BaniraServerUtils.currentServer()
+            BaniraServer.require(MinecraftServer.class)
                     .getPlayerList()
                     .getPlayers()
                     .forEach(p -> MessageUtils.sendNotification(p, message, AotakeNotificationTypes.ADMIN_BROADCAST));

@@ -50,6 +50,7 @@ import xin.vanilla.aotake.enums.EnumSelfCleanMode;
 import xin.vanilla.aotake.event.EventHandlerProxy;
 import xin.vanilla.aotake.network.packet.DustbinPageSyncToClient;
 import xin.vanilla.aotake.notification.AotakeNotificationTypes;
+import xin.vanilla.banira.api.BaniraServer;
 import xin.vanilla.banira.common.data.Component;
 import xin.vanilla.banira.common.data.KeyValue;
 import xin.vanilla.banira.common.data.WorldCoordinate;
@@ -289,8 +290,8 @@ public class AotakeUtils {
 
     public static List<Entity> getAllEntities() {
         List<Entity> entities = new ArrayList<>();
-        MinecraftServer server = BaniraServerUtils.currentServer();
-        if (BaniraServerUtils.isRunning() && server != null) {
+        MinecraftServer server = BaniraServer.currentAs(MinecraftServer.class);
+        if (BaniraServer.isRunning() && server != null) {
             server.getAllLevels()
                     .forEach(level -> level.getEntities().getAll().forEach(entities::add)
                     );
@@ -465,9 +466,9 @@ public class AotakeUtils {
      * @param chunkOverloadVault 为 true 时，回收物品写入区块暂存目录（若配置启用），而非全局垃圾箱。
      */
     public static void sweep(List<Entity> entities, boolean filtered, boolean chunkOverloadVault) {
-        MinecraftServer server = BaniraServerUtils.currentServer();
+        MinecraftServer server = BaniraServer.currentAs(MinecraftServer.class);
         // 服务器已关闭
-        if (!BaniraServerUtils.isRunning() || server == null) return;
+        if (!BaniraServer.isRunning() || server == null) return;
 
         List<ServerPlayer> players = server.getPlayerList().getPlayers();
 
@@ -996,7 +997,7 @@ public class AotakeUtils {
      */
     public static ItemStack addItemToBlock(ItemStack stack, WorldCoordinate coordinate) {
         if (stack == null || stack.isEmpty()) return ItemStack.EMPTY;
-        ServerLevel level = BaniraServerUtils.currentServer().getLevel(coordinate.dimension());
+        ServerLevel level = BaniraServer.require(MinecraftServer.class).getLevel(coordinate.dimension());
         if (level == null) return stack;
 
         BlockPos pos = coordinate.toBlockPos();
@@ -1025,7 +1026,7 @@ public class AotakeUtils {
      * 获取指定的方块容器
      */
     public static IItemHandler getBlockItemHandler(WorldCoordinate coordinate) {
-        ServerLevel level = BaniraServerUtils.currentServer().getLevel(coordinate.dimension());
+        ServerLevel level = BaniraServer.require(MinecraftServer.class).getLevel(coordinate.dimension());
         if (level == null) return null;
 
         BlockPos pos = coordinate.toBlockPos();

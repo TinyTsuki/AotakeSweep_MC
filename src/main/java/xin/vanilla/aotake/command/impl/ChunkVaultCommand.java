@@ -11,6 +11,7 @@ import net.minecraft.commands.Commands;
 import net.minecraft.commands.arguments.EntityArgument;
 import net.minecraft.network.chat.ClickEvent;
 import net.minecraft.network.chat.HoverEvent;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import xin.vanilla.aotake.AotakeComponent;
 import xin.vanilla.aotake.AotakeLang;
@@ -22,6 +23,7 @@ import xin.vanilla.aotake.data.world.ChunkVaultStorage;
 import xin.vanilla.aotake.enums.EnumCommandType;
 import xin.vanilla.aotake.notification.AotakeNotificationTypes;
 import xin.vanilla.aotake.util.AotakeUtils;
+import xin.vanilla.banira.api.BaniraServer;
 import xin.vanilla.banira.common.data.Component;
 import xin.vanilla.banira.common.util.*;
 
@@ -32,10 +34,10 @@ import java.util.stream.Collectors;
 public final class ChunkVaultCommand {
 
     private static final SuggestionProvider<CommandSourceStack> VAULT_ID_SUGGEST = (context, builder) -> {
-        if (!BaniraServerUtils.isRunning()) {
+        if (!BaniraServer.isRunning()) {
             return builder.buildFuture();
         }
-        for (String id : ChunkVaultStorage.listVaultIds(BaniraServerUtils.currentServer())) {
+        for (String id : ChunkVaultStorage.listVaultIds(BaniraServer.require(MinecraftServer.class))) {
             if (StringUtils.isNullOrEmptyEx(id)) continue;
             builder.suggest(id);
         }

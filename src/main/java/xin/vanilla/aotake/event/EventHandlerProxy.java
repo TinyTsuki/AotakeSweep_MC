@@ -43,6 +43,7 @@ import xin.vanilla.aotake.network.packet.SweepDataSyncToClient;
 import xin.vanilla.aotake.notification.AotakeNotificationTypes;
 import xin.vanilla.aotake.util.AotakeUtils;
 import xin.vanilla.aotake.util.EntitySweeper;
+import xin.vanilla.banira.api.BaniraServer;
 import xin.vanilla.banira.common.data.Component;
 import xin.vanilla.banira.common.data.KeyValue;
 import xin.vanilla.banira.common.data.WorldCoordinate;
@@ -92,7 +93,7 @@ public class EventHandlerProxy {
     public static void onServerTick(TickEvent.ServerTickEvent event) {
         if (!(event instanceof TickEvent.ServerTickEvent.Post)) return;
         if (AotakeSweep.isDisable()) return;
-        MinecraftServer server = BaniraServerUtils.currentServer();
+        MinecraftServer server = BaniraServer.currentAs(MinecraftServer.class);
         if (server == null || !server.isRunning()) return;
         ChunkVaultGrants.bootstrapWhenServerReady(server);
 
@@ -105,7 +106,7 @@ public class EventHandlerProxy {
         if (AotakeUtils.hasWarning(warnKey)) {
             if (!Objects.equals(lastCountdownWarningDispatchKey, warnKey)) {
                 lastCountdownWarningDispatchKey = warnKey;
-                for (ServerPlayer player : BaniraServerUtils.currentServer()
+                for (ServerPlayer player : server
                         .getPlayerList()
                         .getPlayers()
                 ) {
@@ -124,7 +125,7 @@ public class EventHandlerProxy {
         // 扫地前提示音效
         if (AotakeUtils.hasWarningVoice(warnKey) && lastVoiceTime + 1010 < now) {
             lastVoiceTime = now;
-            for (ServerPlayer player : BaniraServerUtils.currentServer()
+            for (ServerPlayer player : server
                     .getPlayerList()
                     .getPlayers()
             ) {
