@@ -13,7 +13,7 @@ import java.util.stream.Stream;
 
 import static org.junit.Assert.fail;
 
-/** 防止服务端运行时和玩家数据访问重新依赖 Banira 的旧工具入口。 */
+/** 防止子 mod 重新依赖 Banira 的旧工具入口或内部实现。 */
 public class BaniraApiBoundaryTest {
     @Test
     public void runtimeAccessUsesStableBaniraFacades() throws IOException {
@@ -25,10 +25,13 @@ public class BaniraApiBoundaryTest {
                 if (source.contains("xin.vanilla.banira.common.util.BaniraServerUtils")) {
                     violations.add(root.relativize(file).toString());
                 }
+                if (source.contains("xin.vanilla.banira.internal")) {
+                    violations.add(root.relativize(file).toString() + " (internal)");
+                }
             }
         }
         if (!violations.isEmpty()) {
-            fail("Runtime access must use BaniraServer/BaniraPlayerData: " + String.join(", ", violations));
+            fail("Banira access must use stable public APIs: " + String.join(", ", violations));
         }
     }
 }
