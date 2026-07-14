@@ -7,15 +7,18 @@ import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.server.level.ServerPlayer;
+import xin.vanilla.aotake.AotakeComponent;
+import xin.vanilla.aotake.AotakeLang;
 import xin.vanilla.aotake.AotakeSweep;
-import xin.vanilla.aotake.config.ServerConfig;
+import xin.vanilla.aotake.config.CommonConfig;
 import xin.vanilla.aotake.data.player.PlayerSweepData;
 import xin.vanilla.aotake.enums.EnumCommandType;
-import xin.vanilla.aotake.enums.EnumI18nType;
+import xin.vanilla.aotake.network.packet.SweepDataSyncToClient;
+import xin.vanilla.aotake.notification.AotakeNotificationTypes;
 import xin.vanilla.aotake.util.AotakeUtils;
-import xin.vanilla.aotake.util.CommandUtils;
-import xin.vanilla.aotake.util.Component;
-import xin.vanilla.aotake.util.I18nUtils;
+import xin.vanilla.banira.api.BaniraConfigs;
+import xin.vanilla.banira.common.enums.EnumI18nType;
+import xin.vanilla.banira.common.util.*;
 
 public class ConfigCommand {
     public static LiteralArgumentBuilder<CommandSourceStack> config() {
@@ -36,23 +39,22 @@ public class ConfigCommand {
                                     String lang = CommandUtils.getLanguage(source);
                                     switch (mode) {
                                         case 0:
-                                            ServerConfig.resetConfigWithMode0();
+                                            CommonConfig.resetConfigWithMode0();
                                             break;
                                         case 1:
-                                            ServerConfig.resetConfigWithMode1();
+                                            CommonConfig.resetConfigWithMode1();
                                             break;
                                         case 2:
-                                            ServerConfig.resetConfigWithMode2();
+                                            CommonConfig.resetConfigWithMode2();
                                             break;
                                         default: {
                                             throw new IllegalArgumentException("Mode " + mode + " does not exist");
                                         }
                                     }
-                                    Component component = Component.translatable(lang, EnumI18nType.MESSAGE, "server_config_mode", mode);
-                                    source.sendSuccess(() -> component.toChatComponent(lang), false);
+                                    source.sendSuccess(() -> AotakeComponent.get().transLang(lang, EnumI18nType.FORMAT, "server_config_mode", mode).toChat(lang), false);
 
                                     // 更新权限信息
-                                    source.getServer().getPlayerList().getPlayers().forEach(AotakeUtils::refreshPermission);
+                                    source.getServer().getPlayerList().getPlayers().forEach(CommandUtils::refreshPermission);
                                     return 1;
                                 })
                         )
@@ -62,18 +64,61 @@ public class ConfigCommand {
                         .requires(source -> AotakeUtils.hasCommandPermission(source, EnumCommandType.CONFIG))
                         .then(Commands.argument("disable", BoolArgumentType.bool())
                                 .executes(context -> {
-                                    AotakeSweep.disable(BoolArgumentType.getBool(context, "disable"));
-                                    AotakeUtils.broadcastMessage(context.getSource().getServer()
-                                            , Component.translatable(EnumI18nType.MESSAGE
+                                    AotakeSweep.setDisable(BoolArgumentType.getBool(context, "disable"));
+                                    MessageUtils.broadcastNotification(AotakeComponent.get().trans(EnumI18nType.FORMAT
                                                     , "mod_status"
-                                                    , Component.translatable(EnumI18nType.KEY, "categories")
-                                                    , I18nUtils.enabled(ServerConfig.get().defaultLanguage(), !AotakeSweep.disable())
+                                                    , AotakeComponent.get().trans(EnumI18nType.PLAIN, "key.aotake_sweep.categories")
+                                                    , AotakeLang.get().enabled(CommonConfig.get().base().common().defaultLanguage(), !AotakeSweep.isDisable())
                                             )
-                                    );
+                                            , AotakeNotificationTypes.ADMIN_BROADCAST);
                                     return 1;
                                 })
                         )
                 )
+                // region 修改server配置
+                .then(Commands.literal("server")
+                        .requires(source -> AotakeUtils.hasCommandPermission(source, EnumCommandType.CONFIG))
+                        .then(Commands.argument("configKey", StringArgumentType.word())
+                                .suggests((context, builder) -> {
+                                    String input = CommandUtils.getStringEmpty(context, "configKey");
+                                    CommandUtils.configKeySuggestion(
+                                            BaniraConfigs.holder(CommonConfig.class), builder, input);
+                                    return builder.buildFuture();
+                                })
+                                .then(Commands.argument("configValue", StringArgumentType.word())
+                                        .suggests((context, builder) -> {
+                                            String configKey = StringArgumentType.getString(context, "configKey");
+                                            CommandUtils.configValueSuggestion(
+                                                    BaniraConfigs.holder(CommonConfig.class), builder, configKey);
+                                            return builder.buildFuture();
+                                        })
+                                        .executes(context -> CommandUtils.executeModifyConfig(
+                                                BaniraConfigs.holder(CommonConfig.class), context))
+                                )
+                        )
+                )// endregion 修改server配置
+                // region 修改common配置
+                .then(Commands.literal("common")
+                        .requires(source -> AotakeUtils.hasCommandPermission(source, EnumCommandType.CONFIG))
+                        .then(Commands.argument("configKey", StringArgumentType.word())
+                                .suggests((context, builder) -> {
+                                    String input = CommandUtils.getStringEmpty(context, "configKey");
+                                    CommandUtils.configKeySuggestion(
+                                            BaniraConfigs.holder(CommonConfig.class), builder, input);
+                                    return builder.buildFuture();
+                                })
+                                .then(Commands.argument("configValue", StringArgumentType.word())
+                                        .suggests((context, builder) -> {
+                                            String configKey = StringArgumentType.getString(context, "configKey");
+                                            CommandUtils.configValueSuggestion(
+                                                    BaniraConfigs.holder(CommonConfig.class), builder, configKey);
+                                            return builder.buildFuture();
+                                        })
+                                        .executes(context -> CommandUtils.executeModifyConfig(
+                                                BaniraConfigs.holder(CommonConfig.class), context))
+                                )
+                        )
+                )// endregion 修改common配置
                 // region 修改玩家配置
                 .then(Commands.literal("player")
                         .then(Commands.literal("showSweepResult")
@@ -86,20 +131,24 @@ public class ConfigCommand {
                                             return suggestion.buildFuture();
                                         })
                                         .executes(context -> {
-                                            if (CommandUtils.checkModStatus(context)) return 0;
-                                            CommandUtils.notifyHelp(context);
-                                            String show = CommandUtils.getStringDefault(context, "show", "change");
                                             ServerPlayer player = context.getSource().getPlayerOrException();
+                                            if (CommandUtils.checkModStatus(context, AotakeSweep::isDisable))
+                                                return 0;
+                                            CommandUtils.notifyHelp(context, PlayerSweepData.getData(player), AotakeComponent.get().trans(EnumI18nType.WORD, "title"), String.format("/%s help", AotakeUtils.getCommandPrefix()));
+                                            String show = CommandUtils.getStringDefault(context, "show", "change");
                                             PlayerSweepData data = PlayerSweepData.getData(player);
                                             boolean r = "change".equalsIgnoreCase(show) ? !data.isShowSweepResult() : Boolean.parseBoolean(show);
                                             data.setShowSweepResult(r);
-                                            AotakeUtils.sendMessage(player
-                                                    , Component.translatable(EnumI18nType.MESSAGE
+                                            MessageUtils.sendNotification(player
+                                                    , AotakeComponent.get().trans(EnumI18nType.FORMAT
                                                             , "show_sweep_result"
-                                                            , I18nUtils.enabled(AotakeUtils.getPlayerLanguage(player), r)
+                                                            , AotakeLang.get().enabled(Translator.getServerPlayerLanguage(player), r)
                                                             , String.format("/%s config player showSweepResult [<status>]", AotakeUtils.getCommandPrefix())
                                                     )
-                                            );
+                                                    , AotakeNotificationTypes.PLAYER_PREFERENCE);
+                                            if (PlayerUtils.isRemoteClientModInstalled(player, AotakeSweep.MODID)) {
+                                                PacketUtils.sendPacketToPlayer(new SweepDataSyncToClient(player), player);
+                                            }
                                             return 1;
                                         })
                                 )
@@ -115,20 +164,24 @@ public class ConfigCommand {
                                             return suggestion.buildFuture();
                                         })
                                         .executes(context -> {
-                                            if (CommandUtils.checkModStatus(context)) return 0;
-                                            CommandUtils.notifyHelp(context);
-                                            String enable = CommandUtils.getStringDefault(context, "enable", "change");
                                             ServerPlayer player = context.getSource().getPlayerOrException();
+                                            if (CommandUtils.checkModStatus(context, AotakeSweep::isDisable))
+                                                return 0;
+                                            CommandUtils.notifyHelp(context, PlayerSweepData.getData(player), AotakeComponent.get().trans(EnumI18nType.WORD, "title"), String.format("/%s help", AotakeUtils.getCommandPrefix()));
+                                            String enable = CommandUtils.getStringDefault(context, "enable", "change");
                                             PlayerSweepData data = PlayerSweepData.getData(player);
                                             boolean r = "change".equalsIgnoreCase(enable) ? !data.isEnableWarningVoice() : Boolean.parseBoolean(enable);
                                             data.setEnableWarningVoice(r);
-                                            AotakeUtils.sendMessage(player
-                                                    , Component.translatable(EnumI18nType.MESSAGE
-                                                            , "enable_warning_voice"
-                                                            , I18nUtils.enabled(AotakeUtils.getPlayerLanguage(player), r)
+                                            MessageUtils.sendNotification(player
+                                                    , AotakeComponent.get().trans(EnumI18nType.FORMAT
+                                                            , "warning_voice"
+                                                            , AotakeLang.get().enabled(Translator.getServerPlayerLanguage(player), r)
                                                             , String.format("/%s config player enableWarningVoice [<status>]", AotakeUtils.getCommandPrefix())
                                                     )
-                                            );
+                                                    , AotakeNotificationTypes.PLAYER_PREFERENCE);
+                                            if (PlayerUtils.isRemoteClientModInstalled(player, AotakeSweep.MODID)) {
+                                                PacketUtils.sendPacketToPlayer(new SweepDataSyncToClient(player), player);
+                                            }
                                             return 1;
                                         })
                                 )

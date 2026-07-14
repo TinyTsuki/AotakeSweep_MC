@@ -1,44 +1,46 @@
 package xin.vanilla.aotake.network.packet;
 
-import net.fabricmc.api.EnvType;
-import net.fabricmc.api.Environment;
-import net.minecraft.network.FriendlyByteBuf;
-import net.minecraft.network.codec.StreamCodec;
-import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.world.entity.Entity;
-import org.jetbrains.annotations.NotNull;
-import xin.vanilla.aotake.AotakeSweep;
+import xin.vanilla.aotake.network.NetworkPacket;
+import xin.vanilla.banira.common.network.BaniraNetworkContext;
+import xin.vanilla.banira.common.network.BaniraPacketBuffer;
 
-public record GhostCameraToClient(int entityId, boolean reset) implements CustomPacketPayload {
-    public static final CustomPacketPayload.Type<GhostCameraToClient> ID = new CustomPacketPayload.Type<>(AotakeSweep.createIdentifier("ghost_camera"));
-    public static final StreamCodec<FriendlyByteBuf, GhostCameraToClient> CODEC = StreamCodec.of(
-            (buf, packet) -> {
-                buf.writeInt(packet.entityId);
-                buf.writeBoolean(packet.reset);
-            },
-            buf -> new GhostCameraToClient(buf.readInt(), buf.readBoolean())
-    );
+public class GhostCameraToClient implements NetworkPacket {
 
-    @Override
-    public @NotNull Type<? extends CustomPacketPayload> type() {
-        return ID;
+    private final int entityId;
+    private final boolean reset;
+
+
+    public GhostCameraToClient(int entityId, boolean reset) {
+        this.entityId = entityId;
+        this.reset = reset;
     }
 
-    public static void handle(GhostCameraToClient packet) {
-        ClientSide.handle(packet);
+    public GhostCameraToClient(BaniraPacketBuffer buf) {
+        this.entityId = buf.readInt();
+        this.reset = buf.readBoolean();
     }
 
-    @Environment(EnvType.CLIENT)
+    public void toBytes(BaniraPacketBuffer buf) {
+        buf.writeInt(this.entityId);
+        buf.writeBoolean(this.reset);
+    }
+
+    public static void handle(GhostCameraToClient packet, BaniraNetworkContext ctx) {
+        ctx.enqueueWork(() -> ClientSide.handle(packet));
+        ctx.markHandled();
+    }
+
     private static final class ClientSide {
         private static void handle(GhostCameraToClient packet) {
             net.minecraft.client.Minecraft client = net.minecraft.client.Minecraft.getInstance();
             if (client.player == null) return;
-            if (packet.reset()) {
+            if (packet.reset) {
                 client.setCameraEntity(client.player);
                 return;
             }
             if (client.level == null) return;
-            Entity entity = client.level.getEntity(packet.entityId());
+            Entity entity = client.level.getEntity(packet.entityId);
             if (entity != null) {
                 client.setCameraEntity(entity);
             }

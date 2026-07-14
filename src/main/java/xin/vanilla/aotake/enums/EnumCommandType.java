@@ -3,17 +3,24 @@ package xin.vanilla.aotake.enums;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import lombok.Getter;
 import net.minecraft.commands.CommandSourceStack;
+import xin.vanilla.aotake.AotakeComponent;
+import xin.vanilla.aotake.AotakeSweep;
 import xin.vanilla.aotake.command.impl.*;
+import xin.vanilla.banira.command.BaniraCommand;
+import xin.vanilla.banira.api.permission.BaniraVirtualPermission;
+import xin.vanilla.banira.common.data.Component;
+import xin.vanilla.banira.common.enums.IEnumDescribable;
+import xin.vanilla.banira.common.util.EnumDescriptionHelper;
 
 import javax.annotation.Nullable;
 import java.util.function.Supplier;
 
 @Getter
-public enum EnumCommandType {
+public enum EnumCommandType implements BaniraVirtualPermission, IEnumDescribable {
     HELP(HelpCommand::help, false, false),
-    LANGUAGE(LanguageCommand::lang, false, false),
+    LANGUAGE(() -> commandNode(BaniraCommand.LANGUAGE), false, false),
     LANGUAGE_CONCISE(),
-    VIRTUAL_OP(VirtualOpCommand::vop),
+    VIRTUAL_OP(() -> commandNode(BaniraCommand.VIRTUAL_OP)),
     VIRTUAL_OP_CONCISE(),
     DUSTBIN_OPEN(DustbinCommand::open),
     DUSTBIN_OPEN_CONCISE(),
@@ -33,6 +40,8 @@ public enum EnumCommandType {
     CLEAR_DROP_CONCISE(),
     DELAY_SWEEP(DelayCommand::delay),
     DELAY_SWEEP_CONCISE(),
+    CHUNK_VAULT(ChunkVaultCommand::register),
+    CHUNK_VAULT_CONCISE(true),
     CATCH_PLAYER(true),
     CONFIG(ConfigCommand::config, true, true),
     ;
@@ -80,10 +89,42 @@ public enum EnumCommandType {
         return this.ordinal();
     }
 
+    // region BaniraVirtualPermission
+    @Override
+    public String modId() {
+        return AotakeSweep.MODID;
+    }
+
+    @Override
+    public String id() {
+        return this.replaceConcise().name();
+    }
+
+    @Override
+    public boolean op() {
+        return this.op;
+    }
+
+    @Override
+    public int sort() {
+        return getSort();
+    }
+    // endregion
+
     public EnumCommandType replaceConcise() {
         if (this.name().endsWith("_CONCISE")) {
             return EnumCommandType.valueOf(this.name().replace("_CONCISE", ""));
         }
         return this;
+    }
+
+    @Override
+    public Component enumDescription() {
+        return EnumDescriptionHelper.describeEnum(AotakeComponent.get(), this);
+    }
+
+    @SuppressWarnings("unchecked")
+    private static LiteralArgumentBuilder<CommandSourceStack> commandNode(Object node) {
+        return (LiteralArgumentBuilder<CommandSourceStack>) node;
     }
 }

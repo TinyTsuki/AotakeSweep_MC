@@ -9,9 +9,9 @@ import lombok.experimental.Accessors;
 import net.fabricmc.loader.api.FabricLoader;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import xin.vanilla.aotake.util.CollectionUtils;
-import xin.vanilla.aotake.util.JsonUtils;
-import xin.vanilla.aotake.util.StringUtils;
+import xin.vanilla.banira.common.util.CollectionUtils;
+import xin.vanilla.banira.common.util.JsonUtils;
+import xin.vanilla.banira.common.util.StringUtils;
 
 import java.io.File;
 import java.io.RandomAccessFile;
@@ -349,7 +349,7 @@ public class WarningConfig {
 
     private static WarningContentLoadResult loadWarningContentGroups(WarningConfigRaw raw, boolean allowLegacy) {
         String contentRaw = raw.contentRaw();
-        String legacy = ServerConfig.get().sweepConfig().sweepWarningContent();
+        String legacy = CommonConfig.get().base().sweep().sweepWarningContent();
         if (StringUtils.isNotNullOrEmpty(contentRaw)) {
             WarningContentParseResult parsed = parseWarningContent(contentRaw);
             boolean writeFile = raw.needSave() || parsed.needUpgrade() || CollectionUtils.isNullOrEmpty(parsed.groups());
@@ -364,7 +364,7 @@ public class WarningConfig {
 
     private static WarningContentLoadResult loadWarningVoiceGroups(WarningConfigRaw raw, boolean allowLegacy) {
         String voiceRaw = raw.voiceRaw();
-        String legacy = ServerConfig.get().sweepConfig().sweepWarningVoice();
+        String legacy = CommonConfig.get().base().sweep().sweepWarningVoice();
         if (StringUtils.isNotNullOrEmpty(voiceRaw)) {
             WarningContentParseResult parsed = parseWarningVoice(voiceRaw);
             boolean writeFile = raw.needSave() || parsed.needUpgrade() || CollectionUtils.isNullOrEmpty(parsed.groups());
@@ -400,16 +400,16 @@ public class WarningConfig {
     }
 
     private static void clearLegacyWarningContent() {
-        if (StringUtils.isNotNullOrEmpty(ServerConfig.get().sweepConfig().sweepWarningContent())) {
-            ServerConfig.get().sweepConfig().sweepWarningContent("");
-            ServerConfig.save();
+        if (StringUtils.isNotNullOrEmpty(CommonConfig.get().base().sweep().sweepWarningContent())) {
+            CommonConfig.get().base().sweep().sweepWarningContent("");
+            CommonConfig.save();
         }
     }
 
     private static void clearLegacyWarningVoice() {
-        if (StringUtils.isNotNullOrEmpty(ServerConfig.get().sweepConfig().sweepWarningVoice())) {
-            ServerConfig.get().sweepConfig().sweepWarningVoice("");
-            ServerConfig.save();
+        if (StringUtils.isNotNullOrEmpty(CommonConfig.get().base().sweep().sweepWarningVoice())) {
+            CommonConfig.get().base().sweep().sweepWarningVoice("");
+            CommonConfig.save();
         }
     }
 
@@ -418,7 +418,7 @@ public class WarningConfig {
             return null;
         }
         try {
-            return JsonUtils.GSON.fromJson(Files.readString(file.toPath()), JsonObject.class);
+            return JsonUtils.GSON.fromJson(new String(Files.readAllBytes(file.toPath()), StandardCharsets.UTF_8), JsonObject.class);
         } catch (Exception e) {
             LOGGER.error("Failed to read warning config: {}", file.getAbsolutePath(), e);
             return null;
@@ -454,11 +454,32 @@ public class WarningConfig {
         }
     }
 
-    public record WarningConfigRaw(String contentRaw, String voiceRaw, boolean needSave, boolean configFileExists) {
+    @Getter
+    @Accessors(fluent = true)
+    public static class WarningConfigRaw {
+        private final String contentRaw;
+        private final String voiceRaw;
+        private final boolean needSave;
+        private final boolean configFileExists;
+
+        public WarningConfigRaw(String contentRaw, String voiceRaw, boolean needSave, boolean configFileExists) {
+            this.contentRaw = contentRaw;
+            this.voiceRaw = voiceRaw;
+            this.needSave = needSave;
+            this.configFileExists = configFileExists;
+        }
     }
 
-    public record WarningGroupData(List<Map<String, List<String>>> contentGroups,
-                                   List<Map<String, List<String>>> voiceGroups) {
+    @Getter
+    @Accessors(fluent = true)
+    public static class WarningGroupData {
+        private final List<Map<String, List<String>>> contentGroups;
+        private final List<Map<String, List<String>>> voiceGroups;
+
+        public WarningGroupData(List<Map<String, List<String>>> contentGroups, List<Map<String, List<String>>> voiceGroups) {
+            this.contentGroups = contentGroups;
+            this.voiceGroups = voiceGroups;
+        }
     }
 
     @Getter
@@ -472,7 +493,17 @@ public class WarningConfig {
         }
     }
 
-    private record WarningContentLoadResult(List<Map<String, List<String>>> groups, boolean writeFile,
-                                            boolean clearLegacy) {
+    @Getter
+    @Accessors(fluent = true)
+    private static class WarningContentLoadResult {
+        private final List<Map<String, List<String>>> groups;
+        private final boolean writeFile;
+        private final boolean clearLegacy;
+
+        public WarningContentLoadResult(List<Map<String, List<String>>> groups, boolean writeFile, boolean clearLegacy) {
+            this.groups = groups;
+            this.writeFile = writeFile;
+            this.clearLegacy = clearLegacy;
+        }
     }
 }

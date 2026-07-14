@@ -1,38 +1,46 @@
 package xin.vanilla.aotake.network.packet;
 
-import net.minecraft.network.FriendlyByteBuf;
-import net.minecraft.network.codec.StreamCodec;
-import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.server.level.ServerPlayer;
-import org.jetbrains.annotations.NotNull;
 import xin.vanilla.aotake.AotakeSweep;
 import xin.vanilla.aotake.enums.EnumCommandType;
+import xin.vanilla.aotake.network.NetworkPacket;
 import xin.vanilla.aotake.util.AotakeUtils;
+import xin.vanilla.banira.common.network.BaniraNetworkContext;
+import xin.vanilla.banira.common.network.BaniraPacketBuffer;
+import xin.vanilla.banira.common.util.CommandUtils;
+import xin.vanilla.banira.common.util.PlayerUtils;
 
-public record OpenDustbinToServer(int offset) implements CustomPacketPayload {
-    public static final CustomPacketPayload.Type<OpenDustbinToServer> ID = new CustomPacketPayload.Type<>(AotakeSweep.createIdentifier("open_dustbin"));
-    public static final StreamCodec<FriendlyByteBuf, OpenDustbinToServer> CODEC = StreamCodec.of(
-            (buf, packet) -> buf.writeInt(packet.offset),
-            buf -> new OpenDustbinToServer(buf.readInt())
-    );
+public class OpenDustbinToServer implements NetworkPacket {
+    private final int offset;
 
-    @Override
-    public @NotNull Type<? extends CustomPacketPayload> type() {
-        return ID;
+    public OpenDustbinToServer(int offset) {
+        this.offset = offset;
     }
 
-    public static void handle(OpenDustbinToServer packet, ServerPlayer player) {
-        if (player != null) {
-            String playerUUID = AotakeUtils.getPlayerUUIDString(player);
-            Integer page = AotakeSweep.playerDustbinPage().getOrDefault(playerUUID, 1);
-            int i = page + packet.offset();
-            if (i > 0 && i <= AotakeUtils.getDustbinTotalPage()) {
-                player.closeContainer();
+    public OpenDustbinToServer(BaniraPacketBuffer buf) {
+        this.offset = buf.readInt();
+    }
+
+    public void toBytes(BaniraPacketBuffer buf) {
+        buf.writeInt(this.offset);
+    }
+
+    public static void handle(OpenDustbinToServer packet, BaniraNetworkContext ctx) {
+        ctx.enqueueWork(() -> {
+            ServerPlayer player = ctx.senderAs(ServerPlayer.class);
+            if (player != null) {
+                String playerUUID = PlayerUtils.getPlayerUUIDString(player);
+                Integer page = AotakeSweep.getPlayerDustbinPage().getOrDefault(playerUUID, 1);
+                int i = page + packet.offset;
+                if (i > 0 && i <= AotakeUtils.getDustbinTotalPage()) {
+                    player.closeContainer();
+                }
+                CommandUtils.executeCommand(player, String.format("/%s %s"
+                        , AotakeUtils.getCommand(EnumCommandType.DUSTBIN_OPEN)
+                        , i
+                ));
             }
-            AotakeUtils.executeCommand(player, String.format("/%s %s"
-                    , AotakeUtils.getCommand(EnumCommandType.DUSTBIN_OPEN)
-                    , i
-            ));
-        }
+        });
+        ctx.markHandled();
     }
 }

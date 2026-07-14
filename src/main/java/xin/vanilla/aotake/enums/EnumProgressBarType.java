@@ -1,11 +1,14 @@
 package xin.vanilla.aotake.enums;
 
-import java.util.Arrays;
+import xin.vanilla.aotake.AotakeComponent;
+import xin.vanilla.banira.common.data.Component;
+import xin.vanilla.banira.common.enums.IEnumDescribable;
+import xin.vanilla.banira.common.util.EnumDescriptionHelper;
 
 /**
  * 进度条类型
  */
-public enum EnumProgressBarType {
+public enum EnumProgressBarType implements IEnumDescribable {
     LEAF,
     POLE,
     TEXT,
@@ -28,11 +31,12 @@ public enum EnumProgressBarType {
         return value == null ? LEAF : value;
     }
 
-    public static String[] names() {
-        return Arrays.stream(EnumProgressBarType.values()).map(EnumProgressBarType::name).toArray(String[]::new);
-    }
-
     public static boolean isValid(Object obj) {
         return valueOf(obj) != null;
+    }
+
+    @Override
+    public Component enumDescription() {
+        return EnumDescriptionHelper.describeEnum(AotakeComponent.get(), this);
     }
 }

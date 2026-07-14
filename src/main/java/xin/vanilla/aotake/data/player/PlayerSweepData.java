@@ -1,9 +1,13 @@
 package xin.vanilla.aotake.data.player;
 
-import net.minecraft.nbt.CompoundTag;
-import net.minecraft.network.FriendlyByteBuf;
-import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.nbt.CompoundTag;
+import xin.vanilla.aotake.AotakeSweep;
+import xin.vanilla.banira.api.BaniraPlayerData;
+import xin.vanilla.banira.common.api.ICommandNotify;
+import xin.vanilla.banira.common.network.BaniraPacketBuffer;
+import xin.vanilla.banira.common.player.IPlayerData;
 
 import java.util.Collections;
 import java.util.Map;
@@ -13,7 +17,7 @@ import java.util.WeakHashMap;
 /**
  * 玩家数据
  */
-public final class PlayerSweepData implements IPlayerData<PlayerSweepData> {
+public final class PlayerSweepData implements IPlayerData<PlayerSweepData>, ICommandNotify {
 
     // region override
 
@@ -24,7 +28,8 @@ public final class PlayerSweepData implements IPlayerData<PlayerSweepData> {
     private PlayerSweepData(Player player) {
         this.player = player;
         if (this.player instanceof ServerPlayer) {
-            this.deserializeNBT(PlayerDataManager.instance().getOrCreate(player).copy(), false);
+            CompoundTag stored = BaniraPlayerData.getOrCreate(player.getUUID(), AotakeSweep.MODID, CompoundTag.class);
+            this.deserializeNBT(stored.copy(), false);
         }
     }
 
@@ -54,7 +59,7 @@ public final class PlayerSweepData implements IPlayerData<PlayerSweepData> {
      * 将数据写到网络包
      */
     @Override
-    public void writeToBuffer(FriendlyByteBuf buffer) {
+    public void writeToBuffer(BaniraPacketBuffer buffer) {
         buffer.writeBoolean(isNotified());
         buffer.writeBoolean(isShowSweepResult());
         buffer.writeBoolean(isEnableWarningVoice());
@@ -64,7 +69,7 @@ public final class PlayerSweepData implements IPlayerData<PlayerSweepData> {
      * 从网络包读数据
      */
     @Override
-    public void readFromBuffer(FriendlyByteBuf buffer) {
+    public void readFromBuffer(BaniraPacketBuffer buffer) {
         this.notified = buffer.readBoolean();
         this.showSweepResult = buffer.readBoolean();
         this.enableWarningVoice = buffer.readBoolean();
@@ -110,7 +115,7 @@ public final class PlayerSweepData implements IPlayerData<PlayerSweepData> {
     @Override
     public void save() {
         if (this.player instanceof ServerPlayer) {
-            PlayerDataManager.instance().put(player, serializeNBT());
+            BaniraPlayerData.put(player.getUUID(), AotakeSweep.MODID, serializeNBT());
         }
     }
 

@@ -1,46 +1,55 @@
 package xin.vanilla.aotake.network.packet;
 
-import net.minecraft.network.FriendlyByteBuf;
-import net.minecraft.network.codec.StreamCodec;
-import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.server.level.ServerPlayer;
-import org.jetbrains.annotations.NotNull;
 import xin.vanilla.aotake.AotakeSweep;
 import xin.vanilla.aotake.enums.EnumCommandType;
+import xin.vanilla.aotake.network.NetworkPacket;
 import xin.vanilla.aotake.util.AotakeUtils;
+import xin.vanilla.banira.common.network.BaniraNetworkContext;
+import xin.vanilla.banira.common.network.BaniraPacketBuffer;
+import xin.vanilla.banira.common.util.CommandUtils;
+import xin.vanilla.banira.common.util.PlayerUtils;
 
-public record ClearDustbinToServer(boolean all, boolean cache) implements CustomPacketPayload {
-    public static final CustomPacketPayload.Type<ClearDustbinToServer> ID = new CustomPacketPayload.Type<>(AotakeSweep.createIdentifier("clear_dustbin"));
-    public static final StreamCodec<FriendlyByteBuf, ClearDustbinToServer> CODEC = StreamCodec.of(
-            (buf, packet) -> {
-                buf.writeBoolean(packet.all);
-                buf.writeBoolean(packet.cache);
-            },
-            buf -> new ClearDustbinToServer(buf.readBoolean(), buf.readBoolean())
-    );
+public class ClearDustbinToServer implements NetworkPacket {
+    private final boolean all;
+    private final boolean cache;
 
-    @Override
-    public @NotNull Type<? extends CustomPacketPayload> type() {
-        return ID;
+    public ClearDustbinToServer(boolean all, boolean cache) {
+        this.all = all;
+        this.cache = cache;
     }
 
-    public static void handle(ClearDustbinToServer packet, ServerPlayer player) {
-        if (player != null) {
-            String playerUUID = AotakeUtils.getPlayerUUIDString(player);
-            int page = AotakeSweep.playerDustbinPage().getOrDefault(playerUUID, 1);
-            // 缓存区
-            if (packet.cache()) {
-                AotakeUtils.executeCommand(player, String.format("/%s"
-                        , AotakeUtils.getCommand(EnumCommandType.CACHE_CLEAR))
-                );
+    public ClearDustbinToServer(BaniraPacketBuffer buf) {
+        this.all = buf.readBoolean();
+        this.cache = buf.readBoolean();
+    }
+
+    public void toBytes(BaniraPacketBuffer buf) {
+        buf.writeBoolean(this.all);
+        buf.writeBoolean(this.cache);
+    }
+
+    public static void handle(ClearDustbinToServer packet, BaniraNetworkContext ctx) {
+        ctx.enqueueWork(() -> {
+            ServerPlayer player = ctx.senderAs(ServerPlayer.class);
+            if (player != null) {
+                String playerUUID = PlayerUtils.getPlayerUUIDString(player);
+                int page = AotakeSweep.getPlayerDustbinPage().getOrDefault(playerUUID, 1);
+                // 缓存区
+                if (packet.cache) {
+                    CommandUtils.executeCommand(player, String.format("/%s"
+                            , AotakeUtils.getCommand(EnumCommandType.CACHE_CLEAR))
+                    );
+                }
+                // 垃圾箱
+                else {
+                    CommandUtils.executeCommand(player, String.format("/%s%s"
+                            , AotakeUtils.getCommand(EnumCommandType.DUSTBIN_CLEAR)
+                            , packet.all ? "" : " " + page)
+                    );
+                }
             }
-            // 垃圾箱
-            else {
-                AotakeUtils.executeCommand(player, String.format("/%s%s"
-                        , AotakeUtils.getCommand(EnumCommandType.DUSTBIN_CLEAR)
-                        , packet.all() ? "" : " " + page)
-                );
-            }
-        }
+        });
+        ctx.markHandled();
     }
 }
