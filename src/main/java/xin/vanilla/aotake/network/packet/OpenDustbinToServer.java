@@ -1,44 +1,46 @@
 package xin.vanilla.aotake.network.packet;
 
-import net.fabricmc.fabric.api.networking.v1.PacketByteBufs;
-import net.minecraft.network.FriendlyByteBuf;
-import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import xin.vanilla.aotake.AotakeSweep;
 import xin.vanilla.aotake.enums.EnumCommandType;
-import xin.vanilla.aotake.network.AotakePacket;
+import xin.vanilla.aotake.network.NetworkPacket;
 import xin.vanilla.aotake.util.AotakeUtils;
+import xin.vanilla.banira.common.network.BaniraNetworkContext;
+import xin.vanilla.banira.common.network.BaniraPacketBuffer;
+import xin.vanilla.banira.common.util.CommandUtils;
+import xin.vanilla.banira.common.util.PlayerUtils;
 
-public record OpenDustbinToServer(int offset) implements AotakePacket {
-    public static final ResourceLocation ID = AotakeSweep.createIdentifier("open_dustbin");
+public class OpenDustbinToServer implements NetworkPacket {
+    private final int offset;
 
-    public OpenDustbinToServer(FriendlyByteBuf buf) {
-        this(buf.readInt());
+    public OpenDustbinToServer(int offset) {
+        this.offset = offset;
     }
 
-    @Override
-    public ResourceLocation id() {
-        return ID;
+    public OpenDustbinToServer(BaniraPacketBuffer buf) {
+        this.offset = buf.readInt();
     }
 
-    public FriendlyByteBuf toBytes(FriendlyByteBuf buf) {
-        if (buf == null) buf = PacketByteBufs.create();
-        buf.writeInt(this.offset());
-        return buf;
+    public void toBytes(BaniraPacketBuffer buf) {
+        buf.writeInt(this.offset);
     }
 
-    public static void handle(OpenDustbinToServer packet, ServerPlayer player) {
-        if (player != null) {
-            String playerUUID = AotakeUtils.getPlayerUUIDString(player);
-            Integer page = AotakeSweep.playerDustbinPage().getOrDefault(playerUUID, 1);
-            int i = page + packet.offset();
-            if (i > 0 && i <= AotakeUtils.getDustbinTotalPage()) {
-                player.closeContainer();
+    public static void handle(OpenDustbinToServer packet, BaniraNetworkContext ctx) {
+        ctx.enqueueWork(() -> {
+            ServerPlayer player = ctx.senderAs(ServerPlayer.class);
+            if (player != null) {
+                String playerUUID = PlayerUtils.getPlayerUUIDString(player);
+                Integer page = AotakeSweep.getPlayerDustbinPage().getOrDefault(playerUUID, 1);
+                int i = page + packet.offset;
+                if (i > 0 && i <= AotakeUtils.getDustbinTotalPage()) {
+                    player.closeContainer();
+                }
+                CommandUtils.executeCommand(player, String.format("/%s %s"
+                        , AotakeUtils.getCommand(EnumCommandType.DUSTBIN_OPEN)
+                        , i
+                ));
             }
-            AotakeUtils.executeCommand(player, String.format("/%s %s"
-                    , AotakeUtils.getCommand(EnumCommandType.DUSTBIN_OPEN)
-                    , i
-            ));
-        }
+        });
+        ctx.markHandled();
     }
 }

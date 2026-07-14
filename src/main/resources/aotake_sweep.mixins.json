@@ -3,21 +3,18 @@
   "minVersion": "0.8",
   "package": "xin.vanilla.aotake.mixin",
   "compatibilityLevel": "JAVA_17",
+  "refmap": "aotake_sweep.refmap.json",
   "mixins": [
-    "MinecraftServerSaveMixin",
     "ServerPlayerMixin"
+  ],
+  "client": [
+    "ChestScreenMixin",
+    "ContainerScreenAccessor",
+    "ContainerScreenMixin",
+    "MinecraftMixin",
+    "ScreenMixin"
   ],
   "injectors": {
     "defaultRequire": 1
-  },
-  "overwrites": {
-    "requireAnnotations": true
-  },
-  "client": [
-    "AbstractContainerScreenAccessor",
-    "AbstractContainerScreenMixin",
-    "ContainerScreenMixin",
-    "GuiConditionalHideMixin",
-    "ScreenAccessor"
-  ]
+  }
 }

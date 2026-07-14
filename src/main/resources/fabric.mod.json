@@ -5,35 +5,30 @@
   "name": "${mod_name}",
   "description": "${mod_desc}",
   "authors": [
-    "Tsuki Maaii"
+    "${mod_authors}"
   ],
   "contact": {
-    "sources": "https://github.com/TinyTsuki/AotakeSweep_MC",
-    "issues": "https://github.com/TinyTsuki/AotakeSweep_MC/issues"
+    "sources": "${sources_url}",
+    "issues": "${issues_url}"
   },
-  "license": "MIT",
+  "license": "${license}",
   "icon": "pack.png",
   "environment": "*",
   "entrypoints": {
-    "client": [
-      "xin.vanilla.aotake.event.ClientEventHandler"
-    ],
     "main": [
-      "xin.vanilla.aotake.AotakeSweep"
+      "xin.vanilla.aotake.internal.fabric.FabricAotakeEntry"
     ],
-    "vanilla_xin_common_config_reload": [
-      "xin.vanilla.aotake.config.CustomConfigReload"
-    ],
-    "modmenu": [
-      "xin.vanilla.aotake.modmenu.ModMenuIntegration"
+    "client": [
+      "xin.vanilla.aotake.internal.fabric.client.FabricAotakeClientEntry"
     ]
   },
   "mixins": [
-    "aotake_sweep.mixins.json"
+    "${mod_id}.mixins.json"
   ],
   "depends": {
     "fabricloader": ">=${loader_version}",
     "fabric-api": "*",
-    "minecraft": "${minecraft_version}"
+    "minecraft": "${minecraft_version}",
+    "banira_codex": "${banira_version_range}"
   }
 }

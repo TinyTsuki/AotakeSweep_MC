@@ -2,34 +2,32 @@ package xin.vanilla.aotake.data.world;
 
 import lombok.Getter;
 import lombok.NonNull;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.entity.player.Inventory;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.SimpleContainer;
+import net.minecraft.world.inventory.ChestMenu;
+import net.minecraft.world.inventory.AbstractContainerMenu;
+import net.minecraft.world.MenuProvider;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.Tag;
+import net.minecraft.nbt.ListTag;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
-import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.MenuProvider;
-import net.minecraft.world.SimpleContainer;
-import net.minecraft.world.entity.player.Inventory;
-import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.inventory.AbstractContainerMenu;
-import net.minecraft.world.inventory.ChestMenu;
-import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.saveddata.SavedData;
-import xin.vanilla.aotake.AotakeSweep;
-import xin.vanilla.aotake.config.ServerConfig;
+import xin.vanilla.aotake.AotakeComponent;
+import xin.vanilla.aotake.AotakeLang;
+import xin.vanilla.aotake.config.CommonConfig;
 import xin.vanilla.aotake.data.ConcurrentShuffleList;
 import xin.vanilla.aotake.data.DropStatistics;
-import xin.vanilla.aotake.data.KeyValue;
-import xin.vanilla.aotake.data.WorldCoordinate;
-import xin.vanilla.aotake.enums.EnumDustbinMode;
-import xin.vanilla.aotake.enums.EnumI18nType;
-import xin.vanilla.aotake.enums.EnumMCColor;
-import xin.vanilla.aotake.util.AotakeUtils;
-import xin.vanilla.aotake.util.Component;
-import xin.vanilla.aotake.util.DateUtils;
+import xin.vanilla.aotake.internal.common.AotakeServerRuntime;
+import xin.vanilla.banira.common.data.Component;
+import xin.vanilla.banira.common.data.KeyValue;
+import xin.vanilla.banira.common.data.WorldCoordinate;
+import xin.vanilla.banira.common.enums.EnumMCColor;
+import xin.vanilla.banira.common.util.DateUtils;
 
-import javax.annotation.ParametersAreNonnullByDefault;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
@@ -54,6 +52,10 @@ public class WorldTrashData extends SavedData {
      * 掉落物统计
      */
     private Queue<DropStatistics> dropCount = new ConcurrentLinkedQueue<>();
+    /**
+     * {@link #dropCount} 当前对应的日历日期（与 {@link DateUtils#toString(Date)} 一致），用于跨日时先落盘上一日再切换到当日
+     */
+    private String dropStatsDate;
 
     public WorldTrashData() {
     }
@@ -62,25 +64,25 @@ public class WorldTrashData extends SavedData {
         WorldTrashData data = new WorldTrashData();
         // 未开启持久化直接返回
         try {
-            if (!ServerConfig.get().dustbinConfig().dustbinPersistent()) return data;
+            if (!CommonConfig.get().base().dustbin().dustbinPersistent()) return data;
         } catch (Throwable ignored) {
         }
 
         data.dropList = new ConcurrentShuffleList<>();
-        ListTag dropListTag = nbt.getList("dropList", 10);
+        ListTag dropListNBT = nbt.getList("dropList", 10);
         ConcurrentShuffleList<KeyValue<WorldCoordinate, ItemStack>> drops = new ConcurrentShuffleList<>();
-        for (int i = 0; i < dropListTag.size(); i++) {
-            CompoundTag drop = dropListTag.getCompound(i);
+        for (int i = 0; i < dropListNBT.size(); i++) {
+            CompoundTag drop = dropListNBT.getCompound(i);
             ItemStack item = ItemStack.of(drop.getCompound("item"));
             drops.add(new KeyValue<>(
-                    WorldCoordinate.readFromNBT(drop.getCompound("coordinate"))
+                    WorldCoordinate.fromTag(drop.getCompound("coordinate"))
                     , item
             ));
         }
         data.setDrops(drops);
 
         String todayStr = DateUtils.toString(new Date());
-        MinecraftServer server = AotakeSweep.serverInstance().val() ? AotakeSweep.serverInstance().key() : null;
+        MinecraftServer server = AotakeServerRuntime.isRunning() ? AotakeServerRuntime.currentServer() : null;
         Queue<DropStatistics> dropCounts = DropStatisticsStorage.loadByDate(server, todayStr);
         // 若 NBT 中有 dropCount 且当日 JSON 为空，则迁移至 JSON
         if (dropCounts.isEmpty() && nbt.contains("dropCount")) {
@@ -94,10 +96,11 @@ public class WorldTrashData extends SavedData {
             nbt.remove("dropCount");
         }
         data.setDropCount(dropCounts);
+        data.dropStatsDate = todayStr;
 
         data.inventoryList = new ArrayList<>();
-        ListTag inventoryListTag = nbt.getList("inventoryList", 9);
-        for (Tag inbt : inventoryListTag) {
+        ListTag inventoryListNBT = nbt.getList("inventoryList", 9);
+        for (Tag inbt : inventoryListNBT) {
             SimpleContainer inventory = new SimpleContainer(6 * 9);
             inventory.fromTag((ListTag) inbt);
             data.inventoryList.add(inventory);
@@ -105,29 +108,30 @@ public class WorldTrashData extends SavedData {
         return data;
     }
 
-    @NonNull
     @Override
-    @ParametersAreNonnullByDefault
+    @NonNull
     public CompoundTag save(CompoundTag nbt) {
         // 未开启持久化直接返回
         try {
-            if (!ServerConfig.get().dustbinConfig().dustbinPersistent()) return nbt;
+            if (!CommonConfig.get().base().dustbin().dustbinPersistent()) return nbt;
         } catch (Throwable ignored) {
         }
 
         ListTag dropsNBT = new ListTag();
         for (KeyValue<WorldCoordinate, ItemStack> drop : this.getDropList()) {
-            if (drop == null || drop.getValue() == null) continue;
+            if (drop == null || drop.value() == null) continue;
             CompoundTag dropTag = new CompoundTag();
-            dropTag.put("item", drop.getValue().save(new CompoundTag()));
-            dropTag.put("coordinate", drop.getKey().writeToNBT());
+            dropTag.put("item", drop.value().save(new CompoundTag()));
+            dropTag.put("coordinate", drop.key().toTag());
             dropsNBT.add(dropTag);
         }
         nbt.put("dropList", dropsNBT);
 
         String todayStr = DateUtils.toString(new Date());
-        if (AotakeSweep.serverInstance().val()) {
-            DropStatisticsStorage.saveByDate(AotakeSweep.serverInstance().key(), todayStr, this.dropCount);
+        if (AotakeServerRuntime.isRunning()) {
+            MinecraftServer server = AotakeServerRuntime.currentServer();
+            rolloverDropStatisticsIfNeeded(server, todayStr);
+            DropStatisticsStorage.saveByDate(server, todayStr, this.dropCount);
         }
 
         ListTag inventoryNBT = new ListTag();
@@ -149,8 +153,39 @@ public class WorldTrashData extends SavedData {
         super.setDirty();
     }
 
+    /**
+     * 长时间运行时若已跨自然日，将仍属于 {@link #dropStatsDate} 的条目写入对应日期文件，
+     * 再与当日 JSON 合并，避免把前一日累计继续写入新日期文件。
+     */
+    private void rolloverDropStatisticsIfNeeded(MinecraftServer server, String todayStr) {
+        if (this.dropStatsDate == null) {
+            this.dropStatsDate = todayStr;
+            return;
+        }
+        if (this.dropStatsDate.equals(todayStr)) {
+            return;
+        }
+        List<DropStatistics> snapshot = new ArrayList<>(this.dropCount);
+        Queue<DropStatistics> oldDayEntries = new ConcurrentLinkedQueue<>();
+        Queue<DropStatistics> todayEntries = new ConcurrentLinkedQueue<>();
+        for (DropStatistics stat : snapshot) {
+            String entryDate = DateUtils.toString(new Date(stat.getTime()));
+            if (this.dropStatsDate.equals(entryDate)) {
+                oldDayEntries.add(stat);
+            } else {
+                todayEntries.add(stat);
+            }
+        }
+        DropStatisticsStorage.saveByDate(server, this.dropStatsDate, oldDayEntries);
+        Queue<DropStatistics> mergedToday = DropStatisticsStorage.loadByDate(server, todayStr);
+        mergedToday.addAll(todayEntries);
+        this.dropCount = mergedToday;
+        this.dropStatsDate = todayStr;
+        super.setDirty();
+    }
+
     public static WorldTrashData get() {
-        return get(AotakeSweep.serverInstance().key().getAllLevels().iterator().next());
+        return get(AotakeServerRuntime.currentServer().getAllLevels().iterator().next());
     }
 
     public static WorldTrashData get(ServerPlayer player) {
@@ -162,7 +197,7 @@ public class WorldTrashData extends SavedData {
     }
 
     public static MenuProvider getTrashContainer(ServerPlayer player, int page) {
-        int limit = ServerConfig.get().dustbinConfig().dustbinPageLimit();
+        int limit = CommonConfig.get().base().dustbin().dustbinPageLimit();
         List<SimpleContainer> inventories = get().getInventoryList();
         int size = inventories.size();
         if (inventories.isEmpty() || size < limit) {
@@ -189,15 +224,15 @@ public class WorldTrashData extends SavedData {
             @NonNull
             @Override
             public net.minecraft.network.chat.Component getDisplayName() {
-                Component title = Component.translatable(EnumI18nType.WORD, "title")
-                        .setColor(0x5DA530);
-                Component vComponent = Component.literal(String.format("(%s/%s)", page, limit))
-                        .setColor(0x5DA530);
-                Component bComponent = Component.literal(String.format("(%s)", ServerConfig.get().dustbinConfig().dustbinBlockPositions().size()))
-                        .setColor(EnumMCColor.RED.getColor());
-                Component plusComponent = Component.literal("+")
-                        .setColor(EnumMCColor.BLACK.getColor());
-                switch (EnumDustbinMode.valueOfOrDefault(ServerConfig.get().dustbinConfig().dustbinMode())) {
+                Component title = AotakeComponent.get().transAuto("title")
+                        .color(0x5DA530);
+                Component vComponent = AotakeComponent.get().literal(String.format("(%s/%s)", page, limit))
+                        .color(0x5DA530);
+                Component bComponent = AotakeComponent.get().literal(String.format("(%s)", CommonConfig.get().base().dustbin().dustbinBlockPositions().size()))
+                        .color(EnumMCColor.RED.getColor());
+                Component plusComponent = AotakeComponent.get().literal("+")
+                        .color(EnumMCColor.BLACK.getColor());
+                switch (CommonConfig.get().base().dustbin().dustbinBlockMode()) {
                     case VIRTUAL: {
                         title.append(String.format("(%s/%s)", page, limit));
                     }
@@ -211,7 +246,7 @@ public class WorldTrashData extends SavedData {
                     }
                     break;
                 }
-                return title.toTextComponent(AotakeUtils.getPlayerLanguage(player));
+                return title.toVanilla(AotakeLang.getPlayerLanguage(player));
             }
 
             @Override
@@ -225,7 +260,7 @@ public class WorldTrashData extends SavedData {
         List<KeyValue<WorldCoordinate, ItemStack>> leftovers = new ArrayList<>();
 
         for (KeyValue<WorldCoordinate, ItemStack> drop : drops.snapshot()) {
-            ItemStack stack = drop.getValue();
+            ItemStack stack = drop.value();
             if (stack == null || stack.isEmpty()) continue;
 
             ItemStack remaining = tryFillInventory(inventory, stack);
@@ -233,7 +268,7 @@ public class WorldTrashData extends SavedData {
             drops.remove(drop);
 
             if (!remaining.isEmpty()) {
-                leftovers.add(new KeyValue<>(drop.getKey(), remaining));
+                leftovers.add(new KeyValue<>(drop.key(), remaining));
             }
         }
 

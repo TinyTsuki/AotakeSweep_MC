@@ -1,41 +1,37 @@
 package xin.vanilla.aotake.network.packet;
 
-import net.fabricmc.api.EnvType;
-import net.fabricmc.api.Environment;
-import net.fabricmc.fabric.api.networking.v1.PacketByteBufs;
-import net.minecraft.network.FriendlyByteBuf;
-import net.minecraft.resources.ResourceLocation;
-import xin.vanilla.aotake.AotakeSweep;
-import xin.vanilla.aotake.network.AotakePacket;
+import xin.vanilla.aotake.network.NetworkPacket;
+import xin.vanilla.aotake.screen.DustbinRender;
+import xin.vanilla.banira.common.network.BaniraNetworkContext;
+import xin.vanilla.banira.common.network.BaniraPacketBuffer;
 
-public record DustbinPageSyncToClient(int currentPage, int totalPage) implements AotakePacket {
+public class DustbinPageSyncToClient implements NetworkPacket {
+    private final int currentPage;
+    private final int totalPage;
 
-    public static final ResourceLocation ID = AotakeSweep.createIdentifier("dustbin_page_sync");
-
-    public DustbinPageSyncToClient(FriendlyByteBuf buf) {
-        this(buf.readInt(), buf.readInt());
+    public DustbinPageSyncToClient(int currentPage, int totalPage) {
+        this.currentPage = currentPage;
+        this.totalPage = totalPage;
     }
 
-    @Override
-    public ResourceLocation id() {
-        return ID;
+    public DustbinPageSyncToClient(BaniraPacketBuffer buf) {
+        this.currentPage = buf.readInt();
+        this.totalPage = buf.readInt();
     }
 
-    public FriendlyByteBuf toBytes(FriendlyByteBuf buf) {
-        if (buf == null) buf = PacketByteBufs.create();
+    public void toBytes(BaniraPacketBuffer buf) {
         buf.writeInt(this.currentPage);
         buf.writeInt(this.totalPage);
-        return buf;
     }
 
-    public static void handle(DustbinPageSyncToClient packet) {
-        ClientSide.handle(packet);
+    public static void handle(DustbinPageSyncToClient packet, BaniraNetworkContext ctx) {
+        ctx.enqueueWork(() -> ClientSide.handle(packet));
+        ctx.markHandled();
     }
 
-    @Environment(EnvType.CLIENT)
     private static final class ClientSide {
         private static void handle(DustbinPageSyncToClient packet) {
-            xin.vanilla.aotake.event.ClientEventHandler.updateDustbinPage(packet.currentPage(), packet.totalPage());
+            DustbinRender.updateDustbinPage(packet.currentPage, packet.totalPage);
         }
     }
 }
