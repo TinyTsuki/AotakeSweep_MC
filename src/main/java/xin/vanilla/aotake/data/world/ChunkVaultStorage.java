@@ -12,7 +12,7 @@ import xin.vanilla.aotake.config.CommonConfig;
 import xin.vanilla.aotake.data.ChunkKey;
 import xin.vanilla.aotake.data.SweepResult;
 import xin.vanilla.banira.api.BaniraDataPaths;
-import xin.vanilla.banira.common.util.BaniraServerUtils;
+import xin.vanilla.banira.api.BaniraServer;
 import xin.vanilla.banira.common.util.NBTUtils;
 
 import javax.annotation.Nullable;
@@ -46,8 +46,8 @@ public final class ChunkVaultStorage {
 
     @Nullable
     public static Path getVaultDirOrNull() {
-        if (!BaniraServerUtils.isRunning()) return null;
-        MinecraftServer bound = BaniraServerUtils.currentServer();
+        if (!BaniraServer.isRunning()) return null;
+        MinecraftServer bound = BaniraServer.currentAs(MinecraftServer.class);
         if (bound == null) return null;
         return BaniraDataPaths.worldDataPath().resolve(AotakeSweep.MODID).resolve(SUBDIR);
     }
@@ -127,7 +127,7 @@ public final class ChunkVaultStorage {
     public static void queueRecycledItem(net.minecraft.world.entity.Entity sourceEntity, ItemStack stack, @Nullable SweepResult batchContext) {
         if (stack == null || stack.isEmpty()) return;
         if (!CommonConfig.get().base().chunk().chunkVaultEnabled()) return;
-        if (BaniraServerUtils.currentServer() == null) return;
+        if (BaniraServer.currentAs(MinecraftServer.class) == null) return;
         ChunkKey key = chunkKeyFromEntity(sourceEntity);
         String vaultId = resolveVaultId(key, batchContext);
         PENDING.computeIfAbsent(vaultId, k -> Collections.synchronizedList(new ArrayList<>())).add(stack.copy());
