@@ -112,7 +112,6 @@ public class AotakeSweep {
 
         MinecraftForge.EVENT_BUS.addListener((TickEvent.ServerTickEvent event) -> EventHandlerProxy.onServerTick(event));
         MinecraftForge.EVENT_BUS.addListener((TickEvent.LevelTickEvent event) -> EventHandlerProxy.onWorldTick(event));
-        MinecraftForge.EVENT_BUS.addListener((PlayerEvent.Clone event) -> EventHandlerProxy.onPlayerCloned(event));
         MinecraftForge.EVENT_BUS.addListener((PlayerInteractEvent.RightClickItem event) -> EventHandlerProxy.onPlayerUseItem(event));
         MinecraftForge.EVENT_BUS.addListener((PlayerInteractEvent.RightClickBlock event) -> EventHandlerProxy.onRightBlock(event));
         MinecraftForge.EVENT_BUS.addListener((PlayerInteractEvent.EntityInteractSpecific event) -> EventHandlerProxy.onRightEntity(event));
