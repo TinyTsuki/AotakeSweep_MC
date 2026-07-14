@@ -812,7 +812,7 @@ public class EventHandlerProxy {
             return null;
         }
         try {
-            MinecraftServer server = BaniraServerUtils.currentServer();
+            MinecraftServer server = BaniraServer.currentAs(MinecraftServer.class);
             return server == null ? null : net.minecraft.network.chat.Component.Serializer.fromJson(json, server.registryAccess());
         } catch (Exception e) {
             return null;

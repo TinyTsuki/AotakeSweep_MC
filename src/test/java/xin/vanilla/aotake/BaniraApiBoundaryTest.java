@@ -22,7 +22,7 @@ public class BaniraApiBoundaryTest {
         try (Stream<Path> files = Files.walk(root)) {
             for (Path file : (Iterable<Path>) files.filter(path -> path.toString().endsWith(".java"))::iterator) {
                 String source = new String(Files.readAllBytes(file), StandardCharsets.UTF_8);
-                if (source.contains("xin.vanilla.banira.common.util.BaniraServerUtils")) {
+                if (source.contains("BaniraServerUtils")) {
                     violations.add(root.relativize(file).toString());
                 }
                 if (source.contains("xin.vanilla.banira.internal")) {
