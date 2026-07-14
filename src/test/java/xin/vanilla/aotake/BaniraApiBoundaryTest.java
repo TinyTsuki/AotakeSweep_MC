@@ -28,6 +28,12 @@ public class BaniraApiBoundaryTest {
                 if (source.contains("xin.vanilla.banira.internal")) {
                     violations.add(root.relativize(file).toString() + " (internal)");
                 }
+                if (source.contains("BaniraCodex.serverInstance(") || source.contains("playerDataManager(")) {
+                    violations.add(root.relativize(file).toString() + " (runtime manager)");
+                }
+                if (source.contains("net.minecraftforge") || source.contains("MinecraftForge")) {
+                    violations.add(root.relativize(file).toString() + " (Forge type)");
+                }
             }
         }
         if (!violations.isEmpty()) {

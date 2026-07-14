@@ -12,6 +12,7 @@ import net.neoforged.fml.event.config.ModConfigEvent;
 import net.neoforged.fml.event.lifecycle.FMLCommonSetupEvent;
 import net.neoforged.fml.loading.FMLEnvironment;
 import net.neoforged.neoforge.common.NeoForge;
+import net.neoforged.neoforge.event.entity.player.ArrowNockEvent;
 import net.neoforged.neoforge.event.entity.player.PlayerEvent;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -110,10 +111,8 @@ public class AotakeSweep {
 
         BaniraEventBus.Server.onTick(EventHandlerProxy::onServerTick);
         BaniraEventBus.WorldEvents.onTick(EventHandlerProxy::onWorldTick);
-        BaniraEventBus.Player.onPlayerEvent(event -> {
-            if (event instanceof PlayerEvent.Clone) return;
-            EventHandlerProxy.onPlayerUseItem(event);
-        });
+        // Banira 的泛型玩家事件只覆盖已显式订阅的子类，拉弓事件需由当前加载器接入。
+        NeoForge.EVENT_BUS.addListener((ArrowNockEvent event) -> EventHandlerProxy.onPlayerUseItem(event));
         BaniraEventBus.Interaction.onRightClickItem(EventHandlerProxy::onPlayerUseItem);
         BaniraEventBus.Interaction.onRightClickBlock(event -> {
             EventHandlerProxy.onRightBlock(event);
