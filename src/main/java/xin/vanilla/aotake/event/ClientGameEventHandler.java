@@ -1,6 +1,7 @@
 package xin.vanilla.aotake.event;
 
 import com.mojang.blaze3d.vertex.PoseStack;
+import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import org.apache.logging.log4j.LogManager;
@@ -52,7 +53,7 @@ public final class ClientGameEventHandler {
         }
     }
 
-    public static void renderHud(GuiGraphics graphics, float partialTick) {
+    public static void renderHud(GuiGraphics graphics, DeltaTracker deltaTracker) {
         ProgressRender.render(graphics.pose(), showProgress);
     }
 

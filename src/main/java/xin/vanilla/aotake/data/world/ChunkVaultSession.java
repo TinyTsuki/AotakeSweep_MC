@@ -171,7 +171,7 @@ public final class ChunkVaultSession {
     private static ItemStack tryFillInventory(SimpleContainer inventory, ItemStack stack) {
         for (int i = 0; i < inventory.getContainerSize(); i++) {
             ItemStack slot = inventory.getItem(i);
-            if (ItemStack.isSameItemSameTags(slot, stack) && slot.getCount() < slot.getMaxStackSize()) {
+            if (ItemStack.isSameItemSameComponents(slot, stack) && slot.getCount() < slot.getMaxStackSize()) {
                 int transferable = Math.min(stack.getCount(), slot.getMaxStackSize() - slot.getCount());
                 slot.grow(transferable);
                 stack.shrink(transferable);

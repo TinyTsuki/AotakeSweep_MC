@@ -2,6 +2,7 @@ package xin.vanilla.aotake.event;
 
 import lombok.Getter;
 import lombok.Setter;
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
@@ -47,6 +48,7 @@ import xin.vanilla.aotake.util.AotakeUtils;
 import xin.vanilla.aotake.util.EntitySweeper;
 import xin.vanilla.aotake.internal.common.AotakeServerRuntime;
 import xin.vanilla.aotake.internal.fabric.FabricInteractionPolicy;
+import xin.vanilla.banira.api.BaniraServer;
 import xin.vanilla.banira.common.data.Component;
 import xin.vanilla.banira.common.data.KeyValue;
 import xin.vanilla.banira.common.data.WorldCoordinate;
@@ -400,7 +402,7 @@ public class EventHandlerProxy {
                         original.shrink(1);
                         net.minecraft.network.chat.Component name = parseNameFromJson(aotake.getString("name"));
                         if (name != null) {
-                            copy.setHoverName(name);
+                            copy.set(DataComponents.CUSTOM_NAME, name);
                         } else {
                             clearCustomName(copy);
                         }
@@ -433,7 +435,7 @@ public class EventHandlerProxy {
                         String originalNameJson = aotake.getString("name");
                         net.minecraft.network.chat.Component name = parseNameFromJson(originalNameJson);
                         if (name != null) {
-                            copy.setHoverName(name);
+                            copy.set(DataComponents.CUSTOM_NAME, name);
                         } else {
                             clearCustomName(copy);
                         }
@@ -533,7 +535,8 @@ public class EventHandlerProxy {
                 String originalNameJson = ItemUtils.getItemCustomNameJson(copy);
                 aotake.putString("name", originalNameJson);
                 AotakeUtils.setAotakeTag(copy, aotake);
-                copy.setHoverName(AotakeComponent.get().literal(String.format("%s %s", entity.getDisplayName().getString(), originalNameText)).toVanilla());
+                copy.set(DataComponents.CUSTOM_NAME,
+                        AotakeComponent.get().literal(String.format("%s %s", entity.getDisplayName().getString(), originalNameText)).toVanilla());
                 player.addItem(copy);
                 if (!(entity instanceof ServerPlayer)) {
                     AotakeUtils.removeEntity(entity, true);
@@ -659,18 +662,7 @@ public class EventHandlerProxy {
     }
 
     private static void clearCustomName(ItemStack stack) {
-        CompoundTag tag = stack.getTag();
-        if (tag == null) return;
-        if (tag.contains("display")) {
-            CompoundTag display = tag.getCompound("display");
-            display.remove("Name");
-            if (display.isEmpty()) {
-                tag.remove("display");
-            }
-            if (tag.isEmpty()) {
-                stack.setTag(null);
-            }
-        }
+        stack.remove(DataComponents.CUSTOM_NAME);
     }
 
     private static void sendGhostCamera(ServerPlayer player, int entityId, boolean reset) {
@@ -760,7 +752,9 @@ public class EventHandlerProxy {
             return null;
         }
         try {
-            return net.minecraft.network.chat.Component.Serializer.fromJson(json);
+            MinecraftServer server = BaniraServer.currentAs(MinecraftServer.class);
+            return server == null ? null
+                    : net.minecraft.network.chat.Component.Serializer.fromJson(json, server.registryAccess());
         } catch (Exception e) {
             return null;
         }

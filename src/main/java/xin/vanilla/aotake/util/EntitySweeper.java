@@ -187,7 +187,6 @@ public class EntitySweeper {
             ) {
                 String randomItem = CollectionUtils.getRandomElement(context.catchItems);
                 itemToRecycle = ItemUtils.deserializeItemStack(randomItem);
-                CompoundTag tag = itemToRecycle.getOrCreateTag();
                 CompoundTag aotake = new CompoundTag();
                 aotake.putBoolean("byPlayer", false);
                 if (entity.isPassenger()) {
@@ -199,7 +198,7 @@ public class EntitySweeper {
                 aotake.put("entity", entityTag);
                 aotake.putString("entityId", EntityUtils.getEntityRegistryString(entity));
                 aotake.putString("name", ItemUtils.getItemCustomNameJson(itemToRecycle));
-                tag.put(AotakeSweep.MODID, aotake);
+                AotakeUtils.setAotakeTag(itemToRecycle, aotake);
 
                 result.setRecycledEntityCount(1);
             }

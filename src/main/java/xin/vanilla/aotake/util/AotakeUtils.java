@@ -1,6 +1,8 @@
 package xin.vanilla.aotake.util;
 
 import lombok.NonNull;
+import net.minecraft.core.component.DataComponentMap;
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.world.entity.Entity;
@@ -12,12 +14,12 @@ import net.minecraft.world.Container;
 import net.minecraft.world.SimpleContainer;
 import net.minecraft.world.MenuProvider;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.component.CustomData;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.core.Direction;
-import net.minecraft.world.InteractionHand;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.Vec3;
@@ -601,8 +603,9 @@ public class AotakeUtils {
     public static Entity getEntityFromItem(ServerLevel level, ItemStack itemStack) {
         Entity result = null;
 
-        CompoundTag tag = itemStack.getTag();
-        if (tag != null && tag.contains(AotakeSweep.MODID)) {
+        DataComponentMap components = itemStack.getComponents();
+        if (!components.isEmpty() && components.has(DataComponents.CUSTOM_DATA)) {
+            CompoundTag tag = components.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag();
             CompoundTag aotake = tag.getCompound(AotakeSweep.MODID);
             if (aotake.contains("entity")) {
                 try {
@@ -818,7 +821,7 @@ public class AotakeUtils {
             BlockHitResult ray = new BlockHitResult(hitVec, direction, coordinate.toBlockPos(), false);
 
             BlockState state = player.serverLevel().getBlockState(coordinate.toBlockPos());
-            InteractionResult res = state.use(player.serverLevel(), player, InteractionHand.MAIN_HAND, ray);
+            InteractionResult res = state.useWithoutItem(player.serverLevel(), player, ray);
             if (res.consumesAction()) {
                 result = 1;
             }
@@ -948,45 +951,53 @@ public class AotakeUtils {
 
     public static boolean hasAotakeTag(ItemStack item) {
         if (item == null) return false;
-        CompoundTag tag = item.getTag();
-        return tag != null && tag.contains(AotakeSweep.MODID);
+        DataComponentMap components = item.getComponents();
+        return !components.isEmpty()
+                && components.has(DataComponents.CUSTOM_DATA)
+                && components.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY)
+                .copyTag().contains(AotakeSweep.MODID);
     }
 
     public static CompoundTag getAotakeTag(@NonNull ItemStack item) {
-        CompoundTag tag = item.getTag();
-        if (tag == null) {
-            tag = new CompoundTag();
-            item.setTag(tag);
+        if (!hasAotakeTag(item)) {
+            CompoundTag tag = new CompoundTag();
+            CompoundTag aotake = new CompoundTag();
+            tag.put(AotakeSweep.MODID, aotake);
+            item.set(DataComponents.CUSTOM_DATA, CustomData.of(tag));
+            return aotake;
         }
-        if (!tag.contains(AotakeSweep.MODID)) {
-            tag.put(AotakeSweep.MODID, new CompoundTag());
-        }
+        CompoundTag tag = item.getComponents()
+                .getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag();
         return tag.getCompound(AotakeSweep.MODID);
     }
 
     public static void setAotakeTag(@NonNull ItemStack item, CompoundTag aotakeTag) {
-        CompoundTag tag = item.getTag();
-        if (tag == null) {
-            tag = new CompoundTag();
-            item.setTag(tag);
-        }
+        CompoundTag tag = item.getComponents()
+                .getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag();
         tag.put(AotakeSweep.MODID, aotakeTag);
+        item.set(DataComponents.CUSTOM_DATA, CustomData.of(tag));
     }
 
     public static CompoundTag clearAotakeTag(ItemStack item) {
         if (item == null) return null;
-        CompoundTag tag = item.getTag();
-        if (tag != null) {
+        DataComponentMap components = item.getComponents();
+        if (!components.isEmpty() && components.has(DataComponents.CUSTOM_DATA)) {
+            CompoundTag tag = components.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag();
             tag.remove(AotakeSweep.MODID);
+            item.set(DataComponents.CUSTOM_DATA, CustomData.of(tag));
+            return tag;
         }
-        return tag;
+        return null;
     }
 
     public static void clearItemTag(ItemStack item) {
         if (item == null) return;
-        CompoundTag tag = item.getTag();
-        if (tag != null && tag.isEmpty()) {
-            item.setTag(null);
+        DataComponentMap components = item.getComponents();
+        if (!components.isEmpty() && components.has(DataComponents.CUSTOM_DATA)) {
+            CompoundTag tag = components.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag();
+            if (tag.isEmpty()) {
+                item.remove(DataComponents.CUSTOM_DATA);
+            }
         }
     }
 
@@ -994,7 +1005,7 @@ public class AotakeUtils {
         if (item == null) return;
         CompoundTag tag = clearAotakeTag(item);
         if (tag != null && tag.isEmpty()) {
-            item.setTag(null);
+            item.remove(DataComponents.CUSTOM_DATA);
         }
     }
 
@@ -1043,7 +1054,7 @@ public class AotakeUtils {
     private static ItemStack insertIntoContainer(Container container, ItemStack stack) {
         for (int i = 0; i < container.getContainerSize() && !stack.isEmpty(); i++) {
             ItemStack slot = container.getItem(i);
-            if (!slot.isEmpty() && ItemStack.isSameItemSameTags(slot, stack) && slot.getCount() < slot.getMaxStackSize()) {
+            if (!slot.isEmpty() && ItemStack.isSameItemSameComponents(slot, stack) && slot.getCount() < slot.getMaxStackSize()) {
                 int moved = Math.min(stack.getCount(), slot.getMaxStackSize() - slot.getCount());
                 slot.grow(moved);
                 stack.shrink(moved);

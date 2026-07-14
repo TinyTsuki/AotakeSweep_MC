@@ -1,5 +1,6 @@
 package xin.vanilla.aotake.data.world;
 
+import net.minecraft.core.HolderLookup;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
@@ -165,7 +166,7 @@ public final class ChunkVaultStorage {
                 ListTag list = root.getList("Items", 10);
                 for (ItemStack s : stacks) {
                     if (s.isEmpty()) continue;
-                    list.add(s.save(new CompoundTag()));
+                    list.add(s.save(server.registryAccess()));
                 }
                 root.put("Items", list);
                 NBTUtils.writeCompressed(root, file.toFile());
@@ -187,7 +188,7 @@ public final class ChunkVaultStorage {
         synchronized (lockFor(vaultId)) {
             try {
                 CompoundTag root = NBTUtils.readCompressed(file.toFile());
-                return readItemsFromRoot(root);
+                return readItemsFromRoot(root, server.registryAccess());
             } catch (Exception e) {
                 LOGGER.warn("Failed to read chunk vault {}: {}", vaultId, e.getMessage());
                 return Collections.emptyList();
@@ -195,11 +196,11 @@ public final class ChunkVaultStorage {
         }
     }
 
-    public static List<ItemStack> readItemsFromRoot(CompoundTag root) {
+    public static List<ItemStack> readItemsFromRoot(CompoundTag root, HolderLookup.Provider provider) {
         ListTag list = root.getList("Items", 10);
         List<ItemStack> out = new ArrayList<>(list.size());
         for (int i = 0; i < list.size(); i++) {
-            ItemStack st = ItemStack.of(list.getCompound(i));
+            ItemStack st = ItemStack.parseOptional(provider, list.getCompound(i));
             if (!st.isEmpty()) {
                 out.add(st);
             }
@@ -228,7 +229,7 @@ public final class ChunkVaultStorage {
                 ListTag list = new ListTag();
                 for (ItemStack s : stacks) {
                     if (s.isEmpty()) continue;
-                    list.add(s.save(new CompoundTag()));
+                    list.add(s.save(server.registryAccess()));
                 }
                 root.put("Items", list);
                 if (list.isEmpty()) {
