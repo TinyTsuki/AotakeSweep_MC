@@ -265,6 +265,8 @@ tasks.named('assemble').configure {
     dependsOn 'jarAll'
 }
 
+apply from: 'gradle/network-smoke.gradle'
+
 afterEvaluate {
     tasks.named('jar', Jar).configure {
         manifest.attributes('MixinConfigs': "${mod_id}.mixins.json")

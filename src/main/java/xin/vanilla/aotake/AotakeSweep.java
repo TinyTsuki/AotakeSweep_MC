@@ -21,6 +21,7 @@ import xin.vanilla.aotake.config.ClientConfig;
 import xin.vanilla.aotake.config.CommonConfig;
 import xin.vanilla.aotake.data.world.ChunkVaultSession;
 import xin.vanilla.aotake.event.EventHandlerProxy;
+import xin.vanilla.aotake.internal.server.dev.AotakeNetworkSmokeServerRunner;
 import xin.vanilla.aotake.network.NetworkInit;
 import xin.vanilla.aotake.network.packet.SweepDataSyncToClient;
 import xin.vanilla.aotake.notification.AotakeNotificationTypes;
@@ -104,6 +105,7 @@ public class AotakeSweep {
         FMLJavaModLoadingContext.get().getModEventBus().addListener(this::onCommonSetup);
 
         BaniraEventBus.Server.onStarting(server -> entitySweeper.clear());
+        AotakeNetworkSmokeServerRunner.register();
         MinecraftForge.EVENT_BUS.addListener((RegisterCommandsEvent event) -> AotakeCommand.register(event.getDispatcher()));
 
         MinecraftForge.EVENT_BUS.addListener((TickEvent.ServerTickEvent event) -> EventHandlerProxy.onServerTick(event));

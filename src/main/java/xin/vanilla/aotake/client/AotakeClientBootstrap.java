@@ -9,6 +9,7 @@ import xin.vanilla.aotake.config.ClientConfig;
 import xin.vanilla.aotake.config.CommonConfig;
 import xin.vanilla.aotake.event.ClientGameEventHandler;
 import xin.vanilla.aotake.event.ClientModEventHandler;
+import xin.vanilla.aotake.internal.client.dev.AotakeNetworkSmokeClientRunner;
 import xin.vanilla.aotake.internal.client.dev.AotakeUiSmokeRunner;
 import xin.vanilla.aotake.network.packet.OpenDustbinToServer;
 import xin.vanilla.aotake.screen.PlayerConfigScreen;
@@ -55,6 +56,7 @@ public final class AotakeClientBootstrap {
             QuickActionRegistry.get().registerIcon(AotakeSweep.MODID + ":quick", texture, label, action,
                     editPlayerConfig, editClientConfig, editCommonConfig);
             AotakeUiSmokeRunner.register();
+            AotakeNetworkSmokeClientRunner.register();
         });
     }
 }

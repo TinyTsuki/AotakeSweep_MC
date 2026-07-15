@@ -1,0 +1,195 @@
+import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
+import java.util.concurrent.TimeUnit
+
+def smokeRoot = file("${projectDir}/run-network-smoke")
+def smokeServerDir = file("${smokeRoot}/server")
+def smokeClientDir = file("${smokeRoot}/client")
+def smokePort = 25575
+def smokeChild = (project.findProperty('aotake.networkSmoke.child') ?: 'false').toString().toBoolean()
+
+// 服务端和客户端使用独立输出目录，避免两个 Gradle 运行任务争用构建文件。
+if (smokeChild) {
+    layout.buildDirectory.set(file(project.property('aotake.networkSmoke.buildDir')))
+    String phase = project.property('aotake.networkSmoke.phase').toString()
+    String status = project.property('aotake.networkSmoke.status').toString()
+    minecraft.runs {
+        configureEach {
+            property 'aotake.networkSmoke', 'true'
+            property 'aotake.networkSmoke.phase', phase
+            property 'aotake.networkSmoke.status', status
+        }
+        server {
+            workingDirectory smokeServerDir
+            args '--nogui', '--port', smokePort.toString()
+        }
+        client {
+            workingDirectory smokeClientDir
+            property 'aotake.networkSmoke.host', '127.0.0.1'
+            property 'aotake.networkSmoke.port', smokePort.toString()
+            args '--username', 'NetworkSmoke', '--uuid', '380df991-f603-344c-a090-369bad2a924a'
+        }
+    }
+}
+
+def readUtf8 = { File file -> file.isFile() ? file.getText('UTF-8') : '' }
+
+def tailUtf8 = { File file, int lines ->
+    if (!file.isFile()) return ''
+    List<String> all = file.readLines('UTF-8')
+    return all.drop(Math.max(0, all.size() - lines)).join(System.lineSeparator())
+}
+
+def destroyProcessTree = { Process process ->
+    if (process == null || !process.isAlive()) return
+    process.toHandle().descendants().forEach { handle -> handle.destroyForcibly() }
+    process.destroyForcibly()
+    process.waitFor(15, TimeUnit.SECONDS)
+}
+
+def waitForStatus = { Process process, File status, String marker, File log, int timeoutSeconds ->
+    long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(timeoutSeconds)
+    while (System.nanoTime() < deadline) {
+        String content = readUtf8(status)
+        if (content.contains('FAIL ')) {
+            throw new GradleException("Network smoke failed while waiting for '${marker}':\n${content}\n${tailUtf8(log, 80)}")
+        }
+        if (content.contains(marker)) return
+        if (!process.isAlive()) {
+            throw new GradleException("Process exited before '${marker}' (exit ${process.exitValue()}):\n${tailUtf8(log, 120)}")
+        }
+        Thread.sleep(500L)
+    }
+    throw new GradleException("Timed out waiting for '${marker}':\n${tailUtf8(log, 120)}")
+}
+
+def gradleCommand = { String runTask, String phase, File status, File childBuildDir, File projectCacheDir ->
+    File wrapper = file("${projectDir}/${System.getProperty('os.name').toLowerCase().contains('windows') ? 'gradlew.bat' : 'gradlew'}")
+    List<String> command = []
+    if (System.getProperty('os.name').toLowerCase().contains('windows')) {
+        command.addAll(['cmd.exe', '/d', '/c', wrapper.absolutePath])
+    } else {
+        command.add(wrapper.absolutePath)
+    }
+    command.addAll([
+            runTask,
+            '--no-daemon',
+            '--console=plain',
+            '--project-cache-dir', projectCacheDir.absolutePath,
+            '-Paotake.networkSmoke.child=true',
+            "-Paotake.networkSmoke.phase=${phase}".toString(),
+            "-Paotake.networkSmoke.status=${status.absolutePath}".toString(),
+            "-Paotake.networkSmoke.buildDir=${childBuildDir.absolutePath}".toString()
+    ])
+    return command
+}
+
+def startGradleRun = { String runTask, String phase, File status, File log ->
+    File childRoot = new File(smokeRoot, runTask == 'runServer' ? 'server-gradle' : 'client-gradle')
+    File childBuildDir = new File(childRoot, 'build')
+    File projectCacheDir = new File(childRoot, 'project-cache')
+    childBuildDir.mkdirs()
+    projectCacheDir.mkdirs()
+    log.parentFile.mkdirs()
+    ProcessBuilder builder = new ProcessBuilder(gradleCommand(runTask, phase, status, childBuildDir, projectCacheDir))
+    builder.directory(projectDir)
+    builder.redirectErrorStream(true)
+    builder.redirectOutput(log)
+    return builder.start()
+}
+
+def stopServer = { Process server, File log ->
+    if (server == null || !server.isAlive()) return
+    if (!server.waitFor(60, TimeUnit.SECONDS)) {
+        destroyProcessTree(server)
+        throw new GradleException("Dedicated server did not stop cleanly:\n${tailUtf8(log, 120)}")
+    }
+    if (server.exitValue() != 0) {
+        throw new GradleException("Dedicated server exited with ${server.exitValue()}:\n${tailUtf8(log, 120)}")
+    }
+}
+
+def verifyMarkers = { File status, List<String> markers ->
+    String content = readUtf8(status)
+    markers.each { marker ->
+        if (!content.contains(marker)) {
+            throw new GradleException("Missing '${marker}' in ${status}:\n${content}")
+        }
+    }
+}
+
+def runNetworkSmokeServer = { String phase, File status, File log ->
+    startGradleRun('runServer', phase, status, log)
+}
+
+def runNetworkSmokeClient = { String phase, File status, File log ->
+    startGradleRun('runClient', phase, status, log)
+}
+
+tasks.register('networkSmoke') {
+    group = 'verification'
+    description = 'Runs a bounded two-phase dedicated server/client persistence smoke.'
+
+    doLast {
+        if (smokeChild) {
+            throw new GradleException('networkSmoke cannot run inside its child Gradle process')
+        }
+        delete smokeRoot
+        smokeServerDir.mkdirs()
+        smokeClientDir.mkdirs()
+        new File(smokeServerDir, 'eula.txt').setText('eula=true' + System.lineSeparator(), 'UTF-8')
+        new File(smokeServerDir, 'server.properties').setText(
+                "online-mode=false${System.lineSeparator()}server-port=${smokePort}${System.lineSeparator()}" +
+                        "level-name=network-smoke-world${System.lineSeparator()}view-distance=4${System.lineSeparator()}",
+                'UTF-8')
+
+        String runId = DateTimeFormatter.ofPattern('yyyyMMdd-HHmmss').format(LocalDateTime.now())
+        File evidence = file("${smokeRoot}/evidence/${runId}")
+        evidence.mkdirs()
+
+        ['phase-one', 'phase-two'].each { phase ->
+            File serverStatus = new File(evidence, "server-${phase}.status")
+            File clientStatus = new File(evidence, "client-${phase}.status")
+            File serverLog = new File(evidence, "server-${phase}.log")
+            File clientLog = new File(evidence, "client-${phase}.log")
+            Process server = null
+            Process client = null
+            try {
+                server = runNetworkSmokeServer(phase, serverStatus, serverLog)
+                waitForStatus(server, serverStatus, 'PASS server-ready', serverLog, 180)
+
+                client = runNetworkSmokeClient(phase, clientStatus, clientLog)
+                waitForStatus(client, clientStatus, "FINISHED ${phase}", clientLog, 180)
+                if (!client.waitFor(45, TimeUnit.SECONDS)) {
+                    throw new GradleException("Client did not exit after ${phase}:\n${tailUtf8(clientLog, 120)}")
+                }
+                if (client.exitValue() != 0) {
+                    throw new GradleException("Client exited with ${client.exitValue()}:\n${tailUtf8(clientLog, 120)}")
+                }
+
+                waitForStatus(server, serverStatus, "FINISHED ${phase}", serverLog, 30)
+                stopServer(server, serverLog)
+                verifyMarkers(clientStatus, phase == 'phase-one'
+                        ? ['PASS remote-login-sync', 'PASS config-roundtrip', 'FINISHED phase-one']
+                        : ['PASS remote-login-sync', 'PASS persisted-player-data-client',
+                           'PASS persisted-world-data-client', 'FINISHED phase-two'])
+                verifyMarkers(serverStatus, phase == 'phase-one'
+                        ? ['PASS server-config-roundtrip', 'PASS phase-one-world-write', 'FINISHED phase-one',
+                           'PASS server-shutdown']
+                        : ['PASS persisted-player-data', 'PASS persisted-world-data', 'FINISHED phase-two',
+                           'PASS server-shutdown'])
+            } finally {
+                destroyProcessTree(client)
+                destroyProcessTree(server)
+            }
+        }
+
+        List<File> crashReports = fileTree(smokeRoot) {
+            include '**/crash-reports/crash-*.txt'
+        }.files as List<File>
+        if (!crashReports.isEmpty()) {
+            throw new GradleException("Network smoke created crash reports: ${crashReports*.absolutePath}")
+        }
+        logger.lifecycle("Aotake network smoke FINISHED: ${evidence}")
+    }
+}
