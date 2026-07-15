@@ -45,7 +45,7 @@ import xin.vanilla.aotake.event.EventHandlerProxy;
 import xin.vanilla.aotake.network.packet.DustbinPageSyncToClient;
 import xin.vanilla.aotake.notification.AotakeNotificationTypes;
 import xin.vanilla.banira.common.data.Component;
-import xin.vanilla.banira.common.util.BaniraServerUtils;
+import xin.vanilla.aotake.internal.common.AotakeServerRuntime;
 import xin.vanilla.banira.common.data.WorldCoordinate;
 import xin.vanilla.banira.common.enums.EnumMCColor;
 import xin.vanilla.banira.common.util.*;
@@ -496,9 +496,9 @@ public class AotakeUtils {
      * @param chunkOverloadVault 为 true 时，回收物品写入区块暂存目录（若配置启用），而非全局垃圾箱。
      */
     public static void sweep(List<Entity> entities, boolean filtered, boolean chunkOverloadVault) {
-        MinecraftServer server = BaniraServerUtils.currentServer();
+        MinecraftServer server = AotakeServerRuntime.currentServer();
         // 服务器已关闭
-        if (!BaniraServerUtils.isRunning() || server == null) return;
+        if (!AotakeServerRuntime.isRunning() || server == null) return;
 
         List<ServerPlayer> players = server.getPlayerList().getPlayers();
 
@@ -1008,7 +1008,7 @@ public class AotakeUtils {
      */
     public static ItemStack addItemToBlock(ItemStack stack, WorldCoordinate coordinate) {
         if (stack == null || stack.isEmpty()) return ItemStack.EMPTY;
-        ServerLevel level = BaniraServerUtils.currentServer().getLevel(coordinate.dimension());
+        ServerLevel level = AotakeServerRuntime.requireServer().getLevel(coordinate.dimension());
         if (level == null) return stack;
 
         BlockPos pos = coordinate.toBlockPos();
@@ -1027,7 +1027,7 @@ public class AotakeUtils {
      * 获取指定的方块容器
      */
     public static Container getBlockItemHandler(WorldCoordinate coordinate) {
-        ServerLevel level = BaniraServerUtils.currentServer().getLevel(coordinate.dimension());
+        ServerLevel level = AotakeServerRuntime.requireServer().getLevel(coordinate.dimension());
         if (level == null) return null;
 
         BlockPos pos = coordinate.toBlockPos();

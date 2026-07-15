@@ -43,15 +43,14 @@ import xin.vanilla.aotake.enums.EnumSelfCleanMode;
 import xin.vanilla.aotake.network.packet.GhostCameraToClient;
 import xin.vanilla.aotake.network.packet.SweepDataSyncToClient;
 import xin.vanilla.aotake.notification.AotakeNotificationTypes;
+import xin.vanilla.aotake.internal.fabric.FabricInteractionPolicy;
 import xin.vanilla.aotake.util.AotakeUtils;
 import xin.vanilla.aotake.util.EntitySweeper;
-import xin.vanilla.banira.common.util.BaniraServerUtils;
 import xin.vanilla.banira.common.data.Component;
 import xin.vanilla.banira.common.data.KeyValue;
 import xin.vanilla.banira.common.data.WorldCoordinate;
 import xin.vanilla.banira.common.enums.*;
 import xin.vanilla.banira.common.util.*;
-import xin.vanilla.banira.internal.config.CustomConfig;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -68,8 +67,6 @@ public class EventHandlerProxy {
     @Setter
     private static long nextSweepTime = System.currentTimeMillis() - 1;
     private static long lastSelfCleanTime = System.currentTimeMillis();
-    private static long lastSaveConfTime = System.currentTimeMillis();
-    private static long lastReadConfTime = System.currentTimeMillis();
     private static long lastChunkCheckTime = System.currentTimeMillis();
     private static long lastChunkVaultPruneTime = System.currentTimeMillis();
     private static long lastVoiceTime = System.currentTimeMillis();
@@ -78,9 +75,7 @@ public class EventHandlerProxy {
      */
     private static String lastCountdownWarningDispatchKey = null;
     private static final AtomicBoolean chunkSweepLock = new AtomicBoolean(false);
-    private static final Map<String, Long> lastCatchTick = new ConcurrentHashMap<>();
-    private static final Map<String, Long> lastUseEntityTick = new ConcurrentHashMap<>();
-    private static final Map<String, Long> suppressUseItemTick = new ConcurrentHashMap<>();
+    private static final Map<String, Long> lastHandledEntityUseTick = new ConcurrentHashMap<>();
     private static final Map<String, GhostState> ghostStates = new ConcurrentHashMap<>();
     private static final int ghostScanInterval = 20;
     private static final int ghostClampInterval = 4;
@@ -106,7 +101,7 @@ public class EventHandlerProxy {
         if (AotakeUtils.hasWarning(warnKey)) {
             if (!Objects.equals(lastCountdownWarningDispatchKey, warnKey)) {
                 lastCountdownWarningDispatchKey = warnKey;
-                for (ServerPlayer player : BaniraServerUtils.currentServer()
+                for (ServerPlayer player : server
                         .getPlayerList()
                         .getPlayers()
                 ) {
@@ -125,7 +120,7 @@ public class EventHandlerProxy {
         // 扫地前提示音效
         if (AotakeUtils.hasWarningVoice(warnKey) && lastVoiceTime + 1010 < now) {
             lastVoiceTime = now;
-            for (ServerPlayer player : BaniraServerUtils.currentServer()
+            for (ServerPlayer player : server
                     .getPlayerList()
                     .getPlayers()
             ) {
@@ -318,16 +313,6 @@ public class EventHandlerProxy {
             }
         }
 
-        // 保存通用配置
-        if (now - lastSaveConfTime >= 10 * 1000) {
-            lastSaveConfTime = now;
-            CustomConfig.saveCustomConfig();
-        }
-        // 读取通用配置
-        else if (now - lastReadConfTime >= 2 * 60 * 1000) {
-            lastReadConfTime = now;
-            CustomConfig.loadCustomConfig(true);
-        }
         updateGhostTargets(server);
         clampGhostMovement(server);
 
@@ -344,25 +329,10 @@ public class EventHandlerProxy {
         return String.format("Dimension: %s, Chunk: %s %s", key.dimension(), key.chunkX(), key.chunkZ());
     }
 
-    public static void onPlayerCloned(ServerPlayer original, ServerPlayer newPlayer) {
-        if (original == null || newPlayer == null) return;
-        String lang = CustomConfig.getPlayerLanguage(PlayerUtils.getPlayerUUIDString(original));
-        if (StringUtils.isNotNullOrEmpty(lang)) {
-            CustomConfig.setPlayerLanguage(PlayerUtils.getPlayerUUIDString(newPlayer), lang);
-        }
-    }
-
     public static InteractionResultHolder<ItemStack> onPlayerUseItem(Player player, Level level, InteractionHand hand) {
         ItemStack stack = player.getItemInHand(hand);
         if (AotakeSweep.isDisable() || !(player instanceof ServerPlayer)) {
             return InteractionResultHolder.pass(stack);
-        }
-        ServerPlayer serverPlayer = (ServerPlayer) player;
-        long tick = serverPlayer.getLevel().getGameTime();
-        String uuid = serverPlayer.getStringUUID();
-        Long suppressTick = suppressUseItemTick.get(uuid);
-        if (suppressTick != null && suppressTick == tick) {
-            return InteractionResultHolder.fail(stack);
         }
         if (AotakeUtils.hasAotakeTag(stack)) {
             CompoundTag aotake = AotakeUtils.getAotakeTag(stack);
@@ -370,12 +340,12 @@ public class EventHandlerProxy {
                 AotakeUtils.clearItemTagEx(stack);
                 return InteractionResultHolder.pass(stack);
             }
-            return InteractionResultHolder.fail(stack);
-        }
-        boolean catchTool = CommonConfig.get().base().entityCatch().catchItem().stream()
-                .anyMatch(id -> id.equals(ItemUtils.getItemRegistryString(stack)));
-        if (player.isCrouching() && CommonConfig.get().base().entityCatch().allowCatchEntity() && catchTool) {
-            return InteractionResultHolder.fail(stack);
+            FabricInteractionPolicy.Decision decision = FabricInteractionPolicy.itemUse(
+                    true, aotake.contains("entity"), aotake.contains("player"));
+            if (decision == FabricInteractionPolicy.Decision.CONSUME) {
+                // 捕获载荷只能由释放逻辑处理，右键空气时不应触发原物品行为。
+                return InteractionResultHolder.fail(stack);
+            }
         }
         return InteractionResultHolder.pass(stack);
     }
@@ -390,7 +360,6 @@ public class EventHandlerProxy {
         Entity released = releaseEntity(serverPlayer, original,
                 new WorldCoordinate(location.x, location.y, location.z));
         if (released == null) return InteractionResult.PASS;
-        suppressUseItemTick.put(serverPlayer.getStringUUID(), serverPlayer.getLevel().getGameTime());
         return InteractionResult.SUCCESS;
     }
 
@@ -485,11 +454,11 @@ public class EventHandlerProxy {
             ServerPlayer player = (ServerPlayer) user;
             long tick = player.getLevel().getGameTime();
             String uuid = player.getStringUUID();
-            Long lastUseTick = lastUseEntityTick.get(uuid);
-            if (lastUseTick != null && lastUseTick == tick) {
+            Long lastHandledTick = lastHandledEntityUseTick.get(uuid);
+            if (FabricInteractionPolicy.duplicateEntityUse(lastHandledTick != null && lastHandledTick == tick)
+                    == FabricInteractionPolicy.Decision.CONSUME) {
                 return InteractionResult.SUCCESS;
             }
-            lastUseEntityTick.put(uuid, tick);
             ItemStack original = player.getItemInHand(hand);
             if (original.isEmpty()) return InteractionResult.PASS;
             ItemStack copy = original.copy();
@@ -504,15 +473,15 @@ public class EventHandlerProxy {
                     Entity back = releaseEntity(player, original, coordinate);
                     if (back != null) {
                         if (back == entity) {
-                            suppressUseItemTick.put(uuid, tick);
+                            markEntityUseHandled(uuid, tick);
                             return InteractionResult.SUCCESS;
                         }
                         if (entity.isPassenger() && entity.getVehicle() == back) {
-                            suppressUseItemTick.put(uuid, tick);
+                            markEntityUseHandled(uuid, tick);
                             return InteractionResult.SUCCESS;
                         }
                         if (back.isPassenger() && back.getVehicle() == entity) {
-                            suppressUseItemTick.put(uuid, tick);
+                            markEntityUseHandled(uuid, tick);
                             return InteractionResult.SUCCESS;
                         }
                         if (back.isPassenger()) {
@@ -520,7 +489,7 @@ public class EventHandlerProxy {
                         }
                         back.startRiding(entity, true);
                         ((ServerLevel) entity.level).getChunkSource().broadcast(entity, new ClientboundSetPassengersPacket(entity));
-                        suppressUseItemTick.put(uuid, tick);
+                        markEntityUseHandled(uuid, tick);
                         return InteractionResult.SUCCESS;
                     }
                 }
@@ -534,10 +503,6 @@ public class EventHandlerProxy {
                     || aotakeTag.contains("player")));
 
             if (allowCatch && isCatchItem && player.isCrouching() && !hasEntityInTag) {
-                Long lastTick = lastCatchTick.get(uuid);
-                if (lastTick != null && lastTick == tick) {
-                    return InteractionResult.SUCCESS;
-                }
                 if (entity instanceof Player && !AotakeUtils.hasCommandPermission(player, EnumCommandType.CATCH_PLAYER)) {
                     return InteractionResult.PASS;
                 }
@@ -570,13 +535,17 @@ public class EventHandlerProxy {
                     ServerPlayer targetPlayer = (ServerPlayer) entity;
                     startGhost(targetPlayer, player);
                 }
-                lastCatchTick.put(uuid, tick);
-                suppressUseItemTick.put(uuid, tick);
+                markEntityUseHandled(uuid, tick);
                 MessageUtils.sendNotification(player, AotakeComponent.get().trans(EnumI18nType.WORD, "entity_caught"), EnumPosition.TOP_CENTER, EnumMoveType.AUTO, 2200L, EnumNotificationStyle.NORMAL, EnumNotificationVanillaFallback.ACTION_BAR, AotakeNotificationTypes.ENTITY_TOOL_FEEDBACK);
                 return InteractionResult.SUCCESS;
             }
         }
         return InteractionResult.PASS;
+    }
+
+    private static void markEntityUseHandled(String playerUuid, long tick) {
+        // 只有真实捕获或释放成功后才去重，普通右键必须继续交给原版。
+        lastHandledEntityUseTick.put(playerUuid, tick);
     }
 
     /**

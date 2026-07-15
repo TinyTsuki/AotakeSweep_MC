@@ -31,7 +31,7 @@ import xin.vanilla.aotake.enums.EnumDustbinMode;
 import xin.vanilla.aotake.enums.EnumOverflowMode;
 import xin.vanilla.aotake.enums.EnumSelfCleanMode;
 import xin.vanilla.aotake.notification.AotakeNotificationTypes;
-import xin.vanilla.banira.common.util.BaniraServerUtils;
+import xin.vanilla.aotake.internal.common.AotakeServerRuntime;
 import xin.vanilla.banira.common.data.Component;
 import xin.vanilla.banira.common.data.KeyValue;
 import xin.vanilla.banira.common.data.WorldCoordinate;
@@ -79,7 +79,7 @@ public class EntitySweeper {
             if (lists.size() > 1) {
                 for (int i = 1; i < lists.size(); i++) {
                     List<Entity> entityList = lists.get(i);
-                    BaniraScheduler.schedule(BaniraServerUtils.currentServer()
+                    BaniraScheduler.schedule(AotakeServerRuntime.requireServer()
                             , context.sweepEntityInterval * i
                             , () -> AotakeSweep.getEntitySweeper().addDrops(entityList, result)
                     );
@@ -114,9 +114,9 @@ public class EntitySweeper {
 
         if (result.getBatch().get() >= result.getTotalBatch()) {
             LOGGER.debug("AddDrops finished at {}", System.currentTimeMillis());
-            ChunkVaultStorage.flushPending(BaniraServerUtils.currentServer());
+            ChunkVaultStorage.flushPending(AotakeServerRuntime.requireServer());
 
-            List<ServerPlayer> players = BaniraServerUtils.currentServer().getPlayerList().getPlayers();
+            List<ServerPlayer> players = AotakeServerRuntime.requireServer().getPlayerList().getPlayers();
             for (ServerPlayer p : players) {
                 String language = AotakeLang.getPlayerLanguage(p);
                 Component msg = AotakeUtils.getWarningMessage(result.isEmpty() ? "fail" : "success"

@@ -10,6 +10,7 @@ import net.minecraft.nbt.NumericTag;
 import net.minecraft.network.syncher.EntityDataAccessor;
 import com.mojang.authlib.GameProfile;
 import xin.vanilla.aotake.AotakeComponent;
+import xin.vanilla.aotake.internal.common.AotakeServerRuntime;
 import xin.vanilla.banira.common.data.Component;
 import xin.vanilla.banira.common.enums.IEnumDescribable;
 import xin.vanilla.banira.common.util.*;
@@ -675,8 +676,8 @@ public class EntityFilter {
                                 if (entity instanceof TamableAnimal) {
                                     ownerUUID = ((TamableAnimal) entity).getOwnerUUID();
                                 }
-                                if (ownerUUID != null && BaniraServerUtils.currentServer() != null) {
-                                    GameProfile profile = BaniraServerUtils.currentServer().getProfileCache().get(ownerUUID);
+                                if (ownerUUID != null && AotakeServerRuntime.currentServer() != null) {
+                                    GameProfile profile = AotakeServerRuntime.requireServer().getProfileCache().get(ownerUUID);
                                     ownerName = profile != null ? profile.getName() : null;
                                 }
                             }

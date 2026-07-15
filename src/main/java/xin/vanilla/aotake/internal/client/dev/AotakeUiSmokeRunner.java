@@ -6,12 +6,17 @@ import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.client.gui.screens.inventory.ContainerScreen;
 import com.mojang.blaze3d.platform.NativeImage;
 import net.fabricmc.fabric.api.client.screen.v1.Screens;
+import net.fabricmc.fabric.api.event.player.UseItemCallback;
 import net.minecraft.client.KeyMapping;
 import com.mojang.blaze3d.platform.InputConstants;
 import net.minecraft.core.Registry;
 import net.minecraft.core.RegistryAccess;
 import net.minecraft.world.Difficulty;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
 import net.minecraft.world.level.DataPackConfig;
 import net.minecraft.world.level.GameRules;
 import net.minecraft.world.level.GameType;
@@ -298,7 +303,8 @@ public final class AotakeUiSmokeRunner {
             long start = System.nanoTime();
             List<Entity> all = xin.vanilla.banira.common.util.EntityUtils.getAllEntities();
             int filtered = AotakeUtils.getAllEntitiesByFilter(all, false).size();
-            return new EntityScanResult(all.size(), filtered, System.nanoTime() - start);
+            boolean vanillaItemUsePasses = verifyVanillaItemUsePasses(client);
+            return new EntityScanResult(all.size(), filtered, System.nanoTime() - start, vanillaItemUsePasses);
         }, client.getSingleplayerServer());
         phase = Phase.ENTITY_SCAN;
         phaseTick = 0;
@@ -320,6 +326,10 @@ public final class AotakeUiSmokeRunner {
             appendStatus(String.format(Locale.ROOT,
                     "PASS entity-scan total=%d filtered=%d elapsedMs=%.3f",
                     result.total, result.filtered, result.elapsedNanos / 1_000_000.0));
+            if (!result.vanillaItemUsePasses) {
+                throw new IllegalStateException("Fabric item-use callback consumed a normal item");
+            }
+            appendStatus("PASS vanilla-item-use");
         } catch (RuntimeException e) {
             fail(client, "entity-scan", e);
             return;
@@ -334,6 +344,21 @@ public final class AotakeUiSmokeRunner {
         phaseTick = 0;
     }
 
+    private boolean verifyVanillaItemUsePasses(@Nonnull Minecraft client) {
+        net.minecraft.server.MinecraftServer server = client.getSingleplayerServer();
+        if (server == null || server.getPlayerList().getPlayers().isEmpty()) return false;
+        net.minecraft.server.level.ServerPlayer player = server.getPlayerList().getPlayers().get(0);
+        ItemStack original = player.getMainHandItem().copy();
+        try {
+            player.setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(Items.DIAMOND_PICKAXE));
+            return UseItemCallback.EVENT.invoker()
+                    .interact(player, player.getLevel(), InteractionHand.MAIN_HAND)
+                    .getResult() == InteractionResult.PASS;
+        } finally {
+            player.setItemInHand(InteractionHand.MAIN_HAND, original);
+        }
+    }
+
     private void runNormalHudTick(@Nonnull Minecraft client) {
         phaseTick++;
         if (phaseTick == 30) {
@@ -345,6 +370,15 @@ public final class AotakeUiSmokeRunner {
             }
             appendStatus("PASS hud-normal-events");
             capture(client, "04-gameplay-hud-normal");
+            try {
+                int progressKey = ClientModEventHandler.PROGRESS_KEY.currentKey();
+                int conflictingPlayerListKey = client.options.keyPlayerList.matches(progressKey, 0)
+                        ? progressKey : Integer.MIN_VALUE;
+                validateProgressKey(progressKey, conflictingPlayerListKey);
+            } catch (IllegalStateException e) {
+                fail(client, "hud-key-conflict", e);
+                return;
+            }
             setProgressKey(true);
             resetHudObservations();
             phase = Phase.HUD_HELD;
@@ -405,6 +439,14 @@ public final class AotakeUiSmokeRunner {
     private static void setProgressKey(boolean down) {
         int keyCode = ClientModEventHandler.PROGRESS_KEY.currentKey();
         KeyMapping.set(InputConstants.Type.KEYSYM.getOrCreate(keyCode), down);
+        LOGGER.info("Aotake UI smoke progress key={} down={} vanillaPlayerListDown={}", keyCode, down,
+                Minecraft.getInstance().options.keyPlayerList.isDown());
+    }
+
+    static void validateProgressKey(int progressKey, int playerListKey) {
+        if (progressKey == playerListKey) {
+            throw new IllegalStateException("Progress key conflicts with the vanilla player-list key: " + progressKey);
+        }
     }
 
     private static void observeHudEvent(BaniraHudRenderEvent event, boolean bar) {
@@ -548,11 +590,13 @@ public final class AotakeUiSmokeRunner {
         private final int total;
         private final int filtered;
         private final long elapsedNanos;
+        private final boolean vanillaItemUsePasses;
 
-        private EntityScanResult(int total, int filtered, long elapsedNanos) {
+        private EntityScanResult(int total, int filtered, long elapsedNanos, boolean vanillaItemUsePasses) {
             this.total = total;
             this.filtered = filtered;
             this.elapsedNanos = elapsedNanos;
+            this.vanillaItemUsePasses = vanillaItemUsePasses;
         }
     }
 

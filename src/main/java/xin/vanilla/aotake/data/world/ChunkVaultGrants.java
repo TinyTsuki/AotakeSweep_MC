@@ -9,7 +9,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import xin.vanilla.aotake.AotakeSweep;
 import xin.vanilla.banira.api.BaniraDataPaths;
-import xin.vanilla.banira.common.util.BaniraServerUtils;
+import xin.vanilla.aotake.internal.common.AotakeServerRuntime;
 import xin.vanilla.banira.common.util.JsonUtils;
 import xin.vanilla.banira.common.util.PlayerUtils;
 
@@ -46,7 +46,7 @@ public final class ChunkVaultGrants {
      */
     public static void bootstrapWhenServerReady(MinecraftServer server) {
         if (server == null || !server.isRunning()) return;
-        if (!BaniraServerUtils.isRunning() || BaniraServerUtils.currentServer() != server) return;
+        if (!AotakeServerRuntime.isRunning() || AotakeServerRuntime.currentServer() != server) return;
         if (grantsLoadedForServer == server) return;
         synchronized (ChunkVaultGrants.class) {
             if (grantsLoadedForServer == server) return;
@@ -57,8 +57,8 @@ public final class ChunkVaultGrants {
 
     @Nullable
     public static Path grantsFileOrNull() {
-        if (!BaniraServerUtils.isRunning()) return null;
-        MinecraftServer s = BaniraServerUtils.currentServer();
+        if (!AotakeServerRuntime.isRunning()) return null;
+        MinecraftServer s = AotakeServerRuntime.currentServer();
         if (s == null) return null;
         return BaniraDataPaths.worldDataPath().resolve(AotakeSweep.MODID).resolve(FILE_NAME);
     }

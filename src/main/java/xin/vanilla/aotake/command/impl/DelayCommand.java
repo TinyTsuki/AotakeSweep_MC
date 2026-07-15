@@ -17,7 +17,7 @@ import xin.vanilla.aotake.event.EventHandlerProxy;
 import xin.vanilla.aotake.network.packet.SweepDataSyncToClient;
 import xin.vanilla.aotake.notification.AotakeNotificationTypes;
 import xin.vanilla.aotake.util.AotakeUtils;
-import xin.vanilla.banira.common.util.BaniraServerUtils;
+import xin.vanilla.aotake.internal.common.AotakeServerRuntime;
 import xin.vanilla.banira.common.data.Component;
 import xin.vanilla.banira.common.util.*;
 
@@ -45,7 +45,7 @@ public class DelayCommand {
                 EventHandlerProxy.setNextSweepTime(nextSweepTime);
             }
             // 给已声明客户端 mod 且尚未完成数据同步的玩家同步扫地倒计时与玩家偏好
-            for (ServerPlayer player : BaniraServerUtils.currentServer().getPlayerList().getPlayers()) {
+            for (ServerPlayer player : AotakeServerRuntime.requireServer().getPlayerList().getPlayers()) {
                 if (PlayerUtils.isPlayerDataSynced(player, AotakeSweep.MODID)) continue;
                 PacketUtils.sendPacketToPlayer(new SweepDataSyncToClient(player), player);
             }
@@ -58,7 +58,7 @@ public class DelayCommand {
                             , AotakeComponent.get().literal(DateUtils.toDateTimeString(new Date(EventHandlerProxy.getNextSweepTime())) + " (Server Time)").toVanilla())
                     )
             );
-            BaniraServerUtils.currentServer()
+            AotakeServerRuntime.requireServer()
                     .getPlayerList()
                     .getPlayers()
                     .forEach(p -> MessageUtils.sendNotification(p, message, AotakeNotificationTypes.ADMIN_BROADCAST));
