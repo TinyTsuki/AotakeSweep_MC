@@ -22,7 +22,7 @@ import xin.vanilla.aotake.AotakeLang;
 import xin.vanilla.aotake.config.CommonConfig;
 import xin.vanilla.aotake.data.ConcurrentShuffleList;
 import xin.vanilla.aotake.data.DropStatistics;
-import xin.vanilla.banira.common.util.BaniraServerUtils;
+import xin.vanilla.banira.api.BaniraServer;
 import xin.vanilla.banira.common.data.Component;
 import xin.vanilla.banira.common.data.KeyValue;
 import xin.vanilla.banira.common.data.WorldCoordinate;
@@ -83,7 +83,7 @@ public class WorldTrashData extends WorldCapabilityData {
         this.setDrops(drops);
 
         String todayStr = DateUtils.toString(new Date());
-        MinecraftServer server = BaniraServerUtils.isRunning() ? BaniraServerUtils.currentServer() : null;
+        MinecraftServer server = BaniraServer.currentAs(MinecraftServer.class);
         Queue<DropStatistics> dropCounts = DropStatisticsStorage.loadByDate(server, todayStr);
         // 若 NBT 中有 dropCount 且当日 JSON 为空，则迁移至 JSON
         if (dropCounts.isEmpty() && nbt.contains("dropCount")) {
@@ -129,8 +129,8 @@ public class WorldTrashData extends WorldCapabilityData {
         nbt.put("dropList", dropsNBT);
 
         String todayStr = DateUtils.toString(new Date());
-        if (BaniraServerUtils.isRunning()) {
-            MinecraftServer server = BaniraServerUtils.currentServer();
+        if (BaniraServer.isRunning()) {
+            MinecraftServer server = BaniraServer.require(MinecraftServer.class);
             rolloverDropStatisticsIfNeeded(server, todayStr);
             DropStatisticsStorage.saveByDate(server, todayStr, this.dropCount);
         }
@@ -186,7 +186,7 @@ public class WorldTrashData extends WorldCapabilityData {
     }
 
     public static WorldTrashData get() {
-        return get(BaniraServerUtils.currentServer().getAllLevels().iterator().next());
+        return get(BaniraServer.require(MinecraftServer.class).getAllLevels().iterator().next());
     }
 
     public static WorldTrashData get(ServerPlayerEntity player) {

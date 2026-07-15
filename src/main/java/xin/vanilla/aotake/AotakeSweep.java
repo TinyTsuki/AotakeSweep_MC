@@ -27,7 +27,7 @@ import xin.vanilla.aotake.notification.AotakeNotificationTypes;
 import xin.vanilla.aotake.util.AotakeUtils;
 import xin.vanilla.aotake.util.EntityFilter;
 import xin.vanilla.aotake.util.EntitySweeper;
-import xin.vanilla.banira.common.util.BaniraServerUtils;
+import xin.vanilla.banira.api.BaniraServer;
 import xin.vanilla.banira.common.config.BaniraConfig;
 import xin.vanilla.banira.common.config.ConfigHolder;
 import xin.vanilla.banira.common.data.KeyValue;
@@ -108,7 +108,6 @@ public class AotakeSweep {
 
         MinecraftForge.EVENT_BUS.addListener((TickEvent.ServerTickEvent event) -> EventHandlerProxy.onServerTick(event));
         MinecraftForge.EVENT_BUS.addListener((TickEvent.WorldTickEvent event) -> EventHandlerProxy.onWorldTick(event));
-        MinecraftForge.EVENT_BUS.addListener((PlayerEvent.Clone event) -> EventHandlerProxy.onPlayerCloned(event));
         MinecraftForge.EVENT_BUS.addListener((PlayerInteractEvent.RightClickItem event) -> EventHandlerProxy.onPlayerUseItem(event));
         MinecraftForge.EVENT_BUS.addListener((PlayerInteractEvent.RightClickBlock event) -> EventHandlerProxy.onRightBlock(event));
         MinecraftForge.EVENT_BUS.addListener((PlayerInteractEvent.EntityInteractSpecific event) -> EventHandlerProxy.onRightEntity(event));
@@ -143,7 +142,7 @@ public class AotakeSweep {
         try {
             ModConfig cfg = event.getConfig();
             ConfigHolder commonHolder = BaniraConfig.holder(CommonConfig.class);
-            if (commonHolder != null && cfg.getFileName().contains(commonHolder.getConfigName()) && BaniraServerUtils.isRunning()) {
+            if (commonHolder != null && cfg.getFileName().contains(commonHolder.getConfigName()) && BaniraServer.isRunning()) {
                 AotakeUtils.clearEntityFilterCaches();
             }
         } catch (Exception ignored) {

@@ -4,6 +4,7 @@ import lombok.NonNull;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.item.ItemEntity;
 import net.minecraft.entity.player.ServerPlayerEntity;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.inventory.Inventory;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.CompoundNBT;
@@ -31,7 +32,7 @@ import xin.vanilla.aotake.enums.EnumDustbinMode;
 import xin.vanilla.aotake.enums.EnumOverflowMode;
 import xin.vanilla.aotake.enums.EnumSelfCleanMode;
 import xin.vanilla.aotake.notification.AotakeNotificationTypes;
-import xin.vanilla.banira.common.util.BaniraServerUtils;
+import xin.vanilla.banira.api.BaniraServer;
 import xin.vanilla.banira.common.data.Component;
 import xin.vanilla.banira.common.data.KeyValue;
 import xin.vanilla.banira.common.data.WorldCoordinate;
@@ -79,7 +80,7 @@ public class EntitySweeper {
             if (lists.size() > 1) {
                 for (int i = 1; i < lists.size(); i++) {
                     List<Entity> entityList = lists.get(i);
-                    BaniraScheduler.schedule(BaniraServerUtils.currentServer()
+                    BaniraScheduler.schedule(BaniraServer.require(MinecraftServer.class)
                             , context.sweepEntityInterval * i
                             , () -> AotakeSweep.getEntitySweeper().addDrops(entityList, result)
                     );
@@ -114,9 +115,9 @@ public class EntitySweeper {
 
         if (result.getBatch().get() >= result.getTotalBatch()) {
             LOGGER.debug("AddDrops finished at {}", System.currentTimeMillis());
-            ChunkVaultStorage.flushPending(BaniraServerUtils.currentServer());
+            ChunkVaultStorage.flushPending(BaniraServer.require(MinecraftServer.class));
 
-            List<ServerPlayerEntity> players = BaniraServerUtils.currentServer().getPlayerList().getPlayers();
+            List<ServerPlayerEntity> players = BaniraServer.require(MinecraftServer.class).getPlayerList().getPlayers();
             for (ServerPlayerEntity p : players) {
                 String language = AotakeLang.getPlayerLanguage(p);
                 Component msg = AotakeUtils.getWarningMessage(result.isEmpty() ? "fail" : "success"

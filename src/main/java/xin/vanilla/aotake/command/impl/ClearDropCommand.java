@@ -11,6 +11,7 @@ import net.minecraft.entity.Entity;
 import net.minecraft.entity.item.ItemEntity;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.entity.player.ServerPlayerEntity;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.server.ServerWorld;
 import xin.vanilla.aotake.AotakeComponent;
 import xin.vanilla.aotake.AotakeLang;
@@ -21,7 +22,7 @@ import xin.vanilla.aotake.data.player.PlayerSweepData;
 import xin.vanilla.aotake.enums.EnumCommandType;
 import xin.vanilla.aotake.notification.AotakeNotificationTypes;
 import xin.vanilla.aotake.util.AotakeUtils;
-import xin.vanilla.banira.common.util.BaniraServerUtils;
+import xin.vanilla.banira.api.BaniraServer;
 import xin.vanilla.banira.common.data.Component;
 import xin.vanilla.banira.common.util.CommandUtils;
 import xin.vanilla.banira.common.util.EntityUtils;
@@ -80,7 +81,7 @@ public class ClearDropCommand {
                 AotakeUtils.removeEntity(entity, false);
             });
 
-            BaniraServerUtils.currentServer()
+            BaniraServer.require(MinecraftServer.class)
                     .getPlayerList()
                     .getPlayers()
                     .forEach(player -> MessageUtils.sendNotification(player
