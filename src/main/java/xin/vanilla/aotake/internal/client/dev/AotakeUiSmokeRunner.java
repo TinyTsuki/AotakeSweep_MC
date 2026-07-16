@@ -283,6 +283,13 @@ public final class AotakeUiSmokeRunner {
         phaseTick++;
         if (phaseTick == 30) {
             capture(client, "04-gameplay-hud-normal");
+            try {
+                validateProgressKey(ClientModEventHandler.PROGRESS_KEY.currentKey(),
+                        client.options.keyPlayerList.getKey().getValue());
+            } catch (IllegalStateException e) {
+                fail(client, "hud-key-conflict", e);
+                return;
+            }
             setProgressKey(true);
             phase = Phase.HUD_HELD;
             phaseTick = 0;
@@ -371,6 +378,15 @@ public final class AotakeUiSmokeRunner {
     private static void setProgressKey(boolean down) {
         int keyCode = ClientModEventHandler.PROGRESS_KEY.currentKey();
         KeyMapping.set(InputConstants.Type.KEYSYM.getOrCreate(keyCode), down);
+        LOGGER.info("Aotake UI smoke progress key={} down={} vanillaPlayerListDown={}", keyCode, down,
+                Minecraft.getInstance().options.keyPlayerList.isDown());
+    }
+
+    /** 避免玩家列表遮挡按住进度键时的 HUD 验收。 */
+    static void validateProgressKey(int progressKey, int playerListKey) {
+        if (progressKey == playerListKey) {
+            throw new IllegalStateException("Progress key conflicts with the vanilla player-list key: " + progressKey);
+        }
     }
 
     private void capture(@Nonnull Minecraft client, @Nonnull String name) {
