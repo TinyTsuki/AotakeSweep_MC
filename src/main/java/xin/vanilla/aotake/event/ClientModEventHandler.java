@@ -28,7 +28,7 @@ public final class ClientModEventHandler {
     /**
      * 切换进度条显示按键
      */
-    public static BaniraKeyHandle PROGRESS_KEY = BaniraInput.registerKey(AotakeSweep.MODID, "progress", GLFW.GLFW_KEY_TAB);
+    public static BaniraKeyHandle PROGRESS_KEY = BaniraInput.registerKey(AotakeSweep.MODID, "progress", GLFW.GLFW_KEY_F9);
 
     private ClientModEventHandler() {
     }
