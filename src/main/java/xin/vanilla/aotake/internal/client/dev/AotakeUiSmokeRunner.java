@@ -40,6 +40,7 @@ import xin.vanilla.banira.api.client.hud.BaniraHudEvents;
 import xin.vanilla.banira.api.client.hud.BaniraHudRenderEvent;
 import xin.vanilla.banira.api.client.hud.HudOverlayElement;
 import xin.vanilla.banira.client.gui.ConfigEditorScreen;
+import xin.vanilla.banira.common.config.ConfigEntryDescriptor;
 import xin.vanilla.banira.common.util.EnvironmentUtils;
 import xin.vanilla.banira.common.util.PacketUtils;
 
@@ -104,7 +105,7 @@ public final class AotakeUiSmokeRunner {
                 new Step("player-config", true, () -> new PlayerConfigScreen(null,
                         AotakeSweep.isClientCachedShowSweepResult(),
                         AotakeSweep.isClientCachedEnableWarningVoice())),
-                new Step("client-config", false, () -> new ConfigEditorScreen(
+                new Step("client-config", true, () -> new ConfigEditorScreen(
                         ClientConfig.get().holder(), new ConfigEditorScreen.Args())),
                 new Step("common-config", true, () -> new ConfigEditorScreen(
                         CommonConfig.get().holder(), new ConfigEditorScreen.Args()))
@@ -209,6 +210,13 @@ public final class AotakeUiSmokeRunner {
         ClientModEventHandler.PROGRESS_KEY.currentKey();
         if (!AotakeLang.get().getI18nFiles().contains("zh_cn")) {
             throw new IllegalStateException("Bundled zh_cn language was not discovered");
+        }
+        ConfigEntryDescriptor chunkLimit = CommonConfig.get().holder()
+                .getDescriptor("base.chunk.chunkCheckLimit");
+        if (chunkLimit == null
+                || chunkLimit.getTooltipGuiKind() != ConfigEntryDescriptor.ConfigTooltipGuiKind.LOCALIZED_STATIC
+                || chunkLimit.getTooltipLocalizedByLang().isEmpty()) {
+            throw new IllegalStateException("Fabric config tooltip metadata was not retained");
         }
     }
 
