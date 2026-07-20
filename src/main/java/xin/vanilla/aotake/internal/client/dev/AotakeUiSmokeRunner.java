@@ -35,7 +35,13 @@ import xin.vanilla.aotake.util.AotakeUtils;
 import xin.vanilla.banira.api.client.hud.BaniraHudEvents;
 import xin.vanilla.banira.api.client.hud.BaniraHudRenderEvent;
 import xin.vanilla.banira.api.client.hud.HudOverlayElement;
+import xin.vanilla.banira.BaniraComponent;
 import xin.vanilla.banira.client.gui.ConfigEditorScreen;
+import xin.vanilla.banira.client.gui.component.Notification;
+import xin.vanilla.banira.client.util.NotificationManager;
+import xin.vanilla.banira.common.data.Color;
+import xin.vanilla.banira.common.enums.EnumMoveType;
+import xin.vanilla.banira.common.enums.EnumPosition;
 import xin.vanilla.banira.common.util.EnvironmentUtils;
 import xin.vanilla.banira.common.util.PacketUtils;
 
@@ -66,6 +72,7 @@ public final class AotakeUiSmokeRunner {
     private static final int WORLD_LOAD_TIMEOUT_TICKS = 1200;
     private static final int NETWORK_SYNC_TIMEOUT_TICKS = 240;
     private static final int DUSTBIN_TIMEOUT_TICKS = 240;
+    private static final int NOTIFICATION_SMOKE_BG = 0xFFEA00FF;
     private static final EnumDustbinClientUiStyle[] DUSTBIN_STYLES = {
             EnumDustbinClientUiStyle.VANILLA,
             EnumDustbinClientUiStyle.TEXTURED,
@@ -92,6 +99,7 @@ public final class AotakeUiSmokeRunner {
     private EnumDustbinClientUiStyle originalDustbinStyle;
     private GameType originalLocalGameMode;
     private CompletableFuture<EntityScanResult> entityScan;
+    private Notification hudSmokeNotification;
 
     private AotakeUiSmokeRunner(@Nonnull Path outputDir, boolean exitOnFinish, @Nonnull String worldName) {
         this.outputDir = outputDir;
@@ -153,6 +161,9 @@ public final class AotakeUiSmokeRunner {
                 break;
             case ENTITY_SCAN:
                 runEntityScanTick(client);
+                break;
+            case HUD_NOTIFICATION:
+                runNotificationHudTick(client);
                 break;
             case HUD_NORMAL:
                 runNormalHudTick(client);
@@ -339,9 +350,72 @@ public final class AotakeUiSmokeRunner {
             client.player.experienceLevel = 7;
             client.player.experienceProgress = 0.5F;
         }
+        beginNotificationHudSmoke();
+    }
+
+    /** 使用唯一背景色确认通知经过无 Screen 的 HUD 回调进入了真实帧缓冲。 */
+    private void beginNotificationHudSmoke() {
+        Notification notification = Notification.ofComponentWithBlack(
+                BaniraComponent.get().literal("Aotake HUD notification smoke"));
+        notification.bgColor(Color.argb(NOTIFICATION_SMOKE_BG));
+        notification.borderColor(Color.argb(NOTIFICATION_SMOKE_BG));
+        notification.position(EnumPosition.TOP_RIGHT);
+        notification.animation(EnumMoveType.FADE_IN);
+        notification.animationTime(1);
+        notification.durationTime(10_000);
+        notification.notificationType("aotake_sweep:ui_smoke");
+        hudSmokeNotification = notification;
+        NotificationManager.get().addNotification(notification);
+        appendStatus("SEND notification-hud-without-screen");
+        phase = Phase.HUD_NOTIFICATION;
+        phaseTick = 0;
+    }
+
+    private void runNotificationHudTick(@Nonnull Minecraft client) {
+        phaseTick++;
+        if (client.screen != null) {
+            fail(client, "notification-hud-without-screen",
+                    new IllegalStateException("A screen opened during HUD notification smoke"));
+            return;
+        }
+        if (phaseTick < 20) {
+            return;
+        }
+        Path file = outputDir.resolve("04a-notification-hud.png");
+        try (NativeImage image = Screenshot.takeScreenshot(client.getMainRenderTarget())) {
+            int smokePixels = countNotificationSmokePixels(image);
+            if (smokePixels < 32) {
+                throw new IllegalStateException("Notification color was absent from framebuffer: " + smokePixels);
+            }
+            image.writeToFile(file);
+            appendStatus("PASS notification-hud-without-screen pixels=" + smokePixels);
+            appendStatus("PASS 04a-notification-hud");
+            LOGGER.info("Aotake UI smoke screenshot: {}", file);
+        } catch (Throwable t) {
+            fail(client, "notification-hud-without-screen", t);
+            return;
+        }
+        hudSmokeNotification.dismiss();
+        hudSmokeNotification = null;
         resetHudObservations();
         phase = Phase.HUD_NORMAL;
         phaseTick = 0;
+    }
+
+    private static int countNotificationSmokePixels(@Nonnull NativeImage image) {
+        int count = 0;
+        for (int y = 0; y < image.getHeight(); y++) {
+            for (int x = 0; x < image.getWidth(); x++) {
+                int abgr = image.getPixelRGBA(x, y);
+                int red = abgr & 0xFF;
+                int green = (abgr >> 8) & 0xFF;
+                int blue = (abgr >> 16) & 0xFF;
+                if (red >= 225 && green <= 24 && blue >= 245) {
+                    count++;
+                }
+            }
+        }
+        return count;
     }
 
     private boolean verifyVanillaItemUsePasses(@Nonnull Minecraft client) {
@@ -518,6 +592,7 @@ public final class AotakeUiSmokeRunner {
 
     private void finish(@Nonnull Minecraft client) {
         phase = Phase.FINISHED;
+        dismissHudSmokeNotification();
         setProgressKey(false);
         restoreDustbinStyle();
         restoreLocalGameMode(client);
@@ -531,6 +606,7 @@ public final class AotakeUiSmokeRunner {
 
     private void fail(@Nonnull Minecraft client, @Nonnull String step, @Nonnull Throwable error) {
         phase = Phase.FINISHED;
+        dismissHudSmokeNotification();
         setProgressKey(false);
         restoreDustbinStyle();
         restoreLocalGameMode(client);
@@ -545,6 +621,13 @@ public final class AotakeUiSmokeRunner {
         if (originalDustbinStyle != null) {
             ClientConfig.get().dustbin().dustbinUiStyle(originalDustbinStyle);
             originalDustbinStyle = null;
+        }
+    }
+
+    private void dismissHudSmokeNotification() {
+        if (hudSmokeNotification != null) {
+            hudSmokeNotification.dismiss();
+            hudSmokeNotification = null;
         }
     }
 
@@ -596,6 +679,7 @@ public final class AotakeUiSmokeRunner {
         UI,
         WORLD_LOADING,
         ENTITY_SCAN,
+        HUD_NOTIFICATION,
         HUD_NORMAL,
         HUD_HELD,
         DUSTBIN,
