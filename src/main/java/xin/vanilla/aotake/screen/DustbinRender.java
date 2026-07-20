@@ -19,10 +19,12 @@ import xin.vanilla.aotake.enums.EnumCommandType;
 import xin.vanilla.aotake.enums.EnumDustbinClientUiStyle;
 import xin.vanilla.aotake.event.ClientModEventHandler;
 import xin.vanilla.aotake.mixin.ContainerScreenAccessor;
+import xin.vanilla.aotake.mixin.ScreenInvoker;
 import xin.vanilla.aotake.network.packet.ChunkVaultNavigateToServer;
 import xin.vanilla.aotake.network.packet.ClearDustbinToServer;
 import xin.vanilla.aotake.network.packet.OpenDustbinToServer;
 import xin.vanilla.aotake.util.AotakeUtils;
+import xin.vanilla.aotake.util.DustbinPageNavigation;
 import xin.vanilla.banira.client.data.BaniraColorConfig;
 import xin.vanilla.banira.client.data.FontDrawArgs;
 import xin.vanilla.banira.client.gui.component.Text;
@@ -147,7 +149,6 @@ public final class DustbinRender {
 
         if (event instanceof GuiScreenEvent.InitGuiEvent.Post) {
             if (ClientConfig.get().dustbin().dustbinUiStyle() == EnumDustbinClientUiStyle.VANILLA) {
-                GuiScreenEvent.InitGuiEvent.Post eve = (GuiScreenEvent.InitGuiEvent.Post) event;
                 ClientPlayerEntity player = mc.player;
                 ContainerScreenAccessor accessor = (ContainerScreenAccessor) screen;
                 int baseX = accessor.aotake$getLeftPos();
@@ -163,7 +164,7 @@ public final class DustbinRender {
                     canNext = curPage < totPage;
                 }
                 if (!chunkVault && AotakeUtils.hasCommandPermission(player, EnumCommandType.CACHE_CLEAR)) {
-                    eve.addWidget(
+                    addVanillaButton(screen,
                             newButton(baseX - 21
                                     , baseY + 21 * (yOffset++)
                                     , 20, 20
@@ -174,7 +175,7 @@ public final class DustbinRender {
                     );
                 }
                 if (!chunkVault && AotakeUtils.hasCommandPermission(player, EnumCommandType.DUSTBIN_CLEAR)) {
-                    eve.addWidget(
+                    addVanillaButton(screen,
                             newButton(baseX - 21
                                     , baseY + 21 * (yOffset++)
                                     , 20, 20
@@ -183,7 +184,7 @@ public final class DustbinRender {
                                     , AotakeComponent.get().trans(EnumI18nType.WORD, "clear_all_dustbin")
                             )
                     );
-                    eve.addWidget(
+                    addVanillaButton(screen,
                             newButton(baseX - 21
                                     , baseY + 21 * (yOffset++)
                                     , 20, 20
@@ -193,7 +194,7 @@ public final class DustbinRender {
                             )
                     );
                 }
-                eve.addWidget(
+                addVanillaButton(screen,
                         newButton(baseX - 21
                                 , baseY + 21 * (yOffset++)
                                 , 20, 20
@@ -225,7 +226,7 @@ public final class DustbinRender {
                 );
                 prevButton.active = canPrev;
                 dustbinPrevButton = prevButton;
-                eve.addWidget(prevButton);
+                addVanillaButton(screen, prevButton);
                 Button nextButton = newButton(baseX - 21
                         , baseY + 21 * (yOffset++)
                         , 20, 20
@@ -242,7 +243,7 @@ public final class DustbinRender {
                 );
                 nextButton.active = canNext;
                 dustbinNextButton = nextButton;
-                eve.addWidget(nextButton);
+                addVanillaButton(screen, nextButton);
             }
         } else if (event instanceof GuiScreenEvent.DrawScreenEvent.Post) {
             if (ClientConfig.get().dustbin().dustbinUiStyle() == EnumDustbinClientUiStyle.VANILLA) {
@@ -522,6 +523,9 @@ public final class DustbinRender {
                 }
             } else if (keyEvent.getKeyCode() == keyCode(ClientModEventHandler.DUSTBIN_PRE_KEY)) {
                 if (System.currentTimeMillis() - lastDustbinScreenKeyTime > 200) {
+                    int current = chunkKeys ? chunkVaultPage : dustbinPage;
+                    int total = chunkKeys ? chunkVaultTotalPage : dustbinTotalPage;
+                    if (!DustbinPageNavigation.canNavigate(current, total, -1)) return;
                     lastDustbinScreenKeyTime = System.currentTimeMillis();
                     queueCursorRestoreBeforeContainerRefresh();
                     if (chunkKeys) {
@@ -532,6 +536,9 @@ public final class DustbinRender {
                 }
             } else if (keyEvent.getKeyCode() == keyCode(ClientModEventHandler.DUSTBIN_NEXT_KEY)) {
                 if (System.currentTimeMillis() - lastDustbinScreenKeyTime > 200) {
+                    int current = chunkKeys ? chunkVaultPage : dustbinPage;
+                    int total = chunkKeys ? chunkVaultTotalPage : dustbinTotalPage;
+                    if (!DustbinPageNavigation.canNavigate(current, total, 1)) return;
                     lastDustbinScreenKeyTime = System.currentTimeMillis();
                     queueCursorRestoreBeforeContainerRefresh();
                     if (chunkKeys) {
@@ -577,10 +584,22 @@ public final class DustbinRender {
         return handle.currentKey();
     }
 
+    private static void addVanillaButton(Screen screen, Button button) {
+        ((ScreenInvoker) screen).aotake$addButton(button);
+    }
+
     private static Button newButton(int x, int y, int width, int height,
                                     Component label,
                                     Consumer<Button> onPress,
                                     Component tooltip) {
-        return new Button(x, y, width, height, label.toVanilla(), onPress::accept);
+        return new Button(x, y, width, height,
+                label.toVanilla(AotakeLang.getClientLanguage()), onPress::accept,
+                (button, stack, mouseX, mouseY) -> {
+                    Screen screen = Minecraft.getInstance().screen;
+                    if (screen != null && tooltip != null) {
+                        screen.renderTooltip(stack,
+                                tooltip.toVanilla(AotakeLang.getClientLanguage()), mouseX, mouseY);
+                    }
+                });
     }
 }

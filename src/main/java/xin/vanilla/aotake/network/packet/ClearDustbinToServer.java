@@ -37,13 +37,13 @@ public class ClearDustbinToServer implements NetworkPacket {
                 int page = AotakeSweep.getPlayerDustbinPage().getOrDefault(playerUUID, 1);
                 // 缓存区
                 if (packet.cache) {
-                    CommandUtils.executeCommand(player, String.format("/%s"
+                    CommandUtils.executeCommand(player, String.format("%s"
                             , AotakeUtils.getCommand(EnumCommandType.CACHE_CLEAR))
                     );
                 }
                 // 垃圾箱
                 else {
-                    CommandUtils.executeCommand(player, String.format("/%s%s"
+                    CommandUtils.executeCommand(player, String.format("%s%s"
                             , AotakeUtils.getCommand(EnumCommandType.DUSTBIN_CLEAR)
                             , packet.all ? "" : " " + page)
                     );

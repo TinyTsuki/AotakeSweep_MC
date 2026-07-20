@@ -3,6 +3,8 @@ package xin.vanilla.aotake.internal.client.dev;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.gui.screen.inventory.ContainerScreen;
+import net.minecraft.client.gui.widget.button.Button;
+import net.minecraft.client.gui.IGuiEventListener;
 import net.minecraft.client.renderer.texture.NativeImage;
 import net.minecraft.client.settings.KeyBinding;
 import net.minecraft.client.util.InputMappings;
@@ -14,6 +16,7 @@ import xin.vanilla.aotake.AotakeSweep;
 import xin.vanilla.aotake.config.ClientConfig;
 import xin.vanilla.aotake.config.CommonConfig;
 import xin.vanilla.aotake.event.ClientModEventHandler;
+import xin.vanilla.aotake.enums.EnumDustbinClientUiStyle;
 import xin.vanilla.aotake.network.packet.OpenDustbinToServer;
 import xin.vanilla.aotake.screen.PlayerConfigScreen;
 import xin.vanilla.aotake.util.AotakeUtils;
@@ -62,6 +65,8 @@ public final class AotakeUiSmokeRunner {
     private int phaseTick;
     private int readyTick;
     private CompletableFuture<EntityScanResult> entityScan;
+    private Screen dustbinBeforeRefresh;
+    private EnumDustbinClientUiStyle previousDustbinStyle;
 
     private AotakeUiSmokeRunner(@Nonnull Path outputDir, boolean exitOnFinish, @Nonnull String worldName) {
         this.outputDir = outputDir;
@@ -130,6 +135,9 @@ public final class AotakeUiSmokeRunner {
                 break;
             case DUSTBIN:
                 runDustbinTick(client);
+                break;
+            case DUSTBIN_REFRESH:
+                runDustbinRefreshTick(client);
                 break;
             default:
                 break;
@@ -284,6 +292,8 @@ public final class AotakeUiSmokeRunner {
         if (phaseTick == 30) {
             capture(client, "05-gameplay-hud-progress");
             setProgressKey(false);
+            previousDustbinStyle = ClientConfig.get().dustbin().dustbinUiStyle();
+            ClientConfig.get().dustbin().dustbinUiStyle(EnumDustbinClientUiStyle.VANILLA);
             PacketUtils.sendPacketToServer(new OpenDustbinToServer(0));
             appendStatus("SEND open-dustbin");
             phase = Phase.DUSTBIN;
@@ -299,7 +309,23 @@ public final class AotakeUiSmokeRunner {
             if (readyTick >= 20) {
                 capture(client, "06-dustbin");
                 appendStatus("PASS open-dustbin");
-                finish(client);
+                Button refresh = findButton(client.screen, "↻");
+                Button previous = findButton(client.screen, "▲");
+                if (refresh == null || previous == null) {
+                    fail(client, "dustbin-sidebar", new IllegalStateException("Required sidebar buttons are missing"));
+                    return;
+                }
+                if (previous.active) {
+                    fail(client, "dustbin-first-page", new IllegalStateException("Previous-page button is active on page one"));
+                    return;
+                }
+                dustbinBeforeRefresh = client.screen;
+                client.screen.mouseClicked(refresh.x + refresh.getWidth() / 2.0,
+                        refresh.y + refresh.getHeight() / 2.0, 0);
+                appendStatus("CLICK dustbin-refresh-sidebar");
+                phase = Phase.DUSTBIN_REFRESH;
+                phaseTick = 0;
+                readyTick = 0;
             }
             return;
         }
@@ -307,6 +333,34 @@ public final class AotakeUiSmokeRunner {
         if (phaseTick >= DUSTBIN_TIMEOUT_TICKS) {
             fail(client, "open-dustbin", new IllegalStateException("Dustbin container did not open"));
         }
+    }
+
+    private void runDustbinRefreshTick(@Nonnull Minecraft client) {
+        phaseTick++;
+        if (client.screen instanceof ContainerScreen && client.screen != dustbinBeforeRefresh) {
+            readyTick++;
+            if (readyTick >= 10) {
+                appendStatus("PASS dustbin-refresh-sidebar");
+                capture(client, "07-dustbin-refreshed");
+                finish(client);
+            }
+            return;
+        }
+        readyTick = 0;
+        if (phaseTick >= DUSTBIN_TIMEOUT_TICKS) {
+            fail(client, "dustbin-refresh-sidebar",
+                    new IllegalStateException("Refresh sidebar button did not reopen the dustbin"));
+        }
+    }
+
+    private static Button findButton(Screen screen, String label) {
+        for (IGuiEventListener child : screen.children()) {
+            if (child instanceof Button) {
+                Button button = (Button) child;
+                if (label.equals(button.getMessage().getString())) return button;
+            }
+        }
+        return null;
     }
 
     private static void setProgressKey(boolean down) {
@@ -329,6 +383,7 @@ public final class AotakeUiSmokeRunner {
     private void finish(@Nonnull Minecraft client) {
         phase = Phase.FINISHED;
         setProgressKey(false);
+        restoreDustbinStyle();
         appendStatus("FINISHED " + LocalDateTime.now());
         LOGGER.info("Aotake UI smoke finished; screenshots are in {}", outputDir);
         client.setScreen(null);
@@ -340,10 +395,18 @@ public final class AotakeUiSmokeRunner {
     private void fail(@Nonnull Minecraft client, @Nonnull String step, @Nonnull Throwable error) {
         phase = Phase.FINISHED;
         setProgressKey(false);
+        restoreDustbinStyle();
         appendStatus("FAILED " + step + ": " + error);
         LOGGER.error("Aotake UI smoke failed at {}", step, error);
         if (exitOnFinish) {
             client.stop();
+        }
+    }
+
+    private void restoreDustbinStyle() {
+        if (previousDustbinStyle != null) {
+            ClientConfig.get().dustbin().dustbinUiStyle(previousDustbinStyle);
+            previousDustbinStyle = null;
         }
     }
 
@@ -389,6 +452,7 @@ public final class AotakeUiSmokeRunner {
         HUD_NORMAL,
         HUD_HELD,
         DUSTBIN,
+        DUSTBIN_REFRESH,
         FINISHED
     }
 }
