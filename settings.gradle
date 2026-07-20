@@ -10,9 +10,3 @@ pluginManagement {
 }
 
 rootProject.name = 'aotake-sweep'
-
-includeBuild('../BaniraCodex') {
-    dependencySubstitution {
-        substitute(module('xin.vanilla.banira:banira_codex')).using(project(':'))
-    }
-}
