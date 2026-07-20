@@ -19,6 +19,7 @@ public class NetworkSmokeContractTest {
         String server = read("src/main/java/xin/vanilla/aotake/internal/server/dev/AotakeNetworkSmokeServerRunner.java");
         String client = read("src/main/java/xin/vanilla/aotake/internal/client/dev/AotakeNetworkSmokeClientRunner.java");
         String main = read("src/main/java/xin/vanilla/aotake/AotakeSweep.java");
+        String configCommand = read("src/main/java/xin/vanilla/aotake/command/impl/ConfigCommand.java");
         String clientBootstrap = read("src/main/java/xin/vanilla/aotake/client/AotakeClientBootstrap.java");
         String clientEvents = read("src/main/java/xin/vanilla/aotake/event/ClientGameEventHandler.java");
         String ignore = read(".gitignore");
@@ -33,13 +34,21 @@ public class NetworkSmokeContractTest {
         assertContains(script, "FINISHED");
         assertContains(server, "PASS persisted-player-data");
         assertContains(server, "PASS persisted-world-data");
+        assertContains(server, "PASS config-command-roundtrip");
+        assertContains(server, "PASS persisted-command-config");
+        assertContains(server, "aotake config common base.batch.sweepBatchLimit");
         assertContains(server, "server.halt(false)");
         assertContains(client, "PlayerConfigSyncToServer");
         assertContains(client, "ConnectingScreen");
         assertContains(client, "OpenDustbinToServer");
         assertContains(main, "AotakeNetworkSmokeServerRunner");
+        assertTrue("Config registration must precede common setup listener registration",
+                main.indexOf("BaniraConfig.register(CommonConfig.class, MODID)")
+                        < main.indexOf("addListener(this::onCommonSetup)"));
         assertContains(clientBootstrap, "AotakeNetworkSmokeClientRunner.register()");
         assertContains(clientEvents, "AotakeNetworkSmokeClientRunner.tick");
+        assertContains(configCommand, "Commands.literal(\"common\")");
+        assertNotContains(configCommand, "Commands.literal(\"server\")");
         assertContains(ignore, "/run-network-smoke/");
     }
 
@@ -51,5 +60,9 @@ public class NetworkSmokeContractTest {
 
     private static void assertContains(String source, String expected) {
         assertTrue("Missing network smoke contract fragment: " + expected, source.contains(expected));
+    }
+
+    private static void assertNotContains(String source, String unexpected) {
+        assertTrue("Unexpected duplicate config command fragment: " + unexpected, !source.contains(unexpected));
     }
 }

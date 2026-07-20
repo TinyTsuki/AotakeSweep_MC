@@ -101,7 +101,9 @@ public class AotakeSweep {
     private static final EntityFilter entityFilter = new EntityFilter();
 
     public AotakeSweep() {
-        // Banira 平台在 common setup 阶段完成安装，配置与网络注册需要延后到那里执行。
+        // Forge 会在 common setup 前加载 COMMON/CLIENT 配置，必须在构造阶段完成注册。
+        BaniraConfig.register(CommonConfig.class, MODID);
+        BaniraConfig.register(ClientConfig.class, MODID);
         FMLJavaModLoadingContext.get().getModEventBus().addListener(this::onCommonSetup);
 
         BaniraEventBus.Server.onStarting(server -> entitySweeper.clear());
@@ -126,8 +128,6 @@ public class AotakeSweep {
     }
 
     public void onCommonSetup(FMLCommonSetupEvent event) {
-        BaniraConfig.register(CommonConfig.class, MODID);
-        BaniraConfig.register(ClientConfig.class, MODID);
         NetworkInit.registerPackets();
         event.enqueueWork(() -> {
             AotakeNotificationTypes.registerAllOnServer();

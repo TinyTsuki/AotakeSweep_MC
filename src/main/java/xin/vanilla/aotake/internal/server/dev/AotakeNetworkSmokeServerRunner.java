@@ -7,6 +7,7 @@ import net.minecraft.item.Items;
 import net.minecraft.server.MinecraftServer;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.TickEvent;
+import xin.vanilla.aotake.config.CommonConfig;
 import xin.vanilla.aotake.data.player.PlayerSweepData;
 import xin.vanilla.aotake.data.world.WorldTrashData;
 import xin.vanilla.aotake.internal.dev.AotakeNetworkSmokeStatus;
@@ -17,8 +18,10 @@ import java.util.List;
 /** 在独立服务端内写入并复核网络 smoke 的持久化哨兵。 */
 public final class AotakeNetworkSmokeServerRunner {
     private static final int SENTINEL_COUNT = 7;
+    private static final int SENTINEL_CONFIG_VALUE = 11;
 
     private static boolean ready;
+    private static boolean commandVerified;
     private static boolean finished;
     private static int shutdownTicks;
 
@@ -80,6 +83,17 @@ public final class AotakeNetworkSmokeServerRunner {
     }
 
     private static void runWritePhase(ServerPlayerEntity player) {
+        if (!commandVerified) {
+            int commandResult = player.getServer().getCommands().performCommand(
+                    player.createCommandSourceStack().withPermission(4),
+                    "aotake config common base.batch.sweepBatchLimit " + SENTINEL_CONFIG_VALUE);
+            if (commandResult <= 0 || CommonConfig.get().base().batch().sweepBatchLimit() != SENTINEL_CONFIG_VALUE) {
+                throw new IllegalStateException("Config command did not update sweepBatchLimit");
+            }
+            AotakeNetworkSmokeStatus.append("PASS config-command-roundtrip");
+            commandVerified = true;
+        }
+
         PlayerSweepData playerData = PlayerSweepData.getData(player);
         if (playerData.isShowSweepResult() || playerData.isEnableWarningVoice()) {
             return;
@@ -96,6 +110,11 @@ public final class AotakeNetworkSmokeServerRunner {
     }
 
     private static void runVerifyPhase(ServerPlayerEntity player) {
+        if (CommonConfig.get().base().batch().sweepBatchLimit() != SENTINEL_CONFIG_VALUE) {
+            throw new IllegalStateException("Command config value was not restored from disk");
+        }
+        AotakeNetworkSmokeStatus.append("PASS persisted-command-config");
+
         PlayerSweepData playerData = PlayerSweepData.getData(player);
         if (playerData.isShowSweepResult() || playerData.isEnableWarningVoice()) {
             throw new IllegalStateException("Player preferences were not restored from disk");

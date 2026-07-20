@@ -75,28 +75,6 @@ public class ConfigCommand {
                                 })
                         )
                 )
-                // region 修改server配置
-                .then(Commands.literal("server")
-                        .requires(source -> AotakeUtils.hasCommandPermission(source, EnumCommandType.CONFIG))
-                        .then(Commands.argument("configKey", StringArgumentType.word())
-                                .suggests((context, builder) -> {
-                                    String input = CommandUtils.getStringEmpty(context, "configKey");
-                                    CommandUtils.configKeySuggestion(
-                                            BaniraConfig.holder(CommonConfig.class), builder, input);
-                                    return builder.buildFuture();
-                                })
-                                .then(Commands.argument("configValue", StringArgumentType.word())
-                                        .suggests((context, builder) -> {
-                                            String configKey = StringArgumentType.getString(context, "configKey");
-                                            CommandUtils.configValueSuggestion(
-                                                    BaniraConfig.holder(CommonConfig.class), builder, configKey);
-                                            return builder.buildFuture();
-                                        })
-                                        .executes(context -> CommandUtils.executeModifyConfig(
-                                                BaniraConfig.holder(CommonConfig.class), context))
-                                )
-                        )
-                )// endregion 修改server配置
                 // region 修改common配置
                 .then(Commands.literal("common")
                         .requires(source -> AotakeUtils.hasCommandPermission(source, EnumCommandType.CONFIG))
