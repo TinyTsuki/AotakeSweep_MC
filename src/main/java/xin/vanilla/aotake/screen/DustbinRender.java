@@ -22,6 +22,7 @@ import xin.vanilla.aotake.network.packet.ChunkVaultNavigateToServer;
 import xin.vanilla.aotake.network.packet.ClearDustbinToServer;
 import xin.vanilla.aotake.network.packet.OpenDustbinToServer;
 import xin.vanilla.aotake.util.AotakeUtils;
+import xin.vanilla.aotake.util.DustbinPageNavigation;
 import xin.vanilla.banira.client.data.BaniraColorConfig;
 import xin.vanilla.banira.client.data.FontDrawArgs;
 import xin.vanilla.banira.client.gui.component.Text;
@@ -155,12 +156,8 @@ public final class DustbinRender {
                 boolean chunkVault = isChunkVaultTitle(screen.getTitle().getString());
                 int curPage = chunkVault ? chunkVaultPage : dustbinPage;
                 int totPage = chunkVault ? chunkVaultTotalPage : dustbinTotalPage;
-                boolean canPrev = true;
-                boolean canNext = true;
-                if (curPage > 0 && totPage > 0) {
-                    canPrev = curPage > 1;
-                    canNext = curPage < totPage;
-                }
+                boolean canPrev = DustbinPageNavigation.canNavigate(curPage, totPage, -1);
+                boolean canNext = DustbinPageNavigation.canNavigate(curPage, totPage, 1);
                 if (!chunkVault && AotakeUtils.hasCommandPermission(player, EnumCommandType.CACHE_CLEAR)) {
                     eve.addWidget(
                             newButton(baseX - 21
@@ -248,12 +245,8 @@ public final class DustbinRender {
                 boolean chunkVault = isChunkVaultTitle(screen.getTitle().getString());
                 int curPage = chunkVault ? chunkVaultPage : dustbinPage;
                 int totPage = chunkVault ? chunkVaultTotalPage : dustbinTotalPage;
-                boolean canPrev = true;
-                boolean canNext = true;
-                if (curPage > 0 && totPage > 0) {
-                    canPrev = curPage > 1;
-                    canNext = curPage < totPage;
-                }
+                boolean canPrev = DustbinPageNavigation.canNavigate(curPage, totPage, -1);
+                boolean canNext = DustbinPageNavigation.canNavigate(curPage, totPage, 1);
                 if (dustbinPrevButton != null) {
                     dustbinPrevButton.active = canPrev;
                 }
@@ -282,14 +275,10 @@ public final class DustbinRender {
                         : accessor.aotake$getTopPos();
 
                 boolean chunkVaultDraw = isChunkVaultTitle(screen.getTitle().getString());
-                boolean canPrev = true;
-                boolean canNext = true;
                 int curDrawPage = chunkVaultDraw ? chunkVaultPage : dustbinPage;
                 int totDrawPage = chunkVaultDraw ? chunkVaultTotalPage : dustbinTotalPage;
-                if (curDrawPage > 0 && totDrawPage > 0) {
-                    canPrev = curDrawPage > 1;
-                    canNext = curDrawPage < totDrawPage;
-                }
+                boolean canPrev = DustbinPageNavigation.canNavigate(curDrawPage, totDrawPage, -1);
+                boolean canNext = DustbinPageNavigation.canNavigate(curDrawPage, totDrawPage, 1);
 
                 int yOffset = 0;
                 if (!chunkVaultDraw && AotakeUtils.hasCommandPermission(player, EnumCommandType.CACHE_CLEAR)) {
@@ -521,6 +510,9 @@ public final class DustbinRender {
                 }
             } else if (keyEvent.getKeyCode() == keyCode(ClientModEventHandler.DUSTBIN_PRE_KEY)) {
                 if (System.currentTimeMillis() - lastDustbinScreenKeyTime > 200) {
+                    int current = chunkKeys ? chunkVaultPage : dustbinPage;
+                    int total = chunkKeys ? chunkVaultTotalPage : dustbinTotalPage;
+                    if (!DustbinPageNavigation.canNavigate(current, total, -1)) return;
                     lastDustbinScreenKeyTime = System.currentTimeMillis();
                     queueCursorRestoreBeforeContainerRefresh();
                     if (chunkKeys) {
@@ -531,6 +523,9 @@ public final class DustbinRender {
                 }
             } else if (keyEvent.getKeyCode() == keyCode(ClientModEventHandler.DUSTBIN_NEXT_KEY)) {
                 if (System.currentTimeMillis() - lastDustbinScreenKeyTime > 200) {
+                    int current = chunkKeys ? chunkVaultPage : dustbinPage;
+                    int total = chunkKeys ? chunkVaultTotalPage : dustbinTotalPage;
+                    if (!DustbinPageNavigation.canNavigate(current, total, 1)) return;
                     lastDustbinScreenKeyTime = System.currentTimeMillis();
                     queueCursorRestoreBeforeContainerRefresh();
                     if (chunkKeys) {
