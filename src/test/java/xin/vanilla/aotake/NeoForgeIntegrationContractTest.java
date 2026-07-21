@@ -17,8 +17,9 @@ import static org.junit.Assert.fail;
 public class NeoForgeIntegrationContractTest {
     @Test
     public void arrowNockIsRegisteredOnNeoForgeBus() throws Exception {
-        Path entry = Paths.get("src", "main", "java", "xin", "vanilla", "aotake", "AotakeSweep.java");
-        String source = new String(Files.readAllBytes(entry), StandardCharsets.UTF_8);
+        Path adapter = Paths.get("src", "main", "java", "xin", "vanilla", "aotake", "internal",
+                "neoforge", "event", "NeoForgeAotakeGameEventAdapter.java");
+        String source = new String(Files.readAllBytes(adapter), StandardCharsets.UTF_8);
         assertTrue("ArrowNockEvent must be registered directly on the NeoForge bus",
                 source.contains("NeoForge.EVENT_BUS.addListener((ArrowNockEvent event)"));
     }

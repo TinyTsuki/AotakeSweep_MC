@@ -7,34 +7,27 @@ import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.ModContainer;
 import net.neoforged.fml.common.Mod;
-import net.neoforged.fml.config.ModConfig;
-import net.neoforged.fml.event.config.ModConfigEvent;
 import net.neoforged.fml.event.lifecycle.FMLCommonSetupEvent;
 import net.neoforged.fml.loading.FMLEnvironment;
-import net.neoforged.neoforge.common.NeoForge;
-import net.neoforged.neoforge.event.entity.player.ArrowNockEvent;
 import net.neoforged.neoforge.event.entity.player.PlayerEvent;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import xin.vanilla.aotake.command.AotakeCommand;
 import xin.vanilla.aotake.config.ClientConfig;
 import xin.vanilla.aotake.config.CommonConfig;
-import xin.vanilla.aotake.data.world.ChunkVaultSession;
 import xin.vanilla.aotake.event.EventHandlerProxy;
+import xin.vanilla.aotake.internal.neoforge.event.NeoForgeAotakeGameEventAdapter;
 import xin.vanilla.aotake.network.NetworkInit;
 import xin.vanilla.aotake.network.packet.SweepDataSyncToClient;
 import xin.vanilla.aotake.notification.AotakeNotificationTypes;
-import xin.vanilla.aotake.util.AotakeUtils;
 import xin.vanilla.aotake.util.EntityFilter;
 import xin.vanilla.aotake.util.EntitySweeper;
 import xin.vanilla.banira.api.BaniraConfigs;
 import xin.vanilla.banira.api.BaniraModPresence;
-import xin.vanilla.banira.api.BaniraServer;
 import xin.vanilla.banira.common.data.KeyValue;
 import xin.vanilla.banira.common.util.BaniraEventBus;
 import xin.vanilla.banira.common.util.CommandUtils;
 import xin.vanilla.banira.common.util.PacketUtils;
-import xin.vanilla.banira.platform.BaniraConfigHandle;
 
 import java.util.Map;
 import java.util.Random;
@@ -111,8 +104,6 @@ public class AotakeSweep {
 
         BaniraEventBus.Server.onTick(EventHandlerProxy::onServerTick);
         BaniraEventBus.WorldEvents.onTick(EventHandlerProxy::onWorldTick);
-        // Banira 的泛型玩家事件只覆盖已显式订阅的子类，拉弓事件需由当前加载器接入。
-        NeoForge.EVENT_BUS.addListener((ArrowNockEvent event) -> EventHandlerProxy.onPlayerUseItem(event));
         BaniraEventBus.Interaction.onRightClickItem(EventHandlerProxy::onPlayerUseItem);
         BaniraEventBus.Interaction.onRightClickBlock(event -> {
             EventHandlerProxy.onRightBlock(event);
@@ -122,8 +113,7 @@ public class AotakeSweep {
         BaniraEventBus.Player.onLoggedIn(player -> EventHandlerProxy.onPlayerLoggedIn(new PlayerEvent.PlayerLoggedInEvent(player)));
         BaniraEventBus.Player.onLoggedOut(player -> EventHandlerProxy.onPlayerLoggedOut(new PlayerEvent.PlayerLoggedOutEvent(player)));
 
-        modEventBus.addListener(this::onConfigReload);
-        NeoForge.EVENT_BUS.addListener(ChunkVaultSession::onContainerClose);
+        NeoForgeAotakeGameEventAdapter.register(modEventBus);
 
         if (FMLEnvironment.dist == Dist.CLIENT) {
             xin.vanilla.aotake.client.AotakeClientBootstrap.init();
@@ -140,17 +130,6 @@ public class AotakeSweep {
                 CommandUtils.refreshPermission(serverPlayer);
             });
         });
-    }
-
-    public void onConfigReload(ModConfigEvent event) {
-        try {
-            ModConfig cfg = event.getConfig();
-            BaniraConfigHandle commonHolder = BaniraConfigs.handle(CommonConfig.class);
-            if (commonHolder != null && cfg.getFileName().contains(commonHolder.getConfigName()) && BaniraServer.isRunning()) {
-                AotakeUtils.clearEntityFilterCaches();
-            }
-        } catch (Exception ignored) {
-        }
     }
 
 }

@@ -37,7 +37,7 @@ public final class ClientModEventHandler {
     /**
      * 由主模组构造函数在客户端侧触发类初始化。
      */
-    public static void bootstrap() {
+    public static void register() {
         for (String id : AotakeNotificationTypes.ALL_TYPE_IDS) {
             NotificationTypeRegistry.register(id);
         }
