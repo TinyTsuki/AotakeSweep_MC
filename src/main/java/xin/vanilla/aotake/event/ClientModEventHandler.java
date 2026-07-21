@@ -37,7 +37,7 @@ public final class ClientModEventHandler {
     /**
      * 由加载器客户端入口触发按键与通知类型注册。
      */
-    public static void bootstrap() {
+    public static void register() {
         for (String id : AotakeNotificationTypes.ALL_TYPE_IDS) {
             BaniraClientNotificationTypes.register(id);
         }
