@@ -26,16 +26,21 @@ import java.util.function.Consumer;
  * 客户端专用 bootstrap，避免主入口类在服务端加载客户端类。
  */
 public final class AotakeClientBootstrap {
+    private static boolean initialized;
+
     private AotakeClientBootstrap() {
     }
 
-    public static void init() {
+    public static synchronized void init() {
+        if (initialized) {
+            return;
+        }
+        initialized = true;
+
+        ClientModEventHandler.register();
         ClientGameEventHandler.register();
-        AotakeUiSmokeRunner.register();
 
         BaniraClientEvents.ModLifecycle.onClientSetup(event -> {
-            ClientModEventHandler.bootstrap();
-
             ResourceLocation texture = Identifier.id().create("gui/quick_icon.png");
             Component label = AotakeComponent.get().transClient("key.aotake_sweep.categories");
             QuickActionContextMenuItem editClientConfig = new QuickActionContextMenuItem(AotakeComponent.get().transClientAuto("edit_client_config"), ctx ->
