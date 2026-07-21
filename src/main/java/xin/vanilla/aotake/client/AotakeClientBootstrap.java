@@ -27,15 +27,21 @@ import java.util.function.Consumer;
  * 客户端初始化入口；只允许通过 DistExecutor 在 CLIENT 端加载。
  */
 public final class AotakeClientBootstrap {
+    private static boolean initialized;
+
     private AotakeClientBootstrap() {
     }
 
-    public static void init() {
+    public static synchronized void init() {
+        if (initialized) {
+            return;
+        }
+        initialized = true;
+
+        ClientModEventHandler.register();
         ClientGameEventHandler.register();
 
         BaniraClientEventHub.ModLifecycle.onClientSetup(event -> {
-            ClientModEventHandler.bootstrap();
-
             ResourceLocation texture = Identifier.id().create("gui/quick_icon.png");
             Component label = AotakeComponent.get().transClient("key.aotake_sweep.categories");
             QuickActionContextMenuItem editClientConfig = new QuickActionContextMenuItem(

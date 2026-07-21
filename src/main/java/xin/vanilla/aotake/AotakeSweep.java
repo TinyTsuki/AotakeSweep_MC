@@ -4,33 +4,23 @@ import lombok.Getter;
 import lombok.Setter;
 import net.minecraft.entity.player.ServerPlayerEntity;
 import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.common.MinecraftForge;
-import net.minecraftforge.event.RegisterCommandsEvent;
-import net.minecraftforge.event.TickEvent;
-import net.minecraftforge.event.entity.player.PlayerEvent;
-import net.minecraftforge.event.entity.player.PlayerInteractEvent;
 import net.minecraftforge.fml.DistExecutor;
 import net.minecraftforge.fml.common.Mod;
-import net.minecraftforge.fml.config.ModConfig;
 import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent;
 import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import xin.vanilla.aotake.command.AotakeCommand;
 import xin.vanilla.aotake.config.ClientConfig;
 import xin.vanilla.aotake.config.CommonConfig;
-import xin.vanilla.aotake.data.world.ChunkVaultSession;
-import xin.vanilla.aotake.event.EventHandlerProxy;
 import xin.vanilla.aotake.internal.server.dev.AotakeNetworkSmokeServerRunner;
+import xin.vanilla.aotake.internal.forge.event.ForgeAotakeGameEventAdapter;
 import xin.vanilla.aotake.network.NetworkInit;
 import xin.vanilla.aotake.network.packet.SweepDataSyncToClient;
 import xin.vanilla.aotake.notification.AotakeNotificationTypes;
 import xin.vanilla.aotake.util.AotakeUtils;
 import xin.vanilla.aotake.util.EntityFilter;
 import xin.vanilla.aotake.util.EntitySweeper;
-import xin.vanilla.banira.api.BaniraServer;
 import xin.vanilla.banira.common.config.BaniraConfig;
-import xin.vanilla.banira.common.config.ConfigHolder;
 import xin.vanilla.banira.common.data.KeyValue;
 import xin.vanilla.banira.common.network.ModLoadedPresence;
 import xin.vanilla.banira.common.util.BaniraEventBus;
@@ -108,20 +98,7 @@ public class AotakeSweep {
 
         BaniraEventBus.Server.onStarting(server -> entitySweeper.clear());
         AotakeNetworkSmokeServerRunner.register();
-        MinecraftForge.EVENT_BUS.addListener((RegisterCommandsEvent event) -> AotakeCommand.register(event.getDispatcher()));
-
-        MinecraftForge.EVENT_BUS.addListener((TickEvent.ServerTickEvent event) -> EventHandlerProxy.onServerTick(event));
-        MinecraftForge.EVENT_BUS.addListener((TickEvent.WorldTickEvent event) -> EventHandlerProxy.onWorldTick(event));
-        MinecraftForge.EVENT_BUS.addListener((PlayerInteractEvent.RightClickItem event) -> EventHandlerProxy.onPlayerUseItem(event));
-        MinecraftForge.EVENT_BUS.addListener((PlayerInteractEvent.RightClickBlock event) -> EventHandlerProxy.onRightBlock(event));
-        MinecraftForge.EVENT_BUS.addListener((PlayerInteractEvent.EntityInteractSpecific event) -> EventHandlerProxy.onRightEntity(event));
-        MinecraftForge.EVENT_BUS.addListener((PlayerEvent.PlayerLoggedInEvent event) -> EventHandlerProxy.onPlayerLoggedIn(event));
-        MinecraftForge.EVENT_BUS.addListener((PlayerEvent.PlayerLoggedOutEvent event) -> EventHandlerProxy.onPlayerLoggedOut(event));
-
-        // 注册配置文件重载事件
-        FMLJavaModLoadingContext.get().getModEventBus().addListener(this::onConfigReload);
-
-        MinecraftForge.EVENT_BUS.addListener(ChunkVaultSession::onContainerClose);
+        ForgeAotakeGameEventAdapter.register();
 
         DistExecutor.safeRunWhenOn(Dist.CLIENT,
                 () -> xin.vanilla.aotake.client.AotakeClientBootstrap::init);
@@ -138,17 +115,6 @@ public class AotakeSweep {
                 CommandUtils.refreshPermission(serverPlayer);
             });
         });
-    }
-
-    public void onConfigReload(ModConfig.ModConfigEvent event) {
-        try {
-            ModConfig cfg = event.getConfig();
-            ConfigHolder commonHolder = BaniraConfig.holder(CommonConfig.class);
-            if (commonHolder != null && cfg.getFileName().contains(commonHolder.getConfigName()) && BaniraServer.isRunning()) {
-                AotakeUtils.clearEntityFilterCaches();
-            }
-        } catch (Exception ignored) {
-        }
     }
 
 }
