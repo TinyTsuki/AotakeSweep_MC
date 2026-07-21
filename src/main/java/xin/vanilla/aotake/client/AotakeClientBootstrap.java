@@ -21,21 +21,24 @@ import xin.vanilla.banira.common.data.Component;
 import xin.vanilla.banira.common.util.PacketUtils;
 
 import java.util.function.Consumer;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * 客户端初始化入口；只允许由加载器的客户端 entrypoint 调用。
  */
 public final class AotakeClientBootstrap {
-    private static final AtomicBoolean bootstrapped = new AtomicBoolean(false);
+    private static boolean initialized;
 
     private AotakeClientBootstrap() {
     }
 
-    public static void init() {
-        if (!bootstrapped.compareAndSet(false, true)) return;
+    public static synchronized void init() {
+        if (initialized) {
+            return;
+        }
+        initialized = true;
+
         ClientGameEventHandler.register();
-        ClientModEventHandler.bootstrap();
+        ClientModEventHandler.register();
 
         ResourceLocation texture = Identifier.id().create("gui/quick_icon.png");
         Component label = AotakeComponent.get().transClient("key.aotake_sweep.categories");
