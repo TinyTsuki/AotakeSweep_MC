@@ -4,6 +4,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.client.gui.screens.inventory.ContainerScreen;
+import net.minecraft.client.gui.screens.inventory.InventoryScreen;
 import com.mojang.blaze3d.platform.NativeImage;
 import net.fabricmc.fabric.api.client.screen.v1.Screens;
 import net.fabricmc.fabric.api.event.player.UseItemCallback;
@@ -40,6 +41,11 @@ import xin.vanilla.banira.api.client.hud.BaniraHudEvents;
 import xin.vanilla.banira.api.client.hud.BaniraHudRenderEvent;
 import xin.vanilla.banira.api.client.hud.HudOverlayElement;
 import xin.vanilla.banira.client.gui.ConfigEditorScreen;
+import xin.vanilla.banira.client.gui.quickaction.EnumQuickActionDisplay;
+import xin.vanilla.banira.client.gui.quickaction.QuickActionEntry;
+import xin.vanilla.banira.client.gui.quickaction.QuickActionRegistry;
+import xin.vanilla.banira.client.gui.quickaction.QuickIcon;
+import xin.vanilla.banira.client.util.TextureUtils;
 import xin.vanilla.banira.common.config.ConfigEntryDescriptor;
 import xin.vanilla.banira.common.util.EnvironmentUtils;
 import xin.vanilla.banira.common.util.PacketUtils;
@@ -163,6 +169,9 @@ public final class AotakeUiSmokeRunner {
                 break;
             case HUD_HELD:
                 runHeldHudTick(client);
+                break;
+            case QUICK_ACTION:
+                runQuickActionTick(client);
                 break;
             case DUSTBIN:
                 runDustbinTick(client);
@@ -392,11 +401,40 @@ public final class AotakeUiSmokeRunner {
             appendStatus("PASS hud-held-events");
             capture(client, "05-gameplay-hud-progress");
             setProgressKey(false);
-            originalDustbinStyle = ClientConfig.get().dustbin().dustbinUiStyle();
-            dustbinStyleIndex = 0;
-            phase = Phase.DUSTBIN;
-            openDustbinStyle(client);
+            client.setScreen(new InventoryScreen(client.player));
+            phase = Phase.QUICK_ACTION;
+            phaseTick = 0;
         }
+    }
+
+    private void runQuickActionTick(@Nonnull Minecraft client) {
+        phaseTick++;
+        if (!(client.screen instanceof InventoryScreen)) {
+            fail(client, "quick-action", new IllegalStateException("Inventory screen did not remain open"));
+            return;
+        }
+        if (phaseTick < 20) return;
+        try {
+            QuickActionEntry entry = QuickActionRegistry.get().getEntry(AotakeSweep.MODID + ":quick");
+            if (entry == null || entry.display() != EnumQuickActionDisplay.ICON
+                    || entry.quickIcon().kind() != QuickIcon.Kind.RESOURCE
+                    || entry.quickIcon().texture() == null
+                    || entry.quickIcon().texture().uvWidth() <= 0
+                    || entry.quickIcon().texture().uvHeight() <= 0
+                    || !TextureUtils.isTextureAvailable(entry.quickIcon().texture().location())) {
+                throw new IllegalStateException("Aotake resource quick action is unavailable");
+            }
+        } catch (RuntimeException e) {
+            fail(client, "quick-action", e);
+            return;
+        }
+        capture(client, "06-inventory-quick-actions");
+        appendStatus("PASS quick-action-resource-icon");
+        client.setScreen(null);
+        originalDustbinStyle = ClientConfig.get().dustbin().dustbinUiStyle();
+        dustbinStyleIndex = 0;
+        phase = Phase.DUSTBIN;
+        openDustbinStyle(client);
     }
 
     private void runDustbinTick(@Nonnull Minecraft client) {
@@ -412,7 +450,7 @@ public final class AotakeUiSmokeRunner {
                     return;
                 }
                 String name = String.format(Locale.ROOT, "%02d-dustbin-%s",
-                        6 + dustbinStyleIndex, style.name().toLowerCase(Locale.ROOT));
+                        7 + dustbinStyleIndex, style.name().toLowerCase(Locale.ROOT));
                 capture(client, name);
                 appendStatus("PASS dustbin-" + style.name().toLowerCase(Locale.ROOT));
                 dustbinStyleIndex++;
@@ -592,6 +630,7 @@ public final class AotakeUiSmokeRunner {
         ENTITY_SCAN,
         HUD_NORMAL,
         HUD_HELD,
+        QUICK_ACTION,
         DUSTBIN,
         FINISHED
     }
