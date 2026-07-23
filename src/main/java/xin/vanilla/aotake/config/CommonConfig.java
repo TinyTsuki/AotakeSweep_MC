@@ -576,10 +576,10 @@ public class CommonConfig implements ConfigData {
         @ConfigEntry.BoundedDiscrete(min = 1, max = Integer.MAX_VALUE)
         private int chunkCheckLimit = 250;
 
-        @ConfigEntry.Gui.Tooltip(zh_cn = "清理后保留实体比例（0–1），具体行为受 chunkCheckMode 影响。",
-                en_us = "Fraction of entities to retain after cleanup (0–1); interacts with chunkCheckMode.")
+        @ConfigEntry.Gui.Tooltip(zh_cn = "清理后保留 chunkCheckLimit 的比例（0-1），具体行为受 chunkCheckMode 影响。",
+                en_us = "Fraction of chunkCheckLimit to retain after cleanup (0-1); interacts with chunkCheckMode.")
         @ConfigEntry.BoundedDouble(min = 0.0, max = 1.0)
-        private double chunkCheckRetain = 0.5;
+        private double chunkCheckRetain = 0.8;
 
         @ConfigEntry.Gui.Tooltip(zh_cn = "区块实体过多时是否向玩家发提示。", en_us = "Broadcast warning when chunk is overloaded.")
         private boolean chunkCheckNotice = true;
@@ -889,7 +889,7 @@ public class CommonConfig implements ConfigData {
         c.base().chunk()
                 .chunkCheckInterval(5L * 1000)
                 .chunkCheckLimit(250)
-                .chunkCheckRetain(0.5)
+                .chunkCheckRetain(0.8)
                 .chunkCheckNotice(true)
                 .chunkCheckMode(EnumChunkCheckMode.ADVANCED)
                 .chunkCheckEntityList(defaultChunkCheckEntityList())
