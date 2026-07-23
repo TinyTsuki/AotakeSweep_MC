@@ -30,6 +30,7 @@ import xin.vanilla.aotake.enums.EnumCommandType;
 import xin.vanilla.aotake.enums.EnumDustbinMode;
 import xin.vanilla.aotake.enums.EnumOverflowMode;
 import xin.vanilla.aotake.enums.EnumSelfCleanMode;
+import xin.vanilla.aotake.internal.platform.EntityRemovalBridge;
 import xin.vanilla.aotake.notification.AotakeNotificationTypes;
 import xin.vanilla.aotake.internal.common.AotakeServerRuntime;
 import xin.vanilla.banira.common.data.Component;
@@ -442,7 +443,7 @@ public class EntitySweeper {
         KeyValue<Entity, Boolean> keyValue;
         while ((keyValue = queue.poll()) != null) {
             if (keyValue.key().isAlive()) {
-                keyValue.key().remove(Entity.RemovalReason.KILLED);
+                EntityRemovalBridge.discard(keyValue.key(), keyValue.value());
             }
         }
     }
