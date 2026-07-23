@@ -45,7 +45,9 @@ import xin.vanilla.aotake.network.packet.GhostCameraToClient;
 import xin.vanilla.aotake.network.packet.SweepDataSyncToClient;
 import xin.vanilla.aotake.notification.AotakeNotificationTypes;
 import xin.vanilla.aotake.util.AotakeUtils;
+import xin.vanilla.aotake.util.ChunkCleanupPolicy;
 import xin.vanilla.aotake.util.EntitySweeper;
+import xin.vanilla.aotake.util.RateLimitedErrorLogger;
 import xin.vanilla.banira.api.BaniraServer;
 import xin.vanilla.banira.common.data.Component;
 import xin.vanilla.banira.common.data.KeyValue;
@@ -63,6 +65,7 @@ import java.util.stream.IntStream;
 @SuppressWarnings("resource")
 public class EventHandlerProxy {
     private static final Logger LOGGER = LogManager.getLogger();
+    private static final RateLimitedErrorLogger CLEANUP_ERRORS = new RateLimitedErrorLogger(60_000L);
 
     @Getter
     @Setter
@@ -279,11 +282,14 @@ public class EventHandlerProxy {
                         }
                     }
 
-                    // 将指定数量的实体移出列表实现不清理
+                    // 列表中移出的实体会被保留，目标数量始终以配置阈值为基准。
                     overcrowdedChunks.forEach(entry -> {
                         List<Entity> entities = entry.getValue();
                         if (entities.isEmpty()) return;
-                        entities.subList(0, (int) (CommonConfig.get().base().chunk().chunkCheckRetain() * entities.size())).clear();
+                        CommonConfig.ChunkView chunk = CommonConfig.get().base().chunk();
+                        int retained = ChunkCleanupPolicy.retainedCount(
+                                entities.size(), chunk.chunkCheckLimit(), chunk.chunkCheckRetain());
+                        entities.subList(0, retained).clear();
                     });
 
                     BaniraScheduler.schedule(server, 25, () -> {
@@ -294,7 +300,7 @@ public class EventHandlerProxy {
                                     .collect(Collectors.toList());
                             AotakeUtils.sweep(entities, true, true);
                         } catch (Exception e) {
-                            LOGGER.error("Failed to sweep entities", e);
+                            CLEANUP_ERRORS.log(LOGGER, "Chunk entity sweep", e);
                         } finally {
                             chunkSweepLock.set(false);
                         }
@@ -304,7 +310,7 @@ public class EventHandlerProxy {
                 }
             } catch (Exception e) {
                 chunkSweepLock.set(false);
-                LOGGER.error("Failed to check chunk entities", e);
+                CLEANUP_ERRORS.log(LOGGER, "Chunk entity check", e);
             }
         }
 

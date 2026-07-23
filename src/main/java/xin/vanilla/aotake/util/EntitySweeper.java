@@ -31,6 +31,7 @@ import xin.vanilla.aotake.enums.EnumCommandType;
 import xin.vanilla.aotake.enums.EnumDustbinMode;
 import xin.vanilla.aotake.enums.EnumOverflowMode;
 import xin.vanilla.aotake.enums.EnumSelfCleanMode;
+import xin.vanilla.aotake.internal.platform.EntityRemovalBridge;
 import xin.vanilla.aotake.notification.AotakeNotificationTypes;
 import xin.vanilla.banira.api.BaniraServer;
 import xin.vanilla.banira.common.data.Component;
@@ -432,23 +433,10 @@ public class EntitySweeper {
         if (!(entity.level() instanceof ServerLevel)) return;
         ResourceKey<Level> dimensionKey = entity.level().dimension();
 
-        if (entity instanceof PartEntity) {
-            entity = ((PartEntity<?>) entity).getParent();
-        }
-        if (entity.isMultipartEntity()) {
-            PartEntity<?>[] parts = entity.getParts();
-            if (CollectionUtils.isNotNullOrEmpty(parts)) {
-                for (PartEntity<?> part : parts) {
-                    pendingRemovals
-                            .computeIfAbsent(dimensionKey, k -> new ConcurrentLinkedQueue<>())
-                            .add(new KeyValue<>(part, keepData));
-                }
-            }
-        } else {
-            pendingRemovals
-                    .computeIfAbsent(dimensionKey, k -> new ConcurrentLinkedQueue<>())
-                    .add(new KeyValue<>(entity, keepData));
-        }
+        Entity canonical = entity instanceof PartEntity ? ((PartEntity<?>) entity).getParent() : entity;
+        pendingRemovals
+                .computeIfAbsent(dimensionKey, k -> new ConcurrentLinkedQueue<>())
+                .add(new KeyValue<>(canonical, keepData));
     }
 
     public static void flushPendingRemovals(ServerLevel world) {
@@ -458,7 +446,7 @@ public class EntitySweeper {
         KeyValue<Entity, Boolean> keyValue;
         while ((keyValue = queue.poll()) != null) {
             if (keyValue.key().isAlive()) {
-                keyValue.key().remove(Entity.RemovalReason.KILLED);
+                EntityRemovalBridge.discard(keyValue.key(), keyValue.value());
             }
         }
     }
