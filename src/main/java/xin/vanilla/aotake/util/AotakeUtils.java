@@ -64,6 +64,7 @@ import java.util.*;
 @SuppressWarnings({"resource"})
 public class AotakeUtils {
     private static final Logger LOGGER = LogManager.getLogger();
+    private static final RateLimitedErrorLogger SWEEP_ERRORS = new RateLimitedErrorLogger(60_000L);
 
     // region 指令相关
 
@@ -505,7 +506,7 @@ public class AotakeUtils {
             // }
 
         } catch (Exception e) {
-            LOGGER.error(e);
+            SWEEP_ERRORS.log(LOGGER, "Entity sweep", e);
             for (ServerPlayer p : players) {
                 String language = AotakeLang.getPlayerLanguage(p);
                 Component msg = getWarningMessage("error", language, null);
