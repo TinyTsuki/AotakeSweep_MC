@@ -81,7 +81,12 @@ sourceSets.main.resources { srcDir 'src/generated/resources' }
 
 // region banira_codex：JarJar
 def baniraArtifactVersionRange = "${banira_version_range}"
+def baniraCodexCoords = "xin.vanilla.banira:banira_codex:${loader_type}-${minecraft_version}-${banira_version}"
 // endregion banira_codex
+
+configurations.configureEach {
+    resolutionStrategy.cacheChangingModulesFor 0, 'seconds'
+}
 
 repositories {
     flatDir {
@@ -107,8 +112,11 @@ dependencies {
     testCompileOnly 'org.projectlombok:lombok:1.18.34'
     testAnnotationProcessor 'org.projectlombok:lombok:1.18.34'
 
-    implementation fg.deobf("xin.vanilla.banira:banira_codex:${loader_type}-${minecraft_version}-${banira_version}")
-    jarJar("xin.vanilla.banira:banira_codex:${loader_type}-${minecraft_version}-${banira_version}") {
+    implementation(fg.deobf(baniraCodexCoords)) {
+        changing = true
+    }
+    jarJar(baniraCodexCoords) {
+        changing = true
         jarJar.ranged(it, baniraArtifactVersionRange)
     }
 
