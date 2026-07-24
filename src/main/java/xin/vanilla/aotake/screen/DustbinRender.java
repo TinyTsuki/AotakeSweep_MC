@@ -17,6 +17,7 @@ import xin.vanilla.aotake.config.DustbinGuiLayoutCache;
 import xin.vanilla.aotake.enums.EnumCommandType;
 import xin.vanilla.aotake.enums.EnumDustbinClientUiStyle;
 import xin.vanilla.aotake.event.ClientModEventHandler;
+import xin.vanilla.aotake.internal.client.DustbinMouseInput;
 import xin.vanilla.aotake.mixin.ContainerScreenAccessor;
 import xin.vanilla.aotake.network.packet.ChunkVaultNavigateToServer;
 import xin.vanilla.aotake.network.packet.ClearDustbinToServer;
@@ -31,7 +32,6 @@ import xin.vanilla.banira.client.gui.widget.TooltipWidget;
 import xin.vanilla.banira.api.client.BaniraKeyHandle;
 import xin.vanilla.banira.client.util.AbstractGuiUtils;
 import xin.vanilla.banira.client.util.ClientThemeManager;
-import xin.vanilla.banira.client.util.InputStateManager;
 import xin.vanilla.banira.client.util.TextureUtils;
 import xin.vanilla.banira.common.data.Component;
 import xin.vanilla.banira.common.data.KeyValue;
@@ -48,7 +48,7 @@ import java.util.function.Consumer;
  */
 public final class DustbinRender {
 
-    private static final InputStateManager mouseHelper = InputStateManager.instance();
+    private static final DustbinMouseInput mouseHelper = new DustbinMouseInput();
 
     /**
      * 翻页/刷新前记录的光标
@@ -98,7 +98,7 @@ public final class DustbinRender {
      * 在发送会触发垃圾箱界面重建的 {@link OpenDustbinToServer} 之前调用，记录当前光标
      */
     private static void queueCursorRestoreBeforeContainerRefresh() {
-        KeyValue<Double, Double> cur = InputStateManager.getRawCursorPos();
+        KeyValue<Double, Double> cur = DustbinMouseInput.rawCursorPosition();
         pendingMouseRaw.key(cur.key()).value(cur.val());
     }
 
@@ -134,7 +134,7 @@ public final class DustbinRender {
         double rx = pendingMouseRaw.key();
         double ry = pendingMouseRaw.val();
         pendingMouseRaw.key(-1D).val(-1D);
-        InputStateManager.setMouseRawPos(rx, ry);
+        DustbinMouseInput.setRawCursorPosition(rx, ry);
     }
 
     public static void handleGuiScreen(ScreenEvent event) {
@@ -241,6 +241,8 @@ public final class DustbinRender {
                 eve.addWidget(nextButton);
             }
         } else if (event instanceof DrawPost) {
+            DrawPost drawEvent = (DrawPost) event;
+            mouseHelper.poll(drawEvent.getMouseX(), drawEvent.getMouseY());
             if (ClientConfig.get().dustbin().dustbinUiStyle() == EnumDustbinClientUiStyle.VANILLA) {
                 boolean chunkVault = isChunkVaultTitle(screen.getTitle().getString());
                 int curPage = chunkVault ? chunkVaultPage : dustbinPage;
@@ -256,7 +258,7 @@ public final class DustbinRender {
             }
             EnumDustbinClientUiStyle dustbinUi = ClientConfig.get().dustbin().dustbinUiStyle();
             if (dustbinUi == EnumDustbinClientUiStyle.TEXTURED || dustbinUi == EnumDustbinClientUiStyle.BANIRA_THEME) {
-                DrawPost eve = (DrawPost) event;
+                DrawPost eve = drawEvent;
                 LocalPlayer player = mc.player;
                 int mouseX = eve.getMouseX();
                 int mouseY = eve.getMouseY();
