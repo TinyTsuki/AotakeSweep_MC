@@ -561,6 +561,7 @@ public final class DustbinRender {
             AbstractGuiUtils.blitBlend(stack, texture, x, y, 0, 0, 0, w, h, w, h);
             if (!enabled) {
                 RenderSystem.setShaderColor(1.0F, 1.0F, 1.0F, 1.0F);
+                AbstractGuiUtils.fill(stack, x, y, w, h, 0x66000000);
             }
             return;
         }
