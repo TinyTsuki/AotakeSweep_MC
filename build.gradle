@@ -35,11 +35,15 @@ repositories {
     mavenLocal()
     maven {
         name = "Terraformers Maven"
-        url = "https://maven.terraformersmc.com/"
+        url = "https://maven.terraformersmc.com/releases"
     }
     // flatDir {
     //     dir 'libs'
     // }
+}
+
+configurations.configureEach {
+    resolutionStrategy.cacheChangingModulesFor 0, 'seconds'
 }
 
 dependencies {
@@ -60,7 +64,9 @@ dependencies {
     implementation "com.google.code.findbugs:jsr305:3.0.2"
     implementation "org.apache.maven:maven-artifact:4.0.0-rc-3"
 
-    modImplementation "xin.vanilla.banira:banira_codex:${loader_type}-${minecraft_version}-${banira_version}"
+    modImplementation("xin.vanilla.banira:banira_codex:${loader_type}-${minecraft_version}-${banira_version}") {
+        changing = true
+    }
     modImplementation "com.terraformersmc:modmenu:${modmenu_version}"
 
 }

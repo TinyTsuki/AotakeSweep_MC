@@ -5,6 +5,7 @@ import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.client.gui.screens.inventory.ContainerScreen;
 import net.minecraft.client.gui.screens.inventory.InventoryScreen;
+import net.minecraft.world.level.GameType;
 import com.mojang.blaze3d.platform.NativeImage;
 import net.fabricmc.fabric.api.client.screen.v1.Screens;
 import net.fabricmc.fabric.api.event.player.UseItemCallback;
@@ -45,7 +46,6 @@ import xin.vanilla.banira.client.gui.quickaction.EnumQuickActionDisplay;
 import xin.vanilla.banira.client.gui.quickaction.QuickActionEntry;
 import xin.vanilla.banira.client.gui.quickaction.QuickActionRegistry;
 import xin.vanilla.banira.client.gui.quickaction.QuickIcon;
-import xin.vanilla.banira.client.util.TextureUtils;
 import xin.vanilla.banira.common.config.ConfigEntryDescriptor;
 import xin.vanilla.banira.common.util.EnvironmentUtils;
 import xin.vanilla.banira.common.util.PacketUtils;
@@ -347,7 +347,8 @@ public final class AotakeUiSmokeRunner {
             return;
         }
         if (client.player != null) {
-            // 非零等级才会走到 1.16.5 的经验文本绘制分支。
+            // 烟测存档可能保留创造模式；经验 HUD 契约必须在原版实际绘制它的状态下验证。
+            client.gameMode.setLocalMode(GameType.SURVIVAL);
             client.player.experienceLevel = 7;
             client.player.experienceProgress = 0.5F;
         }
@@ -418,18 +419,27 @@ public final class AotakeUiSmokeRunner {
             QuickActionEntry entry = QuickActionRegistry.get().getEntry(AotakeSweep.MODID + ":quick");
             if (entry == null || entry.display() != EnumQuickActionDisplay.ICON
                     || entry.quickIcon().kind() != QuickIcon.Kind.RESOURCE
-                    || entry.quickIcon().texture() == null
-                    || entry.quickIcon().texture().uvWidth() <= 0
-                    || entry.quickIcon().texture().uvHeight() <= 0
-                    || !TextureUtils.isTextureAvailable(entry.quickIcon().texture().location())) {
+                    || entry.quickIcon().texture() == null) {
                 throw new IllegalStateException("Aotake resource quick action is unavailable");
             }
         } catch (RuntimeException e) {
             fail(client, "quick-action", e);
             return;
         }
-        capture(client, "06-inventory-quick-actions");
-        appendStatus("PASS quick-action-resource-icon");
+        Path file = outputDir.resolve("06-inventory-quick-actions.png");
+        try (NativeImage image = Screenshot.takeScreenshot(client.getMainRenderTarget())) {
+            int iconPixels = countQuickActionIconPixels(image, client);
+            if (iconPixels < 4) {
+                throw new IllegalStateException("Aotake quick action icon was absent from framebuffer: " + iconPixels);
+            }
+            image.writeToFile(file);
+            appendStatus("PASS quick-action-resource-icon pixels=" + iconPixels);
+            appendStatus("PASS 06-inventory-quick-actions");
+            LOGGER.info("Aotake UI smoke screenshot: {}", file);
+        } catch (Throwable t) {
+            fail(client, "quick-action-framebuffer", t);
+            return;
+        }
         client.setScreen(null);
         originalDustbinStyle = ClientConfig.get().dustbin().dustbinUiStyle();
         dustbinStyleIndex = 0;
@@ -466,6 +476,39 @@ public final class AotakeUiSmokeRunner {
         if (phaseTick >= DUSTBIN_TIMEOUT_TICKS) {
             fail(client, "open-dustbin", new IllegalStateException("Dustbin container did not open"));
         }
+    }
+
+    /** 使用竹叶图标的两组稳定特征色，确认资源纹理真正进入帧缓冲。 */
+    private static int countQuickActionIconPixels(@Nonnull NativeImage image, @Nonnull Minecraft client) {
+        int guiWidth = Math.max(1, client.getWindow().getGuiScaledWidth());
+        int guiHeight = Math.max(1, client.getWindow().getGuiScaledHeight());
+        double scaleX = image.getWidth() / (double) guiWidth;
+        double scaleY = image.getHeight() / (double) guiHeight;
+        int minX = Math.max(0, (int) Math.floor((guiWidth / 2.0 - 4) * scaleX));
+        int maxX = Math.min(image.getWidth(), (int) Math.ceil((guiWidth / 2.0 + 24) * scaleX));
+        int minY = 0;
+        int maxY = Math.min(image.getHeight(), (int) Math.ceil(28 * scaleY));
+        int count = 0;
+        for (int y = minY; y < maxY; y++) {
+            for (int x = minX; x < maxX; x++) {
+                int abgr = image.getPixelRGBA(x, y);
+                int red = abgr & 0xFF;
+                int green = (abgr >> 8) & 0xFF;
+                int blue = (abgr >> 16) & 0xFF;
+                if (isNear(red, green, blue, 0x57, 0xBD, 0x35)
+                        || isNear(red, green, blue, 0x5D, 0x8A, 0x8D)) {
+                    count++;
+                }
+            }
+        }
+        return count;
+    }
+
+    private static boolean isNear(int red, int green, int blue,
+                                  int expectedRed, int expectedGreen, int expectedBlue) {
+        return Math.abs(red - expectedRed) <= 4
+                && Math.abs(green - expectedGreen) <= 4
+                && Math.abs(blue - expectedBlue) <= 4;
     }
 
     private static void setProgressKey(boolean down) {
