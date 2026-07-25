@@ -2,10 +2,16 @@ package xin.vanilla.aotake.command;
 
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
+import com.mojang.brigadier.tree.CommandNode;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
+import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.level.ServerPlayer;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import xin.vanilla.aotake.command.impl.HelpCommand;
 import xin.vanilla.aotake.enums.EnumCommandType;
+import xin.vanilla.aotake.internal.common.BrigadierCommandTree;
 import xin.vanilla.aotake.util.AotakeUtils;
 import xin.vanilla.banira.common.data.KeyValue;
 import xin.vanilla.banira.common.util.StringUtils;
@@ -14,6 +20,10 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 public class AotakeCommand {
+
+    private static final Logger LOGGER = LogManager.getLogger();
+    private static final Map<String, CommandNode<CommandSourceStack>> OWNED_ROOTS = new LinkedHashMap<>();
+    private static CommandDispatcher<CommandSourceStack> registeredDispatcher;
 
     public static List<KeyValue<String, EnumCommandType>> HELP_MESSAGE = new ArrayList<>();
 
@@ -37,7 +47,15 @@ public class AotakeCommand {
      *
      * @param dispatcher 命令调度器
      */
-    public static void register(CommandDispatcher<CommandSourceStack> dispatcher) {
+    public static synchronized void register(CommandDispatcher<CommandSourceStack> dispatcher) {
+        if (registeredDispatcher == dispatcher) {
+            for (Map.Entry<String, CommandNode<CommandSourceStack>> root : OWNED_ROOTS.entrySet()) {
+                BrigadierCommandTree.removeRoot(dispatcher, root.getKey(), root.getValue());
+            }
+        }
+        registeredDispatcher = dispatcher;
+        OWNED_ROOTS.clear();
+
         // 刷新帮助信息
         refreshHelpMessage();
 
@@ -51,13 +69,46 @@ public class AotakeCommand {
             if (type.getInstance() != null) {
                 // 注册简短的指令
                 if (AotakeUtils.isConciseEnabled(type)) {
-                    dispatcher.register(type.getInstance().get());
+                    registerOwnedRoot(dispatcher, type.getInstance().get());
                 }
                 // 注册完整的指令
                 mainCommand.then(type.getInstance().get());
             }
         }
 
-        dispatcher.register(mainCommand);
+        registerOwnedRoot(dispatcher, mainCommand);
+    }
+
+    /**
+     * 配置保存后重建本 mod 的根节点，并向在线玩家重新发送命令树。
+     */
+    public static void refreshConfiguredCommands(MinecraftServer server) {
+        if (server == null) {
+            return;
+        }
+        server.execute(() -> {
+            CommandDispatcher<CommandSourceStack> dispatcher;
+            synchronized (AotakeCommand.class) {
+                dispatcher = registeredDispatcher;
+            }
+            if (dispatcher == null) {
+                return;
+            }
+            register(dispatcher);
+            for (ServerPlayer player : server.getPlayerList().getPlayers()) {
+                server.getCommands().sendCommands(player);
+            }
+        });
+    }
+
+    private static void registerOwnedRoot(CommandDispatcher<CommandSourceStack> dispatcher,
+                                          LiteralArgumentBuilder<CommandSourceStack> builder) {
+        String rootName = builder.getLiteral();
+        CommandNode<CommandSourceStack> existing = dispatcher.getRoot().getChild(rootName);
+        if (existing != null) {
+            LOGGER.warn("Skip Aotake command root '{}' because it is already registered", rootName);
+            return;
+        }
+        OWNED_ROOTS.put(rootName, dispatcher.register(builder));
     }
 }
