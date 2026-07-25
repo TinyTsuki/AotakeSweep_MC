@@ -7,6 +7,7 @@ import com.mojang.blaze3d.platform.InputConstants;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.Screenshot;
+import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.BackupConfirmScreen;
 import net.minecraft.client.gui.screens.Screen;
@@ -28,7 +29,16 @@ import xin.vanilla.aotake.network.packet.OpenDustbinToServer;
 import xin.vanilla.aotake.screen.DustbinRender;
 import xin.vanilla.aotake.screen.PlayerConfigScreen;
 import xin.vanilla.aotake.util.AotakeUtils;
+import xin.vanilla.banira.BaniraComponent;
+import xin.vanilla.banira.client.data.ScreenCoordinate;
+import xin.vanilla.banira.client.gui.BaniraScreen;
 import xin.vanilla.banira.client.gui.ConfigEditorScreen;
+import xin.vanilla.banira.client.gui.component.Notification;
+import xin.vanilla.banira.client.gui.widget.ButtonWidget;
+import xin.vanilla.banira.client.util.NotificationManager;
+import xin.vanilla.banira.common.data.Color;
+import xin.vanilla.banira.common.enums.EnumMoveType;
+import xin.vanilla.banira.common.enums.EnumPosition;
 import xin.vanilla.banira.common.util.EnvironmentUtils;
 import xin.vanilla.banira.common.util.PacketUtils;
 
@@ -59,6 +69,7 @@ public final class AotakeUiSmokeRunner {
     private static final int WORLD_LOAD_TIMEOUT_TICKS = 1200;
     private static final int NETWORK_SYNC_TIMEOUT_TICKS = 240;
     private static final int DUSTBIN_TIMEOUT_TICKS = 240;
+    private static final int NOTIFICATION_SMOKE_BG = 0xFFEA00FF;
     private static final EnumDustbinClientUiStyle[] DUSTBIN_STYLES = {
             EnumDustbinClientUiStyle.VANILLA,
             EnumDustbinClientUiStyle.TEXTURED,
@@ -80,6 +91,7 @@ public final class AotakeUiSmokeRunner {
     private int dustbinStyleIndex;
     private EnumDustbinClientUiStyle originalDustbinStyle;
     private CompletableFuture<EntityScanResult> entityScan;
+    private Notification hudSmokeNotification;
 
     private AotakeUiSmokeRunner(@Nonnull Path outputDir, boolean exitOnFinish, @Nonnull String worldName) {
         this.outputDir = outputDir;
@@ -92,7 +104,8 @@ public final class AotakeUiSmokeRunner {
                 new Step("client-config", () -> new ConfigEditorScreen(
                         ClientConfig.get().holder(), new ConfigEditorScreen.Args())),
                 new Step("common-config", () -> new ConfigEditorScreen(
-                        CommonConfig.get().holder(), new ConfigEditorScreen.Args()))
+                        CommonConfig.get().holder(), new ConfigEditorScreen.Args())),
+                new Step("banira-long-press", LongPressSmokeScreen::new)
         );
     }
 
@@ -143,6 +156,9 @@ public final class AotakeUiSmokeRunner {
             case ENTITY_SCAN:
                 runEntityScanTick(client);
                 break;
+            case HUD_NOTIFICATION:
+                runNotificationHudTick(client);
+                break;
             case HUD_NORMAL:
                 runNormalHudTick(client);
                 break;
@@ -159,10 +175,34 @@ public final class AotakeUiSmokeRunner {
 
     private void runUiTick(@Nonnull Minecraft client) {
         stepTick++;
+        if (client.screen instanceof LongPressSmokeScreen) {
+            runLongPressUiTick(client, (LongPressSmokeScreen) client.screen);
+            return;
+        }
         if (stepTick == CAPTURE_TICK) {
             capture(client, String.format(Locale.ROOT, "%02d-%s", stepIndex + 1, steps.get(stepIndex).name));
         }
         if (stepTick >= STEP_TICKS) {
+            enterNextStep(client);
+        }
+    }
+
+    private void runLongPressUiTick(@Nonnull Minecraft client, LongPressSmokeScreen screen) {
+        if (stepTick == 4) {
+            screen.press();
+            appendStatus("PRESS banira-long-press");
+        } else if (stepTick == 12) {
+            capture(client, "04-long-press-progress");
+        } else if (stepTick == 24) {
+            screen.release();
+            if (!screen.fired()) {
+                fail(client, "banira-long-press",
+                        new IllegalStateException("Long-press callback did not fire"));
+                return;
+            }
+            capture(client, "04a-long-press-complete");
+            appendStatus("PASS banira-long-press");
+        } else if (stepTick >= 28) {
             enterNextStep(client);
         }
     }
@@ -319,8 +359,71 @@ public final class AotakeUiSmokeRunner {
             fail(client, "entity-scan", e);
             return;
         }
+        beginNotificationHudSmoke();
+    }
+
+    /** 使用唯一背景色确认通知确实经过无 Screen HUD 回调进入帧缓冲。 */
+    private void beginNotificationHudSmoke() {
+        Notification notification = Notification.ofComponentWithBlack(
+                BaniraComponent.get().literal("Aotake HUD notification smoke"));
+        notification.bgColor(Color.argb(NOTIFICATION_SMOKE_BG));
+        notification.borderColor(Color.argb(NOTIFICATION_SMOKE_BG));
+        notification.position(EnumPosition.TOP_RIGHT);
+        notification.animation(EnumMoveType.FADE_IN);
+        notification.animationTime(1);
+        notification.durationTime(10_000);
+        notification.notificationType("aotake_sweep:ui_smoke");
+        hudSmokeNotification = notification;
+        NotificationManager.get().addNotification(notification);
+        appendStatus("SEND notification-hud-without-screen");
+        phase = Phase.HUD_NOTIFICATION;
+        phaseTick = 0;
+    }
+
+    private void runNotificationHudTick(@Nonnull Minecraft client) {
+        phaseTick++;
+        if (client.screen != null) {
+            fail(client, "notification-hud-without-screen",
+                    new IllegalStateException("A screen opened during HUD notification smoke"));
+            return;
+        }
+        if (phaseTick < 20) {
+            return;
+        }
+        Path file = outputDir.resolve("05-notification-hud.png");
+        try (NativeImage image = Screenshot.takeScreenshot(client.getMainRenderTarget())) {
+            int smokePixels = countNotificationSmokePixels(image);
+            if (smokePixels < 32) {
+                throw new IllegalStateException("Notification color was absent from framebuffer: " + smokePixels);
+            }
+            image.writeToFile(file);
+            appendStatus("PASS notification-hud-without-screen pixels=" + smokePixels);
+            appendStatus("PASS 05-notification-hud");
+            LOGGER.info("Aotake UI smoke screenshot: {}", file);
+        } catch (Throwable t) {
+            fail(client, "notification-hud-without-screen", t);
+            return;
+        }
+        hudSmokeNotification.dismiss();
+        hudSmokeNotification = null;
         phase = Phase.HUD_NORMAL;
         phaseTick = 0;
+    }
+
+    private static int countNotificationSmokePixels(@Nonnull NativeImage image) {
+        int count = 0;
+        for (int y = 0; y < image.getHeight(); y++) {
+            for (int x = 0; x < image.getWidth(); x++) {
+                int abgr = image.getPixelRGBA(x, y);
+                int red = abgr & 0xFF;
+                int green = (abgr >> 8) & 0xFF;
+                int blue = (abgr >> 16) & 0xFF;
+                if (red >= 225 && green <= 24 && blue >= 245) {
+                    count++;
+                }
+            }
+        }
+        return count;
     }
 
     private void runNormalHudTick(@Nonnull Minecraft client) {
@@ -432,6 +535,7 @@ public final class AotakeUiSmokeRunner {
 
     private void finish(@Nonnull Minecraft client) {
         phase = Phase.FINISHED;
+        dismissHudSmokeNotification();
         setProgressKey(false);
         restoreDustbinStyle();
         appendStatus("FINISHED " + LocalDateTime.now());
@@ -444,12 +548,20 @@ public final class AotakeUiSmokeRunner {
 
     private void fail(@Nonnull Minecraft client, @Nonnull String step, @Nonnull Throwable error) {
         phase = Phase.FINISHED;
+        dismissHudSmokeNotification();
         setProgressKey(false);
         restoreDustbinStyle();
         appendStatus("FAILED " + step + ": " + error);
         LOGGER.error("Aotake UI smoke failed at {}", step, error);
         if (exitOnFinish) {
             client.stop();
+        }
+    }
+
+    private void dismissHudSmokeNotification() {
+        if (hudSmokeNotification != null) {
+            hudSmokeNotification.dismiss();
+            hudSmokeNotification = null;
         }
     }
 
@@ -479,6 +591,45 @@ public final class AotakeUiSmokeRunner {
         }
     }
 
+    /** 由 smoke runner 实际按下和释放，验证 ButtonWidget 的运行时状态机。 */
+    private static final class LongPressSmokeScreen extends BaniraScreen {
+        private ButtonWidget button;
+        private boolean fired;
+
+        private LongPressSmokeScreen() {
+            super(BaniraComponent.get().literal("Banira long-press smoke").toVanilla());
+        }
+
+        @Override
+        protected void initWidgets() {
+            button = new ButtonWidget(this);
+            button.id("smoke_long_press");
+            button.bounds(new ScreenCoordinate(width / 2.0 - 70, height / 2.0 - 12, 140, 24));
+            button.text("长按运行时测试");
+            button.onLongPress(600L, ignored -> fired = true);
+            addWidget(button);
+        }
+
+        @Override
+        protected void onRender(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
+            renderWidgets(graphics, partialTick);
+        }
+
+        private void press() {
+            mouseClicked(button.absoluteX() + button.width() / 2,
+                    button.absoluteY() + button.height() / 2, 0);
+        }
+
+        private void release() {
+            mouseReleased(button.absoluteX() + button.width() / 2,
+                    button.absoluteY() + button.height() / 2, 0);
+        }
+
+        private boolean fired() {
+            return fired;
+        }
+    }
+
     private static final class EntityScanResult {
         private final int total;
         private final int filtered;
@@ -496,6 +647,7 @@ public final class AotakeUiSmokeRunner {
         UI,
         WORLD_LOADING,
         ENTITY_SCAN,
+        HUD_NOTIFICATION,
         HUD_NORMAL,
         HUD_HELD,
         DUSTBIN,
