@@ -24,6 +24,7 @@ import xin.vanilla.aotake.util.EntityFilter;
 import xin.vanilla.aotake.util.EntitySweeper;
 import xin.vanilla.banira.api.BaniraConfigs;
 import xin.vanilla.banira.api.BaniraModPresence;
+import xin.vanilla.banira.api.BaniraServer;
 import xin.vanilla.banira.common.data.KeyValue;
 import xin.vanilla.banira.common.util.BaniraEventBus;
 import xin.vanilla.banira.common.util.CommandUtils;
@@ -96,6 +97,13 @@ public class AotakeSweep {
         // NeoForge 与 Forge 都要求配置在加载配置文件前完成注册。
         BaniraConfigs.register(CommonConfig.class, MODID);
         BaniraConfigs.register(ClientConfig.class, MODID);
+        BaniraConfigs.onSaved(CommonConfig.class, changedPaths -> {
+            boolean commandChanged = changedPaths.stream()
+                    .anyMatch(path -> path.startsWith("command.") || path.startsWith("concise."));
+            if (commandChanged) {
+                AotakeCommand.refreshConfiguredCommands(BaniraServer.currentAs(net.minecraft.server.MinecraftServer.class));
+            }
+        });
         NetworkInit.registerPackets();
         modEventBus.addListener(this::onCommonSetup);
 
