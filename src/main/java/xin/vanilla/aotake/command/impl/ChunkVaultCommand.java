@@ -54,7 +54,7 @@ public final class ChunkVaultCommand {
                         .executes(ctx -> list(ctx, IntegerArgumentType.getInteger(ctx, "page")))));
 
         root.then(Commands.literal("open")
-                .requires(src -> AotakeUtils.hasCommandPermission(src, EnumCommandType.CHUNK_VAULT))
+                .requires(src -> src.getEntity() instanceof ServerPlayer)
                 .then(Commands.argument("id", StringArgumentType.string())
                         .suggests(VAULT_ID_SUGGEST)
                         .executes(ctx -> openVault(ctx, StringArgumentType.getString(ctx, "id"), 1))
@@ -69,15 +69,6 @@ public final class ChunkVaultCommand {
                         .then(Commands.argument("players", EntityArgument.players())
                                 .executes(ctx -> grant(ctx, StringArgumentType.getString(ctx, "id"),
                                         EntityArgument.getPlayers(ctx, "players"))))));
-
-        root.then(Commands.literal("view")
-                .requires(src -> src.getEntity() instanceof ServerPlayer)
-                .then(Commands.argument("id", StringArgumentType.string())
-                        .suggests(VAULT_ID_SUGGEST)
-                        .executes(ctx -> viewVault(ctx, StringArgumentType.getString(ctx, "id"), 1))
-                        .then(Commands.argument("page", IntegerArgumentType.integer(1))
-                                .executes(ctx -> viewVault(ctx, StringArgumentType.getString(ctx, "id"),
-                                        IntegerArgumentType.getInteger(ctx, "page"))))));
 
         return root;
     }
@@ -119,21 +110,6 @@ public final class ChunkVaultCommand {
     }
 
     private static int openVault(CommandContext<CommandSourceStack> context, String vaultId, int page) throws CommandSyntaxException {
-        if (CommandUtils.checkModStatus(context, AotakeSweep::isDisable)) return 0;
-        ServerPlayer player = context.getSource().getPlayerOrException();
-        if (!AotakeUtils.hasCommandPermission(player, EnumCommandType.CHUNK_VAULT)) {
-            MessageUtils.sendMessage(context.getSource(), false, AotakeComponent.get().transAuto("command_no_permission").languageCode(Translator.getServerPlayerLanguage(player)));
-            return 0;
-        }
-        if (!ChunkVaultStorage.vaultExists(vaultId)) {
-            MessageUtils.sendNotification(player, AotakeComponent.get().transAuto("chunk_vault_not_found", vaultId), AotakeNotificationTypes.DUSTBIN);
-            return 0;
-        }
-        ChunkVaultSession.open(player, vaultId, page);
-        return 1;
-    }
-
-    private static int viewVault(CommandContext<CommandSourceStack> context, String vaultId, int page) throws CommandSyntaxException {
         if (CommandUtils.checkModStatus(context, AotakeSweep::isDisable)) return 0;
         ServerPlayer player = context.getSource().getPlayerOrException();
         if (!canOpen(player, vaultId)) {

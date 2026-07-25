@@ -1,5 +1,7 @@
 package xin.vanilla.aotake.internal.client.dev;
 
+import com.mojang.brigadier.CommandDispatcher;
+import com.mojang.brigadier.tree.CommandNode;
 import com.mojang.blaze3d.platform.NativeImage;
 import com.mojang.blaze3d.platform.InputConstants;
 import net.minecraft.client.KeyMapping;
@@ -10,6 +12,8 @@ import net.minecraft.client.gui.screens.BackupConfirmScreen;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.client.gui.screens.inventory.ContainerScreen;
+import net.minecraft.commands.CommandSourceStack;
+import net.minecraft.commands.Commands;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import xin.vanilla.aotake.AotakeSweep;
@@ -18,6 +22,7 @@ import xin.vanilla.aotake.config.CommonConfig;
 import xin.vanilla.aotake.config.DustbinGuiLayoutCache;
 import xin.vanilla.aotake.enums.EnumDustbinClientUiStyle;
 import xin.vanilla.aotake.event.ClientModEventHandler;
+import xin.vanilla.aotake.internal.common.BrigadierCommandTree;
 import xin.vanilla.aotake.mixin.ContainerScreenAccessor;
 import xin.vanilla.aotake.network.packet.OpenDustbinToServer;
 import xin.vanilla.aotake.screen.DustbinRender;
@@ -188,6 +193,16 @@ public final class AotakeUiSmokeRunner {
         ClientModEventHandler.DUSTBIN_PRE_KEY.currentKey();
         ClientModEventHandler.DUSTBIN_NEXT_KEY.currentKey();
         ClientModEventHandler.PROGRESS_KEY.currentKey();
+        validateCommandRootRemoval();
+    }
+
+    private static void validateCommandRootRemoval() {
+        CommandDispatcher<CommandSourceStack> dispatcher = new CommandDispatcher<>();
+        CommandNode<CommandSourceStack> node = dispatcher.register(Commands.literal("aotake_smoke_root"));
+        BrigadierCommandTree.removeRoot(dispatcher, "aotake_smoke_root", node);
+        if (dispatcher.getRoot().getChild("aotake_smoke_root") != null) {
+            throw new IllegalStateException("Brigadier command root was not removed");
+        }
     }
 
     private void enterNextStep(@Nonnull Minecraft client) {
