@@ -24,6 +24,16 @@ public class CommandRefreshContractTest {
     }
 
     @Test
+    public void networkSmokeExercisesLiveCommandTreeRefresh() throws Exception {
+        String smoke = source(
+                "src/main/java/xin/vanilla/aotake/internal/server/dev/AotakeNetworkSmokeServerRunner.java");
+
+        assertTrue(smoke.contains("concise.conciseClearDrop"));
+        assertTrue(smoke.contains("getDispatcher().getRoot().getChild(rootName)"));
+        assertTrue(smoke.contains("PASS concise-command-live-refresh"));
+    }
+
+    @Test
     public void chunkVaultUsesSingleAuthorizedOpenCommand() throws Exception {
         String source = source("src/main/java/xin/vanilla/aotake/command/impl/ChunkVaultCommand.java");
 

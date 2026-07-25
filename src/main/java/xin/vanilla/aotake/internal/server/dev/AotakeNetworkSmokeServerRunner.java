@@ -23,6 +23,8 @@ public final class AotakeNetworkSmokeServerRunner {
     private static boolean ready;
     private static boolean commandVerified;
     private static boolean finished;
+    private static int commandRefreshStage;
+    private static int commandRefreshWaitTicks;
     private static int shutdownTicks;
 
     private AotakeNetworkSmokeServerRunner() {
@@ -84,6 +86,9 @@ public final class AotakeNetworkSmokeServerRunner {
 
     private static void runWritePhase(ServerPlayerEntity player) {
         if (!commandVerified) {
+            if (!verifyConciseCommandRefresh(player)) {
+                return;
+            }
             int commandResult = player.getServer().getCommands().performCommand(
                     player.createCommandSourceStack().withPermission(4),
                     "aotake config common base.batch.sweepBatchLimit " + SENTINEL_CONFIG_VALUE);
@@ -107,6 +112,58 @@ public final class AotakeNetworkSmokeServerRunner {
         AotakeNetworkSmokeStatus.append("PASS phase-one-world-write");
         AotakeNetworkSmokeStatus.append("FINISHED phase-one");
         finished = true;
+    }
+
+    /**
+     * 通过真实配置指令触发与配置界面同步相同的 save listener，并检查命令树增删。
+     */
+    private static boolean verifyConciseCommandRefresh(ServerPlayerEntity player) {
+        MinecraftServer server = player.getServer();
+        String rootName = CommonConfig.get().command().commandClearDrop();
+        boolean registered = server.getCommands().getDispatcher().getRoot().getChild(rootName) != null;
+        boolean enabled = CommonConfig.get().concise().conciseClearDrop();
+
+        if (++commandRefreshWaitTicks > 100) {
+            throw new IllegalStateException("Timed out waiting for concise command tree refresh");
+        }
+        switch (commandRefreshStage) {
+            case 0:
+                runConfigCommand(player, "concise.conciseClearDrop", true);
+                commandRefreshStage = 1;
+                return false;
+            case 1:
+                if (!enabled || !registered) {
+                    return false;
+                }
+                runConfigCommand(player, "concise.conciseClearDrop", false);
+                commandRefreshStage = 2;
+                return false;
+            case 2:
+                if (enabled || registered) {
+                    return false;
+                }
+                runConfigCommand(player, "concise.conciseClearDrop", true);
+                commandRefreshStage = 3;
+                return false;
+            case 3:
+                if (!enabled || !registered) {
+                    return false;
+                }
+                AotakeNetworkSmokeStatus.append("PASS concise-command-live-refresh");
+                return true;
+            default:
+                throw new IllegalStateException("Unknown command refresh stage: " + commandRefreshStage);
+        }
+    }
+
+    private static void runConfigCommand(ServerPlayerEntity player, String path, boolean value) {
+        int result = player.getServer().getCommands().performCommand(
+                player.createCommandSourceStack().withPermission(4),
+                "aotake config common " + path + " " + value);
+        if (result <= 0) {
+            throw new IllegalStateException("Config command failed for " + path + "=" + value);
+        }
+        commandRefreshWaitTicks = 0;
     }
 
     private static void runVerifyPhase(ServerPlayerEntity player) {
