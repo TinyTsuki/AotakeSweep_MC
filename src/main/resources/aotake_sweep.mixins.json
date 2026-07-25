@@ -4,8 +4,7 @@
   "package": "xin.vanilla.aotake.mixin",
   "compatibilityLevel": "JAVA_8",
   "refmap": "aotake_sweep.refmap.json",
-  "mixins": [
-  ],
+  "mixins": [],
   "client": [
     "ChestScreenMixin",
     "ContainerScreenAccessor",

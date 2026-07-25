@@ -12,6 +12,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import xin.vanilla.aotake.config.ClientConfig;
 import xin.vanilla.aotake.config.CommonConfig;
+import xin.vanilla.aotake.command.AotakeCommand;
 import xin.vanilla.aotake.internal.server.dev.AotakeNetworkSmokeServerRunner;
 import xin.vanilla.aotake.internal.forge.event.ForgeAotakeGameEventAdapter;
 import xin.vanilla.aotake.network.NetworkInit;
@@ -23,6 +24,8 @@ import xin.vanilla.aotake.util.EntitySweeper;
 import xin.vanilla.banira.common.config.BaniraConfig;
 import xin.vanilla.banira.common.data.KeyValue;
 import xin.vanilla.banira.common.network.ModLoadedPresence;
+import xin.vanilla.banira.api.BaniraConfigs;
+import xin.vanilla.banira.api.BaniraServer;
 import xin.vanilla.banira.common.util.BaniraEventBus;
 import xin.vanilla.banira.common.util.CommandUtils;
 import xin.vanilla.banira.common.util.PacketUtils;
@@ -94,6 +97,13 @@ public class AotakeSweep {
         // Forge 会在 common setup 前加载 COMMON/CLIENT 配置，必须在构造阶段完成注册。
         BaniraConfig.register(CommonConfig.class, MODID);
         BaniraConfig.register(ClientConfig.class, MODID);
+        BaniraConfigs.onSaved(CommonConfig.class, changedPaths -> {
+            boolean commandChanged = changedPaths.stream()
+                    .anyMatch(path -> path.startsWith("command.") || path.startsWith("concise."));
+            if (commandChanged) {
+                AotakeCommand.refreshConfiguredCommands(BaniraServer.currentAs(net.minecraft.server.MinecraftServer.class));
+            }
+        });
         FMLJavaModLoadingContext.get().getModEventBus().addListener(this::onCommonSetup);
 
         BaniraEventBus.Server.onStarting(server -> entitySweeper.clear());

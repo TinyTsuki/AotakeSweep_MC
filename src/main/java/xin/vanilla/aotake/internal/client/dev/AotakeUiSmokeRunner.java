@@ -1,5 +1,7 @@
 package xin.vanilla.aotake.internal.client.dev;
 
+import com.mojang.brigadier.CommandDispatcher;
+import com.mojang.brigadier.tree.CommandNode;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.gui.screen.inventory.ContainerScreen;
@@ -10,6 +12,8 @@ import net.minecraft.client.settings.KeyBinding;
 import net.minecraft.client.util.InputMappings;
 import net.minecraft.entity.Entity;
 import net.minecraft.util.ScreenShotHelper;
+import net.minecraft.command.CommandSource;
+import net.minecraft.command.Commands;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import xin.vanilla.aotake.AotakeSweep;
@@ -17,6 +21,7 @@ import xin.vanilla.aotake.config.ClientConfig;
 import xin.vanilla.aotake.config.CommonConfig;
 import xin.vanilla.aotake.event.ClientModEventHandler;
 import xin.vanilla.aotake.enums.EnumDustbinClientUiStyle;
+import xin.vanilla.aotake.internal.common.BrigadierCommandTree;
 import xin.vanilla.aotake.network.packet.OpenDustbinToServer;
 import xin.vanilla.aotake.screen.PlayerConfigScreen;
 import xin.vanilla.aotake.util.AotakeUtils;
@@ -180,6 +185,16 @@ public final class AotakeUiSmokeRunner {
         ClientModEventHandler.DUSTBIN_PRE_KEY.currentKey();
         ClientModEventHandler.DUSTBIN_NEXT_KEY.currentKey();
         ClientModEventHandler.PROGRESS_KEY.currentKey();
+        validateCommandRootRemoval();
+    }
+
+    private static void validateCommandRootRemoval() {
+        CommandDispatcher<CommandSource> dispatcher = new CommandDispatcher<>();
+        CommandNode<CommandSource> node = dispatcher.register(Commands.literal("aotake_smoke_root"));
+        BrigadierCommandTree.removeRoot(dispatcher, "aotake_smoke_root", node);
+        if (dispatcher.getRoot().getChild("aotake_smoke_root") != null) {
+            throw new IllegalStateException("Brigadier command root was not removed");
+        }
     }
 
     private void enterNextStep(@Nonnull Minecraft client) {
