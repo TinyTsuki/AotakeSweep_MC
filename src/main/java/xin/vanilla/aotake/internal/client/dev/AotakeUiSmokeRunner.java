@@ -32,6 +32,9 @@ import xin.vanilla.banira.BaniraComponent;
 import xin.vanilla.banira.client.data.ScreenCoordinate;
 import xin.vanilla.banira.client.gui.BaniraScreen;
 import xin.vanilla.banira.client.gui.ConfigEditorScreen;
+import xin.vanilla.banira.client.gui.CustomPlayerConfigEditScreen;
+import xin.vanilla.banira.client.gui.NotificationLogScreen;
+import xin.vanilla.banira.client.gui.NotificationTypeConfigScreen;
 import xin.vanilla.banira.client.gui.component.Notification;
 import xin.vanilla.banira.client.gui.widget.ButtonWidget;
 import xin.vanilla.banira.client.util.NotificationManager;
@@ -97,11 +100,16 @@ public final class AotakeUiSmokeRunner {
         this.exitOnFinish = exitOnFinish;
         this.worldName = worldName;
         this.steps = Arrays.asList(
-                new Step("player-config", () -> new PlayerConfigScreen(null,
+                new Step("aotake-player-config", () -> new PlayerConfigScreen(null,
                         AotakeSweep.isClientCachedShowSweepResult(),
                         AotakeSweep.isClientCachedEnableWarningVoice())),
+                new Step("banira-player-config", () -> new CustomPlayerConfigEditScreen(
+                        new CustomPlayerConfigEditScreen.Args())),
                 new Step("client-config", () -> new ConfigEditorScreen(
                         ClientConfig.get().holder(), new ConfigEditorScreen.Args())),
+                new Step("notification-type-config", () -> new NotificationTypeConfigScreen(
+                        new NotificationTypeConfigScreen.Args())),
+                new Step("notification-color-log", AotakeUiSmokeRunner::createNotificationColorLogScreen),
                 new Step("common-config", () -> new ConfigEditorScreen(
                         CommonConfig.get().holder(), new ConfigEditorScreen.Args())),
                 new Step("banira-long-press", LongPressSmokeScreen::new)
@@ -191,7 +199,7 @@ public final class AotakeUiSmokeRunner {
             screen.press();
             appendStatus("PRESS banira-long-press");
         } else if (stepTick == 12) {
-            capture(client, "04-long-press-progress");
+            capture(client, String.format(Locale.ROOT, "%02d-long-press-progress", stepIndex + 1));
         } else if (stepTick == 24) {
             screen.release();
             if (!screen.fired()) {
@@ -199,7 +207,7 @@ public final class AotakeUiSmokeRunner {
                         new IllegalStateException("Long-press callback did not fire"));
                 return;
             }
-            capture(client, "04a-long-press-complete");
+            capture(client, String.format(Locale.ROOT, "%02d-long-press-complete", stepIndex + 1));
             appendStatus("PASS banira-long-press");
         } else if (stepTick >= 28) {
             enterNextStep(client);
@@ -334,6 +342,16 @@ public final class AotakeUiSmokeRunner {
             return;
         }
         beginNotificationHudSmoke();
+    }
+
+    private static Screen createNotificationColorLogScreen() {
+        Notification notification = Notification.ofComponent(
+                BaniraComponent.get().literal("\u00A7e黄色通知应保持黄色色相并清晰可读"));
+        notification.notificationType("aotake_sweep:yellow_contrast_smoke");
+        notification.position(EnumPosition.TOP_RIGHT);
+        notification.durationTime(10_000);
+        NotificationManager.get().addNotification(notification);
+        return new NotificationLogScreen(new NotificationLogScreen.Args());
     }
 
     /** 使用唯一背景色确认通知确实经过无 Screen HUD 回调进入帧缓冲。 */
