@@ -7,6 +7,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import xin.vanilla.aotake.config.ClientConfig;
 import xin.vanilla.aotake.config.CommonConfig;
+import xin.vanilla.aotake.command.AotakeCommand;
 import xin.vanilla.aotake.event.EventHandlerProxy;
 import xin.vanilla.aotake.network.NetworkInit;
 import xin.vanilla.aotake.network.packet.SweepDataSyncToClient;
@@ -17,6 +18,7 @@ import xin.vanilla.banira.common.config.BaniraConfig;
 import xin.vanilla.banira.common.data.KeyValue;
 import xin.vanilla.banira.common.network.ModLoadedPresence;
 import xin.vanilla.banira.api.event.BaniraEvents;
+import xin.vanilla.banira.api.BaniraConfigs;
 import xin.vanilla.banira.common.util.CommandUtils;
 import xin.vanilla.banira.common.util.PacketUtils;
 
@@ -89,6 +91,14 @@ public class AotakeSweep {
         if (!bootstrapped.compareAndSet(false, true)) return;
         BaniraConfig.register(CommonConfig.class, MODID);
         BaniraConfig.register(ClientConfig.class, MODID);
+        BaniraConfigs.onSaved(CommonConfig.class, changedPaths -> {
+            boolean commandChanged = changedPaths.stream()
+                    .anyMatch(path -> path.startsWith("command.") || path.startsWith("concise."));
+            if (commandChanged) {
+                AotakeCommand.refreshConfiguredCommands(
+                        xin.vanilla.aotake.internal.common.AotakeServerRuntime.currentServer());
+            }
+        });
         NetworkInit.registerPackets();
         AotakeNotificationTypes.registerAllOnServer();
 

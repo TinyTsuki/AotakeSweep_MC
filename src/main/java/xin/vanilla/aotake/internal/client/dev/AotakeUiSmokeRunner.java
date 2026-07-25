@@ -1,5 +1,7 @@
 package xin.vanilla.aotake.internal.client.dev;
 
+import com.mojang.brigadier.CommandDispatcher;
+import com.mojang.brigadier.tree.CommandNode;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
@@ -24,6 +26,8 @@ import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.LevelSettings;
 import net.minecraft.world.level.levelgen.WorldGenSettings;
 import net.minecraft.client.Screenshot;
+import net.minecraft.commands.CommandSourceStack;
+import net.minecraft.commands.Commands;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import xin.vanilla.aotake.AotakeSweep;
@@ -33,6 +37,7 @@ import xin.vanilla.aotake.config.CommonConfig;
 import xin.vanilla.aotake.config.DustbinGuiLayoutCache;
 import xin.vanilla.aotake.enums.EnumDustbinClientUiStyle;
 import xin.vanilla.aotake.event.ClientModEventHandler;
+import xin.vanilla.aotake.internal.common.BrigadierCommandTree;
 import xin.vanilla.aotake.mixin.ContainerScreenAccessor;
 import xin.vanilla.aotake.network.packet.OpenDustbinToServer;
 import xin.vanilla.aotake.screen.DustbinRender;
@@ -219,6 +224,16 @@ public final class AotakeUiSmokeRunner {
         ClientModEventHandler.PROGRESS_KEY.currentKey();
         if (!AotakeLang.get().getI18nFiles().contains("zh_cn")) {
             throw new IllegalStateException("Bundled zh_cn language was not discovered");
+        }
+        validateCommandRootRemoval();
+    }
+
+    private static void validateCommandRootRemoval() {
+        CommandDispatcher<CommandSourceStack> dispatcher = new CommandDispatcher<>();
+        CommandNode<CommandSourceStack> node = dispatcher.register(Commands.literal("aotake_smoke_root"));
+        BrigadierCommandTree.removeRoot(dispatcher, "aotake_smoke_root", node);
+        if (dispatcher.getRoot().getChild("aotake_smoke_root") != null) {
+            throw new IllegalStateException("Brigadier command root was not removed");
         }
     }
 
