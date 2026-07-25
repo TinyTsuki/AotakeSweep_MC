@@ -424,35 +424,34 @@ public class CommonConfig implements ConfigData {
     @Accessors(chain = true, fluent = true)
     public static class BaseCategory {
         @ConfigEntry.Gui.CollapsibleObject
-        @ConfigEntry.Gui.Tooltip(zh_cn = "虚拟垃圾箱页数、缓存上限、自清洁、溢出、持久化、方块垃圾箱等。",
-                en_us = "Virtual dustbin pages, cache cap, self-clean, overflow, persistence, block dustbins.")
+        @ConfigEntry.Gui.Tooltip(zh_cn = "虚拟垃圾箱、缓存、自清洁、溢出与持久化",
+                en_us = "Virtual dustbin, cache, self-clean, overflow, and persistence")
         private DustbinSection dustbin = new DustbinSection();
 
         @ConfigEntry.Gui.CollapsibleObject
-        @ConfigEntry.Gui.Tooltip(zh_cn = "定时扫地间隔、实体名单、提示音量等（文案/语音已迁移至 warning JSON 的项仅作兼容）。",
-                en_us = "Sweep interval, entity lists, warning volume (legacy text/voice fields kept for compatibility).")
+        @ConfigEntry.Gui.Tooltip(zh_cn = "定时扫地、实体名单与提示音",
+                en_us = "Scheduled sweeping, entity lists, and notification sound")
         private SweepSection sweep = new SweepSection();
 
         @ConfigEntry.Gui.CollapsibleObject
-        @ConfigEntry.Gui.Tooltip(zh_cn = "安全方块：处于其内/上/下的实体可豁免清理及数量上限。",
-                en_us = "Safe blocks: entities inside/on/below may be exempt; per-chunk cap override.")
+        @ConfigEntry.Gui.Tooltip(zh_cn = "安全方块与实体豁免",
+                en_us = "Safe blocks and entity exemptions")
         private SafeSection safe = new SafeSection();
 
         @ConfigEntry.Gui.CollapsibleObject
-        @ConfigEntry.Gui.Tooltip(zh_cn = "帮助分页标题格式、每页条数、服务器默认语言代码。", en_us = "Help header format, lines per page, default language code.")
+        @ConfigEntry.Gui.Tooltip(zh_cn = "帮助分页与默认语言", en_us = "Help pages and default language")
         private CommonHelpSection common = new CommonHelpSection();
 
         @ConfigEntry.Gui.CollapsibleObject
-        @ConfigEntry.Gui.Tooltip(zh_cn = "单区块实体过多检测：间隔、阈值、保留比例、模式与名单。", en_us = "Per-chunk entity overload: interval, threshold, retain ratio, mode, lists.")
+        @ConfigEntry.Gui.Tooltip(zh_cn = "区块实体检测与清理", en_us = "Chunk entity checks and cleanup")
         private ChunkSection chunk = new ChunkSection();
 
         @ConfigEntry.Gui.CollapsibleObject
-        @ConfigEntry.Gui.Tooltip(zh_cn = "实体捕获（原 TOML 节 catch；现路径 base.entityCatch）。",
-                en_us = "Entity catch (formerly toml section catch; path base.entityCatch).")
+        @ConfigEntry.Gui.Tooltip(zh_cn = "实体捕获", en_us = "Entity capture")
         private EntityCatchSection entityCatch = new EntityCatchSection();
 
         @ConfigEntry.Gui.CollapsibleObject
-        @ConfigEntry.Gui.Tooltip(zh_cn = "分批次清理：每 tick 上限、批次间隔与批次数量上限。", en_us = "Batched cleanup: per-tick limit, tick gap between batches, max batches.")
+        @ConfigEntry.Gui.Tooltip(zh_cn = "分批清理", en_us = "Batched cleanup")
         private BatchSection batch = new BatchSection();
     }
 
@@ -679,7 +678,7 @@ public class CommonConfig implements ConfigData {
         @ConfigEntry.Gui.Tooltip(zh_cn = "延迟本次清理子命令名。", en_us = "Subcommand to delay next sweep.")
         private String commandDelaySweep = "delay";
 
-        @ConfigEntry.Gui.Tooltip(zh_cn = "区块清理暂存箱（列表/打开/授权/查看）子命令名。", en_us = "Subcommand for chunk cleanup vault (list/open/grant/view).")
+        @ConfigEntry.Gui.Tooltip(zh_cn = "区块清理暂存箱子命令名", en_us = "Subcommand for chunk cleanup vault")
         private String commandChunkVault = "chunkvault";
     }
 
@@ -769,8 +768,8 @@ public class CommonConfig implements ConfigData {
         @ConfigEntry.BoundedDiscrete(min = 0, max = 4)
         private int permissionCatchPlayer = 3;
 
-        @ConfigEntry.Gui.Tooltip(zh_cn = "区块暂存箱 list/open/grant 所需权限等级（view 子命令另受分组授权约束）。",
-                en_us = "Level for chunk-vault list/open/grant (view also requires per-vault grant unless this level is met).")
+        @ConfigEntry.Gui.Tooltip(zh_cn = "区块暂存箱 list/open/grant 所需权限等级",
+                en_us = "Permission level for chunk-vault list/open/grant")
         @ConfigEntry.BoundedDiscrete(min = 0, max = 4)
         private int permissionChunkVault = 2;
     }
