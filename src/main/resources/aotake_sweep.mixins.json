@@ -5,6 +5,7 @@
   "compatibilityLevel": "JAVA_17",
   "refmap": "aotake_sweep.refmap.json",
   "mixins": [
+    "CommandNodeAccessor",
     "ServerPlayerMixin"
   ],
   "client": [

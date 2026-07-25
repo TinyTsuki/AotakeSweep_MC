@@ -5,6 +5,7 @@ import lombok.Setter;
 import net.minecraft.server.level.ServerPlayer;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import xin.vanilla.aotake.command.AotakeCommand;
 import xin.vanilla.aotake.config.ClientConfig;
 import xin.vanilla.aotake.config.CommonConfig;
 import xin.vanilla.aotake.event.EventHandlerProxy;
@@ -89,6 +90,14 @@ public class AotakeSweep {
         if (!bootstrapped.compareAndSet(false, true)) return;
         BaniraConfigs.register(CommonConfig.class, MODID);
         BaniraConfigs.register(ClientConfig.class, MODID);
+        BaniraConfigs.onSaved(CommonConfig.class, changedPaths -> {
+            boolean commandChanged = changedPaths.stream()
+                    .anyMatch(path -> path.startsWith("command.") || path.startsWith("concise."));
+            if (commandChanged) {
+                AotakeCommand.refreshConfiguredCommands(
+                        xin.vanilla.aotake.internal.common.AotakeServerRuntime.currentServer());
+            }
+        });
         NetworkInit.registerPackets();
         AotakeNotificationTypes.registerAllOnServer();
 
