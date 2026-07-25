@@ -7,7 +7,7 @@ import com.mojang.blaze3d.platform.InputConstants;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.Screenshot;
-import net.minecraft.client.gui.GuiGraphics;
+import com.mojang.blaze3d.vertex.PoseStack;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
@@ -596,8 +596,8 @@ public final class AotakeUiSmokeRunner {
         }
 
         @Override
-        protected void onRender(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
-            renderWidgets(graphics, partialTick);
+        protected void onRender(PoseStack stack, float partialTick) {
+            renderWidgets(stack, partialTick);
         }
 
         private void press() {
