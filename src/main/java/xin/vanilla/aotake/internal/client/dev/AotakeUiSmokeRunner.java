@@ -346,8 +346,10 @@ public final class AotakeUiSmokeRunner {
 
     private static Screen createNotificationColorLogScreen() {
         Notification notification = Notification.ofComponent(
-                BaniraComponent.get().literal("\u00A7e黄色通知应保持黄色色相并清晰可读"));
-        notification.notificationType("aotake_sweep:yellow_contrast_smoke");
+                BaniraComponent.get().literal(
+                        "\u00A7c红 \u00A76橙 \u00A7e黄 \u00A7a绿 "
+                                + "\u00A7b青 \u00A79蓝 \u00A7d紫 \u00A77灰"));
+        notification.notificationType("aotake_sweep:color_contrast_smoke");
         notification.position(EnumPosition.TOP_RIGHT);
         notification.durationTime(10_000);
         NotificationManager.get().addNotification(notification);
