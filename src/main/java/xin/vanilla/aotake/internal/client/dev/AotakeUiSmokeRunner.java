@@ -1,20 +1,20 @@
 package xin.vanilla.aotake.internal.client.dev;
 
+import com.mojang.blaze3d.platform.InputConstants;
+import com.mojang.blaze3d.platform.NativeImage;
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.tree.CommandNode;
+import net.fabricmc.fabric.api.client.screen.v1.Screens;
+import net.fabricmc.fabric.api.event.player.UseItemCallback;
+import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.Screenshot;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.client.gui.screens.inventory.ContainerScreen;
 import net.minecraft.client.gui.screens.inventory.InventoryScreen;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
-import net.minecraft.world.level.GameType;
-import com.mojang.blaze3d.platform.NativeImage;
-import net.fabricmc.fabric.api.client.screen.v1.Screens;
-import net.fabricmc.fabric.api.event.player.UseItemCallback;
-import net.minecraft.client.KeyMapping;
-import com.mojang.blaze3d.platform.InputConstants;
 import net.minecraft.core.RegistryAccess;
 import net.minecraft.world.Difficulty;
 import net.minecraft.world.InteractionHand;
@@ -27,11 +27,10 @@ import net.minecraft.world.level.GameRules;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.LevelSettings;
 import net.minecraft.world.level.levelgen.WorldGenSettings;
-import net.minecraft.client.Screenshot;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import xin.vanilla.aotake.AotakeSweep;
 import xin.vanilla.aotake.AotakeLang;
+import xin.vanilla.aotake.AotakeSweep;
 import xin.vanilla.aotake.config.ClientConfig;
 import xin.vanilla.aotake.config.CommonConfig;
 import xin.vanilla.aotake.config.DustbinGuiLayoutCache;
@@ -289,7 +288,9 @@ public final class AotakeUiSmokeRunner {
         }
     }
 
-    /** 创建不含 Forge 数据包残留的专用 Fabric 烟测世界。 */
+    /**
+     * 创建不含 Forge 数据包残留的专用 Fabric 烟测世界。
+     */
     private void createSmokeWorld(@Nonnull Minecraft client) {
         RegistryAccess.Writable registries = RegistryAccess.builtinCopy();
         LevelSettings levelSettings = new LevelSettings(
@@ -493,7 +494,9 @@ public final class AotakeUiSmokeRunner {
         }
     }
 
-    /** 使用竹叶图标的两组稳定特征色，确认资源纹理真正进入帧缓冲。 */
+    /**
+     * 使用竹叶图标的两组稳定特征色，确认资源纹理真正进入帧缓冲。
+     */
     private static int countQuickActionIconPixels(@Nonnull NativeImage image, @Nonnull Minecraft client) {
         int guiWidth = Math.max(1, client.getWindow().getGuiScaledWidth());
         int guiHeight = Math.max(1, client.getWindow().getGuiScaledHeight());
@@ -545,7 +548,9 @@ public final class AotakeUiSmokeRunner {
         }
     }
 
-    /** 每种样式都重新初始化容器，覆盖布局 Mixin 与初始化后按钮注入。 */
+    /**
+     * 每种样式都重新初始化容器，覆盖布局 Mixin 与初始化后按钮注入。
+     */
     private void openDustbinStyle(@Nonnull Minecraft client) {
         EnumDustbinClientUiStyle style = DUSTBIN_STYLES[dustbinStyleIndex];
         ClientConfig.get().dustbin().dustbinUiStyle(style);

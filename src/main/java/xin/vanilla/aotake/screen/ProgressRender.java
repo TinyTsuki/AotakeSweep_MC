@@ -1,9 +1,9 @@
 package xin.vanilla.aotake.screen;
 
 import com.mojang.blaze3d.vertex.PoseStack;
+import com.mojang.math.Vector3f;
 import net.minecraft.client.Minecraft;
 import net.minecraft.resources.ResourceLocation;
-import com.mojang.math.Vector3f;
 import xin.vanilla.aotake.AotakeSweep;
 import xin.vanilla.aotake.Identifier;
 import xin.vanilla.aotake.config.ClientConfig;
