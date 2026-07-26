@@ -11,7 +11,7 @@ import xin.vanilla.banira.common.network.BaniraPacketBuffer;
 import xin.vanilla.banira.common.util.CommandUtils;
 import xin.vanilla.banira.common.util.PlayerUtils;
 
-public record OpenDustbinToServer(int offset)implements NetworkPacket {
+public record OpenDustbinToServer(int offset) implements NetworkPacket {
 
     public OpenDustbinToServer(BaniraPacketBuffer buf) {
         this(buf.readInt());

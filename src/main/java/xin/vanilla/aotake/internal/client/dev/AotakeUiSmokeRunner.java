@@ -1,9 +1,9 @@
 package xin.vanilla.aotake.internal.client.dev;
 
+import com.mojang.blaze3d.platform.InputConstants;
+import com.mojang.blaze3d.platform.NativeImage;
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.tree.CommandNode;
-import com.mojang.blaze3d.platform.NativeImage;
-import com.mojang.blaze3d.platform.InputConstants;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.Screenshot;
@@ -354,7 +354,9 @@ public final class AotakeUiSmokeRunner {
         }
     }
 
-    /** 每种样式都重新初始化容器，同时覆盖布局 Mixin 与按钮注入。 */
+    /**
+     * 每种样式都重新初始化容器，同时覆盖布局 Mixin 与按钮注入。
+     */
     private void openDustbinStyle(@Nonnull Minecraft client) {
         EnumDustbinClientUiStyle style = DUSTBIN_STYLES[dustbinStyleIndex];
         ClientConfig.get().dustbin().dustbinUiStyle(style);
@@ -397,7 +399,9 @@ public final class AotakeUiSmokeRunner {
                 Minecraft.getInstance().options.keyPlayerList.isDown());
     }
 
-    /** 避免按住进度键时同时打开原版玩家列表，导致 HUD 截图假通过。 */
+    /**
+     * 避免按住进度键时同时打开原版玩家列表，导致 HUD 截图假通过。
+     */
     static void validateProgressKey(int progressKey, int playerListKey) {
         if (progressKey == playerListKey) {
             throw new IllegalStateException("Progress key conflicts with the vanilla player-list key: " + progressKey);

@@ -10,7 +10,7 @@ import xin.vanilla.banira.common.network.BaniraPacketBuffer;
 import xin.vanilla.banira.common.util.CommandUtils;
 import xin.vanilla.banira.common.util.PlayerUtils;
 
-public record ClearDustbinToServer(boolean all, boolean cache) implements NetworkPacket{
+public record ClearDustbinToServer(boolean all, boolean cache) implements NetworkPacket {
 
     public ClearDustbinToServer(BaniraPacketBuffer buf) {
         this(buf.readBoolean(), buf.readBoolean());
