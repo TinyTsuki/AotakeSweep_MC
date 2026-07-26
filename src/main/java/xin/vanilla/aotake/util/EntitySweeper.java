@@ -1,19 +1,19 @@
 package xin.vanilla.aotake.util;
 
 import lombok.NonNull;
-import net.minecraft.world.entity.Entity;
-import net.minecraft.world.entity.boss.EnderDragonPart;
-import net.minecraft.world.entity.item.ItemEntity;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.network.chat.ClickEvent;
+import net.minecraft.network.chat.HoverEvent;
+import net.minecraft.resources.ResourceKey;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.Container;
 import net.minecraft.world.SimpleContainer;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.boss.EnderDragonPart;
+import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.nbt.CompoundTag;
-import net.minecraft.resources.ResourceKey;
-import net.minecraft.network.chat.ClickEvent;
-import net.minecraft.network.chat.HoverEvent;
 import net.minecraft.world.level.Level;
-import net.minecraft.server.level.ServerLevel;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import xin.vanilla.aotake.AotakeComponent;
@@ -30,9 +30,9 @@ import xin.vanilla.aotake.enums.EnumCommandType;
 import xin.vanilla.aotake.enums.EnumDustbinMode;
 import xin.vanilla.aotake.enums.EnumOverflowMode;
 import xin.vanilla.aotake.enums.EnumSelfCleanMode;
+import xin.vanilla.aotake.internal.common.AotakeServerRuntime;
 import xin.vanilla.aotake.internal.platform.EntityRemovalBridge;
 import xin.vanilla.aotake.notification.AotakeNotificationTypes;
-import xin.vanilla.aotake.internal.common.AotakeServerRuntime;
 import xin.vanilla.banira.common.data.Component;
 import xin.vanilla.banira.common.data.KeyValue;
 import xin.vanilla.banira.common.data.WorldCoordinate;
@@ -447,7 +447,9 @@ public class EntitySweeper {
         }
     }
 
-    /** 原版 Fabric 仅暴露末影龙部件，清理时统一回收到主体实体。 */
+    /**
+     * 原版 Fabric 仅暴露末影龙部件，清理时统一回收到主体实体。
+     */
     private static Entity canonicalEntity(Entity entity) {
         return entity instanceof EnderDragonPart ? ((EnderDragonPart) entity).parentMob : entity;
     }

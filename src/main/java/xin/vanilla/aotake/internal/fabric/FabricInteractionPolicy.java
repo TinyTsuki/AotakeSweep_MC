@@ -1,6 +1,8 @@
 package xin.vanilla.aotake.internal.fabric;
 
-/** 将 Fabric 回调消费规则集中在一处，避免候选操作误伤原版物品交互。 */
+/**
+ * 将 Fabric 回调消费规则集中在一处，避免候选操作误伤原版物品交互。
+ */
 public final class FabricInteractionPolicy {
     private FabricInteractionPolicy() {
     }

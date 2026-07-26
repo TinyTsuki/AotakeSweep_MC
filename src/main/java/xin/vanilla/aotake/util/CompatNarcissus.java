@@ -4,7 +4,9 @@ public class CompatNarcissus {
     private CompatNarcissus() {
     }
 
-    /** Narcissus 是可选依赖，避免其类缺失时阻断 Aotake 编译或类加载。 */
+    /**
+     * Narcissus 是可选依赖，避免其类缺失时阻断 Aotake 编译或类加载。
+     */
     @SuppressWarnings({"unchecked", "rawtypes"})
     public static String getTpCommand() {
         try {
