@@ -52,7 +52,6 @@ import xin.vanilla.aotake.network.packet.DustbinPageSyncToClient;
 import xin.vanilla.aotake.notification.AotakeNotificationTypes;
 import xin.vanilla.banira.api.BaniraServer;
 import xin.vanilla.banira.common.data.Component;
-import xin.vanilla.banira.common.data.KeyValue;
 import xin.vanilla.banira.common.data.WorldCoordinate;
 import xin.vanilla.banira.common.enums.EnumMCColor;
 import xin.vanilla.banira.common.util.*;
@@ -475,7 +474,8 @@ public class AotakeUtils {
 
         try {
             // 若服务器没有玩家
-            if (CollectionUtils.isNullOrEmpty(players) && !CommonConfig.get().base().sweep().sweepWhenNoPlayer()) return;
+            if (CollectionUtils.isNullOrEmpty(players) && !CommonConfig.get().base().sweep().sweepWhenNoPlayer())
+                return;
 
             List<Entity> list = filtered ? entities : getAllEntitiesByFilter(entities, false);
 
