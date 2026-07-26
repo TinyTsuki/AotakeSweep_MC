@@ -134,6 +134,8 @@ tasks.withType(ProcessResources).configureEach {
     }
 }
 
+apply from: 'gradle/mixin-runtime.gradle'
+
 tasks.named('jar', Jar).configure {
     // 自定义打包路径与输出格式
     archiveBaseName.set(mod_id)
