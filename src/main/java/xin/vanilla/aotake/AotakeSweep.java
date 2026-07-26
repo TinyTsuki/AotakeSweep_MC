@@ -17,7 +17,6 @@ import xin.vanilla.aotake.internal.forge.event.ForgeAotakeGameEventAdapter;
 import xin.vanilla.aotake.network.NetworkInit;
 import xin.vanilla.aotake.network.packet.SweepDataSyncToClient;
 import xin.vanilla.aotake.notification.AotakeNotificationTypes;
-import xin.vanilla.aotake.util.AotakeUtils;
 import xin.vanilla.aotake.util.EntityFilter;
 import xin.vanilla.aotake.util.EntitySweeper;
 import xin.vanilla.banira.api.BaniraConfigs;
