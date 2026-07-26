@@ -7,7 +7,7 @@ import xin.vanilla.aotake.network.NetworkPacket;
 import xin.vanilla.banira.common.network.BaniraNetworkContext;
 import xin.vanilla.banira.common.network.BaniraPacketBuffer;
 
-public record GhostCameraToClient(int entityId, boolean reset) implements NetworkPacket{
+public record GhostCameraToClient(int entityId, boolean reset) implements NetworkPacket {
 
     public GhostCameraToClient(BaniraPacketBuffer buf) {
         this(buf.readInt(), buf.readBoolean());

@@ -1,9 +1,9 @@
 package xin.vanilla.aotake.internal.client.dev;
 
+import com.mojang.blaze3d.platform.InputConstants;
+import com.mojang.blaze3d.platform.NativeImage;
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.tree.CommandNode;
-import com.mojang.blaze3d.platform.NativeImage;
-import com.mojang.blaze3d.platform.InputConstants;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.Screenshot;
@@ -336,7 +336,9 @@ public final class AotakeUiSmokeRunner {
         beginNotificationHudSmoke();
     }
 
-    /** 使用唯一背景色确认通知确实经过无 Screen HUD 回调进入帧缓冲。 */
+    /**
+     * 使用唯一背景色确认通知确实经过无 Screen HUD 回调进入帧缓冲。
+     */
     private void beginNotificationHudSmoke() {
         Notification notification = Notification.ofComponentWithBlack(
                 BaniraComponent.get().literal("Aotake HUD notification smoke"));
@@ -460,7 +462,9 @@ public final class AotakeUiSmokeRunner {
         }
     }
 
-    /** 每种样式都重新初始化容器，同时覆盖布局 Mixin 与按钮注入。 */
+    /**
+     * 每种样式都重新初始化容器，同时覆盖布局 Mixin 与按钮注入。
+     */
     private void openDustbinStyle(@Nonnull Minecraft client) {
         EnumDustbinClientUiStyle style = DUSTBIN_STYLES[dustbinStyleIndex];
         ClientConfig.get().dustbin().dustbinUiStyle(style);
@@ -578,7 +582,9 @@ public final class AotakeUiSmokeRunner {
         }
     }
 
-    /** 由 smoke runner 实际按下和释放，验证 ButtonWidget 的运行时状态机。 */
+    /**
+     * 由 smoke runner 实际按下和释放，验证 ButtonWidget 的运行时状态机。
+     */
     private static final class LongPressSmokeScreen extends BaniraScreen {
         private ButtonWidget button;
         private boolean fired;
