@@ -16,7 +16,9 @@ import xin.vanilla.banira.api.BaniraServer;
 import xin.vanilla.banira.common.config.BaniraConfig;
 import xin.vanilla.banira.common.config.ConfigHolder;
 
-/** 将 Forge 原生事件转换到 Aotake 的公共业务处理器。 */
+/**
+ * 将 Forge 原生事件转换到 Aotake 的公共业务处理器。
+ */
 public final class ForgeAotakeGameEventAdapter {
     private static boolean registered;
 

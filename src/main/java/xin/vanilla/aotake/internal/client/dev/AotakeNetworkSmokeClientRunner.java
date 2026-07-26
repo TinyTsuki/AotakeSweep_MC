@@ -16,7 +16,9 @@ import xin.vanilla.banira.common.util.PacketUtils;
 
 import javax.annotation.Nonnull;
 
-/** 自动连接独立服务端并验证真实网络包和容器同步。 */
+/**
+ * 自动连接独立服务端并验证真实网络包和容器同步。
+ */
 public final class AotakeNetworkSmokeClientRunner {
     private static final Logger LOGGER = LogManager.getLogger();
     private static final int TIMEOUT_TICKS = 1200;

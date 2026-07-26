@@ -15,7 +15,9 @@ import xin.vanilla.banira.api.BaniraServer;
 
 import java.util.List;
 
-/** 在独立服务端内写入并复核网络 smoke 的持久化哨兵。 */
+/**
+ * 在独立服务端内写入并复核网络 smoke 的持久化哨兵。
+ */
 public final class AotakeNetworkSmokeServerRunner {
     private static final int SENTINEL_COUNT = 7;
     private static final int SENTINEL_CONFIG_VALUE = 11;
@@ -72,7 +74,9 @@ public final class AotakeNetworkSmokeServerRunner {
         }
     }
 
-    /** 留出玩家退出和数据落盘时间，再走 Minecraft 自身的正常关闭流程。 */
+    /**
+     * 留出玩家退出和数据落盘时间，再走 Minecraft 自身的正常关闭流程。
+     */
     private static void shutdownWhenSaved(MinecraftServer server) {
         if (server.getPlayerList().getPlayerCount() > 0) {
             shutdownTicks = 0;
