@@ -3,7 +3,9 @@ package xin.vanilla.aotake.internal.common;
 import javax.annotation.Nullable;
 import java.lang.reflect.Field;
 
-/** Aotake 过滤表达式使用的普通反射入口，不尝试绕过 final 或 JVM 模块限制。 */
+/**
+ * Aotake 过滤表达式使用的普通反射入口，不尝试绕过 final 或 JVM 模块限制。
+ */
 public final class AotakeReflectionAccess {
     private AotakeReflectionAccess() {
     }

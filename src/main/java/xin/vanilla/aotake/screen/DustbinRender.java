@@ -1,13 +1,13 @@
 package xin.vanilla.aotake.screen;
 
-import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.systems.RenderSystem;
+import com.mojang.blaze3d.vertex.PoseStack;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.client.player.LocalPlayer;
+import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.inventory.ContainerScreen;
-import net.minecraft.client.gui.components.Button;
+import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.resources.ResourceLocation;
 import xin.vanilla.aotake.AotakeComponent;
 import xin.vanilla.aotake.AotakeLang;
@@ -25,12 +25,12 @@ import xin.vanilla.aotake.network.packet.ClearDustbinToServer;
 import xin.vanilla.aotake.network.packet.OpenDustbinToServer;
 import xin.vanilla.aotake.util.AotakeUtils;
 import xin.vanilla.aotake.util.DustbinPageNavigation;
+import xin.vanilla.banira.api.client.BaniraKeyHandle;
 import xin.vanilla.banira.client.data.BaniraColorConfig;
 import xin.vanilla.banira.client.data.FontDrawArgs;
 import xin.vanilla.banira.client.gui.component.Text;
 import xin.vanilla.banira.client.gui.widget.ButtonWidget;
 import xin.vanilla.banira.client.gui.widget.TooltipWidget;
-import xin.vanilla.banira.api.client.BaniraKeyHandle;
 import xin.vanilla.banira.client.util.AbstractGuiUtils;
 import xin.vanilla.banira.client.util.ClientThemeManager;
 import xin.vanilla.banira.client.util.TextureUtils;
@@ -584,7 +584,9 @@ public final class DustbinRender {
                 .build();
     }
 
-    /** 加载器 adapter 只需构造这三类事件，UI 主体不再依赖 Forge/Fabric 类型。 */
+    /**
+     * 加载器 adapter 只需构造这三类事件，UI 主体不再依赖 Forge/Fabric 类型。
+     */
     public abstract static class ScreenEvent {
         private final Screen gui;
 

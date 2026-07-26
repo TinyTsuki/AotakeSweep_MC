@@ -1,6 +1,5 @@
 package xin.vanilla.aotake.event;
 
-import com.mojang.blaze3d.vertex.PoseStack;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import org.apache.logging.log4j.LogManager;
@@ -9,10 +8,10 @@ import xin.vanilla.aotake.config.ClientConfig;
 import xin.vanilla.aotake.internal.client.dev.AotakeUiSmokeRunner;
 import xin.vanilla.aotake.network.packet.OpenDustbinToServer;
 import xin.vanilla.aotake.screen.ProgressRender;
+import xin.vanilla.banira.api.client.event.BaniraClientEvents;
 import xin.vanilla.banira.api.client.hud.BaniraHudEvents;
 import xin.vanilla.banira.api.client.hud.BaniraHudRenderEvent;
 import xin.vanilla.banira.api.client.hud.HudOverlayElement;
-import xin.vanilla.banira.api.client.event.BaniraClientEvents;
 import xin.vanilla.banira.common.util.PacketUtils;
 
 /**
@@ -56,7 +55,9 @@ public final class ClientGameEventHandler {
         ProgressRender.render(graphics.pose(), showProgress);
     }
 
-    /** 按住进度键时由 Aotake 接管原版经验区，普通状态仍保留原版绘制。 */
+    /**
+     * 按住进度键时由 Aotake 接管原版经验区，普通状态仍保留原版绘制。
+     */
     private static void interceptExperience(BaniraHudRenderEvent event) {
         Minecraft minecraft = Minecraft.getInstance();
         if (showProgress && minecraft.player != null && minecraft.screen == null && !minecraft.options.hideGui) {
