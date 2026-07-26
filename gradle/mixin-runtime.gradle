@@ -1,19 +1,10 @@
 import groovy.json.JsonSlurper
-import org.gradle.api.tasks.compile.JavaCompile
 
 def mixinConfigName = "${mod_id}.mixins.json".toString()
 def mixinRefmapName = "${mod_id}.refmap.json".toString()
-def compileMixinTask = tasks.named('compileJava', JavaCompile)
-def generatedMixinRefmap = compileMixinTask.map {
-    new File(it.temporaryDir, "${it.name}-refmap.json")
-}
 
-// Forge 1.21.1 不再执行 reobf，需将 Mixin AP 产物显式装入正式归档。
+// Forge 1.21.1 运行在 Mojang 命名空间，只需在正式归档中注册 Mixin 配置。
 def configureMixinArchive = { archiveTask ->
-    archiveTask.dependsOn compileMixinTask
-    archiveTask.from(generatedMixinRefmap) {
-        rename { mixinRefmapName }
-    }
     archiveTask.manifest.attributes('MixinConfigs': mixinConfigName)
 }
 
@@ -25,7 +16,7 @@ afterEvaluate {
 
     def verifyMixinRuntimeArtifact = tasks.register('verifyMixinRuntimeArtifact') {
         group = 'verification'
-        description = 'Verifies Mixin discovery and refmap contents in release jars.'
+        description = 'Verifies Mojang-mapped Mixin metadata in release jars.'
         dependsOn runtimeArchives
         inputs.files(runtimeArchives.collect { it.archiveFile })
 
@@ -48,20 +39,16 @@ afterEvaluate {
                     }
 
                     def configEntry = jar.getJarEntry(mixinConfigName)
-                    def refmapEntry = jar.getJarEntry(mixinRefmapName)
-                    if (configEntry == null || refmapEntry == null) {
-                        throw new GradleException("${archive.name} is missing its Mixin config or refmap")
+                    if (configEntry == null) {
+                        throw new GradleException("${archive.name} is missing its Mixin config")
                     }
 
                     def config
                     jar.getInputStream(configEntry).withCloseable {
                         config = new JsonSlurper().parse(it)
                     }
-                    if (config.refmap != mixinRefmapName) {
-                        throw new GradleException("${mixinConfigName} does not reference ${mixinRefmapName}")
-                    }
-                    jar.getInputStream(refmapEntry).withCloseable {
-                        new JsonSlurper().parse(it)
+                    if (config.containsKey('refmap') || jar.getJarEntry(mixinRefmapName) != null) {
+                        throw new GradleException("${archive.name} contains an SRG refmap on a Mojang-mapped runtime")
                     }
 
                     def mixinPackage = config['package']?.toString()?.replace('.', '/')
