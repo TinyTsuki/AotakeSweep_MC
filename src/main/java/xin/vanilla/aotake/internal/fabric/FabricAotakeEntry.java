@@ -12,7 +12,9 @@ import xin.vanilla.aotake.data.world.ChunkVaultSession;
 import xin.vanilla.aotake.event.EventHandlerProxy;
 import xin.vanilla.banira.common.util.BaniraEventBus;
 
-/** Fabric 1.19.2 适配入口，只负责把加载器回调转换为 Aotake 的稳定业务方法。 */
+/**
+ * Fabric 1.19.2 适配入口，只负责把加载器回调转换为 Aotake 的稳定业务方法。
+ */
 public final class FabricAotakeEntry implements ModInitializer {
     @Override
     public void onInitialize() {

@@ -1,14 +1,14 @@
 package xin.vanilla.aotake.util;
 
-import net.minecraft.world.entity.Entity;
-import net.minecraft.world.entity.item.ItemEntity;
-import net.minecraft.world.entity.TamableAnimal;
+import com.mojang.authlib.GameProfile;
 import net.minecraft.nbt.CollectionTag;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.nbt.Tag;
 import net.minecraft.nbt.NumericTag;
+import net.minecraft.nbt.Tag;
 import net.minecraft.network.syncher.EntityDataAccessor;
-import com.mojang.authlib.GameProfile;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.TamableAnimal;
+import net.minecraft.world.entity.item.ItemEntity;
 import xin.vanilla.aotake.AotakeComponent;
 import xin.vanilla.aotake.internal.common.AotakeReflectionAccess;
 import xin.vanilla.aotake.internal.common.AotakeServerRuntime;

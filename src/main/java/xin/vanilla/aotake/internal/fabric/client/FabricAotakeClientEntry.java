@@ -9,7 +9,9 @@ import xin.vanilla.aotake.client.AotakeClientBootstrap;
 import xin.vanilla.aotake.event.ClientGameEventHandler;
 import xin.vanilla.aotake.screen.DustbinRender;
 
-/** Fabric 客户端入口，避免服务端类加载触碰任何客户端类型。 */
+/**
+ * Fabric 客户端入口，避免服务端类加载触碰任何客户端类型。
+ */
 public final class FabricAotakeClientEntry implements ClientModInitializer {
     @Override
     public void onInitializeClient() {

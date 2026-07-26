@@ -1,8 +1,8 @@
 package xin.vanilla.aotake.data.player;
 
-import net.minecraft.world.entity.player.Player;
-import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.entity.player.Player;
 import xin.vanilla.aotake.AotakeSweep;
 import xin.vanilla.banira.api.BaniraPlayerData;
 import xin.vanilla.banira.common.api.ICommandNotify;
