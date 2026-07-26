@@ -20,6 +20,9 @@
     ],
     "client": [
       "xin.vanilla.aotake.internal.fabric.client.FabricAotakeClientEntry"
+    ],
+    "modmenu": [
+      "xin.vanilla.aotake.internal.fabric.modmenu.AotakeModMenuIntegration"
     ]
   },
   "mixins": [

@@ -33,6 +33,7 @@ import xin.vanilla.aotake.AotakeLang;
 import xin.vanilla.aotake.AotakeSweep;
 import xin.vanilla.aotake.config.ClientConfig;
 import xin.vanilla.aotake.config.CommonConfig;
+import xin.vanilla.aotake.internal.fabric.modmenu.AotakeModMenuIntegration;
 import xin.vanilla.aotake.config.DustbinGuiLayoutCache;
 import xin.vanilla.aotake.enums.EnumDustbinClientUiStyle;
 import xin.vanilla.aotake.event.ClientModEventHandler;
@@ -112,6 +113,8 @@ public final class AotakeUiSmokeRunner {
         this.exitOnFinish = exitOnFinish;
         this.worldName = worldName;
         this.steps = Arrays.asList(
+                new Step("modmenu-client-config", true, () ->
+                        new AotakeModMenuIntegration().getModConfigScreenFactory().create(null)),
                 new Step("player-config", true, () -> new PlayerConfigScreen(null,
                         AotakeSweep.isClientCachedShowSweepResult(),
                         AotakeSweep.isClientCachedEnableWarningVoice())),
