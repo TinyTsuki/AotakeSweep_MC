@@ -5,7 +5,9 @@ import xin.vanilla.banira.api.BaniraServer;
 
 import javax.annotation.Nullable;
 
-/** 将 Banira 的加载器无关服务器句柄收窄为当前 Minecraft 版本类型。 */
+/**
+ * 将 Banira 的加载器无关服务器句柄收窄为当前 Minecraft 版本类型。
+ */
 public final class AotakeServerRuntime {
     private AotakeServerRuntime() {
     }

@@ -2,30 +2,29 @@ package xin.vanilla.aotake.event;
 
 import lombok.Getter;
 import lombok.Setter;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.network.chat.ClickEvent;
+import net.minecraft.network.chat.HoverEvent;
+import net.minecraft.network.protocol.game.ClientboundSetPassengersPacket;
+import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.InteractionResult;
+import net.minecraft.world.InteractionResultHolder;
+import net.minecraft.world.SimpleContainer;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.boss.EnderDragonPart;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.player.Player;
-import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.SimpleContainer;
-import net.minecraft.world.InteractionHand;
-import net.minecraft.world.InteractionResultHolder;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.nbt.CompoundTag;
-import net.minecraft.network.protocol.game.ClientboundSetPassengersPacket;
-import net.minecraft.server.MinecraftServer;
-import net.minecraft.world.InteractionResult;
+import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.EntityHitResult;
 import net.minecraft.world.phys.Vec3;
-import net.minecraft.network.chat.ClickEvent;
-import net.minecraft.network.chat.HoverEvent;
-import net.minecraft.world.level.GameType;
-import net.minecraft.server.level.ServerLevel;
-import javax.annotation.Nullable;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import xin.vanilla.aotake.AotakeComponent;
@@ -40,10 +39,10 @@ import xin.vanilla.aotake.data.world.WorldTrashData;
 import xin.vanilla.aotake.enums.EnumChunkCheckMode;
 import xin.vanilla.aotake.enums.EnumCommandType;
 import xin.vanilla.aotake.enums.EnumSelfCleanMode;
+import xin.vanilla.aotake.internal.fabric.FabricInteractionPolicy;
 import xin.vanilla.aotake.network.packet.GhostCameraToClient;
 import xin.vanilla.aotake.network.packet.SweepDataSyncToClient;
 import xin.vanilla.aotake.notification.AotakeNotificationTypes;
-import xin.vanilla.aotake.internal.fabric.FabricInteractionPolicy;
 import xin.vanilla.aotake.util.AotakeUtils;
 import xin.vanilla.aotake.util.ChunkCleanupPolicy;
 import xin.vanilla.aotake.util.EntitySweeper;
@@ -54,6 +53,7 @@ import xin.vanilla.banira.common.data.WorldCoordinate;
 import xin.vanilla.banira.common.enums.*;
 import xin.vanilla.banira.common.util.*;
 
+import javax.annotation.Nullable;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -454,7 +454,7 @@ public class EventHandlerProxy {
     }
 
     public static InteractionResult onRightEntity(Player user, Level level, InteractionHand hand, Entity target,
-                                                   @Nullable EntityHitResult hitResult) {
+                                                  @Nullable EntityHitResult hitResult) {
         if (AotakeSweep.isDisable() || !(user instanceof ServerPlayer)) return InteractionResult.PASS;
         {
             ServerPlayer player = (ServerPlayer) user;

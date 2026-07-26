@@ -55,7 +55,9 @@ public final class ClientGameEventHandler {
         ProgressRender.render(stack, showProgress);
     }
 
-    /** 按住进度键时由 Aotake 接管原版经验区，普通状态仍保留原版绘制。 */
+    /**
+     * 按住进度键时由 Aotake 接管原版经验区，普通状态仍保留原版绘制。
+     */
     private static void interceptExperience(BaniraHudRenderEvent event) {
         Minecraft minecraft = Minecraft.getInstance();
         if (showProgress && minecraft.player != null && minecraft.screen == null && !minecraft.options.hideGui) {

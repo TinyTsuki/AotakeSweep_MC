@@ -5,20 +5,20 @@ import lombok.Setter;
 import net.minecraft.server.level.ServerPlayer;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import xin.vanilla.aotake.command.AotakeCommand;
 import xin.vanilla.aotake.config.ClientConfig;
 import xin.vanilla.aotake.config.CommonConfig;
-import xin.vanilla.aotake.command.AotakeCommand;
 import xin.vanilla.aotake.event.EventHandlerProxy;
 import xin.vanilla.aotake.network.NetworkInit;
 import xin.vanilla.aotake.network.packet.SweepDataSyncToClient;
 import xin.vanilla.aotake.notification.AotakeNotificationTypes;
 import xin.vanilla.aotake.util.EntityFilter;
 import xin.vanilla.aotake.util.EntitySweeper;
+import xin.vanilla.banira.api.BaniraConfigs;
+import xin.vanilla.banira.api.event.BaniraEvents;
 import xin.vanilla.banira.common.config.BaniraConfig;
 import xin.vanilla.banira.common.data.KeyValue;
 import xin.vanilla.banira.common.network.ModLoadedPresence;
-import xin.vanilla.banira.api.event.BaniraEvents;
-import xin.vanilla.banira.api.BaniraConfigs;
 import xin.vanilla.banira.common.util.CommandUtils;
 import xin.vanilla.banira.common.util.PacketUtils;
 
@@ -86,7 +86,9 @@ public class AotakeSweep {
     private static final EntityFilter entityFilter = new EntityFilter();
     private static final AtomicBoolean bootstrapped = new AtomicBoolean(false);
 
-    /** 加载器入口安装好 Banira 平台后调用；业务初始化在所有分支保持一致。 */
+    /**
+     * 加载器入口安装好 Banira 平台后调用；业务初始化在所有分支保持一致。
+     */
     public static void bootstrapCommon() {
         if (!bootstrapped.compareAndSet(false, true)) return;
         BaniraConfig.register(CommonConfig.class, MODID);
