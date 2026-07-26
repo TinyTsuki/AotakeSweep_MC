@@ -1,0 +1,85 @@
+import groovy.json.JsonSlurper
+import org.gradle.api.tasks.compile.JavaCompile
+
+def mixinConfigName = "${mod_id}.mixins.json".toString()
+def mixinRefmapName = "${mod_id}.refmap.json".toString()
+def compileMixinTask = tasks.named('compileJava', JavaCompile)
+def generatedMixinRefmap = compileMixinTask.map {
+    new File(it.temporaryDir, "${it.name}-refmap.json")
+}
+
+// Forge 1.21.1 不再执行 reobf，需将 Mixin AP 产物显式装入正式归档。
+def configureMixinArchive = { archiveTask ->
+    archiveTask.dependsOn compileMixinTask
+    archiveTask.from(generatedMixinRefmap) {
+        rename { mixinRefmapName }
+    }
+    archiveTask.manifest.attributes('MixinConfigs': mixinConfigName)
+}
+
+afterEvaluate {
+    def runtimeArchives = ['jar', 'jarJar']
+            .collect { tasks.findByName(it) }
+            .findAll { it != null }
+    runtimeArchives.each(configureMixinArchive)
+
+    def verifyMixinRuntimeArtifact = tasks.register('verifyMixinRuntimeArtifact') {
+        group = 'verification'
+        description = 'Verifies Mixin discovery and refmap contents in release jars.'
+        dependsOn runtimeArchives
+        inputs.files(runtimeArchives.collect { it.archiveFile })
+
+        doLast {
+            def verifiedArchives = 0
+            runtimeArchives.each { archiveTask ->
+                def archive = archiveTask.archiveFile.get().asFile
+                if (!archive.exists()) {
+                    return
+                }
+                verifiedArchives++
+                def jar = new java.util.jar.JarFile(archive)
+                try {
+                    def configuredMixins = jar.manifest?.mainAttributes?.getValue('MixinConfigs')
+                    def configNames = configuredMixins == null
+                            ? []
+                            : configuredMixins.split(',').collect { it.trim() }
+                    if (!configNames.contains(mixinConfigName)) {
+                        throw new GradleException("${archive.name} does not declare ${mixinConfigName}")
+                    }
+
+                    def configEntry = jar.getJarEntry(mixinConfigName)
+                    def refmapEntry = jar.getJarEntry(mixinRefmapName)
+                    if (configEntry == null || refmapEntry == null) {
+                        throw new GradleException("${archive.name} is missing its Mixin config or refmap")
+                    }
+
+                    def config
+                    jar.getInputStream(configEntry).withCloseable {
+                        config = new JsonSlurper().parse(it)
+                    }
+                    if (config.refmap != mixinRefmapName) {
+                        throw new GradleException("${mixinConfigName} does not reference ${mixinRefmapName}")
+                    }
+                    jar.getInputStream(refmapEntry).withCloseable {
+                        new JsonSlurper().parse(it)
+                    }
+
+                    def mixinPackage = config['package']?.toString()?.replace('.', '/')
+                    ['mixins', 'client', 'server'].collectMany { config[it] ?: [] }.each { mixinClass ->
+                        def classEntry = "${mixinPackage}/${mixinClass.toString().replace('.', '/')}.class"
+                        if (jar.getJarEntry(classEntry) == null) {
+                            throw new GradleException("${archive.name} is missing ${classEntry}")
+                        }
+                    }
+                } finally {
+                    jar.close()
+                }
+            }
+            if (verifiedArchives == 0) {
+                throw new GradleException('No runtime jar was produced for Mixin verification')
+            }
+        }
+    }
+    tasks.named('check').configure { dependsOn verifyMixinRuntimeArtifact }
+    tasks.named('assemble').configure { dependsOn verifyMixinRuntimeArtifact }
+}
