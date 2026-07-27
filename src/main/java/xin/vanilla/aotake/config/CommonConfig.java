@@ -26,16 +26,21 @@ import java.util.*;
 @Config(name = AotakeSweep.MODID + "-common", type = ConfigScope.COMMON)
 public class CommonConfig implements ConfigData {
 
+    public CommonConfig() {
+    }
+
+    // region 配置结构
+
     @Getter(AccessLevel.NONE)
     @Setter(AccessLevel.NONE)
     @ConfigEntry.Gui.CollapsibleObject
-    @ConfigEntry.Gui.Tooltip(zh_cn = "基础：垃圾箱、扫地、安全方块、区块检测等", en_us = "Base: dustbin, sweep, safe blocks, chunk check, …")
+    @ConfigEntry.Gui.Tooltip(zh_cn = "基础设置", en_us = "Base Settings")
     private BaseCategory base = new BaseCategory();
 
     @Getter(AccessLevel.NONE)
     @Setter(AccessLevel.NONE)
     @ConfigEntry.Gui.CollapsibleObject
-    @ConfigEntry.Gui.Tooltip(zh_cn = "自定义指令名（勿加 /）", en_us = "Custom command names (no leading /)")
+    @ConfigEntry.Gui.Tooltip(zh_cn = "自定义指令，请勿添加前缀'/'", en_us = "Custom Command Settings, don't add prefix '/'")
     private CommandCategory command = new CommandCategory();
 
     @Getter(AccessLevel.NONE)
@@ -50,8 +55,7 @@ public class CommonConfig implements ConfigData {
     @ConfigEntry.Gui.Tooltip(zh_cn = "各指令所需权限等级", en_us = "Permission levels for commands")
     private PermissionCategory permission = new PermissionCategory();
 
-    public CommonConfig() {
-    }
+    // endregion 配置结构
 
     public static RootView get() {
         return CommonConfigAccess.root(holder());
@@ -86,8 +90,6 @@ public class CommonConfig implements ConfigData {
         SweepView sweep();
 
         SafeView safe();
-
-        CommonSettingsView common();
 
         ChunkView chunk();
 
@@ -188,20 +190,6 @@ public class CommonConfig implements ConfigData {
         int safeBlocksEntityLimit();
 
         SafeView safeBlocksEntityLimit(int value);
-    }
-
-    public interface CommonSettingsView {
-        String helpHeader();
-
-        CommonSettingsView helpHeader(String value);
-
-        int helpInfoNumPerPage();
-
-        CommonSettingsView helpInfoNumPerPage(int value);
-
-        String defaultLanguage();
-
-        CommonSettingsView defaultLanguage(String value);
     }
 
     public interface ChunkView {
@@ -444,10 +432,6 @@ public class CommonConfig implements ConfigData {
         private SafeSection safe = new SafeSection();
 
         @ConfigEntry.Gui.CollapsibleObject
-        @ConfigEntry.Gui.Tooltip(zh_cn = "帮助分页与默认语言", en_us = "Help pages and default language")
-        private CommonHelpSection common = new CommonHelpSection();
-
-        @ConfigEntry.Gui.CollapsibleObject
         @ConfigEntry.Gui.Tooltip(zh_cn = "区块实体检测与清理", en_us = "Chunk entity checks and cleanup")
         private ChunkSection chunk = new ChunkSection();
 
@@ -550,21 +534,6 @@ public class CommonConfig implements ConfigData {
         @ConfigEntry.Gui.Tooltip(zh_cn = "即使在安全方块内，单区块该实体数超过此值仍会清理。", en_us = "Even in safe blocks, clean if per-chunk count exceeds this.")
         @ConfigEntry.BoundedDiscrete(min = 1)
         private int safeBlocksEntityLimit = 250;
-    }
-
-    @Getter
-    @Setter
-    @Accessors(chain = true, fluent = true)
-    public static class CommonHelpSection {
-        @ConfigEntry.Gui.Tooltip(zh_cn = "帮助指令分页标题，%d/%d 为当前页/总页。", en_us = "Help header format string; %d/%d = page/total.")
-        private String helpHeader = "-----==== Aotake Sweep Help (%d/%d) ====-----";
-
-        @ConfigEntry.Gui.Tooltip(zh_cn = "帮助每页显示的条目数。", en_us = "Help lines per page.")
-        @ConfigEntry.BoundedDiscrete(min = 1, max = 9999)
-        private int helpInfoNumPerPage = 5;
-
-        @ConfigEntry.Gui.Tooltip(zh_cn = "服务器默认语言代码（如 en_us、zh_cn）。", en_us = "Server default language code (e.g. en_us, zh_cn).")
-        private String defaultLanguage = "en_us";
     }
 
     @Getter
@@ -885,10 +854,6 @@ public class CommonConfig implements ConfigData {
                 .safeBlocksBelow(new ArrayList<>())
                 .safeBlocksAbove(new ArrayList<>())
                 .safeBlocksEntityLimit(250);
-        c.base().common()
-                .helpHeader("-----==== Aotake Sweep Help (%d/%d) ====-----")
-                .helpInfoNumPerPage(5)
-                .defaultLanguage("en_us");
         c.base().chunk()
                 .chunkCheckInterval(5L * 1000)
                 .chunkCheckLimit(250)

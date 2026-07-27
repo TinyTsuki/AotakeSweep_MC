@@ -11,9 +11,9 @@ import net.minecraft.network.chat.HoverEvent;
 import net.minecraft.server.level.ServerPlayer;
 import xin.vanilla.aotake.AotakeComponent;
 import xin.vanilla.aotake.command.AotakeCommand;
-import xin.vanilla.aotake.config.CommonConfig;
 import xin.vanilla.aotake.enums.EnumCommandType;
 import xin.vanilla.aotake.util.AotakeUtils;
+import xin.vanilla.banira.api.BaniraCommonSettings;
 import xin.vanilla.banira.common.data.Component;
 import xin.vanilla.banira.common.data.KeyValue;
 import xin.vanilla.banira.common.enums.EnumI18nType;
@@ -24,6 +24,9 @@ import java.util.Arrays;
 import java.util.Comparator;
 
 public class HelpCommand {
+    private HelpCommand() {
+    }
+
     public static LiteralArgumentBuilder<CommandSourceStack> help() {
         Command<CommandSourceStack> helpCommand = context -> {
             ServerPlayer player = context.getSource().getPlayerOrException();
@@ -38,10 +41,14 @@ public class HelpCommand {
             }
             Component helpInfo;
             if (page > 0) {
-                int pages = (int) Math.ceil((double) AotakeCommand.HELP_MESSAGE.size() / CommonConfig.get().base().common().helpInfoNumPerPage());
-                helpInfo = AotakeComponent.get().literal(StringUtils.format(CommonConfig.get().base().common().helpHeader() + "\n", page, pages));
-                for (int i = 0; (page - 1) * CommonConfig.get().base().common().helpInfoNumPerPage() + i < AotakeCommand.HELP_MESSAGE.size() && i < CommonConfig.get().base().common().helpInfoNumPerPage(); i++) {
-                    KeyValue<String, EnumCommandType> keyValue = AotakeCommand.HELP_MESSAGE.get((page - 1) * CommonConfig.get().base().common().helpInfoNumPerPage() + i);
+                int helpInfoNumPerPage = BaniraCommonSettings.helpInfoNumPerPage();
+                int pages = (int) Math.ceil((double) AotakeCommand.HELP_MESSAGE.size() / helpInfoNumPerPage);
+                helpInfo = AotakeComponent.get().literal(
+                        BaniraCommonSettings.formatHelpHeader("Aotake Sweep", page, pages) + "\n");
+                for (int i = 0; (page - 1) * helpInfoNumPerPage + i < AotakeCommand.HELP_MESSAGE.size()
+                        && i < helpInfoNumPerPage; i++) {
+                    KeyValue<String, xin.vanilla.aotake.enums.EnumCommandType> keyValue =
+                            AotakeCommand.HELP_MESSAGE.get((page - 1) * helpInfoNumPerPage + i);
                     Component commandTips;
                     if (keyValue.val().name().toLowerCase().contains("concise")) {
                         commandTips = AotakeComponent.get().transLang(Translator.getServerPlayerLanguage(player), EnumI18nType.FORMAT, "concise", AotakeUtils.getCommand(keyValue.val().replaceConcise()));
@@ -108,10 +115,11 @@ public class HelpCommand {
             MessageUtils.sendMessage(player, helpInfo);
             return 1;
         };
+
         SuggestionProvider<CommandSourceStack> helpSuggestions = (context, builder) -> {
             String input = CommandUtils.getStringEmpty(context, "command");
             boolean isInputEmpty = StringUtils.isNullOrEmpty(input);
-            int totalPages = (int) Math.ceil((double) AotakeCommand.HELP_MESSAGE.size() / CommonConfig.get().base().common().helpInfoNumPerPage());
+            int totalPages = (int) Math.ceil((double) AotakeCommand.HELP_MESSAGE.size() / BaniraCommonSettings.helpInfoNumPerPage());
             for (int i = 0; i < totalPages && isInputEmpty; i++) {
                 builder.suggest(i + 1);
             }
