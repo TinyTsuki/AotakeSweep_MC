@@ -23,6 +23,7 @@ import xin.vanilla.aotake.enums.EnumCommandType;
 import xin.vanilla.aotake.internal.common.AotakeServerRuntime;
 import xin.vanilla.aotake.notification.AotakeNotificationTypes;
 import xin.vanilla.aotake.util.AotakeUtils;
+import xin.vanilla.banira.api.BaniraCommonSettings;
 import xin.vanilla.banira.common.data.Component;
 import xin.vanilla.banira.common.util.CollectionUtils;
 import xin.vanilla.banira.common.util.CommandUtils;
@@ -88,7 +89,7 @@ public final class ChunkVaultCommand {
             MessageUtils.sendNotification(player, AotakeComponent.get().transAuto("chunk_vault_list_empty"), AotakeNotificationTypes.CHUNK_VAULT_LIST);
             return 1;
         }
-        int perPage = CommonConfig.get().base().common().helpInfoNumPerPage();
+        int perPage = BaniraCommonSettings.helpInfoNumPerPage();
         int pages = (int) Math.ceil(ids.size() / (double) perPage);
         page = Math.min(Math.max(page, 1), Math.max(pages, 1));
         int from = (page - 1) * perPage;
