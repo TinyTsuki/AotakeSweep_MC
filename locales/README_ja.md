@@ -76,20 +76,10 @@
     - `0`：制限なし
     - `1`～`3650`：直近 N 日分の統計を保持、超過分は最古のファイルから削除
 
-### Forge
+### モジュールファイル
 
-- 共通およびサーバー動作設定 `config/aotake_sweep-common.toml`
-- クライアント設定 `config/aotake_sweep-client.toml`
-
-### NeoForge
-
-- 共通およびサーバー動作設定 `config/aotake_sweep-common.toml`
-- クライアント設定 `config/aotake_sweep-client.toml`
-
-### Fabric
-
-- 共通およびサーバー動作設定 `config/aotake_sweep-common.toml`
-- クライアント設定 `config/aotake_sweep-client.toml`
+- 共通およびサーバー動作設定 [`config/aotake_sweep-common.toml`](/config/aotake_sweep-common.toml)
+- クライアント設定 [`config/aotake_sweep-client.toml`](/config/aotake_sweep-client.toml)
 
 ---
 

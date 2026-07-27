@@ -80,20 +80,10 @@ in-game tooltips and generated comments for the meaning and valid range of each 
     - `0`: Unlimited
     - `1`–`3650`: Keep the most recent N days of statistics; older files are deleted when exceeded
 
-### Forge
+### Mod Files
 
-- Common and server-behavior Config: `config/aotake_sweep-common.toml`
-- Client Config: `config/aotake_sweep-client.toml`
-
-### NeoForge
-
-- Common and server-behavior Config: `config/aotake_sweep-common.toml`
-- Client Config: `config/aotake_sweep-client.toml`
-
-### Fabric
-
-- Common and server-behavior Config: `config/aotake_sweep-common.toml`
-- Client Config: `config/aotake_sweep-client.toml`
+- Common and server-behavior Config: [`config/aotake_sweep-common.toml`](/config/aotake_sweep-common.toml)
+- Client Config: [`config/aotake_sweep-client.toml`](/config/aotake_sweep-client.toml)
 
 ---
 

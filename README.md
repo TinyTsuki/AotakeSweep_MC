@@ -77,20 +77,10 @@
     - `0`：不限制
     - `1`～`3650`：保留最近 N 天的统计文件，超出时删除最旧文件
 
-### Forge
+### 模组部分
 
-- 通用及服务器行为配置 `config/aotake_sweep-common.toml`
-- 客户端相关配置 `config/aotake_sweep-client.toml`
-
-### NeoForge
-
-- 通用及服务器行为配置 `config/aotake_sweep-common.toml`
-- 客户端相关配置 `config/aotake_sweep-client.toml`
-
-### Fabric
-
-- 通用及服务器行为配置 `config/aotake_sweep-common.toml`
-- 客户端相关配置 `config/aotake_sweep-client.toml`
+- 通用及服务器行为配置 [`config/aotake_sweep-common.toml`](/config/aotake_sweep-common.toml)
+- 客户端相关配置 [`config/aotake_sweep-client.toml`](/config/aotake_sweep-client.toml)
 
 ---
 
