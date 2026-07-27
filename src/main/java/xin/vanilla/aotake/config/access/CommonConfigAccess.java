@@ -76,10 +76,6 @@ public final class CommonConfigAccess {
                 return ConfigCategoryViewProxy.create(
                         CommonConfig.SafeView.class, holder, "base.safe",
                         DEFAULT_BASE.safe(), CommonConfigAccess::readSimple);
-            case "common":
-                return ConfigCategoryViewProxy.create(
-                        CommonConfig.CommonSettingsView.class, holder, "base.common",
-                        DEFAULT_BASE.common(), CommonConfigAccess::readSimple);
             case "chunk":
                 return ConfigCategoryViewProxy.create(
                         CommonConfig.ChunkView.class, holder, "base.chunk",
