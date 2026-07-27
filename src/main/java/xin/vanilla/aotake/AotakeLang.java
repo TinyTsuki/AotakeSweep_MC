@@ -2,7 +2,7 @@ package xin.vanilla.aotake;
 
 import lombok.NonNull;
 import net.minecraft.server.level.ServerPlayer;
-import xin.vanilla.aotake.config.CommonConfig;
+import xin.vanilla.banira.api.BaniraCommonSettings;
 import xin.vanilla.banira.common.data.Component;
 import xin.vanilla.banira.common.data.ScopedComponent;
 import xin.vanilla.banira.common.enums.EnumI18nType;
@@ -33,7 +33,7 @@ public final class AotakeLang extends Translator {
     }
 
     public static String getServerLanguage() {
-        return CommonConfig.get().base().common().defaultLanguage();
+        return BaniraCommonSettings.defaultLanguage();
     }
 
     public static String getServerPlayerLanguage(ServerPlayer player) {

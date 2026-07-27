@@ -16,6 +16,7 @@ import xin.vanilla.aotake.enums.EnumCommandType;
 import xin.vanilla.aotake.network.packet.SweepDataSyncToClient;
 import xin.vanilla.aotake.notification.AotakeNotificationTypes;
 import xin.vanilla.aotake.util.AotakeUtils;
+import xin.vanilla.banira.api.BaniraCommonSettings;
 import xin.vanilla.banira.common.enums.EnumI18nType;
 import xin.vanilla.banira.common.util.*;
 
@@ -67,7 +68,7 @@ public class ConfigCommand {
                                     MessageUtils.broadcastNotification(AotakeComponent.get().trans(EnumI18nType.FORMAT
                                                     , "mod_status"
                                                     , AotakeComponent.get().trans(EnumI18nType.PLAIN, "key.aotake_sweep.categories")
-                                                    , AotakeLang.get().enabled(CommonConfig.get().base().common().defaultLanguage(), !AotakeSweep.isDisable())
+                                                    , AotakeLang.get().enabled(BaniraCommonSettings.defaultLanguage(), !AotakeSweep.isDisable())
                                             )
                                             , AotakeNotificationTypes.ADMIN_BROADCAST);
                                     return 1;
