@@ -1,13 +1,13 @@
 <div align="center">
 
 | [中文](../README.md) | [English](README_en.md) | [日本語](README_ja.md) |
-|:-------------------:|:-----------------------:|:-------------------:|
+|:------------------:|:-----------------------:|:-------------------:|
 
 <img src="../assets/logo.png" alt="Aotake Sweep" width="160" />
 
 # Aotake Sweep
 
-**A Minecraft Forge, Neoforge and Fabric Timed Cleanup MOD.**
+**A timed cleanup mod for Minecraft Forge, Fabric, and NeoForge.**
 
 </div>
 
@@ -37,7 +37,7 @@
 ## Introduction
 
 This project is for Minecraft (Neo)Forge servers, implementing timed cleanup of dropped items and entities.
-This MOD is required on the server side and optional on the client side.
+This mod is required on the server side and optional on the client side.
 
 ## Features
 
@@ -61,10 +61,10 @@ This MOD is required on the server side and optional on the client side.
 
 ## Configuration
 
-You can find the MOD-related configurations in the following paths. Details are not repeated here; please refer to the
+You can find the mod-related configurations in the following paths. Details are not repeated here; please refer to the
 comments in the Forge default configuration files.
 
-### Common
+### Shared Files
 
 - Countdown Message Config: `config/aotake_sweep-warning.json`
 - Server Dustbin Data: `world/data/world_trash_data.dat`
@@ -72,7 +72,7 @@ comments in the Forge default configuration files.
 - Vanilla Xin Series Common Config: `config/vanilla.xin/common_config.json`
 - Vanilla Xin Series Player Data: `world/playerdata/vanilla.xin/*.nbt`
 
-### Server Config Highlights (Dustbin)
+### Server Configuration Highlights (Dustbin)
 
 - **dustbinPersistent**: Whether to persist dustbin data
 - **dropStatsFileLimit**: Maximum number of drop statistics files (by date)
@@ -140,7 +140,7 @@ By default, use with the prefix `/aotake`.
 - **config**: Modify configuration. Do not use this command to modify complex `server` and `common` configurations.
     - **Arguments**:
         1. `mode <Mode>`: Reset configuration to a preset mode.
-        2. `disable <Disable MOD>`: Temporarily disable MOD functions.
+        2. `disable <Disable mod>`: Temporarily disable mod functions.
         3. `player <Config Key> <Config Value>`: Modify player configuration.
         4. `server <Config Key> <Config Value>`: Modify server configuration.
         5. `common <Config Key> <Config Value>`: Modify common configuration.

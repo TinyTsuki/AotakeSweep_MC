@@ -7,7 +7,7 @@
 
 # Aotake Sweep (竹叶清)
 
-**一个 Minecraft Forge、NeoForge、Fabric 定时扫地 MOD。**
+**一个 Minecraft Forge、Fabric、NeoForge 定时扫地模组。**
 
 </div>
 
@@ -35,7 +35,7 @@
 ## 介绍
 
 本项目适用于 Minecraft (Neo)Forge 服务器，实现定时清理掉落物与实体。
-该 MOD 服务器必装，客户端可选。
+该模组服务器必装，客户端可选。
 
 ## 特性
 
@@ -58,15 +58,15 @@
 
 ## 配置说明
 
-您可以在以下路径找到 MOD 相关配置，详细的信息不再赘述，请参考 Forge 默认配置文件中的注释。
+您可以在以下路径找到模组相关配置，详细的信息不再赘述，请参考 Forge 默认配置文件中的注释。
 
 ### 通用部分
 
 - 倒计时提示配置 `config/aotake_sweep-warning.json`
 - 服务器垃圾箱数据 `world/data/world_trash_data.dat`
 - 掉落统计 `world/stats/aotake_sweep/*.json`（按日期存储，如 `2025-02-24.json`）
-- 香草芯系列 MOD 通用配置 `config/vanilla.xin/common_config.json`
-- 香草芯系列 MOD 玩家数据 `world/playerdata/vanilla.xin/*.nbt`
+- 香草芯系列模组通用配置 `config/vanilla.xin/common_config.json`
+- 香草芯系列模组玩家数据 `world/playerdata/vanilla.xin/*.nbt`
 - 区块超载暂存位于世界数据目录的 `aotake_sweep/chunk_vault`，查看授权单独保存在 `chunk_vault_grants.json`
 
 ### 服务端配置要点（垃圾箱相关）
@@ -136,7 +136,7 @@
 - **config**：修改配置，请勿用该指令修改格式较为复杂的 `server` 与 `common` 配置。
   **参数列表**：
     1. `mode <模式>` 将配置文件重置为预置的模式
-    2. `disable <是否禁用MOD>` 临时禁用 MOD 功能
+    2. `disable <是否禁用模组>` 临时禁用模组功能
     3. `player <配置项> <配置值>` 修改玩家配置
     4. `server <配置项> <配置值>` 修改服务器配置
     5. `common <配置项> <配置值>` 修改通用配置
@@ -153,8 +153,8 @@
 #### 实体 ID
 
 1. 某个具体的实体，如 箭矢 `minecraft:arrow`
-2. 某个 MOD 下所有实体，如 [勤劳跟踪狂](https://github.com/Mafuyu404/DiligentStalker) `diligentstalker:*`
-3. 任意 MOD 下的某个实体，如 箭矢 `*:arrow`
+2. 某个模组下所有实体，如 [勤劳跟踪狂](https://github.com/Mafuyu404/DiligentStalker) `diligentstalker:*`
+3. 任意模组下的某个实体，如 箭矢 `*:arrow`
 
 #### AotakeEL
 

@@ -1,13 +1,13 @@
 <div align="center">
 
 | [中文](../README.md) | [English](README_en.md) | [日本語](README_ja.md) |
-|:-------------------:|:-----------------------:|:-------------------:|
+|:------------------:|:-----------------------:|:-------------------:|
 
 <img src="../assets/logo.png" alt="Aotake Sweep" width="160" />
 
 # Aotake Sweep (竹葉清)
 
-**Minecraft Forge、NeoForge、Fabric 向け定期掃除 MOD。**
+**Minecraft Forge、Fabric、NeoForge 向け定期掃除 MOD。**
 
 </div>
 
@@ -60,7 +60,7 @@
 
 MOD 関連の設定は以下のパスにあります。詳細は省略しますので、Forge デフォルト設定ファイルのコメントを参照してください。
 
-### 通用部分
+### 共通ファイル
 
 - カウントダウン通知設定 `config/aotake_sweep-warning.json`
 - サーバーゴミ箱データ `world/data/world_trash_data.dat`
