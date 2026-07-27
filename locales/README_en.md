@@ -239,8 +239,27 @@ The docs branch provides one build entry for all maintained branches:
 scripts\build-all.bat
 ```
 
-It builds each branch in a detached temporary worktree without switching the current checkout. Use
-`scripts\build-all.bat -ListOnly` to validate branch and JDK discovery without running Gradle.
+By default, it dynamically builds all local `forge/*`, `fabric/*`, and `neoforge/*` branches. Other namespaces such
+as `dev/*` and `maintenance/*` are excluded. Each branch is built in a detached temporary worktree without switching
+the current checkout.
+
+List selected branches and validate JDK discovery without running Gradle:
+
+```bat
+scripts\build-all.bat -ListOnly
+```
+
+Select branches with glob expressions:
+
+```bat
+scripts\build-all.bat -BranchExpression "forge/*"
+scripts\build-all.bat -BranchExpression "*/21.1"
+scripts\build-all.bat -BranchExpression "forge/*,!forge/16.5"
+scripts\build-all.bat -BranchExpression "fabric/18.2"
+```
+
+Expressions beginning with `!` exclude matching branches. The previous parameter name `-Branches` remains available
+as an alias.
 
 ---
 

@@ -230,11 +230,23 @@ docs 分支提供统一批量构建脚本：
 scripts\build-all.bat
 ```
 
-脚本通过 detached 临时 worktree 构建全部维护分支，不会切换当前工作树。仅检查分支和 JDK 配置时使用：
+脚本默认动态构建本地 `forge/*`、`fabric/*`、`neoforge/*` 分支，不包含 `dev/*`、`maintenance/*` 等其他命名空间。
+每个分支都在 detached 临时 worktree 中构建，不会切换当前工作树。仅检查分支和 JDK 配置时使用：
 
 ```bat
 scripts\build-all.bat -ListOnly
 ```
+
+通过 glob 表达式选择分支：
+
+```bat
+scripts\build-all.bat -BranchExpression "forge/*"
+scripts\build-all.bat -BranchExpression "*/21.1"
+scripts\build-all.bat -BranchExpression "forge/*,!forge/16.5"
+scripts\build-all.bat -BranchExpression "fabric/18.2"
+```
+
+`!` 开头的表达式用于排除分支；旧参数名 `-Branches` 仍可作为别名使用。
 
 ---
 

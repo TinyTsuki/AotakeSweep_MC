@@ -3,18 +3,11 @@ param(
     [switch]$PublishToMavenLocal,
     [switch]$ListOnly,
     [string]$LocalInputsRoot,
-    [string[]]$Branches = @(
-        "forge/16.5",
-        "forge/18.2",
-        "forge/19.2",
-        "forge/20.1",
-        "forge/21.1",
-        "fabric/16.5",
-        "fabric/18.2",
-        "fabric/19.2",
-        "fabric/20.1",
-        "fabric/21.1",
-        "neoforge/21.1"
+    [Alias("Branches")]
+    [string[]]$BranchExpression = @(
+        "forge/*",
+        "fabric/*",
+        "neoforge/*"
     )
 )
 
@@ -96,10 +89,46 @@ function Find-LocalInputsRoot {
     return $null
 }
 
+function Select-BuildBranches {
+    $expressions = @($BranchExpression | ForEach-Object {
+        $_ -split "," | ForEach-Object { $_.Trim() } | Where-Object { $_ }
+    })
+    if ($expressions.Count -eq 0) {
+        throw "At least one branch expression is required"
+    }
+
+    $allBranches = @(& git -C $repoRoot for-each-ref "--format=%(refname:short)" refs/heads)
+    Assert-NativeSuccess "git for-each-ref" $LASTEXITCODE
+    $selected = New-Object System.Collections.Generic.List[string]
+
+    foreach ($expression in $expressions | Where-Object { -not $_.StartsWith("!") }) {
+        $matches = @($allBranches | Where-Object { $_ -like $expression } | Sort-Object)
+        if ($matches.Count -eq 0 -and $expression -notmatch "[*?[]") {
+            throw "Branch does not exist: $expression"
+        }
+        foreach ($branch in $matches) {
+            if (-not $selected.Contains($branch)) {
+                $selected.Add($branch)
+            }
+        }
+    }
+
+    $exclusions = @($expressions | Where-Object { $_.StartsWith("!") } | ForEach-Object { $_.Substring(1) })
+    $result = @($selected | Where-Object {
+        $branch = $_
+        -not ($exclusions | Where-Object { $branch -like $_ })
+    })
+    if ($result.Count -eq 0) {
+        throw "Branch expressions selected no branches: $($expressions -join ', ')"
+    }
+    return $result
+}
+
 $worktreeBase = Join-Path (Split-Path $repoRoot -Parent) (
     ".docs-build-" + ([IO.Path]::GetFileName($repoRoot) -replace "[^A-Za-z0-9._-]", "_")
 )
 $localInputs = Find-LocalInputsRoot
+$branches = Select-BuildBranches
 $tasks = @("clean", "test", "assemble")
 if ($PublishToMavenLocal) {
     $tasks += "publishToMavenLocal"

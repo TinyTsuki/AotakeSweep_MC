@@ -230,8 +230,25 @@ docs ブランチには、保守対象の全ブランチを構築する共通ス
 scripts\build-all.bat
 ```
 
-現在の作業ツリーを切り替えず、detached 一時 worktree で各ブランチを構築します。Gradle を実行せずブランチと JDK
-設定だけ確認する場合は `scripts\build-all.bat -ListOnly` を使用します。
+デフォルトでは、ローカルの `forge/*`、`fabric/*`、`neoforge/*` ブランチを動的にすべて構築します。`dev/*`、
+`maintenance/*` など他の名前空間は含みません。現在の作業ツリーを切り替えず、detached 一時 worktree で各ブランチを構築します。
+
+Gradle を実行せず、選択されたブランチと JDK 検出だけを確認します。
+
+```bat
+scripts\build-all.bat -ListOnly
+```
+
+glob 式でブランチを選択できます。
+
+```bat
+scripts\build-all.bat -BranchExpression "forge/*"
+scripts\build-all.bat -BranchExpression "*/21.1"
+scripts\build-all.bat -BranchExpression "forge/*,!forge/16.5"
+scripts\build-all.bat -BranchExpression "fabric/18.2"
+```
+
+`!` で始まる式は一致するブランチを除外します。以前のパラメーター名 `-Branches` も別名として利用できます。
 
 ---
 
