@@ -1,11 +1,12 @@
 package xin.vanilla.aotake.event;
 
 import org.lwjgl.glfw.GLFW;
+import xin.vanilla.aotake.AotakeComponent;
 import xin.vanilla.aotake.AotakeSweep;
 import xin.vanilla.aotake.notification.AotakeNotificationTypes;
 import xin.vanilla.banira.api.client.BaniraInput;
 import xin.vanilla.banira.api.client.BaniraKeyHandle;
-import xin.vanilla.banira.client.notification.NotificationTypeRegistry;
+import xin.vanilla.banira.api.client.notification.BaniraClientNotificationTypes;
 
 /**
  * 客户端按键注册与通知类型初始化。
@@ -38,8 +39,31 @@ public final class ClientModEventHandler {
      * 由主模组构造函数经 {@link net.minecraftforge.fml.DistExecutor} 在客户端触发类初始化
      */
     public static void register() {
-        for (String id : AotakeNotificationTypes.ALL_TYPE_IDS) {
-            NotificationTypeRegistry.register(id);
-        }
+        registerNotificationMetadata();
+    }
+
+    private static void registerNotificationMetadata() {
+        BaniraClientNotificationTypes.registerModDisplayName(
+                AotakeSweep.MODID,
+                AotakeComponent.get().transClientAuto("mod_name"));
+        registerNotificationType(AotakeNotificationTypes.SWEEP_COUNTDOWN, "notification_type_sweep_countdown");
+        registerNotificationType(AotakeNotificationTypes.SWEEP_RESULT_INTERACTIVE, "notification_type_sweep_result_interactive");
+        registerNotificationType(AotakeNotificationTypes.SWEEP_RESULT_COMPACT, "notification_type_sweep_result_compact");
+        registerNotificationType(AotakeNotificationTypes.CHUNK_CHECK_INTERACTIVE, "notification_type_chunk_check_interactive");
+        registerNotificationType(AotakeNotificationTypes.CHUNK_CHECK_COMPACT, "notification_type_chunk_check_compact");
+        registerNotificationType(AotakeNotificationTypes.ENTITY_TOOL_FEEDBACK, "notification_type_entity_tool_feedback");
+        registerNotificationType(AotakeNotificationTypes.DUSTBIN, "notification_type_dustbin");
+        registerNotificationType(AotakeNotificationTypes.CHUNK_VAULT_LIST, "notification_type_chunk_vault_list");
+        registerNotificationType(AotakeNotificationTypes.ADMIN_BROADCAST, "notification_type_admin_broadcast");
+        registerNotificationType(AotakeNotificationTypes.PLAYER_PREFERENCE, "notification_type_player_preference");
+    }
+
+    /**
+     * 将说明保留为客户端翻译组件，交由 Banira 按当前语言渲染。
+     */
+    private static void registerNotificationType(String typeId, String descriptionKey) {
+        BaniraClientNotificationTypes.register(
+                typeId,
+                AotakeComponent.get().transClientAuto(descriptionKey));
     }
 }
