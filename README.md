@@ -58,7 +58,7 @@
 
 ## 配置说明
 
-您可以在以下路径找到模组相关配置，详细的信息不再赘述，请参考 Forge 默认配置文件中的注释。
+您可以通过竹叶清配置编辑器修改配置，也可以直接编辑下列文件。配置项含义和取值范围以游戏内提示及生成文件中的注释为准。
 
 ### 通用部分
 
@@ -79,20 +79,18 @@
 
 ### Forge
 
-- 双端通用配置 `config/aotake_sweep-common.toml`
+- 通用及服务器行为配置 `config/aotake_sweep-common.toml`
 - 客户端相关配置 `config/aotake_sweep-client.toml`
-- 服务端相关配置 `world/serverconfig/aotake_sweep-server.toml`
 
 ### NeoForge
 
-- 双端通用配置 `config/aotake_sweep-common.toml`
+- 通用及服务器行为配置 `config/aotake_sweep-common.toml`
 - 客户端相关配置 `config/aotake_sweep-client.toml`
-- 服务端相关配置 `config/aotake_sweep-server.toml`
 
 ### Fabric
 
+- 通用及服务器行为配置 `config/aotake_sweep-common.toml`
 - 客户端相关配置 `config/aotake_sweep-client.toml`
-- 服务端相关配置 `config/aotake_sweep-server.toml`
 
 ---
 

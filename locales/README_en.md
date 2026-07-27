@@ -61,8 +61,8 @@ This mod is required on the server side and optional on the client side.
 
 ## Configuration
 
-You can find the mod-related configurations in the following paths. Details are not repeated here; please refer to the
-comments in the Forge default configuration files.
+Configuration can be changed through the Aotake Sweep configuration editor or by editing the files below. Refer to
+in-game tooltips and generated comments for the meaning and valid range of each option.
 
 ### Shared Files
 
@@ -82,20 +82,18 @@ comments in the Forge default configuration files.
 
 ### Forge
 
-- Common Config (Both Sides): `config/aotake_sweep-common.toml`
+- Common and server-behavior Config: `config/aotake_sweep-common.toml`
 - Client Config: `config/aotake_sweep-client.toml`
-- Server Config: `world/serverconfig/aotake_sweep-server.toml`
 
 ### NeoForge
 
-- Common Config (Both Sides): `config/aotake_sweep-common.toml`
+- Common and server-behavior Config: `config/aotake_sweep-common.toml`
 - Client Config: `config/aotake_sweep-client.toml`
-- Server Config: `config/aotake_sweep-server.toml`
 
 ### Fabric
 
+- Common and server-behavior Config: `config/aotake_sweep-common.toml`
 - Client Config: `config/aotake_sweep-client.toml`
-- Server Config: `config/aotake_sweep-server.toml`
 
 ---
 

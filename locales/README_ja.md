@@ -58,7 +58,7 @@
 
 ## 設定
 
-MOD 関連の設定は以下のパスにあります。詳細は省略しますので、Forge デフォルト設定ファイルのコメントを参照してください。
+竹葉清の設定エディター、または以下のファイルを直接編集して設定を変更できます。各項目の意味と有効範囲は、ゲーム内ツールチップおよび生成されたファイルのコメントを参照してください。
 
 ### 共通ファイル
 
@@ -78,20 +78,18 @@ MOD 関連の設定は以下のパスにあります。詳細は省略します�
 
 ### Forge
 
-- 両側共通設定 `config/aotake_sweep-common.toml`
+- 共通およびサーバー動作設定 `config/aotake_sweep-common.toml`
 - クライアント設定 `config/aotake_sweep-client.toml`
-- サーバー設定 `world/serverconfig/aotake_sweep-server.toml`
 
 ### NeoForge
 
-- 両側共通設定 `config/aotake_sweep-common.toml`
+- 共通およびサーバー動作設定 `config/aotake_sweep-common.toml`
 - クライアント設定 `config/aotake_sweep-client.toml`
-- サーバー設定 `config/aotake_sweep-server.toml`
 
 ### Fabric
 
+- 共通およびサーバー動作設定 `config/aotake_sweep-common.toml`
 - クライアント設定 `config/aotake_sweep-client.toml`
-- サーバー設定 `config/aotake_sweep-server.toml`
 
 ---
 
