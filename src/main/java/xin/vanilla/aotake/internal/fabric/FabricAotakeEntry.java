@@ -2,6 +2,7 @@ package xin.vanilla.aotake.internal.fabric;
 
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
+import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.fabricmc.fabric.api.event.player.UseBlockCallback;
 import net.fabricmc.fabric.api.event.player.UseEntityCallback;
 import net.fabricmc.fabric.api.event.player.UseItemCallback;
@@ -23,6 +24,7 @@ public final class FabricAotakeEntry implements ModInitializer {
         UseItemCallback.EVENT.register(EventHandlerProxy::onPlayerUseItem);
         UseBlockCallback.EVENT.register(EventHandlerProxy::onRightBlock);
         UseEntityCallback.EVENT.register(EventHandlerProxy::onRightEntity);
+        ServerTickEvents.START_WORLD_TICK.register(EventHandlerProxy::onWorldTick);
         BaniraEventBus.PlayerEvents.onLoggedOut(event -> {
             ServerPlayer player = event.playerAs(ServerPlayer.class);
             if (player != null) ChunkVaultSession.onPlayerCloseContainer(player);
