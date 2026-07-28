@@ -325,7 +325,7 @@ public class EventHandlerProxy {
     }
 
     public static void onWorldTick(TickEvent.WorldTickEvent event) {
-        if (event.phase == TickEvent.Phase.END && !event.world.isClientSide()) {
+        if (event.phase == TickEvent.Phase.START && !event.world.isClientSide()) {
             EntitySweeper.flushPendingRemovals((ServerLevel) event.world);
         }
     }
