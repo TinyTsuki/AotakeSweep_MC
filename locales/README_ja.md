@@ -62,7 +62,7 @@
 
 ### 共通ファイル
 
-- カウントダウン通知設定 `config/aotake_sweep-warning.json`
+- カウントダウン通知設定 [`config/aotake_sweep-warning.json`](/config/aotake_sweep-warning.json)
 - サーバーゴミ箱データ `world/data/world_trash_data.dat`
 - ドロップ統計 `world/stats/aotake_sweep/*.json`（日付ごとに保存、例：`2025-02-24.json`）
 - Vanilla Xin シリーズ MOD 共通設定 `config/vanilla.xin/common_config.json`

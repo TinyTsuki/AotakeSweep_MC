@@ -66,7 +66,7 @@ in-game tooltips and generated comments for the meaning and valid range of each 
 
 ### Shared Files
 
-- Countdown Message Config: `config/aotake_sweep-warning.json`
+- Countdown Message Config: [`config/aotake_sweep-warning.json`](/config/aotake_sweep-warning.json)
 - Server Dustbin Data: `world/data/world_trash_data.dat`
 - Drop Statistics: `world/stats/aotake_sweep/*.json` (stored by date, e.g. `2025-02-24.json`)
 - Vanilla Xin Series Common Config: `config/vanilla.xin/common_config.json`

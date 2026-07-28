@@ -62,7 +62,7 @@
 
 ### 通用部分
 
-- 倒计时提示配置 `config/aotake_sweep-warning.json`
+- 倒计时提示配置 [`config/aotake_sweep-warning.json`](/config/aotake_sweep-warning.json)
 - 服务器垃圾箱数据 `world/data/world_trash_data.dat`
 - 掉落统计 `world/stats/aotake_sweep/*.json`（按日期存储，如 `2025-02-24.json`）
 - 香草芯系列模组通用配置 `config/vanilla.xin/common_config.json`

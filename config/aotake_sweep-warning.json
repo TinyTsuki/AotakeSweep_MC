@@ -1,0 +1,62 @@
+{
+  "content": {
+    "groups": [
+      {
+        "error": [
+          "§r§e香草酱坏掉了，这绝对不是香草酱的错！"
+        ],
+        "fail": [
+          "§r§e香草酱什么也没吃到，失落地离开了。"
+        ],
+        "success": [
+          "§r§e香草酱吃掉了[itemCount]个物品与[entityCount]个实体，并满意地离开了。"
+        ],
+        "1": [
+          "§r§e饥肠辘辘的香草酱将会在§r§e%s§r§e秒后到来！"
+        ],
+        "2": [
+          "§r§e饥肠辘辘的香草酱将会在§r§e%s§r§e秒后到来！"
+        ],
+        "3": [
+          "§r§e饥肠辘辘的香草酱将会在§r§e%s§r§e秒后到来！"
+        ],
+        "4": [
+          "§r§e饥肠辘辘的香草酱将会在§r§e%s§r§e秒后到来！"
+        ],
+        "5": [
+          "§r§e饥肠辘辘的香草酱将会在§r§e%s§r§e秒后到来！"
+        ],
+        "10": [
+          "§r§e饥肠辘辘的香草酱将会在§r§e%s§r§e秒后到来。"
+        ],
+        "30": [
+          "§r§e饥肠辘辘的香草酱将会在§r§e%s§r§e秒后到来。"
+        ],
+        "60": [
+          "§r§e饥肠辘辘的香草酱将会在§r§e%s§r§e秒后到来。"
+        ]
+      }
+    ]
+  },
+  "voice": {
+    "groups": [
+      {
+        "error": [
+          "aotake_sweep:error"
+        ],
+        "fail": [
+          "aotake_sweep:fail"
+        ],
+        "success": [
+          "aotake_sweep:success"
+        ],
+        "5": [
+          "aotake_sweep:agog"
+        ],
+        "30": [
+          "aotake_sweep:hungry"
+        ]
+      }
+    ]
+  }
+}
