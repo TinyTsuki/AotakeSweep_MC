@@ -106,7 +106,6 @@ public class AotakeSweep {
 
         BaniraEvents.Server.onStarting(event -> entitySweeper.clear());
         BaniraEvents.Server.onTick(event -> EventHandlerProxy.onServerTick(event.serverAs(net.minecraft.server.MinecraftServer.class)));
-        BaniraEvents.World.onTick(event -> EventHandlerProxy.onWorldTick(event.worldAs(net.minecraft.server.level.ServerLevel.class)));
         BaniraEvents.Player.onLoggedIn(event -> EventHandlerProxy.onPlayerLoggedIn(event.playerAs(ServerPlayer.class)));
         BaniraEvents.Player.onLoggedOut(event -> EventHandlerProxy.onPlayerLoggedOut(event.playerAs(ServerPlayer.class)));
 
