@@ -554,11 +554,12 @@ public class CommonConfig implements ConfigData {
         @ConfigEntry.Gui.Tooltip(zh_cn = "DEFAULT：总实体超阈值；ADVANCED：单类型超阈值", en_us = "DEFAULT: total count; ADVANCED: per-type count.")
         private EnumChunkCheckMode chunkCheckMode = EnumChunkCheckMode.ADVANCED;
 
-        @ConfigEntry.Gui.Tooltip(zh_cn = "区块检测用的实体规则/名单\n与 chunkCheckEntityListMode 配合",
-                en_us = "Entity rules/list for chunk check (with chunkCheckEntityListMode).")
+        @ConfigEntry.Gui.Tooltip(zh_cn = "区块检测用的实体规则/名单\nresource/entityResource 为实体类型\nitemResource 为掉落物 ID",
+                en_us = "Chunk-check entity rules/list\nresource/entityResource is the entity type; itemResource is the dropped-item ID")
         private List<String> chunkCheckEntityList = defaultChunkCheckEntityList();
 
-        @ConfigEntry.Gui.Tooltip(zh_cn = "区块名单模式：BLACK / WHITE", en_us = "Chunk list mode: BLACK or WHITE.")
+        @ConfigEntry.Gui.Tooltip(zh_cn = "WHITE：命中规则的实体受保护\nBLACK：仅清理命中规则的实体",
+                en_us = "WHITE protects matching entities\nBLACK cleans only matching entities")
         private EnumListType chunkCheckEntityListMode = EnumListType.WHITE;
 
         @ConfigEntry.Gui.Tooltip(zh_cn = "仅提示、不执行清理", en_us = "Notice only; do not clean.")
