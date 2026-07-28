@@ -49,6 +49,7 @@ public final class ClientModEventHandler {
         registerNotificationType(AotakeNotificationTypes.CHUNK_VAULT_LIST, "notification_type_chunk_vault_list");
         registerNotificationType(AotakeNotificationTypes.ADMIN_BROADCAST, "notification_type_admin_broadcast");
         registerNotificationType(AotakeNotificationTypes.PLAYER_PREFERENCE, "notification_type_player_preference");
+        registerNotificationType(AotakeNotificationTypes.HELP, "notification_type_help");
     }
 
     /**

@@ -444,37 +444,37 @@ public class CommonConfig implements ConfigData {
     @Setter
     @Accessors(chain = true, fluent = true)
     public static class DustbinSection {
-        @ConfigEntry.Gui.Tooltip(zh_cn = "虚拟垃圾箱最大页数。", en_us = "Maximum pages for the virtual dustbin.")
+        @ConfigEntry.Gui.Tooltip(zh_cn = "虚拟垃圾箱最大页数", en_us = "Maximum pages for the virtual dustbin.")
         @ConfigEntry.BoundedDiscrete(min = 0, max = 16 * 16 * 16 * 16)
         private int dustbinPageLimit = 2;
 
-        @ConfigEntry.Gui.Tooltip(zh_cn = "缓存区（溢出暂存等）最大物品数量。", en_us = "Max items in the overflow/cache buffer.")
+        @ConfigEntry.Gui.Tooltip(zh_cn = "缓存区（溢出暂存等）最大物品数量", en_us = "Max items in the overflow/cache buffer.")
         @ConfigEntry.BoundedDiscrete(min = 1)
         private int cacheLimit = 5000;
 
-        @ConfigEntry.Gui.Tooltip(zh_cn = "垃圾箱自清洁间隔（毫秒）。", en_us = "Self-clean interval for the dustbin (ms).")
+        @ConfigEntry.Gui.Tooltip(zh_cn = "垃圾箱自清洁间隔（毫秒）", en_us = "Self-clean interval for the dustbin (ms).")
         @ConfigEntry.BoundedLong(min = 0L, max = 7L * 24 * 60 * 60 * 1000)
         private long selfCleanInterval = 60L * 60 * 1000;
 
-        @ConfigEntry.Gui.Tooltip(zh_cn = "自清洁模式列表：NONE、SWEEP_CLEAR、SWEEP_DELETE、SCHEDULED_CLEAR、SCHEDULED_DELETE。",
+        @ConfigEntry.Gui.Tooltip(zh_cn = "自清洁模式列表：NONE、SWEEP_CLEAR、SWEEP_DELETE、\nSCHEDULED_CLEAR、SCHEDULED_DELETE",
                 en_us = "Self-clean modes: NONE, SWEEP_CLEAR, SWEEP_DELETE, SCHEDULED_CLEAR, SCHEDULED_DELETE.")
         private List<EnumSelfCleanMode> selfCleanMode = new ArrayList<>(Collections.singletonList(EnumSelfCleanMode.NONE));
 
-        @ConfigEntry.Gui.Tooltip(zh_cn = "垃圾箱满溢时：KEEP / REMOVE / REPLACE。", en_us = "When dustbin overflows: KEEP, REMOVE, or REPLACE.")
+        @ConfigEntry.Gui.Tooltip(zh_cn = "垃圾箱满溢时：KEEP / REMOVE / REPLACE", en_us = "When dustbin overflows: KEEP, REMOVE, or REPLACE.")
         private EnumOverflowMode dustbinOverflowMode = EnumOverflowMode.KEEP;
 
-        @ConfigEntry.Gui.Tooltip(zh_cn = "是否将垃圾箱持久化到磁盘（关闭则关服后丢失）。", en_us = "Persist dustbin to disk (off = lost after restart).")
+        @ConfigEntry.Gui.Tooltip(zh_cn = "将垃圾箱持久化到磁盘（关闭则关服后丢失）", en_us = "Persist dustbin to disk (off = lost after restart).")
         private boolean dustbinPersistent = true;
 
-        @ConfigEntry.Gui.Tooltip(zh_cn = "掉落统计按日期保留文件数。-1 禁用，0 不限制。", en_us = "Max drop-stat files by date; -1 off, 0 unlimited.")
+        @ConfigEntry.Gui.Tooltip(zh_cn = "掉落统计按日期保留文件数\n-1 禁用，0 不限制", en_us = "Max drop-stat files by date; -1 off, 0 unlimited.")
         @ConfigEntry.BoundedDiscrete(min = -1, max = 3650)
         private int dropStatsFileLimit = 15;
 
-        @ConfigEntry.Gui.Tooltip(zh_cn = "方块垃圾箱坐标列表：dimension, x, y, z, side（可选 DOWN/UP/NORTH/SOUTH/WEST/EAST）。",
+        @ConfigEntry.Gui.Tooltip(zh_cn = "方块垃圾箱坐标列表：dimension, x, y, z, side\nside 可选 DOWN/UP/NORTH/SOUTH/WEST/EAST",
                 en_us = "Block dustbin positions: dimension, x, y, z, optional side face.")
         private List<String> dustbinBlockPositions = new ArrayList<>();
 
-        @ConfigEntry.Gui.Tooltip(zh_cn = "垃圾箱模式：VIRTUAL / BLOCK / VIRTUAL_BLOCK / BLOCK_VIRTUAL。", en_us = "Dustbin mode: VIRTUAL, BLOCK, VIRTUAL_BLOCK, BLOCK_VIRTUAL.")
+        @ConfigEntry.Gui.Tooltip(zh_cn = "垃圾箱模式：VIRTUAL / BLOCK /\nVIRTUAL_BLOCK / BLOCK_VIRTUAL", en_us = "Dustbin mode: VIRTUAL, BLOCK, VIRTUAL_BLOCK, BLOCK_VIRTUAL.")
         private EnumDustbinMode dustbinBlockMode = EnumDustbinMode.VIRTUAL;
     }
 
@@ -482,34 +482,34 @@ public class CommonConfig implements ConfigData {
     @Setter
     @Accessors(chain = true, fluent = true)
     public static class SweepSection {
-        @ConfigEntry.Gui.Tooltip(zh_cn = "服务器无玩家时是否仍执行自动扫地。", en_us = "Run auto-sweep when no players are online.")
+        @ConfigEntry.Gui.Tooltip(zh_cn = "服务器无玩家时是否仍执行自动扫地", en_us = "Run auto-sweep when no players are online.")
         private boolean sweepWhenNoPlayer = false;
 
-        @ConfigEntry.Gui.Tooltip(zh_cn = "已废弃：请改用 config/aotake_sweep-warning.json。", en_us = "Deprecated; use config/aotake_sweep-warning.json.")
+        @ConfigEntry.Gui.Tooltip(zh_cn = "已废弃：请改用 config/aotake_sweep-warning.json", en_us = "Deprecated; use config/aotake_sweep-warning.json.")
         private String sweepWarningContent = "";
 
-        @ConfigEntry.Gui.Tooltip(zh_cn = "已废弃：请改用 config/aotake_sweep-warning.json。", en_us = "Deprecated; use config/aotake_sweep-warning.json.")
+        @ConfigEntry.Gui.Tooltip(zh_cn = "已废弃：请改用 config/aotake_sweep-warning.json", en_us = "Deprecated; use config/aotake_sweep-warning.json.")
         private String sweepWarningVoice = "";
 
-        @ConfigEntry.Gui.Tooltip(zh_cn = "提示音效音量 0–100。", en_us = "Warning sound volume 0–100.")
+        @ConfigEntry.Gui.Tooltip(zh_cn = "提示音效音量 0–100", en_us = "Warning sound volume 0–100.")
         @ConfigEntry.BoundedDiscrete(max = 100)
         private int sweepWarningVoiceVolume = 33;
 
-        @ConfigEntry.Gui.Tooltip(zh_cn = "自动扫地周期间隔（毫秒）。", en_us = "Auto-sweep interval (ms).")
+        @ConfigEntry.Gui.Tooltip(zh_cn = "自动扫地周期间隔（毫秒）", en_us = "Auto-sweep interval (ms).")
         @ConfigEntry.BoundedLong(max = 7L * 24 * 60 * 60 * 1000)
         private long sweepInterval = 10L * 60 * 1000;
 
-        @ConfigEntry.Gui.Tooltip(zh_cn = "实体过滤规则/ID 列表（与 entityListMode 配合）。", en_us = "Entity filter rules / ids (used with entityListMode).")
+        @ConfigEntry.Gui.Tooltip(zh_cn = "实体过滤规则/ID 列表（与 entityListMode 配合）", en_us = "Entity filter rules / ids (used with entityListMode).")
         private List<String> entityList = defaultEntityList();
 
-        @ConfigEntry.Gui.Tooltip(zh_cn = "名单模式：BLACK 仅清列表内；WHITE 清列表外。", en_us = "List mode: BLACK clean listed only; WHITE clean unlisted.")
+        @ConfigEntry.Gui.Tooltip(zh_cn = "名单模式：BLACK 仅清列表内；WHITE 清列表外", en_us = "List mode: BLACK clean listed only; WHITE clean unlisted.")
         private EnumListType entityListMode = EnumListType.BLACK;
 
-        @ConfigEntry.Gui.Tooltip(zh_cn = "单类型实体全服超过该数量时仍强制清理。", en_us = "Global per-type cap; still clean when count exceeds this.")
+        @ConfigEntry.Gui.Tooltip(zh_cn = "单类型实体全服超过该数量时仍强制清理", en_us = "Global per-type cap; still clean when count exceeds this.")
         @ConfigEntry.BoundedDiscrete(min = 1)
         private int entityListLimit = 250;
 
-        @ConfigEntry.Gui.Tooltip(zh_cn = "红名单：仅清理、不回收的实体规则/ID。", en_us = "Redlist: entities to clean without recycling.")
+        @ConfigEntry.Gui.Tooltip(zh_cn = "红名单：仅清理、不回收的实体规则/ID", en_us = "Redlist: entities to clean without recycling.")
         private List<String> entityRedlist = new ArrayList<>();
     }
 
@@ -517,17 +517,17 @@ public class CommonConfig implements ConfigData {
     @Setter
     @Accessors(chain = true, fluent = true)
     public static class SafeSection {
-        @ConfigEntry.Gui.Tooltip(zh_cn = "实体处于这些方块「内部」时不清理（支持带状态，如 minecraft:lava[level=0]）。",
+        @ConfigEntry.Gui.Tooltip(zh_cn = "实体处于这些方块「内部」时不清理（支持带状态，\n如 minecraft:lava[level=0]）",
                 en_us = "Skip cleanup when entity is inside these blocks (supports block states).")
         private List<String> safeBlocks = new ArrayList<>();
 
-        @ConfigEntry.Gui.Tooltip(zh_cn = "实体站在这些方块上时不清理。", en_us = "Skip cleanup when standing on these blocks.")
+        @ConfigEntry.Gui.Tooltip(zh_cn = "实体站在这些方块上时不清理", en_us = "Skip cleanup when standing on these blocks.")
         private List<String> safeBlocksBelow = new ArrayList<>();
 
-        @ConfigEntry.Gui.Tooltip(zh_cn = "实体位于这些方块下方时不清理。", en_us = "Skip cleanup when below these blocks.")
+        @ConfigEntry.Gui.Tooltip(zh_cn = "实体位于这些方块下方时不清理", en_us = "Skip cleanup when below these blocks.")
         private List<String> safeBlocksAbove = new ArrayList<>();
 
-        @ConfigEntry.Gui.Tooltip(zh_cn = "即使在安全方块内，单区块该实体数超过此值仍会清理。", en_us = "Even in safe blocks, clean if per-chunk count exceeds this.")
+        @ConfigEntry.Gui.Tooltip(zh_cn = "即使在安全方块内，单区块该实体数超过此值仍会清理", en_us = "Even in safe blocks, clean if per-chunk count exceeds this.")
         @ConfigEntry.BoundedDiscrete(min = 1)
         private int safeBlocksEntityLimit = 250;
     }
@@ -536,45 +536,45 @@ public class CommonConfig implements ConfigData {
     @Setter
     @Accessors(chain = true, fluent = true)
     public static class ChunkSection {
-        @ConfigEntry.Gui.Tooltip(zh_cn = "区块实体检测间隔（毫秒），0 关闭。", en_us = "Chunk entity check interval (ms); 0 disables.")
+        @ConfigEntry.Gui.Tooltip(zh_cn = "区块实体检测间隔（毫秒），0 关闭", en_us = "Chunk entity check interval (ms); 0 disables.")
         @ConfigEntry.BoundedLong(min = 0L, max = 7L * 24 * 60 * 60 * 1000)
         private long chunkCheckInterval = 5L * 1000;
 
-        @ConfigEntry.Gui.Tooltip(zh_cn = "触发清理的实体数量阈值。", en_us = "Entity count threshold to trigger cleanup.")
+        @ConfigEntry.Gui.Tooltip(zh_cn = "触发清理的实体数量阈值", en_us = "Entity count threshold to trigger cleanup.")
         @ConfigEntry.BoundedDiscrete(min = 1, max = Integer.MAX_VALUE)
         private int chunkCheckLimit = 250;
 
-        @ConfigEntry.Gui.Tooltip(zh_cn = "清理后保留 chunkCheckLimit 的比例（0-1），具体行为受 chunkCheckMode 影响。",
+        @ConfigEntry.Gui.Tooltip(zh_cn = "清理后保留 chunkCheckLimit 的比例（0-1），\n具体行为受 chunkCheckMode 影响",
                 en_us = "Fraction of chunkCheckLimit to retain after cleanup (0-1); interacts with chunkCheckMode.")
         @ConfigEntry.BoundedDouble(min = 0.0, max = 1.0)
         private double chunkCheckRetain = 0.8;
 
-        @ConfigEntry.Gui.Tooltip(zh_cn = "区块实体过多时是否向玩家发提示。", en_us = "Broadcast warning when chunk is overloaded.")
+        @ConfigEntry.Gui.Tooltip(zh_cn = "区块实体过多时是否向玩家发提示", en_us = "Broadcast warning when chunk is overloaded.")
         private boolean chunkCheckNotice = true;
 
-        @ConfigEntry.Gui.Tooltip(zh_cn = "DEFAULT：总实体超阈值；ADVANCED：单类型超阈值。", en_us = "DEFAULT: total count; ADVANCED: per-type count.")
+        @ConfigEntry.Gui.Tooltip(zh_cn = "DEFAULT：总实体超阈值；ADVANCED：单类型超阈值", en_us = "DEFAULT: total count; ADVANCED: per-type count.")
         private EnumChunkCheckMode chunkCheckMode = EnumChunkCheckMode.ADVANCED;
 
-        @ConfigEntry.Gui.Tooltip(zh_cn = "区块检测用的实体规则/名单（与 chunkCheckEntityListMode 配合）。",
+        @ConfigEntry.Gui.Tooltip(zh_cn = "区块检测用的实体规则/名单\n与 chunkCheckEntityListMode 配合",
                 en_us = "Entity rules/list for chunk check (with chunkCheckEntityListMode).")
         private List<String> chunkCheckEntityList = defaultChunkCheckEntityList();
 
-        @ConfigEntry.Gui.Tooltip(zh_cn = "区块名单模式：BLACK / WHITE。", en_us = "Chunk list mode: BLACK or WHITE.")
+        @ConfigEntry.Gui.Tooltip(zh_cn = "区块名单模式：BLACK / WHITE", en_us = "Chunk list mode: BLACK or WHITE.")
         private EnumListType chunkCheckEntityListMode = EnumListType.WHITE;
 
-        @ConfigEntry.Gui.Tooltip(zh_cn = "仅提示、不执行清理。", en_us = "Notice only; do not clean.")
+        @ConfigEntry.Gui.Tooltip(zh_cn = "仅提示、不执行清理", en_us = "Notice only; do not clean.")
         private boolean chunkCheckOnlyNotice = false;
 
-        @ConfigEntry.Gui.Tooltip(zh_cn = "区块过载清理的回收物品是否写入独立暂存（与全局虚拟垃圾箱分离）。",
+        @ConfigEntry.Gui.Tooltip(zh_cn = "区块过载清理的回收物品是否写入独立暂存（与全局虚拟垃圾箱分离）",
                 en_us = "Store chunk-overload recycled items in a separate vault (not the global virtual dustbin).")
         private boolean chunkVaultEnabled = true;
 
-        @ConfigEntry.Gui.Tooltip(zh_cn = "暂存文件按文件名日期保留的天数；早于「今天减该天数」的 0 点整的文件会被删除。",
+        @ConfigEntry.Gui.Tooltip(zh_cn = "暂存文件按文件名日期保留的天数\n早于「今天减该天数」当天 0 点的文件会被删除",
                 en_us = "Keep chunk-vault NBT files for this many days (by date prefix); older files are deleted.")
         @ConfigEntry.BoundedDiscrete(min = 1, max = 3650)
         private int chunkVaultRetentionDays = 2;
 
-        @ConfigEntry.Gui.Tooltip(zh_cn = "暂存文件名时间分组（小时）。1=每小时独立文件；6=每6小时一档；24=按自然日。",
+        @ConfigEntry.Gui.Tooltip(zh_cn = "暂存文件名时间分组（小时）\n1=每小时独立文件；6=每6小时一档；24=按自然日",
                 en_us = "Chunk vault filename time bucket in hours. 1 = hourly file; 6 = 6-hour windows; 24 = calendar day.")
         @ConfigEntry.BoundedDiscrete(min = 1, max = 24)
         private int chunkVaultBucketHours = 1;
@@ -584,13 +584,13 @@ public class CommonConfig implements ConfigData {
     @Setter
     @Accessors(chain = true, fluent = true)
     public static class EntityCatchSection {
-        @ConfigEntry.Gui.Tooltip(zh_cn = "允许在清理时被「捕获」的实体规则/ID。", en_us = "Entities that may be caught during cleanup.")
+        @ConfigEntry.Gui.Tooltip(zh_cn = "允许在清理时被「捕获」的实体规则/ID", en_us = "Entities that may be caught during cleanup.")
         private List<String> catchEntity = new ArrayList<>();
 
-        @ConfigEntry.Gui.Tooltip(zh_cn = "是否允许玩家用物品交互捕获实体。", en_us = "Allow players to catch entities using items.")
+        @ConfigEntry.Gui.Tooltip(zh_cn = "允许玩家用物品交互捕获实体", en_us = "Allow players to catch entities using items.")
         private boolean allowCatchEntity = false;
 
-        @ConfigEntry.Gui.Tooltip(zh_cn = "可用作捕获工具的物品 ID 列表。", en_us = "Item ids usable as catch tools.")
+        @ConfigEntry.Gui.Tooltip(zh_cn = "可用作捕获工具的物品 ID 列表", en_us = "Item ids usable as catch tools.")
         private List<String> catchItem = defaultCatchItem();
     }
 
@@ -598,15 +598,15 @@ public class CommonConfig implements ConfigData {
     @Setter
     @Accessors(chain = true, fluent = true)
     public static class BatchSection {
-        @ConfigEntry.Gui.Tooltip(zh_cn = "每个游戏刻最多移除的实体数，防止卡顿。", en_us = "Max entities removed per tick to reduce lag.")
+        @ConfigEntry.Gui.Tooltip(zh_cn = "每个游戏刻最多移除的实体数，防止卡顿", en_us = "Max entities removed per tick to reduce lag.")
         @ConfigEntry.BoundedDiscrete(min = 1)
         private int sweepEntityLimit = 500;
 
-        @ConfigEntry.Gui.Tooltip(zh_cn = "批次之间的间隔（tick）。", en_us = "Ticks between batches.")
+        @ConfigEntry.Gui.Tooltip(zh_cn = "批次之间的间隔（tick）", en_us = "Ticks between batches.")
         @ConfigEntry.BoundedDiscrete(min = 1)
         private int sweepEntityInterval = 2;
 
-        @ConfigEntry.Gui.Tooltip(zh_cn = "单次清理最多跑几批（优先级高于每刻上限）。", en_us = "Max batches per cleanup run (overrides per-tick cap).")
+        @ConfigEntry.Gui.Tooltip(zh_cn = "单次清理最多跑几批（优先级高于每刻上限）", en_us = "Max batches per cleanup run (overrides per-tick cap).")
         @ConfigEntry.BoundedDiscrete(min = 1)
         private int sweepBatchLimit = 10;
     }
@@ -615,37 +615,37 @@ public class CommonConfig implements ConfigData {
     @Setter
     @Accessors(chain = true, fluent = true)
     public static class CommandCategory {
-        @ConfigEntry.Gui.Tooltip(zh_cn = "主指令前缀，仅字母与下划线。", en_us = "Root command prefix; letters and underscores only.")
+        @ConfigEntry.Gui.Tooltip(zh_cn = "主指令前缀，仅字母与下划线", en_us = "Root command prefix; letters and underscores only.")
         private String commandPrefix = AotakeSweep.DEFAULT_COMMAND_PREFIX;
 
-        @ConfigEntry.Gui.Tooltip(zh_cn = "设置语言子命令名。", en_us = "Subcommand name for /prefix language.")
+        @ConfigEntry.Gui.Tooltip(zh_cn = "设置语言子命令名", en_us = "Subcommand name for /prefix language.")
         private String commandLanguage = "language";
 
-        @ConfigEntry.Gui.Tooltip(zh_cn = "虚拟权限子命令名。", en_us = "Subcommand name for virtual OP.")
+        @ConfigEntry.Gui.Tooltip(zh_cn = "虚拟权限子命令名", en_us = "Subcommand name for virtual OP.")
         private String commandVirtualOp = "opv";
 
-        @ConfigEntry.Gui.Tooltip(zh_cn = "打开垃圾箱子命令名。", en_us = "Subcommand to open dustbin.")
+        @ConfigEntry.Gui.Tooltip(zh_cn = "打开垃圾箱子命令名", en_us = "Subcommand to open dustbin.")
         private String commandDustbinOpen = "dustbin";
 
-        @ConfigEntry.Gui.Tooltip(zh_cn = "清空垃圾箱子命令名。", en_us = "Subcommand to clear dustbin.")
+        @ConfigEntry.Gui.Tooltip(zh_cn = "清空垃圾箱子命令名", en_us = "Subcommand to clear dustbin.")
         private String commandDustbinClear = "cleardustbin";
 
-        @ConfigEntry.Gui.Tooltip(zh_cn = "掉落垃圾箱物品子命令名。", en_us = "Subcommand to drop dustbin items.")
+        @ConfigEntry.Gui.Tooltip(zh_cn = "掉落垃圾箱物品子命令名", en_us = "Subcommand to drop dustbin items.")
         private String commandDustbinDrop = "dropdustbin";
 
-        @ConfigEntry.Gui.Tooltip(zh_cn = "清空缓存子命令名。", en_us = "Subcommand to clear cache.")
+        @ConfigEntry.Gui.Tooltip(zh_cn = "清空缓存子命令名", en_us = "Subcommand to clear cache.")
         private String commandCacheClear = "clearcache";
 
-        @ConfigEntry.Gui.Tooltip(zh_cn = "掉落缓存物品子命令名。", en_us = "Subcommand to drop cache items.")
+        @ConfigEntry.Gui.Tooltip(zh_cn = "掉落缓存物品子命令名", en_us = "Subcommand to drop cache items.")
         private String commandCacheDrop = "dropcache";
 
-        @ConfigEntry.Gui.Tooltip(zh_cn = "手动触发扫底子命令名。", en_us = "Subcommand to trigger sweep.")
+        @ConfigEntry.Gui.Tooltip(zh_cn = "手动触发扫底子命令名", en_us = "Subcommand to trigger sweep.")
         private String commandSweep = "sweep";
 
-        @ConfigEntry.Gui.Tooltip(zh_cn = "清除掉落物子命令名。", en_us = "Subcommand to clear ground items.")
+        @ConfigEntry.Gui.Tooltip(zh_cn = "清除掉落物子命令名", en_us = "Subcommand to clear ground items.")
         private String commandClearDrop = "killitem";
 
-        @ConfigEntry.Gui.Tooltip(zh_cn = "延迟本次清理子命令名。", en_us = "Subcommand to delay next sweep.")
+        @ConfigEntry.Gui.Tooltip(zh_cn = "延迟本次清理子命令名", en_us = "Subcommand to delay next sweep.")
         private String commandDelaySweep = "delay";
 
         @ConfigEntry.Gui.Tooltip(zh_cn = "区块清理暂存箱子命令名", en_us = "Subcommand for chunk cleanup vault")
@@ -656,37 +656,37 @@ public class CommonConfig implements ConfigData {
     @Setter
     @Accessors(chain = true, fluent = true)
     public static class ConciseCategory {
-        @ConfigEntry.Gui.Tooltip(zh_cn = "允许无前缀执行「设置语言」。", en_us = "Allow no-prefix alias for language command.")
+        @ConfigEntry.Gui.Tooltip(zh_cn = "允许无前缀执行「设置语言」", en_us = "Allow no-prefix alias for language command.")
         private boolean conciseLanguage = false;
 
-        @ConfigEntry.Gui.Tooltip(zh_cn = "允许无前缀执行「虚拟权限」。", en_us = "Allow no-prefix alias for virtual OP.")
+        @ConfigEntry.Gui.Tooltip(zh_cn = "允许无前缀执行「虚拟权限」", en_us = "Allow no-prefix alias for virtual OP.")
         private boolean conciseVirtualOp = false;
 
-        @ConfigEntry.Gui.Tooltip(zh_cn = "允许无前缀打开垃圾箱。", en_us = "Allow no-prefix open dustbin.")
+        @ConfigEntry.Gui.Tooltip(zh_cn = "允许无前缀打开垃圾箱", en_us = "Allow no-prefix open dustbin.")
         private boolean conciseDustbinOpen = false;
 
-        @ConfigEntry.Gui.Tooltip(zh_cn = "允许无前缀清空垃圾箱。", en_us = "Allow no-prefix clear dustbin.")
+        @ConfigEntry.Gui.Tooltip(zh_cn = "允许无前缀清空垃圾箱", en_us = "Allow no-prefix clear dustbin.")
         private boolean conciseDustbinClear = false;
 
-        @ConfigEntry.Gui.Tooltip(zh_cn = "允许无前缀掉落垃圾箱。", en_us = "Allow no-prefix drop dustbin.")
+        @ConfigEntry.Gui.Tooltip(zh_cn = "允许无前缀掉落垃圾箱", en_us = "Allow no-prefix drop dustbin.")
         private boolean conciseDustbinDrop = false;
 
-        @ConfigEntry.Gui.Tooltip(zh_cn = "允许无前缀清空缓存。", en_us = "Allow no-prefix clear cache.")
+        @ConfigEntry.Gui.Tooltip(zh_cn = "允许无前缀清空缓存", en_us = "Allow no-prefix clear cache.")
         private boolean conciseCacheClear = false;
 
-        @ConfigEntry.Gui.Tooltip(zh_cn = "允许无前缀掉落缓存。", en_us = "Allow no-prefix drop cache.")
+        @ConfigEntry.Gui.Tooltip(zh_cn = "允许无前缀掉落缓存", en_us = "Allow no-prefix drop cache.")
         private boolean conciseCacheDrop = false;
 
-        @ConfigEntry.Gui.Tooltip(zh_cn = "允许无前缀触发扫地。", en_us = "Allow no-prefix sweep.")
+        @ConfigEntry.Gui.Tooltip(zh_cn = "允许无前缀触发扫地", en_us = "Allow no-prefix sweep.")
         private boolean conciseSweep = false;
 
-        @ConfigEntry.Gui.Tooltip(zh_cn = "允许无前缀清除掉落物。", en_us = "Allow no-prefix clear drops.")
+        @ConfigEntry.Gui.Tooltip(zh_cn = "允许无前缀清除掉落物", en_us = "Allow no-prefix clear drops.")
         private boolean conciseClearDrop = true;
 
-        @ConfigEntry.Gui.Tooltip(zh_cn = "允许无前缀延迟清理。", en_us = "Allow no-prefix delay sweep.")
+        @ConfigEntry.Gui.Tooltip(zh_cn = "允许无前缀延迟清理", en_us = "Allow no-prefix delay sweep.")
         private boolean conciseDelaySweep = false;
 
-        @ConfigEntry.Gui.Tooltip(zh_cn = "允许无前缀执行区块暂存箱指令。", en_us = "Allow no-prefix chunk-vault command.")
+        @ConfigEntry.Gui.Tooltip(zh_cn = "允许无前缀执行区块暂存箱指令", en_us = "Allow no-prefix chunk-vault command.")
         private boolean conciseChunkVault = false;
     }
 
@@ -694,47 +694,47 @@ public class CommonConfig implements ConfigData {
     @Setter
     @Accessors(chain = true, fluent = true)
     public static class PermissionCategory {
-        @ConfigEntry.Gui.Tooltip(zh_cn = "虚拟权限 / 修改配置相关所需权限等级（0–4）。", en_us = "Permission level for virtual OP / config (0–4).")
+        @ConfigEntry.Gui.Tooltip(zh_cn = "虚拟权限 / 修改配置相关所需权限等级（0–4）", en_us = "Permission level for virtual OP / config (0–4).")
         @ConfigEntry.BoundedDiscrete(min = 0, max = 4)
         private int permissionVirtualOp = 4;
 
-        @ConfigEntry.Gui.Tooltip(zh_cn = "打开垃圾箱所需权限等级。", en_us = "Level to open own dustbin.")
+        @ConfigEntry.Gui.Tooltip(zh_cn = "打开垃圾箱所需权限等级", en_us = "Level to open own dustbin.")
         @ConfigEntry.BoundedDiscrete(min = 0, max = 4)
         private int permissionDustbinOpen = 0;
 
-        @ConfigEntry.Gui.Tooltip(zh_cn = "为他人打开垃圾箱所需权限等级。", en_us = "Level to open dustbin for others.")
+        @ConfigEntry.Gui.Tooltip(zh_cn = "为他人打开垃圾箱所需权限等级", en_us = "Level to open dustbin for others.")
         @ConfigEntry.BoundedDiscrete(min = 0, max = 4)
         private int permissionDustbinOpenOther = 2;
 
-        @ConfigEntry.Gui.Tooltip(zh_cn = "清空垃圾箱所需权限等级。", en_us = "Level to clear dustbin.")
+        @ConfigEntry.Gui.Tooltip(zh_cn = "清空垃圾箱所需权限等级", en_us = "Level to clear dustbin.")
         @ConfigEntry.BoundedDiscrete(min = 0, max = 4)
         private int permissionDustbinClear = 1;
 
-        @ConfigEntry.Gui.Tooltip(zh_cn = "掉落垃圾箱所需权限等级。", en_us = "Level to drop dustbin items.")
+        @ConfigEntry.Gui.Tooltip(zh_cn = "掉落垃圾箱所需权限等级", en_us = "Level to drop dustbin items.")
         @ConfigEntry.BoundedDiscrete(min = 0, max = 4)
         private int permissionDustbinDrop = 1;
 
-        @ConfigEntry.Gui.Tooltip(zh_cn = "清空缓存所需权限等级。", en_us = "Level to clear cache.")
+        @ConfigEntry.Gui.Tooltip(zh_cn = "清空缓存所需权限等级", en_us = "Level to clear cache.")
         @ConfigEntry.BoundedDiscrete(min = 0, max = 4)
         private int permissionCacheClear = 1;
 
-        @ConfigEntry.Gui.Tooltip(zh_cn = "掉落缓存所需权限等级。", en_us = "Level to drop cache.")
+        @ConfigEntry.Gui.Tooltip(zh_cn = "掉落缓存所需权限等级", en_us = "Level to drop cache.")
         @ConfigEntry.BoundedDiscrete(min = 0, max = 4)
         private int permissionCacheDrop = 1;
 
-        @ConfigEntry.Gui.Tooltip(zh_cn = "手动扫地所需权限等级。", en_us = "Level to run sweep.")
+        @ConfigEntry.Gui.Tooltip(zh_cn = "手动扫地所需权限等级", en_us = "Level to run sweep.")
         @ConfigEntry.BoundedDiscrete(min = 0, max = 4)
         private int permissionSweep = 0;
 
-        @ConfigEntry.Gui.Tooltip(zh_cn = "清除掉落物所需权限等级。", en_us = "Level to clear item entities.")
+        @ConfigEntry.Gui.Tooltip(zh_cn = "清除掉落物所需权限等级", en_us = "Level to clear item entities.")
         @ConfigEntry.BoundedDiscrete(min = 0, max = 4)
         private int permissionClearDrop = 1;
 
-        @ConfigEntry.Gui.Tooltip(zh_cn = "延迟清理所需权限等级。", en_us = "Level to delay sweep.")
+        @ConfigEntry.Gui.Tooltip(zh_cn = "延迟清理所需权限等级", en_us = "Level to delay sweep.")
         @ConfigEntry.BoundedDiscrete(min = 0, max = 4)
         private int permissionDelaySweep = 1;
 
-        @ConfigEntry.Gui.Tooltip(zh_cn = "用物品捕获玩家所需权限等级。", en_us = "Level to catch players with items.")
+        @ConfigEntry.Gui.Tooltip(zh_cn = "用物品捕获玩家所需权限等级", en_us = "Level to catch players with items.")
         @ConfigEntry.BoundedDiscrete(min = 0, max = 4)
         private int permissionCatchPlayer = 3;
 

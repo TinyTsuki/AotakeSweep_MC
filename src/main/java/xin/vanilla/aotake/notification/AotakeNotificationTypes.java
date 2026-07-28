@@ -63,6 +63,11 @@ public final class AotakeNotificationTypes {
      */
     public static final String PLAYER_PREFERENCE = P + "player_preference";
 
+    /**
+     * 多页指令帮助与点击操作，默认保留原版聊天显示
+     */
+    public static final String HELP = P + "help";
+
     public static final String[] ALL_TYPE_IDS = {
             SWEEP_COUNTDOWN,
             SWEEP_RESULT_INTERACTIVE,
@@ -74,6 +79,7 @@ public final class AotakeNotificationTypes {
             CHUNK_VAULT_LIST,
             ADMIN_BROADCAST,
             PLAYER_PREFERENCE,
+            HELP,
     };
 
     public static void registerAllOnServer() {
@@ -88,6 +94,7 @@ public final class AotakeNotificationTypes {
         ServerNotificationTypeRegistry.register(CHUNK_VAULT_LIST, EnumPosition.TOP_CENTER, EnumMoveType.AUTO);
         ServerNotificationTypeRegistry.register(ADMIN_BROADCAST, EnumPosition.TOP_CENTER, EnumMoveType.AUTO);
         ServerNotificationTypeRegistry.register(PLAYER_PREFERENCE, EnumPosition.TOP_CENTER, EnumMoveType.AUTO);
+        ServerNotificationTypeRegistry.register(HELP, EnumPosition.TOP_CENTER, EnumMoveType.AUTO, vanillaChat);
     }
 
     private AotakeNotificationTypes() {
