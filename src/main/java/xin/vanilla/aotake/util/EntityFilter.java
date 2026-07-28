@@ -491,6 +491,8 @@ public class EntityFilter {
         String namespace = null;
         String path = null;
         String resourceLocation = null;
+        String itemResource = null;
+        Boolean emptyItem = null;
         Class<?> clazz = null;
         String clazzString = null;
         final Class<?> itemClazz = ItemEntity.class;
@@ -598,9 +600,22 @@ public class EntityFilter {
                         case "resource":
                         case "location":
                         case "resourceLocation":
+                        case "entityResource":
                             if (resourceLocation == null)
                                 resourceLocation = (entityType == null) ? EntityUtils.getEntityRegistryString(entity) : entityType;
                             varsOut.put(key, resourceLocation);
+                            break;
+                        case "itemResource":
+                            if (itemResource == null && entity instanceof ItemEntity item) {
+                                itemResource = ItemUtils.getItemRegistryString(item.getItem());
+                            }
+                            varsOut.put(key, itemResource);
+                            break;
+                        case "emptyItem":
+                            if (emptyItem == null) {
+                                emptyItem = entity instanceof ItemEntity item && item.getItem().isEmpty();
+                            }
+                            varsOut.put(key, emptyItem);
                             break;
                         case "clazz":
                             if (clazz == null) clazz = entity.getClass();
