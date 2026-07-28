@@ -29,15 +29,3 @@ logoFile = "logo.png"
     versionRange = "${banira_version_range}"
     ordering = "NONE"
     side = "BOTH"
-[[dependencies."${mod_id}"]]
-    modId = "${mod_id}"
-    mandatory = true
-    versionRange = "[1.0.0,)"
-    ordering = "NONE"
-    side = "SERVER"
-[[dependencies."${mod_id}"]]
-    modId = "${mod_id}"
-    mandatory = false
-    versionRange = "[1.0.0,)"
-    ordering = "NONE"
-    side = "CLIENT"
