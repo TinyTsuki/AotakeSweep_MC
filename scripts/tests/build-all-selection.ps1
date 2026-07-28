@@ -23,6 +23,12 @@ function Get-ListedBranches {
     })
 }
 
+function Get-ListedOutput {
+    param([string[]]$Expression)
+
+    return @(& $buildScript -ListOnly -BranchExpression $Expression 6>&1 | ForEach-Object { "$_" })
+}
+
 function Assert-Branches {
     param(
         [string]$Case,
@@ -59,5 +65,19 @@ Assert-Branches "include then exclude" @(
     "forge/21.1"
 ) (Get-ListedBranches @("forge/*", "!forge/16.5"))
 Assert-Branches "literal branch" @("fabric/18.2") (Get-ListedBranches @("fabric/18.2"))
+
+$fabric16Line = Get-ListedOutput @("fabric/16.5") |
+        Where-Object { $_ -match "^\[fabric/16\.5\]\s" } |
+        Select-Object -First 1
+if ($fabric16Line -notmatch "Target Java 8 \(.+\), Gradle 9\.2\.1 on Java 21 \(.+\)") {
+    throw "Fabric 1.16.5 must use Java 21 to run Gradle and Loom while retaining the Java 8 target: $fabric16Line"
+}
+
+$buildScriptSource = Get-Content -LiteralPath $buildScript -Raw -Encoding UTF8
+foreach ($requiredHelper in @("Test-WorktreeRegistered", "Remove-DirectoryWithRetry", "Remove-TemporaryWorktree")) {
+    if ($buildScriptSource -notmatch [regex]::Escape("function $requiredHelper")) {
+        throw "Build script is missing cleanup helper: $requiredHelper"
+    }
+}
 
 Write-Host "PASS: build branch expression selection"

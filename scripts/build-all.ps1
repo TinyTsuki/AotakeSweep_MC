@@ -29,6 +29,64 @@ function Assert-NativeSuccess {
     }
 }
 
+function Test-WorktreeRegistered {
+    param([string]$Path)
+
+    $expected = [IO.Path]::GetFullPath($Path)
+    foreach ($line in @(& git -C $repoRoot worktree list --porcelain)) {
+        if ($line -match "^worktree\s+(.+)$" -and
+                [IO.Path]::GetFullPath($matches[1]) -eq $expected) {
+            return $true
+        }
+    }
+    return $false
+}
+
+function Remove-DirectoryWithRetry {
+    param([string]$Path)
+
+    $fullPath = [IO.Path]::GetFullPath($Path)
+    for ($attempt = 1; $attempt -le 3; $attempt++) {
+        if (-not (Test-Path -LiteralPath $fullPath)) {
+            return
+        }
+        try {
+            [IO.Directory]::Delete($fullPath, $true)
+            return
+        } catch {
+            if ($attempt -eq 3) {
+                throw
+            }
+            Start-Sleep -Seconds 2
+        }
+    }
+}
+
+function Remove-TemporaryWorktree {
+    param(
+        [string]$Branch,
+        [string]$Path
+    )
+
+    $lastOutput = @()
+    for ($attempt = 1; $attempt -le 3; $attempt++) {
+        $previousErrorAction = $ErrorActionPreference
+        try {
+            $ErrorActionPreference = "Continue"
+            $lastOutput = @(& git -C $repoRoot worktree remove --force -- $Path 2>&1)
+            $removeExitCode = $LASTEXITCODE
+        } finally {
+            $ErrorActionPreference = $previousErrorAction
+        }
+        if ($removeExitCode -eq 0 -or -not (Test-WorktreeRegistered $Path)) {
+            Remove-DirectoryWithRetry $Path
+            return
+        }
+        Start-Sleep -Seconds 2
+    }
+    throw "git worktree remove $branch failed: $($lastOutput -join [Environment]::NewLine)"
+}
+
 function Get-BranchFile {
     param(
         [string]$Branch,
@@ -49,6 +107,33 @@ function Get-JavaVersion {
         throw "Unable to read javaVer from ${Branch}:build.gradle"
     }
     return $match.Groups[1].Value
+}
+
+function Get-GradleVersion {
+    param([string]$Branch)
+
+    $wrapperProperties = Get-BranchFile $Branch "gradle/wrapper/gradle-wrapper.properties"
+    $match = [regex]::Match($wrapperProperties, "gradle-(\d+(?:\.\d+)+)-(?:bin|all)\.zip")
+    if (-not $match.Success) {
+        throw "Unable to read Gradle version from ${Branch}:gradle/wrapper/gradle-wrapper.properties"
+    }
+    return [Version]$match.Groups[1].Value
+}
+
+function Get-GradleJavaVersion {
+    param([Version]$GradleVersion)
+
+    # Current Gradle 8/9 branches also load plugins such as Loom 1.15 that require Java 21.
+    if ($GradleVersion.Major -ge 8) {
+        return "21"
+    }
+    if ($GradleVersion.Major -eq 7 -and $GradleVersion.Minor -ge 3) {
+        return "17"
+    }
+    if ($GradleVersion.Major -eq 7) {
+        return "16"
+    }
+    return "8"
 }
 
 function Get-JavaHome {
@@ -145,16 +230,22 @@ foreach ($branch in $Branches) {
         throw "git rev-parse returned no commit for $branch"
     }
     $commit = $commitOutput[0].Trim()
-    $javaVersion = Get-JavaVersion $branch
-    $javaHome = Get-JavaHome $branch $javaVersion
-    Write-Host "[$branch] $commit, Java $javaVersion ($javaHome)"
+    $targetJavaVersion = Get-JavaVersion $branch
+    $targetJavaHome = Get-JavaHome $branch $targetJavaVersion
+    $gradleVersion = Get-GradleVersion $branch
+    $gradleJavaVersion = Get-GradleJavaVersion $gradleVersion
+    $gradleJavaHome = Get-JavaHome $branch $gradleJavaVersion
+    Write-Host "[$branch] $commit, Target Java $targetJavaVersion ($targetJavaHome), Gradle $gradleVersion on Java $gradleJavaVersion ($gradleJavaHome)"
 
     if ($ListOnly) {
         continue
     }
 
     if (Test-Path -LiteralPath $worktreeBase) {
-        throw "Temporary worktree path already exists: $worktreeBase"
+        if (Test-WorktreeRegistered $worktreeBase) {
+            throw "Temporary worktree is already active: $worktreeBase"
+        }
+        Remove-DirectoryWithRetry $worktreeBase
     }
 
     $worktreeAdded = $false
@@ -171,11 +262,14 @@ foreach ($branch in $Branches) {
         $previousJavaHome = $env:JAVA_HOME
         $previousPath = $env:Path
         try {
-            $env:JAVA_HOME = $javaHome
-            $env:Path = "$javaHome\bin;$previousPath"
+            # 构建工具使用现代 JDK，低版本 Minecraft 仍由目标 toolchain 编译。
+            $env:JAVA_HOME = $gradleJavaHome
+            $env:Path = "$gradleJavaHome\bin;$previousPath"
+            $toolchainPaths = @($targetJavaHome, $gradleJavaHome) | Select-Object -Unique
+            $toolchainProperty = "-Dorg.gradle.java.installations.paths=$($toolchainPaths -join ',')"
             Push-Location $worktreeBase
             try {
-                & ".\gradlew.bat" @tasks "--no-daemon" "--console=plain"
+                & ".\gradlew.bat" @tasks "--no-daemon" "--console=plain" $toolchainProperty
                 if ($LASTEXITCODE -ne 0) {
                     throw "Gradle failed for $branch with exit code $LASTEXITCODE"
                 }
@@ -188,8 +282,7 @@ foreach ($branch in $Branches) {
         }
     } finally {
         if ($worktreeAdded) {
-            & git -C $repoRoot worktree remove --force $worktreeBase | Out-Null
-            Assert-NativeSuccess "git worktree remove $branch" $LASTEXITCODE
+            Remove-TemporaryWorktree $branch $worktreeBase
         }
         & git -C $repoRoot worktree prune | Out-Null
         Assert-NativeSuccess "git worktree prune" $LASTEXITCODE
