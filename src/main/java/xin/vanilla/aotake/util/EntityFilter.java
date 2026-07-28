@@ -32,8 +32,7 @@ public class EntityFilter {
     private static final Map<String, EntityDataAccessor<?>> accessorCache = new ConcurrentHashMap<>();
     // 缓存已解析的 ACCESSOR_KEY 路径（key 为完整 accessorPath 字符串）
     private static final Map<String, AccessorPath> accessorPathCache = new ConcurrentHashMap<>();
-    private final ThreadLocal<Map<String, Object>> variableBuffer =
-            ThreadLocal.withInitial(() -> new HashMap<>(24));
+    private final ThreadLocal<Map<String, Object>> variableBuffer = ThreadLocal.withInitial(() -> new HashMap<>(24));
     private final Matcher emptyMatcher = new Matcher(Collections.emptyList());
 
     public void clear() {
