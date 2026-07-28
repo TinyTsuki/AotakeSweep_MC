@@ -26,7 +26,8 @@ public class AotakeNotificationTypeMetadataContractTest {
                 "notification_type_dustbin",
                 "notification_type_chunk_vault_list",
                 "notification_type_admin_broadcast",
-                "notification_type_player_preference"
+                "notification_type_player_preference",
+                "notification_type_help"
         };
 
         assertTrue(source.contains("BaniraClientNotificationTypes.registerModDisplayName("));
@@ -39,6 +40,8 @@ public class AotakeNotificationTypeMetadataContractTest {
             assertTrue("Missing en_us translation for " + key,
                     en.contains("\"word.aotake_sweep." + key + "\""));
         }
+        String help = read("src/main/java/xin/vanilla/aotake/command/impl/HelpCommand.java");
+        assertTrue(help.contains("MessageUtils.sendNotification(player, helpInfo, AotakeNotificationTypes.HELP)"));
     }
 
     private static String read(String path) throws Exception {

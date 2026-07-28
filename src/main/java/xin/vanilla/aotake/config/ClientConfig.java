@@ -205,31 +205,31 @@ public class ClientConfig implements ConfigData {
     @Setter
     @Accessors(chain = true, fluent = true)
     public static class ProgressBarLeafCategory {
-        @ConfigEntry.Gui.Tooltip(zh_cn = "绘制竹叶时是否隐藏经验条。", en_us = "Hide the XP bar while drawing the bamboo leaf.")
+        @ConfigEntry.Gui.Tooltip(zh_cn = "绘制竹叶时是否隐藏经验条", en_us = "Hide the XP bar while drawing the bamboo leaf.")
         private boolean hideExperienceBarLeaf = false;
 
-        @ConfigEntry.Gui.Tooltip(zh_cn = "屏幕坐标象限：1 左下(↑→)；2 右下(↑←)；3 右上(↓←)；4 左上(↓→)。",
+        @ConfigEntry.Gui.Tooltip(zh_cn = "屏幕坐标象限：1 左下(↑→)；2 右下(↑←)；3 右上(↓←)；\n4 左上(↓→)",
                 en_us = "Screen quadrant: 1 bottom-left; 2 bottom-right; 3 top-right; 4 top-left.")
         @ConfigEntry.BoundedDiscrete(min = 1, max = 4)
         private int progressBarLeafScreenQuadrant = 1;
 
-        @ConfigEntry.Gui.Tooltip(zh_cn = "竹叶相对竹竿的偏移。x,y 为绝对坐标；x%,y% 为相对坐标（象限为 4 时，0,0 表示竹竿左上角）。",
+        @ConfigEntry.Gui.Tooltip(zh_cn = "竹叶相对竹竿的偏移\nx,y 为绝对坐标；x%,y% 为相对坐标（象限为 4 时，\n0,0 表示竹竿左上角）",
                 en_us = "Leaf position vs pole: x,y absolute; x%,y% relative (quadrant 4: 0,0 = pole top-left).")
         private String progressBarLeafPosition = "0,4";
 
-        @ConfigEntry.Gui.Tooltip(zh_cn = "竹叶纹理锚点：TOP_LEFT/TOP_RIGHT/TOP_CENTER/BOTTOM_LEFT/BOTTOM_RIGHT/BOTTOM_CENTER/CENTER（与 EnumPosition 一致）。",
+        @ConfigEntry.Gui.Tooltip(zh_cn = "竹叶纹理锚点：TOP_LEFT/TOP_RIGHT/TOP_CENTER/\nBOTTOM_LEFT/BOTTOM_RIGHT/BOTTOM_CENTER/CENTER\n与 EnumPosition 一致",
                 en_us = "Texture anchor for the leaf (EnumPosition names, e.g. TOP_LEFT, CENTER).")
         private EnumPosition progressBarLeafBase = EnumPosition.TOP_LEFT;
 
-        @ConfigEntry.Gui.Tooltip(zh_cn = "竹叶旋转角度（0–360）。", en_us = "Leaf rotation in degrees (0–360).")
+        @ConfigEntry.Gui.Tooltip(zh_cn = "竹叶旋转角度（0–360）", en_us = "Leaf rotation in degrees (0–360).")
         @ConfigEntry.BoundedDouble(max = 360.0)
         private double progressBarLeafAngle = 0.0;
 
-        @ConfigEntry.Gui.Tooltip(zh_cn = "竹叶显示高度（像素）。", en_us = "Leaf draw height in pixels.")
+        @ConfigEntry.Gui.Tooltip(zh_cn = "竹叶显示高度（像素）", en_us = "Leaf draw height in pixels.")
         @ConfigEntry.BoundedDiscrete(min = 1)
         private int progressBarLeafHeight = 10;
 
-        @ConfigEntry.Gui.Tooltip(zh_cn = "竹叶显示宽度（像素）。", en_us = "Leaf draw width in pixels.")
+        @ConfigEntry.Gui.Tooltip(zh_cn = "竹叶显示宽度（像素）", en_us = "Leaf draw width in pixels.")
         @ConfigEntry.BoundedDiscrete(min = 1)
         private int progressBarLeafWidth = 9;
     }
@@ -238,30 +238,30 @@ public class ClientConfig implements ConfigData {
     @Setter
     @Accessors(chain = true, fluent = true)
     public static class ProgressBarPoleCategory {
-        @ConfigEntry.Gui.Tooltip(zh_cn = "绘制竹竿时是否隐藏经验条。", en_us = "Hide the XP bar while drawing the bamboo pole.")
+        @ConfigEntry.Gui.Tooltip(zh_cn = "绘制竹竿时是否隐藏经验条", en_us = "Hide the XP bar while drawing the bamboo pole.")
         private boolean hideExperienceBarPole = true;
 
-        @ConfigEntry.Gui.Tooltip(zh_cn = "屏幕坐标象限：1 左下；2 右下；3 右上；4 左上（与竹叶说明相同）。",
+        @ConfigEntry.Gui.Tooltip(zh_cn = "屏幕坐标象限：1 左下；2 右下；3 右上；4 左上（与竹叶说明相同）",
                 en_us = "Screen quadrant for pole placement (same meaning as leaf quadrant).")
         @ConfigEntry.BoundedDiscrete(min = 1, max = 4)
         private int progressBarPoleScreenQuadrant = 1;
 
-        @ConfigEntry.Gui.Tooltip(zh_cn = "竹竿在屏幕上的位置。x,y 绝对坐标；x%,y% 相对坐标（象限 4 时 0%,0% 为屏幕左上角）。",
+        @ConfigEntry.Gui.Tooltip(zh_cn = "竹竿在屏幕上的位置\nx,y 绝对坐标；x%,y% 相对坐标\n象限 4 时 0%,0% 为屏幕左上角",
                 en_us = "Pole position: x,y absolute; x%,y% relative (quadrant 4: 0%,0% = screen top-left).")
         private String progressBarPolePosition = "50%,29";
 
-        @ConfigEntry.Gui.Tooltip(zh_cn = "竹竿纹理锚点（EnumPosition）。", en_us = "Texture anchor for the pole (EnumPosition).")
+        @ConfigEntry.Gui.Tooltip(zh_cn = "竹竿纹理锚点（EnumPosition）", en_us = "Texture anchor for the pole (EnumPosition).")
         private EnumPosition progressBarPoleBase = EnumPosition.TOP_CENTER;
 
-        @ConfigEntry.Gui.Tooltip(zh_cn = "竹竿旋转角度（0–360）。", en_us = "Pole rotation in degrees (0–360).")
+        @ConfigEntry.Gui.Tooltip(zh_cn = "竹竿旋转角度（0–360）", en_us = "Pole rotation in degrees (0–360).")
         @ConfigEntry.BoundedDouble(min = 0.0, max = 360.0)
         private double progressBarPoleAngle = 0.0;
 
-        @ConfigEntry.Gui.Tooltip(zh_cn = "竹竿显示高度（像素）。", en_us = "Pole draw height in pixels.")
+        @ConfigEntry.Gui.Tooltip(zh_cn = "竹竿显示高度（像素）", en_us = "Pole draw height in pixels.")
         @ConfigEntry.BoundedDiscrete(min = 1)
         private int progressBarPoleHeight = 5;
 
-        @ConfigEntry.Gui.Tooltip(zh_cn = "竹竿显示宽度（像素）。", en_us = "Pole draw width in pixels.")
+        @ConfigEntry.Gui.Tooltip(zh_cn = "竹竿显示宽度（像素）", en_us = "Pole draw width in pixels.")
         @ConfigEntry.BoundedDiscrete(min = 1)
         private int progressBarPoleWidth = 180;
     }
@@ -270,32 +270,32 @@ public class ClientConfig implements ConfigData {
     @Setter
     @Accessors(chain = true, fluent = true)
     public static class ProgressBarTextCategory {
-        @ConfigEntry.Gui.Tooltip(zh_cn = "绘制倒计时文字时是否隐藏经验条。", en_us = "Hide the XP bar while drawing countdown text.")
+        @ConfigEntry.Gui.Tooltip(zh_cn = "绘制倒计时文字时是否隐藏经验条", en_us = "Hide the XP bar while drawing countdown text.")
         private boolean hideExperienceBarText = true;
 
-        @ConfigEntry.Gui.Tooltip(zh_cn = "文字相对竹竿定位所用的屏幕象限（1–4）。", en_us = "Screen quadrant for text placement relative to the pole.")
+        @ConfigEntry.Gui.Tooltip(zh_cn = "文字相对竹竿定位所用的屏幕象限（1–4）", en_us = "Screen quadrant for text placement relative to the pole.")
         @ConfigEntry.BoundedDiscrete(min = 1, max = 4)
         private int progressBarTextScreenQuadrant = 1;
 
-        @ConfigEntry.Gui.Tooltip(zh_cn = "参考点相对竹竿的偏移（x,y 或 x%,y%，象限含义与竹竿一致）。文字再按水平/垂直对齐相对该点对齐。",
+        @ConfigEntry.Gui.Tooltip(zh_cn = "参考点相对竹竿的偏移（x,y 或 x%,y%，象限含义与竹竿一致）\n文字再按水平/垂直对齐相对该点对齐",
                 en_us = "Anchor offset from pole (x,y or x%,y%). Text aligns to this point per horizontal/vertical align.")
         private String progressBarTextPosition = "50%,8";
 
-        @ConfigEntry.Gui.Tooltip(zh_cn = "相对参考点的水平对齐：LEFT/CENTER/RIGHT。", en_us = "Horizontal align to anchor: LEFT / CENTER / RIGHT.")
+        @ConfigEntry.Gui.Tooltip(zh_cn = "相对参考点的水平对齐：LEFT/CENTER/RIGHT", en_us = "Horizontal align to anchor: LEFT / CENTER / RIGHT.")
         private EnumProgressBarTextAlignH progressBarTextAlignH = EnumProgressBarTextAlignH.CENTER;
 
-        @ConfigEntry.Gui.Tooltip(zh_cn = "相对参考点的垂直对齐：TOP/CENTER/BOTTOM。", en_us = "Vertical align to anchor: TOP / CENTER / BOTTOM.")
+        @ConfigEntry.Gui.Tooltip(zh_cn = "相对参考点的垂直对齐：TOP/CENTER/BOTTOM", en_us = "Vertical align to anchor: TOP / CENTER / BOTTOM.")
         private EnumProgressBarTextAlignV progressBarTextAlignV = EnumProgressBarTextAlignV.TOP;
 
-        @ConfigEntry.Gui.Tooltip(zh_cn = "文字旋转角度（0–360）。", en_us = "Text rotation in degrees (0–360).")
+        @ConfigEntry.Gui.Tooltip(zh_cn = "文字旋转角度（0–360）", en_us = "Text rotation in degrees (0–360).")
         @ConfigEntry.BoundedDouble(min = 0.0, max = 360.0)
         private double progressBarTextAngle = 0.0;
 
-        @ConfigEntry.Gui.Tooltip(zh_cn = "文字大小（相对 16px 基准缩放）。", en_us = "Font size scale relative to 16px base.")
+        @ConfigEntry.Gui.Tooltip(zh_cn = "文字大小（相对 16px 基准缩放）", en_us = "Font size scale relative to 16px base.")
         @ConfigEntry.BoundedDiscrete(min = 1, max = 256)
         private int progressBarTextSize = 8;
 
-        @ConfigEntry.Gui.Tooltip(zh_cn = "文字颜色。支持十六进制（0xAARRGGBB、#RRGGBB 等）或十进制 R,G,B / A,R,G,B。",
+        @ConfigEntry.Gui.Tooltip(zh_cn = "文字颜色\n支持十六进制（0xAARRGGBB、#RRGGBB 等）\n或十进制 R,G,B / A,R,G,B",
                 en_us = "Text color: hex (0xAARRGGBB, #RRGGBB, …) or decimal R,G,B / A,R,G,B.")
         private String progressBarTextColor = "0x5DA530";
     }
@@ -305,7 +305,7 @@ public class ClientConfig implements ConfigData {
     @Accessors(chain = true, fluent = true)
     public static class DustbinCategory {
         @ConfigEntry.Gui.Tooltip(
-                zh_cn = "垃圾箱界面：VANILLA 原版；TEXTURED 自定义纹理；BANIRA_THEME 使用主题色纯色绘制。",
+                zh_cn = "垃圾箱界面：VANILLA 原版；TEXTURED 自定义纹理；\nBANIRA_THEME 使用主题色纯色绘制",
                 en_us = "Dustbin UI: VANILLA; TEXTURED; BANIRA_THEME.")
         private EnumDustbinClientUiStyle dustbinUiStyle = EnumDustbinClientUiStyle.TEXTURED;
     }
