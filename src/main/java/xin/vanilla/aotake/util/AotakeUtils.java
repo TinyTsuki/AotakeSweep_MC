@@ -293,10 +293,28 @@ public class AotakeUtils {
         MinecraftServer server = BaniraServer.currentAs(MinecraftServer.class);
         if (BaniraServer.isRunning() && server != null) {
             server.getAllLevels()
-                    .forEach(level -> level.getEntities().getAll().forEach(entities::add)
-                    );
+                    .forEach(level -> level.getEntities().getAll().forEach(entity -> {
+                        if (prepareSweepCandidate(entity)) {
+                            entities.add(entity);
+                        }
+                    }));
         }
         return entities;
+    }
+
+    /**
+     * 在扫描和延迟批处理前统一剔除失效实体，并静默回收空物品实体。
+     */
+    public static boolean prepareSweepCandidate(Entity entity) {
+        if (entity == null || entity instanceof Player || !entity.isAlive()
+                || !(entity.level() instanceof ServerLevel)) {
+            return false;
+        }
+        if (entity instanceof ItemEntity itemEntity && itemEntity.getItem().isEmpty()) {
+            EntitySweeper.scheduleRemoveEntity(entity, false);
+            return false;
+        }
+        return true;
     }
 
     public static boolean isJunkEntity(Entity entity, boolean chuck) {
@@ -313,10 +331,10 @@ public class AotakeUtils {
             return false;
         }
         if (emptyRules) {
-            return mode == EnumListType.WHITE;
+            return EntityRulePolicy.shouldClean(true, mode, false);
         }
         boolean matched = matcher.matches(entity);
-        return mode == EnumListType.BLACK ? matched : !matched;
+        return EntityRulePolicy.shouldClean(false, mode, matched);
     }
 
     public static boolean isSafeEntity(Map<Level, Map<BlockPos, BlockState>> blockStateCache, Entity entity) {
@@ -380,7 +398,7 @@ public class AotakeUtils {
 
         LOGGER.debug("Entity exceeded filter started at {}", System.currentTimeMillis());
         for (Entity entity : entities) {
-            if (entity instanceof Player) continue;
+            if (!prepareSweepCandidate(entity)) continue;
 
             boolean safe = hasSafeRules && isSafeEntity(blockStateCache, entity);
             ChunkKey chunkKey = null;
