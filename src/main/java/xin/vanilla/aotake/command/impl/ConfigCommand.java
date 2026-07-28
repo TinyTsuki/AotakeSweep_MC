@@ -51,7 +51,9 @@ public class ConfigCommand {
                                             throw new IllegalArgumentException("Mode " + mode + " does not exist");
                                         }
                                     }
-                                    source.sendSuccess(AotakeComponent.get().transLang(lang, EnumI18nType.FORMAT, "server_config_mode", mode).toChat(lang), false);
+                                    MessageUtils.sendMessage(source, true,
+                                            AotakeComponent.get().transLang(lang, EnumI18nType.FORMAT,
+                                                    "server_config_mode", mode));
 
                                     // 更新权限信息
                                     source.getServer().getPlayerList().getPlayers().forEach(CommandUtils::refreshPermission);
