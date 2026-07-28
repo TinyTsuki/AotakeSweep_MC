@@ -12,6 +12,7 @@ import net.minecraft.server.level.ServerPlayer;
 import xin.vanilla.aotake.AotakeComponent;
 import xin.vanilla.aotake.command.AotakeCommand;
 import xin.vanilla.aotake.enums.EnumCommandType;
+import xin.vanilla.aotake.notification.AotakeNotificationTypes;
 import xin.vanilla.aotake.util.AotakeUtils;
 import xin.vanilla.banira.api.BaniraCommonSettings;
 import xin.vanilla.banira.common.data.Component;
@@ -112,7 +113,7 @@ public class HelpCommand {
                         .append("\n")
                         .append(AotakeComponent.get().transLang(Translator.getServerPlayerLanguage(player), EnumI18nType.WORD, command.toLowerCase() + "_detail").color(EnumMCColor.GRAY.getColor()));
             }
-            MessageUtils.sendMessage(player, helpInfo);
+            MessageUtils.sendNotification(player, helpInfo, AotakeNotificationTypes.HELP);
             return 1;
         };
 

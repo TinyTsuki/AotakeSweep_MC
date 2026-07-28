@@ -16,6 +16,7 @@
   "word.aotake_sweep.notification_type_chunk_vault_list": "Chunk overload stash listings",
   "word.aotake_sweep.notification_type_admin_broadcast": "Administrative sweep, cache, and settings broadcasts",
   "word.aotake_sweep.notification_type_player_preference": "Player sweep-result and sound preferences",
+  "word.aotake_sweep.notification_type_help": "Paged command help with clickable actions",
   "word.aotake_sweep.cache_clear": "Clear Cache Items",
   "word.aotake_sweep.cache_clear_detail": "Clear Cache Items.",
   "word.aotake_sweep.cache_drop": "Drop Cache Items",
