@@ -42,6 +42,10 @@ public class AotakeNotificationTypeMetadataContractTest {
         }
         String help = read("src/main/java/xin/vanilla/aotake/command/impl/HelpCommand.java");
         assertTrue(help.contains("MessageUtils.sendNotification(player, helpInfo, AotakeNotificationTypes.HELP)"));
+
+        String config = read("src/main/java/xin/vanilla/aotake/command/impl/ConfigCommand.java");
+        assertTrue(config.contains("MessageUtils.sendMessage(source, true,"));
+        assertFalse(config.contains("source.sendSuccess("));
     }
 
     private static String read(String path) throws Exception {
