@@ -74,7 +74,12 @@ if ($fabric16Line -notmatch "Target Java 8 \(.+\), Gradle 9\.2\.1 on Java 21 \(.
 }
 
 $buildScriptSource = Get-Content -LiteralPath $buildScript -Raw -Encoding UTF8
-foreach ($requiredHelper in @("Test-WorktreeRegistered", "Remove-DirectoryWithRetry", "Remove-TemporaryWorktree")) {
+foreach ($requiredHelper in @(
+        "Test-WorktreeRegistered",
+        "Remove-DirectoryWithRetry",
+        "Remove-TemporaryWorktree",
+        "Export-BuildArtifacts"
+)) {
     if ($buildScriptSource -notmatch [regex]::Escape("function $requiredHelper")) {
         throw "Build script is missing cleanup helper: $requiredHelper"
     }

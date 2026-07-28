@@ -87,6 +87,28 @@ function Remove-TemporaryWorktree {
     throw "git worktree remove $branch failed: $($lastOutput -join [Environment]::NewLine)"
 }
 
+function Export-BuildArtifacts {
+    param(
+        [string]$Branch,
+        [string]$WorktreePath,
+        [string]$OutputPath
+    )
+
+    $sourceRoot = Join-Path $WorktreePath "builds"
+    $artifacts = @(Get-ChildItem -LiteralPath $sourceRoot -Recurse -File -Filter "*.jar" -ErrorAction SilentlyContinue)
+    if ($artifacts.Count -eq 0) {
+        throw "Build produced no distributable jars for $branch under $sourceRoot"
+    }
+
+    foreach ($artifact in $artifacts) {
+        $relativePath = $artifact.FullName.Substring($sourceRoot.Length).TrimStart("\", "/")
+        $destination = Join-Path $OutputPath $relativePath
+        New-Item -ItemType Directory -Path (Split-Path $destination -Parent) -Force | Out-Null
+        Copy-Item -LiteralPath $artifact.FullName -Destination $destination -Force
+        Write-Host "[$branch] Artifact: $destination"
+    }
+}
+
 function Get-BranchFile {
     param(
         [string]$Branch,
@@ -276,6 +298,7 @@ foreach ($branch in $Branches) {
             } finally {
                 Pop-Location
             }
+            Export-BuildArtifacts $branch $worktreeBase (Join-Path $repoRoot "builds")
         } finally {
             $env:JAVA_HOME = $previousJavaHome
             $env:Path = $previousPath
