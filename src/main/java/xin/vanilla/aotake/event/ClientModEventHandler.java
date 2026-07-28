@@ -9,7 +9,7 @@ import xin.vanilla.banira.api.client.BaniraKeyHandle;
 import xin.vanilla.banira.api.client.notification.BaniraClientNotificationTypes;
 
 /**
- * 客户端按键注册与通知类型初始化。
+ * 客户端：Banira 键位入队与稳定事件回调注册（不在此类上使用 Forge {@code @SubscribeEvent}）。
  */
 public final class ClientModEventHandler {
 
@@ -30,7 +30,7 @@ public final class ClientModEventHandler {
      * 切换进度条显示按键
      */
     // 避免与原版 TAB 玩家列表同时触发。
-    public static BaniraKeyHandle PROGRESS_KEY = BaniraInput.registerKey(AotakeSweep.MODID, "progress", GLFW.GLFW_KEY_F9);
+    public static BaniraKeyHandle PROGRESS_KEY = BaniraInput.registerKey(AotakeSweep.MODID, "progress", GLFW.GLFW_KEY_TAB);
 
     private ClientModEventHandler() {
     }
@@ -43,9 +43,7 @@ public final class ClientModEventHandler {
     }
 
     private static void registerNotificationMetadata() {
-        BaniraClientNotificationTypes.registerModDisplayName(
-                AotakeSweep.MODID,
-                AotakeComponent.get().transClientAuto("mod_name"));
+        BaniraClientNotificationTypes.registerModDisplayName(AotakeSweep.MODID, AotakeComponent.get().transClientAuto("mod_name"));
         registerNotificationType(AotakeNotificationTypes.SWEEP_COUNTDOWN, "notification_type_sweep_countdown");
         registerNotificationType(AotakeNotificationTypes.SWEEP_RESULT_INTERACTIVE, "notification_type_sweep_result_interactive");
         registerNotificationType(AotakeNotificationTypes.SWEEP_RESULT_COMPACT, "notification_type_sweep_result_compact");
@@ -62,8 +60,6 @@ public final class ClientModEventHandler {
      * 将说明保留为客户端翻译组件，交由 Banira 按当前语言渲染。
      */
     private static void registerNotificationType(String typeId, String descriptionKey) {
-        BaniraClientNotificationTypes.register(
-                typeId,
-                AotakeComponent.get().transClientAuto(descriptionKey));
+        BaniraClientNotificationTypes.register(typeId, AotakeComponent.get().transClientAuto(descriptionKey));
     }
 }
