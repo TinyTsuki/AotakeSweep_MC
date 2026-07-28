@@ -47,8 +47,10 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 @SuppressWarnings("resource")
 public class EntitySweeper {
     private static final Logger LOGGER = LogManager.getLogger();
+    private static final RateLimitedErrorLogger ENTITY_ERRORS = new RateLimitedErrorLogger(60_000L);
 
-    private static final Map<ResourceKey<Level>, Queue<KeyValue<Entity, Boolean>>> pendingRemovals = new ConcurrentHashMap<>();
+    private static final Map<ResourceKey<Level>, Queue<Entity>> pendingRemovals = new ConcurrentHashMap<>();
+    private static final Map<Entity, Boolean> pendingRemovalOptions = new ConcurrentHashMap<>();
 
     private List<SimpleContainer> inventoryList;
     private ConcurrentShuffleList<KeyValue<WorldCoordinate, ItemStack>> dropList;
@@ -94,10 +96,15 @@ public class EntitySweeper {
         }
 
         Set<Entity> seenEntities = Collections.newSetFromMap(new IdentityHashMap<>());
-        for (Entity entity : entities) {
-            Entity canonical = (entity instanceof PartEntity) ? ((PartEntity<?>) entity).getParent() : entity;
-            if (seenEntities.add(canonical)) {
-                result.add(this.processDrop(entity, result, context));
+        for (Entity original : entities) {
+            Entity canonical = (original instanceof PartEntity) ? ((PartEntity<?>) original).getParent() : original;
+            if (!seenEntities.add(canonical) || !AotakeUtils.prepareSweepCandidate(canonical)) {
+                continue;
+            }
+            try {
+                result.add(this.processDrop(canonical, result, context));
+            } catch (RuntimeException e) {
+                ENTITY_ERRORS.log(LOGGER, "Process sweep entity " + canonical.getStringUUID(), e);
             }
         }
 
@@ -175,9 +182,9 @@ public class EntitySweeper {
         // 处理掉落物
         if (entity instanceof ItemEntity) {
             ItemStack item = ((ItemEntity) entity).getItem();
+            result.setItemCount(item.getCount());
             if (!context.redlist.matches(entity)) {
                 itemToRecycle = item.copy();
-                result.setItemCount(item.getCount());
             }
             // 延迟移除
             entitiesToRemove.add(entity);
@@ -430,23 +437,32 @@ public class EntitySweeper {
     }
 
     public static void scheduleRemoveEntity(Entity entity, boolean keepData) {
-        if (!(entity.level() instanceof ServerLevel)) return;
-        ResourceKey<Level> dimensionKey = entity.level().dimension();
-
         Entity canonical = entity instanceof PartEntity ? ((PartEntity<?>) entity).getParent() : entity;
-        pendingRemovals
-                .computeIfAbsent(dimensionKey, k -> new ConcurrentLinkedQueue<>())
-                .add(new KeyValue<>(canonical, keepData));
+        if (canonical == null || !canonical.isAlive() || !(canonical.level() instanceof ServerLevel)) return;
+        ResourceKey<Level> dimensionKey = canonical.level().dimension();
+
+        Boolean existing = pendingRemovalOptions.putIfAbsent(canonical, keepData);
+        if (existing == null) {
+            pendingRemovals
+                    .computeIfAbsent(dimensionKey, k -> new ConcurrentLinkedQueue<>())
+                    .add(canonical);
+        } else if (keepData && !existing) {
+            pendingRemovalOptions.replace(canonical, false, true);
+        }
     }
 
     public static void flushPendingRemovals(ServerLevel world) {
-        Queue<KeyValue<Entity, Boolean>> queue = pendingRemovals.get(world.dimension());
+        Queue<Entity> queue = pendingRemovals.get(world.dimension());
         if (queue == null) return;
 
-        KeyValue<Entity, Boolean> keyValue;
-        while ((keyValue = queue.poll()) != null) {
-            if (keyValue.key().isAlive()) {
-                EntityRemovalBridge.discard(keyValue.key(), keyValue.value());
+        Entity entity;
+        while ((entity = queue.poll()) != null) {
+            Boolean keepData = pendingRemovalOptions.remove(entity);
+            if (keepData == null || !entity.isAlive()) continue;
+            try {
+                EntityRemovalBridge.discard(entity, keepData);
+            } catch (RuntimeException e) {
+                ENTITY_ERRORS.log(LOGGER, "Discard sweep entity " + entity.getStringUUID(), e);
             }
         }
     }

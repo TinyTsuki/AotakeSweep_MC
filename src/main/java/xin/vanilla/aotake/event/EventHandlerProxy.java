@@ -329,7 +329,7 @@ public class EventHandlerProxy {
     }
 
     public static void onWorldTick(LevelTickEvent event) {
-        if (!(event instanceof LevelTickEvent.Post)) return;
+        if (!(event instanceof LevelTickEvent.Pre)) return;
         if (!event.getLevel().isClientSide()) {
             EntitySweeper.flushPendingRemovals((ServerLevel) event.getLevel());
         }
