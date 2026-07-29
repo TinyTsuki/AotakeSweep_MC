@@ -22,6 +22,8 @@ public class BaniraLoomCacheRefreshContractTest {
         assertTrue(refresh.contains("remapped_mods"));
         assertTrue(refresh.contains("SHA-256"));
         assertTrue(refresh.contains("delete(staleRoot)"));
+        assertTrue(refresh.contains("findByName(\"MavenLocal\")"));
+        assertFalse(refresh.contains("System.getProperty(\"user.home\")"));
         assertFalse(refresh.contains("lastModified"));
         assertFalse(refresh.contains("worktree"));
     }
