@@ -100,6 +100,8 @@ repositories {
     maven { name = "DVS1 Maven FS"; url = "https://dvs1.progwml6.com/files/maven" }
 }
 
+apply from: "gradle/banira-local-fingerprint.gradle"
+
 dependencies {
     minecraft "net.minecraftforge:forge:${minecraft_version}-${forge_version}"
 
