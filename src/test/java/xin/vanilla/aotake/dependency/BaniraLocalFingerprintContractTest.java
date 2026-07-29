@@ -20,6 +20,8 @@ public class BaniraLocalFingerprintContractTest {
         assertTrue(fingerprintScript.contains("banira-local-state"));
         assertTrue(fingerprintScript.contains("remapped_mods"));
         assertTrue(fingerprintScript.contains("SHA-256"));
+        assertTrue(fingerprintScript.contains("findByName(\"MavenLocal\")"));
+        assertFalse(fingerprintScript.contains("System.getProperty(\"user.home\")"));
         assertFalse(fingerprintScript.contains("lastModified"));
         assertFalse(fingerprintScript.contains("worktree"));
     }
