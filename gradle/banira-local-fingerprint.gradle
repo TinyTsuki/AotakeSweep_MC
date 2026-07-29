@@ -6,9 +6,9 @@ import java.security.MessageDigest
 
 def coordinateVersion = "${loader_type}-${minecraft_version}-${banira_version}"
 def coordinate = "xin.vanilla.banira:banira_codex:${coordinateVersion}"
-def mavenLocalRoot = new File(
-        System.getProperty("maven.repo.local", new File(System.getProperty("user.home"), ".m2/repository").path)
-)
+// 复用 Gradle 解析 Maven settings 后得到的真实本地仓库路径。
+def mavenLocalRepository = repositories.findByName("MavenLocal") ?: repositories.mavenLocal()
+def mavenLocalRoot = new File(mavenLocalRepository.url)
 def publicationDir = new File(
         mavenLocalRoot,
         "xin/vanilla/banira/banira_codex/${coordinateVersion}"
