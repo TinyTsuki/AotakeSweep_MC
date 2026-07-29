@@ -51,7 +51,7 @@ configurations.configureEach {
     resolutionStrategy.cacheChangingModulesFor 0, 'seconds'
 }
 
-apply from: "gradle/refresh-banira-local.gradle"
+apply from: "gradle/banira-local-fingerprint.gradle"
 
 dependencies {
     // To change the versions see the gradle.properties file
