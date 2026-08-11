@@ -60,6 +60,26 @@ public class DustbinThemeStyleContractTest {
         assertTrue(smoke.contains("Previous-page button is active on page one"));
     }
 
+    @Test
+    public void themedReopenFailsClosedAfterEnteringTerminalPhase() throws IOException {
+        String smoke = read("src/main/java/xin/vanilla/aotake/internal/client/dev/AotakeUiSmokeRunner.java");
+        int begin = smoke.indexOf("private void beginBaniraThemeDustbin");
+        int end = smoke.indexOf("private void runDustbinThemeTick", begin);
+
+        assertTrue("Missing themed dustbin reopen boundary", begin >= 0);
+        assertTrue("Missing themed dustbin tick after reopen boundary", end > begin);
+        String reopen = smoke.substring(begin, end);
+        int enterThemePhase = reopen.indexOf("phase = Phase.DUSTBIN_THEME");
+        int sendPacket = reopen.indexOf("PacketUtils.sendPacketToServer(new OpenDustbinToServer(0))");
+        int catchFailure = reopen.indexOf("catch (RuntimeException error)");
+        int failClosed = reopen.indexOf("fail(client, \"open-dustbin-banira-theme\", error)");
+
+        assertTrue(enterThemePhase >= 0);
+        assertTrue(sendPacket > enterThemePhase);
+        assertTrue(catchFailure > sendPacket);
+        assertTrue(failClosed > catchFailure);
+    }
+
     private static float readFloatConstant(String source, String name) {
         Matcher matcher = Pattern.compile(name + "\\s*=\\s*([0-9.]+)f").matcher(source);
         assertTrue("Missing float constant " + name, matcher.find());
