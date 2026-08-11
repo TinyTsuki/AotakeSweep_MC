@@ -20,6 +20,9 @@ public class BaniraApiBoundaryTest {
             "BaniraServerUtils",
             "xin.vanilla.banira.internal.",
             "playerDataManager",
+            "PlayerDataManager",
+            "BaniraPlayerData.flush(",
+            "saveAllForWorld(",
             "IVirtualPermissionType"
     );
 

@@ -288,6 +288,12 @@ public class CommandConfigContractTest {
 
         @Nonnull
         @Override
+        public Path gameConfigPath() {
+            return Paths.get("config");
+        }
+
+        @Nonnull
+        @Override
         public Path worldDataPath() {
             return Paths.get("build", "test-world", rootDirectoryName());
         }
