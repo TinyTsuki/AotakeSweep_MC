@@ -16,6 +16,7 @@ import xin.vanilla.banira.platform.BaniraLogoService;
 import xin.vanilla.banira.platform.BaniraNetworkService;
 import xin.vanilla.banira.platform.BaniraNotificationService;
 import xin.vanilla.banira.platform.BaniraPathService;
+import xin.vanilla.banira.platform.BaniraPermissionService;
 import xin.vanilla.banira.platform.BaniraPlayerDataService;
 import xin.vanilla.banira.platform.BaniraPlatform;
 import xin.vanilla.banira.platform.BaniraPlatforms;
@@ -244,6 +245,12 @@ public class CommandConfigContractTest {
 
         @Nonnull
         @Override
+        public BaniraPermissionService permissionService() {
+            return noop(BaniraPermissionService.class);
+        }
+
+        @Nonnull
+        @Override
         public BaniraNetworkService networkService() {
             return noop(BaniraNetworkService.class);
         }
@@ -284,6 +291,12 @@ public class CommandConfigContractTest {
         @Override
         public Path configPath() {
             return Paths.get("config", rootDirectoryName());
+        }
+
+        @Nonnull
+        @Override
+        public Path gameConfigPath() {
+            return Paths.get("config");
         }
 
         @Nonnull
