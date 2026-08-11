@@ -1,7 +1,7 @@
 package xin.vanilla.aotake.event;
 
 import net.minecraft.client.Minecraft;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.world.level.GameType;
 import net.minecraftforge.client.event.ScreenEvent;
 import net.minecraftforge.common.MinecraftForge;
@@ -14,17 +14,13 @@ import xin.vanilla.aotake.network.packet.OpenDustbinToServer;
 import xin.vanilla.aotake.screen.DustbinRender;
 import xin.vanilla.aotake.screen.ProgressRender;
 import xin.vanilla.banira.api.client.event.BaniraClientEvents;
-import xin.vanilla.banira.client.event.BaniraClientEventHub;
-import xin.vanilla.banira.client.event.BaniraGuiOverlayEvent;
 import xin.vanilla.banira.common.util.PacketUtils;
 
 /**
- * 客户端 Game 逻辑；21.1 的 HUD 拦截仍通过 Banira 的 overlay 包装事件适配。
+ * 客户端 Game 逻辑；21.1 的经验条拦截由 Aotake Mixin 转发到此处。
  */
 public final class ClientGameEventHandler {
     private static final Logger LOGGER = LogManager.getLogger();
-    public static final ResourceLocation EXPERIENCE_BAR = ResourceLocation.fromNamespaceAndPath("minecraft", "experience_bar");
-
     private static long lastTime = 0;
     private static boolean showProgress = false;
     private static boolean cancelExperienceBarOverlay = false;
@@ -36,8 +32,6 @@ public final class ClientGameEventHandler {
         BaniraClientEvents.Player.onClientLoggedOut(player -> LOGGER.debug("Client: Player logged out."));
         MinecraftForge.EVENT_BUS.addListener((TickEvent.ClientTickEvent event) -> ClientGameEventHandler.onClientTick(event));
         MinecraftForge.EVENT_BUS.addListener((ScreenEvent event) -> DustbinRender.handleGuiScreen(event));
-        BaniraClientEventHub.Client.onRenderOverlayPre(ClientGameEventHandler::onRenderOverlayPre);
-        BaniraClientEventHub.Client.onRenderOverlayPost(ClientGameEventHandler::onRenderOverlayPost);
     }
 
     private static void onClientTick(TickEvent.ClientTickEvent event) {
@@ -61,23 +55,17 @@ public final class ClientGameEventHandler {
         }
     }
 
-    private static void onRenderOverlayPre(BaniraGuiOverlayEvent.Pre event) {
-        if (EXPERIENCE_BAR.equals(event.overlayId())) {
-            cancelExperienceBarOverlay = shouldForceExperienceBarOverlay()
-                    || ProgressRender.shouldHideVanillaExperienceBar(showProgress);
-            if (!cancelExperienceBarOverlay) {
-                return;
-            }
-            ProgressRender.render(event, showProgress);
+    public static void onRenderOverlayPre(GuiGraphics guiGraphics) {
+        cancelExperienceBarOverlay = shouldForceExperienceBarOverlay()
+                || ProgressRender.shouldHideVanillaExperienceBar(showProgress);
+        if (cancelExperienceBarOverlay) {
+            ProgressRender.render(guiGraphics, showProgress);
         }
     }
 
-    private static void onRenderOverlayPost(BaniraGuiOverlayEvent.Post event) {
-        if (EXPERIENCE_BAR.equals(event.overlayId())) {
-            if (ProgressRender.shouldHideVanillaExperienceBar(showProgress)) {
-                return;
-            }
-            ProgressRender.render(event, showProgress);
+    public static void onRenderOverlayPost(GuiGraphics guiGraphics) {
+        if (!ProgressRender.shouldHideVanillaExperienceBar(showProgress)) {
+            ProgressRender.render(guiGraphics, showProgress);
         }
     }
 
