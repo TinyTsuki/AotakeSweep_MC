@@ -50,6 +50,7 @@ import java.util.function.Consumer;
  */
 public final class DustbinRender {
 
+    private static final int BANIRA_TOOLBAR_GROUP_GAP = 5;
     private static final DustbinMouseInput mouseHelper = new DustbinMouseInput();
 
     /**
@@ -296,11 +297,12 @@ public final class DustbinRender {
                 }
 
                 int yOffset = 0;
+                int toolbarGroupOffset = 0;
                 if (!chunkVaultDraw && AotakeUtils.hasCommandPermission(player, EnumCommandType.CACHE_CLEAR)) {
                     int w = baseW;
                     int h = baseH;
                     int x = baseX - w - 1;
-                    int y = baseY + (h + 1) * (yOffset++);
+                    int y = baseY + (h + 1) * (yOffset++) + toolbarGroupOffset;
                     boolean hover = mouseHelper.isHoverInRect(x, y, w, h);
 
                     boolean pressVisual = mouseHelper.isPressingLeftEx() && hover;
@@ -334,7 +336,7 @@ public final class DustbinRender {
                         int w = baseW;
                         int h = baseH;
                         int x = baseX - w - 1;
-                        int y = baseY + (h + 1) * (yOffset++);
+                        int y = baseY + (h + 1) * (yOffset++) + toolbarGroupOffset;
                         boolean hover = mouseHelper.isHoverInRect(x, y, w, h);
 
                         boolean pressVisual = mouseHelper.isPressingLeftEx() && hover;
@@ -368,7 +370,7 @@ public final class DustbinRender {
                         int w = baseW;
                         int h = baseH;
                         int x = baseX - w - 1;
-                        int y = baseY + (h + 1) * (yOffset++);
+                        int y = baseY + (h + 1) * (yOffset++) + toolbarGroupOffset;
                         boolean hover = mouseHelper.isHoverInRect(x, y, w, h);
 
                         boolean pressVisual = mouseHelper.isPressingLeftEx() && hover;
@@ -398,11 +400,14 @@ public final class DustbinRender {
                         }
                     }
                 }
+                if (dustbinUi == EnumDustbinClientUiStyle.BANIRA_THEME && yOffset > 0) {
+                    toolbarGroupOffset += BANIRA_TOOLBAR_GROUP_GAP;
+                }
                 {
                     int w = baseW;
                     int h = baseH;
                     int x = baseX - w - 1;
-                    int y = baseY + (h + 1) * (yOffset++);
+                    int y = baseY + (h + 1) * (yOffset++) + toolbarGroupOffset;
                     boolean hover = mouseHelper.isHoverInRect(x, y, w, h);
 
                     boolean pressVisual = mouseHelper.isPressingLeftEx() && hover;
@@ -436,11 +441,14 @@ public final class DustbinRender {
                         }
                     }
                 }
+                if (dustbinUi == EnumDustbinClientUiStyle.BANIRA_THEME) {
+                    toolbarGroupOffset += BANIRA_TOOLBAR_GROUP_GAP;
+                }
                 {
                     int w = baseW;
                     int h = baseH;
                     int x = baseX - w - 1;
-                    int y = baseY + (h + 1) * (yOffset++);
+                    int y = baseY + (h + 1) * (yOffset++) + toolbarGroupOffset;
                     boolean hover = canPrev && mouseHelper.isHoverInRect(x, y, w, h);
 
                     boolean pressVisual = mouseHelper.isPressingLeftEx() && hover;
@@ -478,7 +486,7 @@ public final class DustbinRender {
                     int w = baseW;
                     int h = baseH;
                     int x = baseX - w - 1;
-                    int y = baseY + (h + 1) * (yOffset++);
+                    int y = baseY + (h + 1) * (yOffset++) + toolbarGroupOffset;
                     boolean hover = canNext && mouseHelper.isHoverInRect(x, y, w, h);
 
                     boolean pressVisual = mouseHelper.isPressingLeftEx() && hover;

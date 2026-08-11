@@ -71,6 +71,7 @@ public final class AotakeUiSmokeRunner {
     private int readyTick;
     private CompletableFuture<EntityScanResult> entityScan;
     private Screen dustbinBeforeRefresh;
+    private Screen dustbinBeforeTheme;
     private EnumDustbinClientUiStyle previousDustbinStyle;
 
     private AotakeUiSmokeRunner(@Nonnull Path outputDir, boolean exitOnFinish, @Nonnull String worldName) {
@@ -143,6 +144,9 @@ public final class AotakeUiSmokeRunner {
                 break;
             case DUSTBIN_REFRESH:
                 runDustbinRefreshTick(client);
+                break;
+            case DUSTBIN_THEME:
+                runDustbinThemeTick(client);
                 break;
             default:
                 break;
@@ -357,7 +361,16 @@ public final class AotakeUiSmokeRunner {
             if (readyTick >= 10) {
                 appendStatus("PASS dustbin-refresh-sidebar");
                 capture(client, "07-dustbin-refreshed");
-                finish(client);
+                if (phase == Phase.FINISHED) {
+                    return;
+                }
+                ClientConfig.get().dustbin().dustbinUiStyle(EnumDustbinClientUiStyle.BANIRA_THEME);
+                dustbinBeforeTheme = client.screen;
+                PacketUtils.sendPacketToServer(new OpenDustbinToServer(0));
+                appendStatus("SEND open-dustbin-banira-theme");
+                phase = Phase.DUSTBIN_THEME;
+                phaseTick = 0;
+                readyTick = 0;
             }
             return;
         }
@@ -365,6 +378,27 @@ public final class AotakeUiSmokeRunner {
         if (phaseTick >= DUSTBIN_TIMEOUT_TICKS) {
             fail(client, "dustbin-refresh-sidebar",
                     new IllegalStateException("Refresh sidebar button did not reopen the dustbin"));
+        }
+    }
+
+    private void runDustbinThemeTick(@Nonnull Minecraft client) {
+        phaseTick++;
+        if (client.screen instanceof ContainerScreen && client.screen != dustbinBeforeTheme) {
+            readyTick++;
+            if (readyTick >= 20) {
+                capture(client, "08-dustbin-banira-theme");
+                if (phase == Phase.FINISHED) {
+                    return;
+                }
+                appendStatus("PASS open-dustbin-banira-theme");
+                finish(client);
+            }
+            return;
+        }
+        readyTick = 0;
+        if (phaseTick >= DUSTBIN_TIMEOUT_TICKS) {
+            fail(client, "open-dustbin-banira-theme",
+                    new IllegalStateException("Banira-themed dustbin container did not reopen"));
         }
     }
 
@@ -468,6 +502,7 @@ public final class AotakeUiSmokeRunner {
         HUD_HELD,
         DUSTBIN,
         DUSTBIN_REFRESH,
+        DUSTBIN_THEME,
         FINISHED
     }
 }
