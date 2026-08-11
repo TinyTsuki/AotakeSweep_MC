@@ -32,7 +32,9 @@ public final class DustbinBaniraToolbarButtonRenderer {
         PRESET_DEFAULT
     }
 
-    private static final float BUTTON_RADIUS = 2.0f;
+    private static final float BUTTON_RADIUS = 3.0f;
+    private static final int LIGHT_NEUTRAL = 0xFFF0F2EF;
+    private static final int DARK_NEUTRAL = 0xFF252925;
 
     private DustbinBaniraToolbarButtonRenderer() {
     }
@@ -50,10 +52,12 @@ public final class DustbinBaniraToolbarButtonRenderer {
         int drawW = w;
         int drawH = h;
 
-        int bg = pickState(theme.buttonBg(), theme.buttonBgHover(), theme.buttonBgPressed(), theme.buttonBgDisabled(),
+        int bg = pickState(neutralize(theme.buttonBg(), 0.76f),
+                neutralize(theme.buttonBgHover(), 0.62f),
+                neutralize(theme.buttonBgPressed(), 0.52f),
+                neutralize(theme.buttonBgDisabled(), 0.82f),
                 enabled, hover, pressed);
-        int borderCol = pickState(theme.buttonBorder(), theme.buttonBorderHover(), theme.buttonBorderPressed(), theme.buttonBorderDisabled(),
-                enabled, hover, pressed);
+        int borderCol = resolveBorderColor(theme, enabled, hover, pressed);
 
         ShapeDrawArgs rect = ShapeDrawArgs.rect(stack, drawX, drawY, drawW, drawH, bg);
         rect.rect().radius(BUTTON_RADIUS).cornerMode(ShapeDrawArgs.RoundedCornerMode.FINE);
@@ -71,6 +75,19 @@ public final class DustbinBaniraToolbarButtonRenderer {
         float stroke = preset == ButtonWidget.PresetStyle.CLOSE ? 2.0f : 1.5f;
         int icon = resolveIconColor(theme, tint, enabled, hover, pressed);
         drawPresetIcon(stack, preset, contentX, contentY, aw, ah, icon, stroke);
+    }
+
+    private static int resolveBorderColor(BaniraColorConfig theme, boolean enabled, boolean hover, boolean pressed) {
+        if (!enabled) {
+            return withAlpha(neutralize(theme.buttonBorderDisabled(), 0.82f), 0.28f);
+        }
+        if (pressed) {
+            return theme.accentPressed();
+        }
+        if (hover) {
+            return theme.accentHover();
+        }
+        return withAlpha(neutralize(theme.buttonBorder(), 0.72f), 0.42f);
     }
 
     private static int pickState(int normal, int hoverC, int pressedC, int disabled,
@@ -137,6 +154,33 @@ public final class DustbinBaniraToolbarButtonRenderer {
             default:
                 return t.buttonPresetIconColor();
         }
+    }
+
+    private static int neutralize(int color, float amount) {
+        int r = (color >>> 16) & 0xFF;
+        int g = (color >>> 8) & 0xFF;
+        int b = color & 0xFF;
+        int neutral = (r * 30 + g * 59 + b * 11) / 100 >= 128 ? LIGHT_NEUTRAL : DARK_NEUTRAL;
+        return mixArgb(color, neutral, amount);
+    }
+
+    private static int mixArgb(int from, int to, float amount) {
+        float clamped = Math.max(0.0f, Math.min(1.0f, amount));
+        int a = mixChannel((from >>> 24) & 0xFF, (to >>> 24) & 0xFF, clamped);
+        int r = mixChannel((from >>> 16) & 0xFF, (to >>> 16) & 0xFF, clamped);
+        int g = mixChannel((from >>> 8) & 0xFF, (to >>> 8) & 0xFF, clamped);
+        int b = mixChannel(from & 0xFF, to & 0xFF, clamped);
+        return (a << 24) | (r << 16) | (g << 8) | b;
+    }
+
+    private static int mixChannel(int from, int to, float amount) {
+        return Math.round(from + (to - from) * amount);
+    }
+
+    private static int withAlpha(int color, float alpha) {
+        int sourceAlpha = (color >>> 24) & 0xFF;
+        int appliedAlpha = Math.round(sourceAlpha * Math.max(0.0f, Math.min(1.0f, alpha)));
+        return (appliedAlpha << 24) | (color & 0xFFFFFF);
     }
 
     /**
