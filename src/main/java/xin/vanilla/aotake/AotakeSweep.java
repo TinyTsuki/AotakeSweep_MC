@@ -9,13 +9,11 @@ import net.neoforged.fml.ModContainer;
 import net.neoforged.fml.common.Mod;
 import net.neoforged.fml.event.lifecycle.FMLCommonSetupEvent;
 import net.neoforged.fml.loading.FMLEnvironment;
-import net.neoforged.neoforge.event.entity.player.PlayerEvent;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import xin.vanilla.aotake.command.AotakeCommand;
 import xin.vanilla.aotake.config.ClientConfig;
 import xin.vanilla.aotake.config.CommonConfig;
-import xin.vanilla.aotake.event.EventHandlerProxy;
 import xin.vanilla.aotake.internal.neoforge.event.NeoForgeAotakeGameEventAdapter;
 import xin.vanilla.aotake.network.NetworkInit;
 import xin.vanilla.aotake.network.packet.SweepDataSyncToClient;
@@ -108,19 +106,6 @@ public class AotakeSweep {
         modEventBus.addListener(this::onCommonSetup);
 
         BaniraEventBus.Server.onStarting(server -> entitySweeper.clear());
-        BaniraEventBus.Commands.onRegister(event -> AotakeCommand.register(event.getDispatcher()));
-
-        BaniraEventBus.Server.onTick(EventHandlerProxy::onServerTick);
-        BaniraEventBus.WorldEvents.onTick(EventHandlerProxy::onWorldTick);
-        BaniraEventBus.Interaction.onRightClickItem(EventHandlerProxy::onPlayerUseItem);
-        BaniraEventBus.Interaction.onRightClickBlock(event -> {
-            EventHandlerProxy.onRightBlock(event);
-            EventHandlerProxy.onPlayerUseItem(event);
-        });
-        BaniraEventBus.Interaction.onEntityInteractSpecific(EventHandlerProxy::onRightEntity);
-        BaniraEventBus.Player.onLoggedIn(player -> EventHandlerProxy.onPlayerLoggedIn(new PlayerEvent.PlayerLoggedInEvent(player)));
-        BaniraEventBus.Player.onLoggedOut(player -> EventHandlerProxy.onPlayerLoggedOut(new PlayerEvent.PlayerLoggedOutEvent(player)));
-
         NeoForgeAotakeGameEventAdapter.register(modEventBus);
 
         if (FMLEnvironment.dist == Dist.CLIENT) {

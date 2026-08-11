@@ -13,7 +13,6 @@ import xin.vanilla.aotake.enums.EnumProgressBarTextAlignV;
 import xin.vanilla.aotake.enums.EnumProgressBarType;
 import xin.vanilla.banira.client.data.FontDrawArgs;
 import xin.vanilla.banira.client.data.TransformArgs;
-import xin.vanilla.banira.client.event.BaniraGuiOverlayEvent;
 import xin.vanilla.banira.client.gui.component.Text;
 import xin.vanilla.banira.client.gui.widget.LabelWidget;
 import xin.vanilla.banira.client.util.AbstractGuiUtils;
@@ -33,14 +32,6 @@ import java.util.List;
 public final class ProgressRender {
 
     private ProgressRender() {
-    }
-
-    public static void render(BaniraGuiOverlayEvent.Pre event, boolean showProgressHeld) {
-        render(event.guiGraphics(), showProgressHeld);
-    }
-
-    public static void render(BaniraGuiOverlayEvent.Post event, boolean showProgressHeld) {
-        render(event.guiGraphics(), showProgressHeld);
     }
 
     public static boolean shouldHideVanillaExperienceBar(boolean showProgressHeld) {

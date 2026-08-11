@@ -2,28 +2,24 @@ package xin.vanilla.aotake.event;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.resources.ResourceLocation;
 import net.neoforged.neoforge.client.event.ClientTickEvent;
+import net.neoforged.neoforge.client.event.ScreenEvent;
+import net.neoforged.neoforge.common.NeoForge;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import xin.vanilla.aotake.Identifier;
 import xin.vanilla.aotake.config.ClientConfig;
 import xin.vanilla.aotake.internal.client.dev.AotakeUiSmokeRunner;
 import xin.vanilla.aotake.network.packet.OpenDustbinToServer;
 import xin.vanilla.aotake.screen.DustbinRender;
 import xin.vanilla.aotake.screen.ProgressRender;
 import xin.vanilla.banira.api.client.event.BaniraClientEvents;
-import xin.vanilla.banira.client.event.BaniraClientEventHub;
-import xin.vanilla.banira.client.event.BaniraGuiOverlayEvent;
 import xin.vanilla.banira.common.util.PacketUtils;
 
 /**
- * 客户端 Game 逻辑；NeoForge 21.1 的 HUD 拦截仍通过 Banira overlay 包装事件适配。
+ * 客户端 Game 逻辑；NeoForge 21.1 的经验条拦截由 Aotake Mixin 转发到此处。
  */
 public final class ClientGameEventHandler {
     private static final Logger LOGGER = LogManager.getLogger();
-    public static final ResourceLocation EXPERIENCE_BAR = Identifier.id().create("minecraft", "experience_bar");
-
     private static long lastTime = 0;
     private static boolean showProgress = false;
     private static boolean cancelExperienceBarOverlay = false;
@@ -33,13 +29,11 @@ public final class ClientGameEventHandler {
 
     public static void register() {
         BaniraClientEvents.Player.onClientLoggedOut(player -> LOGGER.debug("Client: Player logged out."));
-        BaniraClientEventHub.Client.onClientTick(ClientGameEventHandler::onClientTick);
-        BaniraClientEventHub.Client.onGuiScreen(DustbinRender::handleGuiScreen);
-        BaniraClientEventHub.Client.onRenderOverlayPre(ClientGameEventHandler::onRenderOverlayPre);
-        BaniraClientEventHub.Client.onRenderOverlayPost(ClientGameEventHandler::onRenderOverlayPost);
+        NeoForge.EVENT_BUS.addListener((ClientTickEvent.Post event) -> ClientGameEventHandler.onClientTick(event));
+        NeoForge.EVENT_BUS.addListener((ScreenEvent event) -> DustbinRender.handleGuiScreen(event));
     }
 
-    private static void onClientTick(ClientTickEvent event) {
+    private static void onClientTick(ClientTickEvent.Post event) {
         AotakeUiSmokeRunner.tick(Minecraft.getInstance());
         if (Minecraft.getInstance().screen == null) {
             if (ClientModEventHandler.DUSTBIN_KEY.isDown() && System.currentTimeMillis() - lastTime > 100) {
@@ -57,13 +51,8 @@ public final class ClientGameEventHandler {
         }
     }
 
-    private static void onRenderOverlayPre(BaniraGuiOverlayEvent.Pre event) {
-        if (EXPERIENCE_BAR.equals(event.overlayId())) {
-            cancelExperienceBarOverlay = ProgressRender.shouldHideVanillaExperienceBar(showProgress);
-        }
-    }
-
-    private static void onRenderOverlayPost(BaniraGuiOverlayEvent.Post event) {
+    public static void onRenderOverlayPre() {
+        cancelExperienceBarOverlay = ProgressRender.shouldHideVanillaExperienceBar(showProgress);
     }
 
     public static boolean shouldCancelExperienceBarOverlay() {
