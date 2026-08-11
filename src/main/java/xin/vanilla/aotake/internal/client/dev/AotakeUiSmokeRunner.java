@@ -364,13 +364,7 @@ public final class AotakeUiSmokeRunner {
                 if (phase == Phase.FINISHED) {
                     return;
                 }
-                ClientConfig.get().dustbin().dustbinUiStyle(EnumDustbinClientUiStyle.BANIRA_THEME);
-                dustbinBeforeTheme = client.screen;
-                PacketUtils.sendPacketToServer(new OpenDustbinToServer(0));
-                appendStatus("SEND open-dustbin-banira-theme");
-                phase = Phase.DUSTBIN_THEME;
-                phaseTick = 0;
-                readyTick = 0;
+                beginBaniraThemeDustbin(client);
             }
             return;
         }
@@ -378,6 +372,20 @@ public final class AotakeUiSmokeRunner {
         if (phaseTick >= DUSTBIN_TIMEOUT_TICKS) {
             fail(client, "dustbin-refresh-sidebar",
                     new IllegalStateException("Refresh sidebar button did not reopen the dustbin"));
+        }
+    }
+
+    private void beginBaniraThemeDustbin(@Nonnull Minecraft client) {
+        try {
+            ClientConfig.get().dustbin().dustbinUiStyle(EnumDustbinClientUiStyle.BANIRA_THEME);
+            dustbinBeforeTheme = client.screen;
+            phase = Phase.DUSTBIN_THEME;
+            phaseTick = 0;
+            readyTick = 0;
+            PacketUtils.sendPacketToServer(new OpenDustbinToServer(0));
+            appendStatus("SEND open-dustbin-banira-theme");
+        } catch (RuntimeException error) {
+            fail(client, "open-dustbin-banira-theme", error);
         }
     }
 
