@@ -25,6 +25,16 @@ public class NeoForgeIntegrationContractTest {
     }
 
     @Test
+    public void abstractTickEventsAreRegisteredThroughConcretePhases() throws Exception {
+        Path adapter = Paths.get("src", "main", "java", "xin", "vanilla", "aotake", "internal",
+                "neoforge", "event", "NeoForgeAotakeGameEventAdapter.java");
+        String source = new String(Files.readAllBytes(adapter), StandardCharsets.UTF_8);
+
+        assertTrue(source.contains("NeoForge.EVENT_BUS.addListener((ServerTickEvent.Post event)"));
+        assertTrue(source.contains("NeoForge.EVENT_BUS.addListener((LevelTickEvent.Pre event)"));
+    }
+
+    @Test
     public void smokeRejectsProgressKeyPlayerListConflict() throws Exception {
         Method validator;
         try {

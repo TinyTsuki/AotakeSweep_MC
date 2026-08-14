@@ -36,9 +36,9 @@ public final class NeoForgeAotakeGameEventAdapter {
 
         NeoForge.EVENT_BUS.addListener((RegisterCommandsEvent event) ->
                 AotakeCommand.register(event.getDispatcher()));
-        NeoForge.EVENT_BUS.addListener((ServerTickEvent event) ->
+        NeoForge.EVENT_BUS.addListener((ServerTickEvent.Post event) ->
                 EventHandlerProxy.onServerTick(event));
-        NeoForge.EVENT_BUS.addListener((LevelTickEvent event) ->
+        NeoForge.EVENT_BUS.addListener((LevelTickEvent.Pre event) ->
                 EventHandlerProxy.onWorldTick(event));
         NeoForge.EVENT_BUS.addListener((PlayerInteractEvent.RightClickItem event) ->
                 EventHandlerProxy.onPlayerUseItem(event));
