@@ -279,14 +279,29 @@ public final class DustbinRender {
                         : accessor.aotake$getTopPos();
 
                 boolean chunkVaultDraw = isChunkVaultTitle(screen.getTitle().getString());
+                boolean canClearCache = !chunkVaultDraw
+                        && AotakeUtils.hasCommandPermission(player, EnumCommandType.CACHE_CLEAR);
+                boolean canClearDustbin = !chunkVaultDraw
+                        && AotakeUtils.hasCommandPermission(player, EnumCommandType.DUSTBIN_CLEAR);
                 int curDrawPage = chunkVaultDraw ? chunkVaultPage : dustbinPage;
                 int totDrawPage = chunkVaultDraw ? chunkVaultTotalPage : dustbinTotalPage;
                 boolean canPrev = DustbinPageNavigation.canNavigate(curDrawPage, totDrawPage, -1);
                 boolean canNext = DustbinPageNavigation.canNavigate(curDrawPage, totDrawPage, 1);
 
+                if (dustbinUi == EnumDustbinClientUiStyle.BANIRA_THEME) {
+                    int themedToolbarButtonCount = 3
+                            + (canClearCache ? 1 : 0)
+                            + (canClearDustbin ? 2 : 0);
+                    int themedToolbarGapCount = 1 + ((canClearCache || canClearDustbin) ? 1 : 0);
+                    int railHeight = themedToolbarButtonCount * (baseH + 1) - 1
+                            + themedToolbarGapCount * BANIRA_TOOLBAR_GROUP_GAP + 6;
+                    DustbinBaniraToolbarButtonRenderer.drawRail(stack, baniraTheme,
+                            baseX - baseW - 4, baseY - 3, baseW + 5, railHeight);
+                }
+
                 int yOffset = 0;
                 int toolbarGroupOffset = 0;
-                if (!chunkVaultDraw && AotakeUtils.hasCommandPermission(player, EnumCommandType.CACHE_CLEAR)) {
+                if (canClearCache) {
                     int w = baseW;
                     int h = baseH;
                     int x = baseX - w - 1;
@@ -319,7 +334,7 @@ public final class DustbinRender {
                         PacketUtils.sendPacketToServer(new ClearDustbinToServer(true, true));
                     }
                 }
-                if (!chunkVaultDraw && AotakeUtils.hasCommandPermission(player, EnumCommandType.DUSTBIN_CLEAR)) {
+                if (canClearDustbin) {
                     {
                         int w = baseW;
                         int h = baseH;
