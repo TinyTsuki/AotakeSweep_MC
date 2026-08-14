@@ -35,6 +35,9 @@ public class DustbinThemeStyleContractTest {
         assertTrue(readFloatConstant(paint, "SLOT_BORDER_ALPHA") <= 0.50f);
         assertTrue(paint.contains("int slotBorder ="));
         assertTrue(paint.contains("drawSlotSurface(stack"));
+        assertTrue(paint.contains("SLOT_FRAME_SIZE = 17"));
+        assertTrue(paint.contains("drawFineRoundedRect(stack, x, y, SLOT_FRAME_SIZE, SLOT_FRAME_SIZE"));
+        assertFalse(paint.contains("SLOT_RADIUS + 0.5f, border, 1"));
     }
 
     @Test
@@ -44,13 +47,17 @@ public class DustbinThemeStyleContractTest {
 
         assertTrue(render.contains("BANIRA_TOOLBAR_GROUP_GAP"));
         assertTrue(render.contains("BANIRA_TOOLBAR_CONTAINER_GAP = 2"));
+        assertTrue(render.contains("BANIRA_TOOLBAR_RAIL_PADDING = 2"));
         assertTrue(render.contains("baseX -= BANIRA_TOOLBAR_CONTAINER_GAP"));
+        assertTrue(render.contains("baseY += BANIRA_TOOLBAR_RAIL_PADDING"));
         assertTrue(render.contains("toolbarGroupOffset"));
         assertEquals(2, countOccurrences(render,
                 "toolbarGroupOffset += BANIRA_TOOLBAR_GROUP_GAP;"));
         assertTrue(render.contains("themedToolbarButtonCount"));
         assertTrue(render.contains("DustbinBaniraToolbarButtonRenderer.drawRail"));
-        assertTrue(render.contains("baseW + 3, railHeight"));
+        assertTrue(render.contains("int railX = baseX - baseW - 1 - BANIRA_TOOLBAR_RAIL_PADDING"));
+        assertTrue(render.contains("int railY = baseY - BANIRA_TOOLBAR_RAIL_PADDING"));
+        assertTrue(render.contains("int railWidth = baseW + BANIRA_TOOLBAR_RAIL_PADDING * 2"));
         assertFalse(render.contains("baseW + 5, railHeight"));
         assertTrue(toolbar.contains("public static void drawRail"));
         assertTrue(toolbar.contains("theme.bgSecondary()"));
