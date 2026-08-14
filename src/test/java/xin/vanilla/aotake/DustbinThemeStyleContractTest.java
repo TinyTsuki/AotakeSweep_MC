@@ -13,28 +13,44 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
-/** 保证 Banira 垃圾箱主题保持轻量面板、低对比槽位和独立视觉烟测。 */
+/** 保证 Banira 垃圾箱主题保持单层柜体、轻量槽位和独立视觉烟测。 */
 public class DustbinThemeStyleContractTest {
 
     @Test
-    public void themePaintUsesFineRoundedLowContrastSurfaces() throws IOException {
+    public void themePaintUsesSingleThemeMappedCabinetSurface() throws IOException {
         String paint = read("src/main/java/xin/vanilla/aotake/screen/DustbinBaniraThemePaint.java");
 
         assertTrue(paint.contains("RoundedCornerMode.FINE"));
         assertTrue(paint.contains("drawFineRoundedRect"));
+        assertTrue(paint.contains("int cabinetFill = t.bgSurface()"));
+        assertTrue(paint.contains("drawPlayerInventorySurface"));
+        assertTrue(paint.contains("drawSlotSurfaceGrid"));
         assertFalse(paint.contains("fillOutLine"));
+        assertFalse(paint.contains("LIGHT_NEUTRAL"));
+        assertFalse(paint.contains("DARK_NEUTRAL"));
+        assertFalse(paint.contains("neutralize("));
+        assertFalse(paint.contains("drawRegionPanel"));
+        assertFalse(paint.contains("SLOT_BORDER_ALPHA"));
         assertTrue(readFloatConstant(paint, "SLOT_FILL_ALPHA") <= 0.35f);
-        assertTrue(readFloatConstant(paint, "SLOT_BORDER_ALPHA") <= 0.30f);
     }
 
     @Test
-    public void themedToolbarSeparatesDangerNormalAndPagingGroups() throws IOException {
+    public void themedToolbarUsesCompactRailAndDirectThemeStates() throws IOException {
         String render = read("src/main/java/xin/vanilla/aotake/screen/DustbinRender.java");
+        String toolbar = read("src/main/java/xin/vanilla/aotake/screen/DustbinBaniraToolbarButtonRenderer.java");
 
         assertTrue(render.contains("BANIRA_TOOLBAR_GROUP_GAP"));
         assertTrue(render.contains("toolbarGroupOffset"));
         assertEquals(2, countOccurrences(render,
                 "toolbarGroupOffset += BANIRA_TOOLBAR_GROUP_GAP;"));
+        assertTrue(render.contains("themedToolbarButtonCount"));
+        assertTrue(render.contains("DustbinBaniraToolbarButtonRenderer.drawRail"));
+        assertTrue(toolbar.contains("public static void drawRail"));
+        assertTrue(toolbar.contains("theme.bgSecondary()"));
+        assertTrue(toolbar.contains("theme.buttonBg()"));
+        assertFalse(toolbar.contains("LIGHT_NEUTRAL"));
+        assertFalse(toolbar.contains("DARK_NEUTRAL"));
+        assertFalse(toolbar.contains("neutralize("));
     }
 
     @Test
