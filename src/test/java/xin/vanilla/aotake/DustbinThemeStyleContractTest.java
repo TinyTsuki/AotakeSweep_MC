@@ -30,8 +30,11 @@ public class DustbinThemeStyleContractTest {
         assertFalse(paint.contains("DARK_NEUTRAL"));
         assertFalse(paint.contains("neutralize("));
         assertFalse(paint.contains("drawRegionPanel"));
-        assertFalse(paint.contains("SLOT_BORDER_ALPHA"));
         assertTrue(readFloatConstant(paint, "SLOT_FILL_ALPHA") <= 0.35f);
+        assertTrue(readFloatConstant(paint, "SLOT_BORDER_ALPHA") >= 0.35f);
+        assertTrue(readFloatConstant(paint, "SLOT_BORDER_ALPHA") <= 0.50f);
+        assertTrue(paint.contains("int slotBorder ="));
+        assertTrue(paint.contains("drawSlotSurface(stack"));
     }
 
     @Test
@@ -40,11 +43,15 @@ public class DustbinThemeStyleContractTest {
         String toolbar = read("src/main/java/xin/vanilla/aotake/screen/DustbinBaniraToolbarButtonRenderer.java");
 
         assertTrue(render.contains("BANIRA_TOOLBAR_GROUP_GAP"));
+        assertTrue(render.contains("BANIRA_TOOLBAR_CONTAINER_GAP = 2"));
+        assertTrue(render.contains("baseX -= BANIRA_TOOLBAR_CONTAINER_GAP"));
         assertTrue(render.contains("toolbarGroupOffset"));
         assertEquals(2, countOccurrences(render,
                 "toolbarGroupOffset += BANIRA_TOOLBAR_GROUP_GAP;"));
         assertTrue(render.contains("themedToolbarButtonCount"));
         assertTrue(render.contains("DustbinBaniraToolbarButtonRenderer.drawRail"));
+        assertTrue(render.contains("baseW + 3, railHeight"));
+        assertFalse(render.contains("baseW + 5, railHeight"));
         assertTrue(toolbar.contains("public static void drawRail"));
         assertTrue(toolbar.contains("theme.bgSecondary()"));
         assertTrue(toolbar.contains("theme.buttonBg()"));
