@@ -11,6 +11,7 @@ import xin.vanilla.banira.client.gui.widget.BaseShapeWidget;
 public final class DustbinBaniraThemePaint {
 
     private static final int SLOT_STEP = 18;
+    private static final int SLOT_FRAME_SIZE = 17;
     private static final int SLOT_ORIGIN_X = 8;
     private static final int CHEST_FIRST_Y = 18;
     private static final int PLAYER_SURFACE_BASE_Y = 90;
@@ -108,10 +109,11 @@ public final class DustbinBaniraThemePaint {
     }
 
     private static void drawSlotSurface(PoseStack stack, int x, int y, int fill, int border) {
-        drawFineRoundedRect(stack, x + 1, y + 1, SLOT_STEP - 2, SLOT_STEP - 2,
+        // 分离的填充外框可避免相邻圆角描边在交界处形成锯齿节点。
+        drawFineRoundedRect(stack, x, y, SLOT_FRAME_SIZE, SLOT_FRAME_SIZE,
+                SLOT_RADIUS + 0.5f, border, 0);
+        drawFineRoundedRect(stack, x + 1, y + 1, SLOT_FRAME_SIZE - 2, SLOT_FRAME_SIZE - 2,
                 SLOT_RADIUS, fill, 0);
-        drawFineRoundedRect(stack, x, y, SLOT_STEP, SLOT_STEP,
-                SLOT_RADIUS + 0.5f, border, 1);
     }
 
     private static void drawFineRoundedRect(PoseStack stack, int x, int y, int w, int h,

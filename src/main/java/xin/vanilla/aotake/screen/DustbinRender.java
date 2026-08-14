@@ -51,6 +51,7 @@ public final class DustbinRender {
 
     private static final int BANIRA_TOOLBAR_GROUP_GAP = 5;
     private static final int BANIRA_TOOLBAR_CONTAINER_GAP = 2;
+    private static final int BANIRA_TOOLBAR_RAIL_PADDING = 2;
     private static final DustbinMouseInput mouseHelper = new DustbinMouseInput();
 
     /**
@@ -280,6 +281,7 @@ public final class DustbinRender {
                         : accessor.aotake$getTopPos();
                 if (dustbinUi == EnumDustbinClientUiStyle.BANIRA_THEME) {
                     baseX -= BANIRA_TOOLBAR_CONTAINER_GAP;
+                    baseY += BANIRA_TOOLBAR_RAIL_PADDING;
                 }
 
                 boolean chunkVaultDraw = isChunkVaultTitle(screen.getTitle().getString());
@@ -297,10 +299,14 @@ public final class DustbinRender {
                             + (canClearCache ? 1 : 0)
                             + (canClearDustbin ? 2 : 0);
                     int themedToolbarGapCount = 1 + ((canClearCache || canClearDustbin) ? 1 : 0);
-                    int railHeight = themedToolbarButtonCount * (baseH + 1) - 1
-                            + themedToolbarGapCount * BANIRA_TOOLBAR_GROUP_GAP + 6;
+                    int toolbarStackHeight = themedToolbarButtonCount * (baseH + 1) - 1
+                            + themedToolbarGapCount * BANIRA_TOOLBAR_GROUP_GAP;
+                    int railX = baseX - baseW - 1 - BANIRA_TOOLBAR_RAIL_PADDING;
+                    int railY = baseY - BANIRA_TOOLBAR_RAIL_PADDING;
+                    int railWidth = baseW + BANIRA_TOOLBAR_RAIL_PADDING * 2;
+                    int railHeight = toolbarStackHeight + BANIRA_TOOLBAR_RAIL_PADDING * 2;
                     DustbinBaniraToolbarButtonRenderer.drawRail(stack, baniraTheme,
-                            baseX - baseW - 4, baseY - 3, baseW + 3, railHeight);
+                            railX, railY, railWidth, railHeight);
                 }
 
                 int yOffset = 0;
