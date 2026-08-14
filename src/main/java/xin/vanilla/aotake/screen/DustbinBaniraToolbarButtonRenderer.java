@@ -177,7 +177,7 @@ public final class DustbinBaniraToolbarButtonRenderer {
     /**
      * 与 {@link ButtonWidget} 内 {@code drawPresetIcon} / {@code drawResetIcon} 几何一致。
      */
-    private static void drawPresetIcon(MatrixStack stack, ButtonWidget.PresetStyle preset, int x, int y, int w, int h, int color, float iconStrokeWidth) {
+    private static void drawPresetIcon(PoseStack stack, ButtonWidget.PresetStyle preset, int x, int y, int w, int h, int color, float iconStrokeWidth) {
         float iw = Math.max(0f, (float) w);
         float ih = Math.max(0f, (float) h);
         float size = Math.min(iw, ih);
@@ -235,7 +235,7 @@ public final class DustbinBaniraToolbarButtonRenderer {
         }
     }
 
-    private static void drawResetIcon(MatrixStack stack, float cx, float cy, float r, float lw, int color) {
+    private static void drawResetIcon(PoseStack stack, float cx, float cy, float r, float lw, int color) {
         float d = r * 1.375f;
         float triR = r * 0.65f;
         float xL = cx - d;
