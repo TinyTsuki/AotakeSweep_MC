@@ -49,6 +49,7 @@ import java.util.function.Consumer;
 public final class DustbinRender {
 
     private static final int BANIRA_TOOLBAR_GROUP_GAP = 5;
+    private static final int BANIRA_TOOLBAR_CONTAINER_GAP = 2;
     private static final DustbinMouseInput mouseHelper = new DustbinMouseInput();
 
     /**
@@ -276,6 +277,9 @@ public final class DustbinRender {
                 int baseY = DustbinGuiLayoutCache.valid
                         ? DustbinGuiLayoutCache.topPos + DustbinGuiConfig.getButtonYOffset()
                         : accessor.aotake$getTopPos();
+                if (dustbinUi == EnumDustbinClientUiStyle.BANIRA_THEME) {
+                    baseX -= BANIRA_TOOLBAR_CONTAINER_GAP;
+                }
 
                 boolean chunkVaultDraw = isChunkVaultTitle(screen.getTitle().getString());
                 boolean canClearCache = !chunkVaultDraw
@@ -295,7 +299,7 @@ public final class DustbinRender {
                     int railHeight = themedToolbarButtonCount * (baseH + 1) - 1
                             + themedToolbarGapCount * BANIRA_TOOLBAR_GROUP_GAP + 6;
                     DustbinBaniraToolbarButtonRenderer.drawRail(stack, baniraTheme,
-                            baseX - baseW - 4, baseY - 3, baseW + 5, railHeight);
+                            baseX - baseW - 4, baseY - 3, baseW + 3, railHeight);
                 }
 
                 int yOffset = 0;
