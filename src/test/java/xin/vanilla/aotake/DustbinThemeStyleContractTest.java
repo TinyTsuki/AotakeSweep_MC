@@ -68,46 +68,40 @@ public class DustbinThemeStyleContractTest {
     }
 
     @Test
-    public void smokeCapturesThemeAfterVanillaInteractionAndRestoresStyle() throws IOException {
+    public void smokeCoversEveryStyleAndRestoresTheOriginalSelection() throws IOException {
         String smoke = read("src/main/java/xin/vanilla/aotake/internal/client/dev/AotakeUiSmokeRunner.java");
 
-        int vanillaOpen = smoke.indexOf("dustbinUiStyle(EnumDustbinClientUiStyle.VANILLA)");
-        int vanillaInteraction = smoke.indexOf("PASS dustbin-refresh-sidebar");
-        int themeOpen = smoke.indexOf("dustbinUiStyle(EnumDustbinClientUiStyle.BANIRA_THEME)");
-        int themeCapture = smoke.indexOf("capture(client, \"08-dustbin-banira-theme\")");
-        int restore = smoke.indexOf("restoreDustbinStyle()", themeCapture);
+        int vanilla = smoke.indexOf("EnumDustbinClientUiStyle.VANILLA");
+        int textured = smoke.indexOf("EnumDustbinClientUiStyle.TEXTURED", vanilla);
+        int themed = smoke.indexOf("EnumDustbinClientUiStyle.BANIRA_THEME", textured);
+        int remember = smoke.indexOf("originalDustbinStyle = ClientConfig.get().dustbin().dustbinUiStyle()");
+        int firstOpen = smoke.indexOf("openDustbinStyle(client)", remember);
+        int restore = smoke.indexOf("restoreDustbinStyle()", firstOpen);
 
-        assertTrue(vanillaOpen >= 0);
-        assertTrue(vanillaInteraction > vanillaOpen);
-        assertTrue(themeOpen > vanillaInteraction);
-        assertTrue(themeCapture > themeOpen);
-        assertTrue(restore > themeCapture);
-        assertTrue(smoke.contains("capture(client, \"07-dustbin-refreshed\");\n" +
-                "                if (phase == Phase.FINISHED)"));
-        assertTrue(smoke.contains("capture(client, \"08-dustbin-banira-theme\");\n" +
-                "                if (phase == Phase.FINISHED)"));
-        assertTrue(smoke.contains("CLICK dustbin-refresh-sidebar"));
-        assertTrue(smoke.contains("Previous-page button is active on page one"));
+        assertTrue(vanilla >= 0);
+        assertTrue(textured > vanilla);
+        assertTrue(themed > textured);
+        assertTrue(remember >= 0);
+        assertTrue(firstOpen > remember);
+        assertTrue(restore > firstOpen);
+        assertTrue(smoke.contains("assertDustbinStyle((AbstractContainerScreen<?>) client.screen, style)"));
+        assertTrue(smoke.contains("capture(client, name)"));
+        assertTrue(smoke.contains("dustbinStyleIndex >= DUSTBIN_STYLES.length"));
     }
 
     @Test
-    public void themedReopenFailsClosedAfterEnteringTerminalPhase() throws IOException {
+    public void everyStyleReopenHasAClosedTimeoutPath() throws IOException {
         String smoke = read("src/main/java/xin/vanilla/aotake/internal/client/dev/AotakeUiSmokeRunner.java");
-        int begin = smoke.indexOf("private void beginBaniraThemeDustbin");
-        int end = smoke.indexOf("private void runDustbinThemeTick", begin);
+        int begin = smoke.indexOf("private void runDustbinTick");
+        int end = smoke.indexOf("private static void setProgressKey", begin);
 
-        assertTrue("Missing themed dustbin reopen boundary", begin >= 0);
-        assertTrue("Missing themed dustbin tick after reopen boundary", end > begin);
+        assertTrue("Missing dustbin style smoke boundary", begin >= 0);
+        assertTrue("Missing end of dustbin style smoke boundary", end > begin);
         String reopen = smoke.substring(begin, end);
-        int enterThemePhase = reopen.indexOf("phase = Phase.DUSTBIN_THEME");
-        int sendPacket = reopen.indexOf("PacketUtils.sendPacketToServer(new OpenDustbinToServer(0))");
-        int catchFailure = reopen.indexOf("catch (RuntimeException error)");
-        int failClosed = reopen.indexOf("fail(client, \"open-dustbin-banira-theme\", error)");
-
-        assertTrue(enterThemePhase >= 0);
-        assertTrue(sendPacket > enterThemePhase);
-        assertTrue(catchFailure > sendPacket);
-        assertTrue(failClosed > catchFailure);
+        assertTrue(reopen.contains("DUSTBIN_STYLES[dustbinStyleIndex]"));
+        assertTrue(reopen.contains("phaseTick >= DUSTBIN_TIMEOUT_TICKS"));
+        assertTrue(reopen.contains("fail(client, \"dustbin-\""));
+        assertTrue(smoke.contains("PacketUtils.sendPacketToServer(new OpenDustbinToServer(0))"));
     }
 
     private static float readFloatConstant(String source, String name) {
