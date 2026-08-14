@@ -56,7 +56,7 @@ public final class NeoForgeAotakeGameEventAdapter {
         modEventBus.addListener(NeoForgeAotakeGameEventAdapter::onConfigReload);
     }
 
-    private static void onConfigReload(ModConfigEvent event) {
+    private static void onConfigReload(ModConfigEvent.Reloading event) {
         try {
             ModConfig config = event.getConfig();
             BaniraConfigHandle common = BaniraConfigs.handle(CommonConfig.class);

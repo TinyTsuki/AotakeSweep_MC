@@ -32,6 +32,7 @@ public class NeoForgeIntegrationContractTest {
 
         assertTrue(source.contains("NeoForge.EVENT_BUS.addListener((ServerTickEvent.Post event)"));
         assertTrue(source.contains("NeoForge.EVENT_BUS.addListener((LevelTickEvent.Pre event)"));
+        assertTrue(source.contains("private static void onConfigReload(ModConfigEvent.Reloading event)"));
     }
 
     @Test
