@@ -7,7 +7,7 @@ import xin.vanilla.banira.client.gui.widget.BaseShapeWidget;
 import xin.vanilla.banira.client.gui.widget.ButtonWidget;
 import xin.vanilla.banira.client.util.AbstractGuiUtils;
 
-
+/** 绘制 Banira 主题垃圾箱的操作轨与自绘图标按钮。 */
 public final class DustbinBaniraToolbarButtonRenderer {
 
     /**
@@ -32,9 +32,32 @@ public final class DustbinBaniraToolbarButtonRenderer {
         PRESET_DEFAULT
     }
 
-    private static final float BUTTON_RADIUS = 2.0f;
+    private static final float RAIL_RADIUS = 4.0f;
+    private static final float BUTTON_RADIUS = 3.0f;
 
     private DustbinBaniraToolbarButtonRenderer() {
+    }
+
+    /**
+     * 在所有按钮之后方绘制一条紧凑操作轨，使分组保持统一视觉边界
+     */
+    public static void drawRail(PoseStack stack, BaniraColorConfig theme,
+                                int x, int y, int w, int h) {
+        int fill = withAlpha(theme.bgSecondary(), 0.88f);
+        int borderColor = withAlpha(theme.border(), 0.72f);
+
+        ShapeDrawArgs rail = ShapeDrawArgs.rect(stack, x, y, w, h, fill);
+        rail.rect().radius(RAIL_RADIUS).cornerMode(ShapeDrawArgs.RoundedCornerMode.FINE);
+        BaseShapeWidget.drawShape(rail);
+
+        ShapeDrawArgs border = ShapeDrawArgs.rect(stack, x, y, w, h, borderColor);
+        border.rect().radius(RAIL_RADIUS).cornerMode(ShapeDrawArgs.RoundedCornerMode.FINE).border(1);
+        BaseShapeWidget.drawShape(border);
+
+        ShapeDrawArgs accent = ShapeDrawArgs.rect(stack, x + w - 2, y + 4, 1, Math.max(1, h - 8),
+                withAlpha(theme.accent(), 0.72f));
+        accent.rect().radius(0.5f).cornerMode(ShapeDrawArgs.RoundedCornerMode.FINE);
+        BaseShapeWidget.drawShape(accent);
     }
 
     public static void draw(PoseStack stack, BaniraColorConfig theme,
@@ -50,10 +73,12 @@ public final class DustbinBaniraToolbarButtonRenderer {
         int drawW = w;
         int drawH = h;
 
-        int bg = pickState(theme.buttonBg(), theme.buttonBgHover(), theme.buttonBgPressed(), theme.buttonBgDisabled(),
+        int bg = pickState(withAlpha(theme.buttonBg(), 0.74f),
+                theme.buttonBgHover(),
+                theme.buttonBgPressed(),
+                withAlpha(theme.buttonBgDisabled(), 0.46f),
                 enabled, hover, pressed);
-        int borderCol = pickState(theme.buttonBorder(), theme.buttonBorderHover(), theme.buttonBorderPressed(), theme.buttonBorderDisabled(),
-                enabled, hover, pressed);
+        int borderCol = resolveBorderColor(theme, enabled, hover, pressed);
 
         ShapeDrawArgs rect = ShapeDrawArgs.rect(stack, drawX, drawY, drawW, drawH, bg);
         rect.rect().radius(BUTTON_RADIUS).cornerMode(ShapeDrawArgs.RoundedCornerMode.FINE);
@@ -73,6 +98,19 @@ public final class DustbinBaniraToolbarButtonRenderer {
         drawPresetIcon(stack, preset, contentX, contentY, aw, ah, icon, stroke);
     }
 
+    private static int resolveBorderColor(BaniraColorConfig theme, boolean enabled, boolean hover, boolean pressed) {
+        if (!enabled) {
+            return withAlpha(theme.buttonBorderDisabled(), 0.32f);
+        }
+        if (pressed) {
+            return theme.accentPressed();
+        }
+        if (hover) {
+            return theme.accentHover();
+        }
+        return withAlpha(theme.buttonBorder(), 0.58f);
+    }
+
     private static int pickState(int normal, int hoverC, int pressedC, int disabled,
                                  boolean enabled, boolean hover, boolean pressed) {
         if (!enabled) {
@@ -89,23 +127,14 @@ public final class DustbinBaniraToolbarButtonRenderer {
 
     private static int resolveIconColor(BaniraColorConfig t, IconTint tint, boolean enabled, boolean hover, boolean pressed) {
         if (!enabled) {
-            switch (tint) {
-                case CLEAR_ALL_CLOSE_RED:
-                    return 0xFFB0BEC5;
-                case CLEAR_CACHE_CLOSE_ORANGE:
-                    return 0xFFBCAAA4;
-                case CLEAR_PAGE_MINUS_ACCENT:
-                case PRESET_DEFAULT:
-                default:
-                    return t.buttonPresetIconDisabledColor();
-            }
+            return t.buttonPresetIconDisabledColor();
         }
         if (pressed) {
             switch (tint) {
                 case CLEAR_ALL_CLOSE_RED:
-                    return 0xFFC62828;
+                    return t.error();
                 case CLEAR_CACHE_CLOSE_ORANGE:
-                    return 0xFFE65100;
+                    return t.accentPressed();
                 case CLEAR_PAGE_MINUS_ACCENT:
                     return t.accentPressed();
                 case PRESET_DEFAULT:
@@ -116,9 +145,9 @@ public final class DustbinBaniraToolbarButtonRenderer {
         if (hover) {
             switch (tint) {
                 case CLEAR_ALL_CLOSE_RED:
-                    return 0xFFFF5252;
+                    return t.error();
                 case CLEAR_CACHE_CLOSE_ORANGE:
-                    return 0xFFFFB74D;
+                    return t.accentHover();
                 case CLEAR_PAGE_MINUS_ACCENT:
                     return t.accentHover();
                 case PRESET_DEFAULT:
@@ -128,15 +157,21 @@ public final class DustbinBaniraToolbarButtonRenderer {
         }
         switch (tint) {
             case CLEAR_ALL_CLOSE_RED:
-                return 0xFFE53935;
+                return t.error();
             case CLEAR_CACHE_CLOSE_ORANGE:
-                return 0xFFFF9800;
+                return t.accentFocused();
             case CLEAR_PAGE_MINUS_ACCENT:
                 return t.accent();
             case PRESET_DEFAULT:
             default:
                 return t.buttonPresetIconColor();
         }
+    }
+
+    private static int withAlpha(int color, float alpha) {
+        int sourceAlpha = (color >>> 24) & 0xFF;
+        int appliedAlpha = Math.round(sourceAlpha * Math.max(0.0f, Math.min(1.0f, alpha)));
+        return (appliedAlpha << 24) | (color & 0xFFFFFF);
     }
 
     /**
