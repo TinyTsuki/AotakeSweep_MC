@@ -30,7 +30,9 @@ public final class ClientGameEventHandler {
     public static void register() {
         BaniraClientEvents.Player.onClientLoggedOut(player -> LOGGER.debug("Client: Player logged out."));
         NeoForge.EVENT_BUS.addListener((ClientTickEvent.Post event) -> ClientGameEventHandler.onClientTick(event));
-        NeoForge.EVENT_BUS.addListener((ScreenEvent event) -> DustbinRender.handleGuiScreen(event));
+        NeoForge.EVENT_BUS.addListener((ScreenEvent.Init.Post event) -> DustbinRender.handleGuiScreen(event));
+        NeoForge.EVENT_BUS.addListener((ScreenEvent.Render.Post event) -> DustbinRender.handleGuiScreen(event));
+        NeoForge.EVENT_BUS.addListener((ScreenEvent.KeyPressed.Pre event) -> DustbinRender.handleGuiScreen(event));
     }
 
     private static void onClientTick(ClientTickEvent.Post event) {

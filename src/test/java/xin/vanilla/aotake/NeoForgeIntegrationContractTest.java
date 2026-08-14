@@ -35,6 +35,17 @@ public class NeoForgeIntegrationContractTest {
     }
 
     @Test
+    public void dustbinScreenHooksUseConcreteScreenEvents() throws Exception {
+        Path handler = Paths.get("src", "main", "java", "xin", "vanilla", "aotake", "event",
+                "ClientGameEventHandler.java");
+        String source = new String(Files.readAllBytes(handler), StandardCharsets.UTF_8);
+
+        assertTrue(source.contains("NeoForge.EVENT_BUS.addListener((ScreenEvent.Init.Post event)"));
+        assertTrue(source.contains("NeoForge.EVENT_BUS.addListener((ScreenEvent.Render.Post event)"));
+        assertTrue(source.contains("NeoForge.EVENT_BUS.addListener((ScreenEvent.KeyPressed.Pre event)"));
+    }
+
+    @Test
     public void smokeRejectsProgressKeyPlayerListConflict() throws Exception {
         Method validator;
         try {
