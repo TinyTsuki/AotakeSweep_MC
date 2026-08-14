@@ -49,6 +49,10 @@ import java.util.function.Consumer;
  */
 public final class DustbinRender {
 
+    private static final int BANIRA_TOOLBAR_GROUP_GAP = 5;
+    private static final int BANIRA_TOOLBAR_CONTAINER_GAP = 2;
+    private static final int BANIRA_TOOLBAR_RAIL_PADDING = 2;
+
     /**
      * 翻页/刷新前记录的光标
      */
@@ -277,19 +281,43 @@ public final class DustbinRender {
                 int baseY = DustbinGuiLayoutCache.valid
                         ? DustbinGuiLayoutCache.topPos + DustbinGuiConfig.getButtonYOffset()
                         : accessor.aotake$getTopPos();
+                if (dustbinUi == EnumDustbinClientUiStyle.BANIRA_THEME) {
+                    baseX -= BANIRA_TOOLBAR_CONTAINER_GAP;
+                    baseY += BANIRA_TOOLBAR_RAIL_PADDING;
+                }
 
                 boolean chunkVaultDraw = isChunkVaultTitle(screen.getTitle().getString());
+                boolean canClearCache = !chunkVaultDraw
+                        && AotakeUtils.hasCommandPermission(player, EnumCommandType.CACHE_CLEAR);
+                boolean canClearDustbin = !chunkVaultDraw
+                        && AotakeUtils.hasCommandPermission(player, EnumCommandType.DUSTBIN_CLEAR);
                 int curDrawPage = chunkVaultDraw ? chunkVaultPage : dustbinPage;
                 int totDrawPage = chunkVaultDraw ? chunkVaultTotalPage : dustbinTotalPage;
                 boolean canPrev = DustbinPageNavigation.canNavigate(curDrawPage, totDrawPage, -1);
                 boolean canNext = DustbinPageNavigation.canNavigate(curDrawPage, totDrawPage, 1);
 
+                if (dustbinUi == EnumDustbinClientUiStyle.BANIRA_THEME) {
+                    int themedToolbarButtonCount = 3
+                            + (canClearCache ? 1 : 0)
+                            + (canClearDustbin ? 2 : 0);
+                    int themedToolbarGapCount = 1 + ((canClearCache || canClearDustbin) ? 1 : 0);
+                    int toolbarStackHeight = themedToolbarButtonCount * (baseH + 1) - 1
+                            + themedToolbarGapCount * BANIRA_TOOLBAR_GROUP_GAP;
+                    int railX = baseX - baseW - 1 - BANIRA_TOOLBAR_RAIL_PADDING;
+                    int railY = baseY - BANIRA_TOOLBAR_RAIL_PADDING;
+                    int railWidth = baseW + BANIRA_TOOLBAR_RAIL_PADDING * 2;
+                    int railHeight = toolbarStackHeight + BANIRA_TOOLBAR_RAIL_PADDING * 2;
+                    DustbinBaniraToolbarButtonRenderer.drawRail(stack, baniraTheme,
+                            railX, railY, railWidth, railHeight);
+                }
+
                 int yOffset = 0;
-                if (!chunkVaultDraw && AotakeUtils.hasCommandPermission(player, EnumCommandType.CACHE_CLEAR)) {
+                int toolbarGroupOffset = 0;
+                if (canClearCache) {
                     int w = baseW;
                     int h = baseH;
                     int x = baseX - w - 1;
-                    int y = baseY + (h + 1) * (yOffset++);
+                    int y = baseY + (h + 1) * (yOffset++) + toolbarGroupOffset;
                     boolean hover = isRectHit(mouseX, mouseY, x, y, w, h);
 
                     boolean pressVisual = isLeftMousePressing() && hover;
@@ -318,12 +346,12 @@ public final class DustbinRender {
                         PacketUtils.sendPacketToServer(new ClearDustbinToServer(true, true));
                     }
                 }
-                if (!chunkVaultDraw && AotakeUtils.hasCommandPermission(player, EnumCommandType.DUSTBIN_CLEAR)) {
+                if (canClearDustbin) {
                     {
                         int w = baseW;
                         int h = baseH;
                         int x = baseX - w - 1;
-                        int y = baseY + (h + 1) * (yOffset++);
+                        int y = baseY + (h + 1) * (yOffset++) + toolbarGroupOffset;
                         boolean hover = isRectHit(mouseX, mouseY, x, y, w, h);
 
                         boolean pressVisual = isLeftMousePressing() && hover;
@@ -357,7 +385,7 @@ public final class DustbinRender {
                         int w = baseW;
                         int h = baseH;
                         int x = baseX - w - 1;
-                        int y = baseY + (h + 1) * (yOffset++);
+                        int y = baseY + (h + 1) * (yOffset++) + toolbarGroupOffset;
                         boolean hover = isRectHit(mouseX, mouseY, x, y, w, h);
 
                         boolean pressVisual = isLeftMousePressing() && hover;
@@ -387,11 +415,14 @@ public final class DustbinRender {
                         }
                     }
                 }
+                if (dustbinUi == EnumDustbinClientUiStyle.BANIRA_THEME && yOffset > 0) {
+                    toolbarGroupOffset += BANIRA_TOOLBAR_GROUP_GAP;
+                }
                 {
                     int w = baseW;
                     int h = baseH;
                     int x = baseX - w - 1;
-                    int y = baseY + (h + 1) * (yOffset++);
+                    int y = baseY + (h + 1) * (yOffset++) + toolbarGroupOffset;
                     boolean hover = isRectHit(mouseX, mouseY, x, y, w, h);
 
                     boolean pressVisual = isLeftMousePressing() && hover;
@@ -425,11 +456,14 @@ public final class DustbinRender {
                         }
                     }
                 }
+                if (dustbinUi == EnumDustbinClientUiStyle.BANIRA_THEME) {
+                    toolbarGroupOffset += BANIRA_TOOLBAR_GROUP_GAP;
+                }
                 {
                     int w = baseW;
                     int h = baseH;
                     int x = baseX - w - 1;
-                    int y = baseY + (h + 1) * (yOffset++);
+                    int y = baseY + (h + 1) * (yOffset++) + toolbarGroupOffset;
                     boolean hover = canPrev && isRectHit(mouseX, mouseY, x, y, w, h);
 
                     boolean pressVisual = isLeftMousePressing() && hover;
@@ -467,7 +501,7 @@ public final class DustbinRender {
                     int w = baseW;
                     int h = baseH;
                     int x = baseX - w - 1;
-                    int y = baseY + (h + 1) * (yOffset++);
+                    int y = baseY + (h + 1) * (yOffset++) + toolbarGroupOffset;
                     boolean hover = canNext && isRectHit(mouseX, mouseY, x, y, w, h);
 
                     boolean pressVisual = isLeftMousePressing() && hover;
