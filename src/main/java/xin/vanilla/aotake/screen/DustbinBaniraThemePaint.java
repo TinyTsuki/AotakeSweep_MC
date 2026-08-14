@@ -18,7 +18,8 @@ public final class DustbinBaniraThemePaint {
     private static final float HEADER_RADIUS = 3.0f;
     private static final float CONTENT_RADIUS = 2.5f;
     private static final float SLOT_RADIUS = 1.5f;
-    private static final float SLOT_FILL_ALPHA = 0.24f;
+    private static final float SLOT_FILL_ALPHA = 0.30f;
+    private static final float SLOT_BORDER_ALPHA = 0.42f;
     private static final int SLOT_GRID_NUDGE = 1;
 
     private DustbinBaniraThemePaint() {
@@ -82,12 +83,13 @@ public final class DustbinBaniraThemePaint {
     private static void drawSlotSurfaceGrid(MatrixStack stack, int guiLeft, int guiTop,
                                             int chestRows, int playerOffset, BaniraColorConfig t) {
         int slotFill = withAlpha(mixArgb(t.bgQuaternary(), t.bgSurface(), 0.20f), SLOT_FILL_ALPHA);
+        int slotBorder = withAlpha(t.border(), SLOT_BORDER_ALPHA);
         int slotLeft = guiLeft + SLOT_ORIGIN_X - SLOT_GRID_NUDGE;
         int chestTop = guiTop + CHEST_FIRST_Y - SLOT_GRID_NUDGE;
         for (int row = 0; row < chestRows; row++) {
             for (int column = 0; column < 9; column++) {
                 drawSlotSurface(stack, slotLeft + column * SLOT_STEP,
-                        chestTop + row * SLOT_STEP, slotFill);
+                        chestTop + row * SLOT_STEP, slotFill, slotBorder);
             }
         }
 
@@ -95,19 +97,21 @@ public final class DustbinBaniraThemePaint {
         for (int row = 0; row < 3; row++) {
             for (int column = 0; column < 9; column++) {
                 drawSlotSurface(stack, slotLeft + column * SLOT_STEP,
-                        inventoryTop + row * SLOT_STEP, slotFill);
+                        inventoryTop + row * SLOT_STEP, slotFill, slotBorder);
             }
         }
 
         int hotbarTop = guiTop + 161 + playerOffset - SLOT_GRID_NUDGE;
         for (int column = 0; column < 9; column++) {
-            drawSlotSurface(stack, slotLeft + column * SLOT_STEP, hotbarTop, slotFill);
+            drawSlotSurface(stack, slotLeft + column * SLOT_STEP, hotbarTop, slotFill, slotBorder);
         }
     }
 
-    private static void drawSlotSurface(MatrixStack stack, int x, int y, int fill) {
+    private static void drawSlotSurface(MatrixStack stack, int x, int y, int fill, int border) {
         drawFineRoundedRect(stack, x + 1, y + 1, SLOT_STEP - 2, SLOT_STEP - 2,
                 SLOT_RADIUS, fill, 0);
+        drawFineRoundedRect(stack, x, y, SLOT_STEP, SLOT_STEP,
+                SLOT_RADIUS + 0.5f, border, 1);
     }
 
     private static void drawFineRoundedRect(MatrixStack stack, int x, int y, int w, int h,
