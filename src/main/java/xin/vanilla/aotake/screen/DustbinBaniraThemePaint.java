@@ -6,23 +6,19 @@ import xin.vanilla.banira.client.data.ShapeDrawArgs;
 import xin.vanilla.banira.client.gui.widget.BaseShapeWidget;
 
 /**
- * Banira 主题下垃圾箱大箱界面的分区描边与槽位格线绘制
+ * 使用 Banira 当前主题绘制垃圾箱的单层收纳柜背景
  */
 public final class DustbinBaniraThemePaint {
 
     private static final int SLOT_STEP = 18;
     private static final int SLOT_ORIGIN_X = 8;
     private static final int CHEST_FIRST_Y = 18;
-    private static final float PANEL_RADIUS = 3.0f;
-    private static final float REGION_RADIUS = 2.5f;
+    private static final int PLAYER_SURFACE_BASE_Y = 90;
+    private static final float CABINET_RADIUS = 4.0f;
+    private static final float HEADER_RADIUS = 3.0f;
+    private static final float CONTENT_RADIUS = 2.5f;
     private static final float SLOT_RADIUS = 1.5f;
-    private static final float SLOT_FILL_ALPHA = 0.28f;
-    private static final float SLOT_BORDER_ALPHA = 0.20f;
-    private static final int LIGHT_NEUTRAL = 0xFFF0F2EF;
-    private static final int DARK_NEUTRAL = 0xFF252925;
-    /**
-     * 与原版物品格对齐：装饰性格子整体向左、向上各 1px
-     */
+    private static final float SLOT_FILL_ALPHA = 0.24f;
     private static final int SLOT_GRID_NUDGE = 1;
 
     private DustbinBaniraThemePaint() {
@@ -32,70 +28,86 @@ public final class DustbinBaniraThemePaint {
         return (chestRows - 4) * SLOT_STEP;
     }
 
+    /**
+     * 绘制柜体、两个内容层级和与原版槽位对齐的轻量底面
+     */
     public static void renderFullThemeBackground(PoseStack stack, int guiLeft, int guiTop, int imageW, int imageH,
                                                  BaniraColorConfig t, int chestRows) {
-        int off = chestRowsPlayerYOffset(chestRows);
-        int gl = guiLeft + SLOT_ORIGIN_X - SLOT_GRID_NUDGE;
+        int playerOffset = chestRowsPlayerYOffset(chestRows);
+        int cabinetFill = t.bgSurface();
+        int cabinetBorder = withAlpha(t.border(), 0.86f);
+
+        drawFineRoundedRect(stack, guiLeft, guiTop, imageW, imageH,
+                CABINET_RADIUS, cabinetFill, 0);
+        drawFineRoundedRect(stack, guiLeft, guiTop, imageW, imageH,
+                CABINET_RADIUS, cabinetBorder, 1);
+
+        drawHeaderSurface(stack, guiLeft, guiTop, imageW, t);
+        drawDustbinSurface(stack, guiLeft, guiTop, imageW, chestRows, t);
+        drawPlayerInventorySurface(stack, guiLeft, guiTop, imageW, imageH, playerOffset, t);
+        drawSlotSurfaceGrid(stack, guiLeft, guiTop, chestRows, playerOffset, t);
+    }
+
+    private static void drawHeaderSurface(PoseStack stack, int guiLeft, int guiTop, int imageW,
+                                          BaniraColorConfig t) {
+        drawFineRoundedRect(stack, guiLeft + 1, guiTop + 1, imageW - 2, 15,
+                HEADER_RADIUS, t.bgSecondary(), 0);
+        drawFineRoundedRect(stack, guiLeft + 5, guiTop + 4, 2, 9,
+                1.0f, t.accent(), 0);
+    }
+
+    private static void drawDustbinSurface(PoseStack stack, int guiLeft, int guiTop, int imageW,
+                                           int chestRows, BaniraColorConfig t) {
+        int contentHeight = chestRows * SLOT_STEP + 2;
+        int fill = mixArgb(t.bgQuaternary(), t.bgSurface(), 0.34f);
+        drawFineRoundedRect(stack, guiLeft + 5, guiTop + 16, imageW - 10, contentHeight,
+                CONTENT_RADIUS, fill, 0);
+    }
+
+    private static void drawPlayerInventorySurface(PoseStack stack, int guiLeft, int guiTop,
+                                                   int imageW, int imageH, int playerOffset,
+                                                   BaniraColorConfig t) {
+        int surfaceY = guiTop + PLAYER_SURFACE_BASE_Y + playerOffset;
+        int surfaceHeight = Math.max(1, imageH - PLAYER_SURFACE_BASE_Y - playerOffset - 2);
+        int fill = mixArgb(t.bgSecondary(), t.bgSurface(), 0.48f);
+        drawFineRoundedRect(stack, guiLeft + 5, surfaceY, imageW - 10, surfaceHeight,
+                CONTENT_RADIUS, fill, 0);
+
+        int hotbarTop = guiTop + 161 + playerOffset - SLOT_GRID_NUDGE;
+        int separatorY = hotbarTop - 4;
+        drawFineRoundedRect(stack, guiLeft + 8, separatorY, imageW - 16, 1,
+                0.0f, withAlpha(t.border(), 0.52f), 0);
+    }
+
+    private static void drawSlotSurfaceGrid(PoseStack stack, int guiLeft, int guiTop,
+                                            int chestRows, int playerOffset, BaniraColorConfig t) {
+        int slotFill = withAlpha(mixArgb(t.bgQuaternary(), t.bgSurface(), 0.20f), SLOT_FILL_ALPHA);
+        int slotLeft = guiLeft + SLOT_ORIGIN_X - SLOT_GRID_NUDGE;
         int chestTop = guiTop + CHEST_FIRST_Y - SLOT_GRID_NUDGE;
-        int panelFill = neutralize(t.bgSurface(), 0.72f);
-        int panelBorder = withAlpha(neutralize(t.border(), 0.68f), 0.62f);
-        int regionFill = neutralize(t.bgQuaternary(), 0.64f);
-        int regionBorder = withAlpha(neutralize(t.border(), 0.76f), 0.30f);
-
-        drawFineRoundedRect(stack, guiLeft, guiTop, imageW, imageH, PANEL_RADIUS, panelFill, 0);
-        drawFineRoundedRect(stack, guiLeft, guiTop, imageW, imageH, PANEL_RADIUS, panelBorder, 1);
-
-        drawFineRoundedRect(stack, guiLeft + 1, guiTop + 1, imageW - 2, 16,
-                REGION_RADIUS, neutralize(t.bgSecondary(), 0.54f), 0);
-        drawFineRoundedRect(stack, guiLeft + 4, guiTop + 4, 2, 10, 1.0f, t.accent(), 0);
-
-        int chestH = chestRows * SLOT_STEP;
-        drawRegionPanel(stack, gl - 2, chestTop - 2, 9 * SLOT_STEP + 4, chestH + 4,
-                regionFill, regionBorder);
-
-        int invTop = guiTop + 103 + off - SLOT_GRID_NUDGE;
-        drawRegionPanel(stack, gl - 2, invTop - 2, 9 * SLOT_STEP + 4, 3 * SLOT_STEP + 4,
-                regionFill, regionBorder);
-
-        int hotTop = guiTop + 161 + off - SLOT_GRID_NUDGE;
-        drawRegionPanel(stack, gl - 2, hotTop - 2, 9 * SLOT_STEP + 4, SLOT_STEP + 4,
-                regionFill, regionBorder);
-
-        drawSlotCellGrid(stack, guiLeft, guiTop, chestRows, off, t);
-    }
-
-    private static void drawRegionPanel(PoseStack stack, int x, int y, int w, int h,
-                                        int fill, int border) {
-        drawFineRoundedRect(stack, x, y, w, h, REGION_RADIUS, fill, 0);
-        drawFineRoundedRect(stack, x, y, w, h, REGION_RADIUS, border, 1);
-    }
-
-    private static void drawSlotCellGrid(PoseStack stack, int guiLeft, int guiTop, int chestRows, int playerOff, BaniraColorConfig t) {
-        int slotLine = withAlpha(neutralize(t.border(), 0.82f), SLOT_BORDER_ALPHA);
-        int slotFill = withAlpha(neutralize(t.bgQuaternary(), 0.78f), SLOT_FILL_ALPHA);
-        int gl = guiLeft + SLOT_ORIGIN_X - SLOT_GRID_NUDGE;
-        int gt = guiTop + CHEST_FIRST_Y - SLOT_GRID_NUDGE;
-        for (int r = 0; r < chestRows; r++) {
-            for (int c = 0; c < 9; c++) {
-                drawOneSlotCell(stack, gl + c * SLOT_STEP, gt + r * SLOT_STEP, slotFill, slotLine);
+        for (int row = 0; row < chestRows; row++) {
+            for (int column = 0; column < 9; column++) {
+                drawSlotSurface(stack, slotLeft + column * SLOT_STEP,
+                        chestTop + row * SLOT_STEP, slotFill);
             }
         }
-        int invTop = guiTop + 103 + playerOff - SLOT_GRID_NUDGE;
-        for (int r = 0; r < 3; r++) {
-            for (int c = 0; c < 9; c++) {
-                drawOneSlotCell(stack, gl + c * SLOT_STEP, invTop + r * SLOT_STEP, slotFill, slotLine);
+
+        int inventoryTop = guiTop + 103 + playerOffset - SLOT_GRID_NUDGE;
+        for (int row = 0; row < 3; row++) {
+            for (int column = 0; column < 9; column++) {
+                drawSlotSurface(stack, slotLeft + column * SLOT_STEP,
+                        inventoryTop + row * SLOT_STEP, slotFill);
             }
         }
-        int hotTop = guiTop + 161 + playerOff - SLOT_GRID_NUDGE;
-        for (int c = 0; c < 9; c++) {
-            drawOneSlotCell(stack, gl + c * SLOT_STEP, hotTop, slotFill, slotLine);
+
+        int hotbarTop = guiTop + 161 + playerOffset - SLOT_GRID_NUDGE;
+        for (int column = 0; column < 9; column++) {
+            drawSlotSurface(stack, slotLeft + column * SLOT_STEP, hotbarTop, slotFill);
         }
     }
 
-    private static void drawOneSlotCell(PoseStack stack, int x, int y, int innerFill, int line) {
+    private static void drawSlotSurface(PoseStack stack, int x, int y, int fill) {
         drawFineRoundedRect(stack, x + 1, y + 1, SLOT_STEP - 2, SLOT_STEP - 2,
-                SLOT_RADIUS, innerFill, 0);
-        drawFineRoundedRect(stack, x, y, SLOT_STEP, SLOT_STEP, SLOT_RADIUS + 0.5f, line, 1);
+                SLOT_RADIUS, fill, 0);
     }
 
     private static void drawFineRoundedRect(PoseStack stack, int x, int y, int w, int h,
@@ -103,14 +115,6 @@ public final class DustbinBaniraThemePaint {
         ShapeDrawArgs shape = ShapeDrawArgs.rect(stack, x, y, w, h, color);
         shape.rect().radius(radius).cornerMode(ShapeDrawArgs.RoundedCornerMode.FINE).border(border);
         BaseShapeWidget.drawShape(shape);
-    }
-
-    private static int neutralize(int color, float amount) {
-        int r = (color >>> 16) & 0xFF;
-        int g = (color >>> 8) & 0xFF;
-        int b = color & 0xFF;
-        int neutral = (r * 30 + g * 59 + b * 11) / 100 >= 128 ? LIGHT_NEUTRAL : DARK_NEUTRAL;
-        return mixArgb(color, neutral, amount);
     }
 
     private static int mixArgb(int from, int to, float amount) {
