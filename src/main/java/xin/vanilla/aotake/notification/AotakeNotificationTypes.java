@@ -97,6 +97,15 @@ public final class AotakeNotificationTypes {
         ServerNotificationTypeRegistry.register(HELP, EnumPosition.TOP_CENTER, EnumMoveType.AUTO, vanillaChat);
     }
 
+    public static EnumNotificationTypeDisplayMode defaultDisplay(String typeId) {
+        if (SWEEP_RESULT_INTERACTIVE.equals(typeId)
+                || CHUNK_CHECK_INTERACTIVE.equals(typeId)
+                || HELP.equals(typeId)) {
+            return EnumNotificationTypeDisplayMode.VANILLA_CHAT;
+        }
+        return EnumNotificationTypeDisplayMode.OVERLAY;
+    }
+
     private AotakeNotificationTypes() {
     }
 }
