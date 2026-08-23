@@ -34,8 +34,12 @@
 
 ## はじめに
 
-このプロジェクトは Minecraft (Neo)Forge サーバー向けで、ドロップアイテムやエンティティの定期的な掃除を実装します。
-この MOD はサーバー側に必須で、クライアント側は任意です。
+本プロジェクトは Minecraft Forge、Fabric、NeoForge サーバー向けで、ドロップアイテムと設定対象エンティティの定期掃除、およびチャンク内エンティティ超過時の保護回収を提供します。
+この MOD はサーバー側に必須で、クライアント側は任意です。クライアント MOD を導入していないプレイヤーも、サーバーコマンドと主要な掃除機能を利用できます。
+クライアント MOD を導入すると、ゴミ箱とチャンク一時保管画面、設定エディター、テーマ通知、インベントリのクイック入口を利用できます。
+
+本プロジェクトは [Banira Codex](https://github.com/VanillaXin/BaniraCodex_MC)
+に依存し、設定、通知、画面、言語、権限、ローダー間の差異吸収を共通機能として利用します。
 
 ## 特徴
 
@@ -64,9 +68,12 @@
 
 - カウントダウン通知設定 [`config/aotake_sweep-warning.json`](/config/aotake_sweep-warning.json)
 - サーバーゴミ箱データ `world/data/world_trash_data.dat`
-- ドロップ統計 `world/stats/aotake_sweep/*.json`（日付ごとに保存、例：`2025-02-24.json`）
-- Vanilla Xin シリーズ MOD 共通設定 `config/vanilla.xin/common_config.json`
-- Vanilla Xin シリーズ MOD プレイヤーデータ `world/playerdata/vanilla.xin/*.nbt`
+- 竹葉清のワールドデータ `world/vanilla.xin/aotake_sweep/`
+    - ドロップ統計 `drop_stats/*.json`（日付ごとに保存、例：`2025-02-24.json`）
+    - チャンク過負荷一時保管 `chunk_vault/`
+    - チャンク一時保管の閲覧権限 `chunk_vault_grants.json`
+- Vanilla Xin シリーズ MOD 共通設定 `config/vanilla.xin/common_config.json`（既定言語、ヘルプのページ分割、仮想権限などの共通設定を保存）
+- Vanilla Xin シリーズ MOD プレイヤーデータ `world/vanilla.xin/playerdata/*.nbt`（清掃通知、結果表示、警告音などのプレイヤー設定を保存）
 
 ### サーバー設定の要点（ゴミ箱関連）
 
@@ -212,16 +219,17 @@ AotakeEL をサポートする設定項目：`entityList`、`entityRedlist`、`c
 
 ## ビルド
 
-docs ブランチには、保守対象の全ブランチを構築する共通スクリプトがあります。
+Minecraft の各バージョンとローダーは、`forge/*`、`fabric/*`、`neoforge/*` ブランチで個別に管理されます。docs
+ブランチには、保守対象の全ブランチを構築する共通バッチ入口があります。
 
 ```bat
 scripts\build-all.bat
 ```
 
-デフォルトでは、ローカルの `forge/*`、`fabric/*`、`neoforge/*` ブランチを動的にすべて構築します。`dev/*`、
-`maintenance/*` など他の名前空間は含みません。現在の作業ツリーを切り替えず、detached 一時 worktree で各ブランチを構築します。
+デフォルトではローカルの全ローダーブランチを構築し、`dev/*`、`maintenance/*` など他の名前空間は含みません。各ブランチは現在の作業ツリーを切り替えず、detached
+一時 worktree で構築されます。
 
-Gradle を実行せず、選択されたブランチと JDK 検出だけを確認します。
+ビルドを実行せず、選択されたブランチと JDK 検出だけを確認します。
 
 ```bat
 scripts\build-all.bat -ListOnly
@@ -238,12 +246,22 @@ scripts\build-all.bat -BranchExpression "fabric/18.2"
 
 `!` で始まる式は一致するブランチを除外します。以前のパラメーター名 `-Branches` も別名として利用できます。
 
+単一の対象ブランチへ切り替えた後は、直接ビルドすることもできます。
+
+```bat
+gradlew.bat clean test assemble
+```
+
+成果物は docs 作業ツリーの `builds/<MOD バージョン>/` に集約されます。通常の成果物では Banira Codex を別途導入する必要があり、ファイル名に
+`-all` が付く成果物には対応する Banira Codex が含まれます。
+
+現在は Minecraft 1.16.5、1.18.2、1.19.2、1.20.1、1.21.1 を保守しています。NeoForge は 1.21.1 から対応します。`maintenance/*`
+以下の旧バージョンブランチは通常の保守対象外です。
+
 ---
 
 ## ライセンス
 
-MIT License
-
----
+**MIT License**
 
 質問や提案がある場合は、Issues または Pull requests を送信してください。

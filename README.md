@@ -34,8 +34,11 @@
 
 ## 介绍
 
-本项目适用于 Minecraft (Neo)Forge 服务器，实现定时清理掉落物与实体。
-该模组服务器必装，客户端可选。
+本项目适用于 Minecraft Forge、Fabric、NeoForge 服务器，用于定时清理掉落物与可配置实体，并在区块实体超限时执行保护性回收。
+模组需要在服务端安装，客户端可选；未安装客户端的玩家仍可使用服务端指令和主要清理功能。
+安装客户端后可使用垃圾箱与区块暂存界面、配置编辑器、主题通知和背包快捷入口。
+
+本项目依赖 [Banira Codex](https://github.com/VanillaXin/BaniraCodex_MC)，由其统一提供配置、通知、界面、语言、权限和跨加载器适配能力。
 
 ## 特性
 
@@ -64,10 +67,12 @@
 
 - 倒计时提示配置 [`config/aotake_sweep-warning.json`](/config/aotake_sweep-warning.json)
 - 服务器垃圾箱数据 `world/data/world_trash_data.dat`
-- 掉落统计 `world/stats/aotake_sweep/*.json`（按日期存储，如 `2025-02-24.json`）
-- 香草芯系列模组通用配置 `config/vanilla.xin/common_config.json`
-- 香草芯系列模组玩家数据 `world/playerdata/vanilla.xin/*.nbt`
-- 区块超载暂存位于世界数据目录的 `aotake_sweep/chunk_vault`，查看授权单独保存在 `chunk_vault_grants.json`
+- 竹叶清世界数据 `world/vanilla.xin/aotake_sweep/`
+    - 掉落统计 `drop_stats/*.json`（按日期存储，如 `2025-02-24.json`）
+    - 区块超载暂存 `chunk_vault/`
+    - 区块暂存查看授权 `chunk_vault_grants.json`
+- 香草芯系列模组通用配置 `config/vanilla.xin/common_config.json`（保存默认语言、帮助分页和虚拟权限等共享设置）
+- 香草芯系列模组玩家数据 `world/vanilla.xin/playerdata/*.nbt`（保存清理提示、结果显示和提示音等玩家偏好）
 
 ### 服务端配置要点（垃圾箱相关）
 
@@ -212,14 +217,16 @@
 
 ## 构建
 
-docs 分支提供统一批量构建脚本：
+各 Minecraft 版本与加载器分别维护在 `forge/*`、`fabric/*`、`neoforge/*` 分支。docs 分支提供统一批量构建脚本：
 
 ```bat
 scripts\build-all.bat
 ```
 
-脚本默认动态构建本地 `forge/*`、`fabric/*`、`neoforge/*` 分支，不包含 `dev/*`、`maintenance/*` 等其他命名空间。
-每个分支都在 detached 临时 worktree 中构建，不会切换当前工作树。仅检查分支和 JDK 配置时使用：
+脚本默认构建本地全部加载器分支，不包含 `dev/*`、`maintenance/*` 等其他命名空间。每个分支都在 detached 临时 worktree
+中构建，不会切换当前工作树。
+
+仅检查分支与 JDK 配置，不执行构建：
 
 ```bat
 scripts\build-all.bat -ListOnly
@@ -236,12 +243,21 @@ scripts\build-all.bat -BranchExpression "fabric/18.2"
 
 `!` 开头的表达式用于排除分支；旧参数名 `-Branches` 仍可作为别名使用。
 
+切换到单个目标分支后也可直接执行：
+
+```bat
+gradlew.bat clean test assemble
+```
+
+构建产物统一汇总至 docs 工作树的 `builds/<模组版本>/` 目录。普通构建产物依赖独立安装 Banira Codex，文件名带 `-all`
+的产物会同时包含对应版本的 Banira Codex。
+
+当前维护 Minecraft 1.16.5、1.18.2、1.19.2、1.20.1 和 1.21.1；NeoForge 从 1.21.1 开始维护。`maintenance/*` 下的旧版本分支不再参与日常维护。
+
 ---
 
 ## 许可证
 
-MIT License
-
----
+**MIT License**
 
 如有任何问题或建议，欢迎提交 Issues 或 Pull requests。

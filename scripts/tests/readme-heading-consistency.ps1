@@ -15,6 +15,7 @@ $translations = @{
     "特性" = @("Features", "特徴")
     "配置说明" = @("Configuration", "設定")
     "通用部分" = @("Shared Files", "共通ファイル")
+    "模组部分" = @("Mod Files", "モジュールファイル")
     "服务端配置要点（垃圾箱相关）" = @("Server Configuration Highlights (Dustbin)", "サーバー設定の要点（ゴミ箱関連）")
     "作为依赖接入" = @("Using Banira as a Dependency", "依存 MOD としての導入")
     "加载器元数据" = @("Loader Metadata", "ローダーメタデータ")

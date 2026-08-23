@@ -36,8 +36,15 @@
 
 ## Introduction
 
-This project is for Minecraft (Neo)Forge servers, implementing timed cleanup of dropped items and entities.
-This mod is required on the server side and optional on the client side.
+This project is for Minecraft Forge, Fabric, and NeoForge servers, providing timed cleanup of dropped items and
+configurable entities, plus protective recovery when a chunk exceeds its entity limit.
+The mod is required on the server and optional on the client. Players without the client mod can still use server
+commands and the primary cleanup features.
+Installing the client mod adds dustbin and chunk-vault screens, a configuration editor, themed notifications, and an
+inventory quick entry.
+
+This project depends on [Banira Codex](https://github.com/VanillaXin/BaniraCodex_MC), which provides shared
+configuration, notifications, screens, localization, permissions, and cross-loader adaptation.
 
 ## Features
 
@@ -68,9 +75,14 @@ in-game tooltips and generated comments for the meaning and valid range of each 
 
 - Countdown Message Config: [`config/aotake_sweep-warning.json`](/config/aotake_sweep-warning.json)
 - Server Dustbin Data: `world/data/world_trash_data.dat`
-- Drop Statistics: `world/stats/aotake_sweep/*.json` (stored by date, e.g. `2025-02-24.json`)
-- Vanilla Xin Series Common Config: `config/vanilla.xin/common_config.json`
-- Vanilla Xin Series Player Data: `world/playerdata/vanilla.xin/*.nbt`
+- Aotake Sweep World Data: `world/vanilla.xin/aotake_sweep/`
+    - Drop Statistics: `drop_stats/*.json` (stored by date, e.g. `2025-02-24.json`)
+    - Overloaded Chunk Vaults: `chunk_vault/`
+    - Chunk Vault Access Grants: `chunk_vault_grants.json`
+- Vanilla Xin Series Common Config: `config/vanilla.xin/common_config.json` (stores shared defaults for language, help
+  pagination, and virtual permissions)
+- Vanilla Xin Series Player Data: `world/vanilla.xin/playerdata/*.nbt` (stores cleanup-message, result-display, and
+  warning-sound preferences)
 
 ### Server Configuration Highlights (Dustbin)
 
@@ -221,17 +233,17 @@ declared on the left.
 
 ## Building
 
-The docs branch provides one build entry for all maintained branches:
+Minecraft versions and loaders are maintained in separate `forge/*`, `fabric/*`, and `neoforge/*` branches. The docs
+branch provides one batch entry for all maintained branches:
 
 ```bat
 scripts\build-all.bat
 ```
 
-By default, it dynamically builds all local `forge/*`, `fabric/*`, and `neoforge/*` branches. Other namespaces such
-as `dev/*` and `maintenance/*` are excluded. Each branch is built in a detached temporary worktree without switching
-the current checkout.
+By default, the script builds every local loader branch and excludes other namespaces such as `dev/*` and
+`maintenance/*`. Each branch is built in a detached temporary worktree without switching the current checkout.
 
-List selected branches and validate JDK discovery without running Gradle:
+List selected branches and validate JDK discovery without running a build:
 
 ```bat
 scripts\build-all.bat -ListOnly
@@ -246,15 +258,25 @@ scripts\build-all.bat -BranchExpression "forge/*,!forge/16.5"
 scripts\build-all.bat -BranchExpression "fabric/18.2"
 ```
 
-Expressions beginning with `!` exclude matching branches. The previous parameter name `-Branches` remains available
-as an alias.
+Expressions beginning with `!` exclude matching branches. The previous parameter name `-Branches` remains available as
+an alias.
+
+After switching to a single target branch, it can also be built directly:
+
+```bat
+gradlew.bat clean test assemble
+```
+
+Artifacts are collected under `builds/<mod version>/` in the docs worktree. Regular artifacts require Banira Codex to be
+installed separately; artifacts with `-all` in the filename include the matching Banira Codex version.
+
+Minecraft 1.16.5, 1.18.2, 1.19.2, 1.20.1, and 1.21.1 are currently maintained. NeoForge support starts at 1.21.1. Legacy
+branches under `maintenance/*` are excluded from routine maintenance.
 
 ---
 
 ## License
 
-MIT License
-
----
+**MIT License**
 
 If you have any questions or suggestions, please submit Issues or Pull requests.
