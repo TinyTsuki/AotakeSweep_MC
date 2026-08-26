@@ -8,6 +8,7 @@ import net.fabricmc.fabric.api.client.screen.v1.Screens;
 import xin.vanilla.aotake.client.AotakeClientBootstrap;
 import xin.vanilla.aotake.event.ClientGameEventHandler;
 import xin.vanilla.aotake.screen.DustbinRender;
+import xin.vanilla.banira.client.gui.widget.TooltipWidget;
 
 /**
  * Fabric 客户端入口，避免服务端类加载触碰任何客户端类型。
@@ -20,8 +21,11 @@ public final class FabricAotakeClientEntry implements ClientModInitializer {
         ScreenEvents.AFTER_INIT.register((client, screen, width, height) -> {
             DustbinRender.handleGuiScreen(new DustbinRender.InitPost(screen,
                     button -> Screens.getButtons(screen).add(button)));
-            ScreenEvents.afterRender(screen).register((scr, stack, mouseX, mouseY, tickDelta) ->
-                    DustbinRender.handleGuiScreen(new DustbinRender.DrawPost(scr, stack, mouseX, mouseY)));
+            ScreenEvents.afterRender(screen).register((scr, stack, mouseX, mouseY, tickDelta) -> {
+                TooltipWidget.beginPopupFrame(scr, mouseX, mouseY);
+                DustbinRender.handleGuiScreen(new DustbinRender.DrawPost(scr, stack, mouseX, mouseY));
+                TooltipWidget.flushSubmittedPopupFrame(stack);
+            });
             ScreenKeyboardEvents.allowKeyPress(screen).register((scr, keyCode, scanCode, modifiers) -> {
                 DustbinRender.KeyPressedPre event = new DustbinRender.KeyPressedPre(scr, keyCode, modifiers);
                 DustbinRender.handleGuiScreen(event);
