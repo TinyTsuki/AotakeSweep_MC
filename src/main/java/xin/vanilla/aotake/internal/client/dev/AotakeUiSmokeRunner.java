@@ -53,6 +53,9 @@ import xin.vanilla.banira.client.gui.quickaction.QuickActionEntry;
 import xin.vanilla.banira.client.gui.quickaction.QuickActionRegistry;
 import xin.vanilla.banira.client.gui.quickaction.QuickIcon;
 import xin.vanilla.banira.client.util.TextureUtils;
+import xin.vanilla.banira.common.config.ConfigEntryDescriptor;
+import xin.vanilla.banira.common.config.ConfigEntryTooltipTexts;
+import xin.vanilla.banira.common.config.ConfigHolder;
 import xin.vanilla.banira.common.util.EnvironmentUtils;
 import xin.vanilla.banira.common.util.PacketUtils;
 
@@ -68,6 +71,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Supplier;
+import java.util.stream.Collectors;
 
 /**
  * Aotake 开发环境界面冒烟测试：检查 Banira 接入并自动保存关键界面截图。
@@ -228,7 +232,19 @@ public final class AotakeUiSmokeRunner {
         if (!AotakeLang.get().getI18nFiles().contains("zh_cn")) {
             throw new IllegalStateException("Bundled zh_cn language was not discovered");
         }
+        validateConfigTooltips("client", ClientConfig.get().holder());
+        validateConfigTooltips("common", CommonConfig.get().holder());
         validateCommandRootRemoval();
+    }
+
+    private static void validateConfigTooltips(String name, ConfigHolder holder) {
+        List<String> missing = holder.getDescriptors().stream()
+                .filter(descriptor -> !ConfigEntryTooltipTexts.hasGuiTooltip(descriptor))
+                .map(ConfigEntryDescriptor::getPath)
+                .collect(Collectors.toList());
+        if (!missing.isEmpty()) {
+            throw new IllegalStateException("Fabric " + name + " config tooltips missing: " + missing);
+        }
     }
 
     private static void validateCommandRootRemoval() {
