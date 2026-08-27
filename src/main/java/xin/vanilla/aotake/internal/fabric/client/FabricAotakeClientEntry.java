@@ -22,9 +22,14 @@ public final class FabricAotakeClientEntry implements ClientModInitializer {
             DustbinRender.handleGuiScreen(new DustbinRender.InitPost(screen,
                     button -> Screens.getButtons(screen).add(button)));
             ScreenEvents.afterRender(screen).register((scr, stack, mouseX, mouseY, tickDelta) -> {
-                TooltipWidget.beginPopupFrame(scr, mouseX, mouseY);
-                DustbinRender.handleGuiScreen(new DustbinRender.DrawPost(scr, stack, mouseX, mouseY));
-                TooltipWidget.flushSubmittedPopupFrame(stack);
+                boolean ownsTooltipFrame = TooltipWidget.beginPopupFrameIfIdle(scr, mouseX, mouseY);
+                try {
+                    DustbinRender.handleGuiScreen(new DustbinRender.DrawPost(scr, stack, mouseX, mouseY));
+                } finally {
+                    if (ownsTooltipFrame) {
+                        TooltipWidget.flushSubmittedPopupFrame(stack);
+                    }
+                }
             });
             ScreenKeyboardEvents.allowKeyPress(screen).register((scr, keyCode, scanCode, modifiers) -> {
                 DustbinRender.KeyPressedPre event = new DustbinRender.KeyPressedPre(scr, keyCode, modifiers);
