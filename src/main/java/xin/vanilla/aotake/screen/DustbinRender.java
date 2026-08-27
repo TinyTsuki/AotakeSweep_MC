@@ -64,6 +64,8 @@ public final class DustbinRender {
     private static int chunkVaultTotalPage = -1;
     private static Button dustbinPrevButton;
     private static Button dustbinNextButton;
+    private static final DustbinToolbarTooltipRegistry<Component> vanillaButtonTooltips =
+            new DustbinToolbarTooltipRegistry<>();
     private static long lastDustbinScreenKeyTime = 0L;
 
     private DustbinRender() {
@@ -151,6 +153,7 @@ public final class DustbinRender {
         if (event instanceof InitPost) {
             if (ClientConfig.get().dustbin().dustbinUiStyle() == EnumDustbinClientUiStyle.VANILLA) {
                 InitPost eve = (InitPost) event;
+                vanillaButtonTooltips.clear();
                 LocalPlayer player = mc.player;
                 ContainerScreenAccessor accessor = (ContainerScreenAccessor) screen;
                 int baseX = accessor.aotake$getLeftPos();
@@ -257,6 +260,13 @@ public final class DustbinRender {
                 }
                 if (dustbinNextButton != null) {
                     dustbinNextButton.active = canNext;
+                }
+                Component tooltip = vanillaButtonTooltips.find(drawEvent.getMouseX(), drawEvent.getMouseY());
+                if (tooltip != null) {
+                    TooltipWidget.drawPopupMessage(drawEvent.getPoseStack(),
+                            FontDrawArgs.ofPopo(new Text(tooltip).stack(drawEvent.getPoseStack()))
+                                    .x(drawEvent.getMouseX()).y(drawEvent.getMouseY()),
+                            ClientThemeManager.getEffectiveTheme(), null);
                 }
             }
             EnumDustbinClientUiStyle dustbinUi = ClientConfig.get().dustbin().dustbinUiStyle();
@@ -610,7 +620,9 @@ public final class DustbinRender {
                                     Component label,
                                     Consumer<Button> onPress,
                                     Component tooltip) {
-        return new Button(x, y, width, height, label.toVanilla(), onPress::accept);
+        Button button = new Button(x, y, width, height, label.toVanilla(), onPress::accept);
+        vanillaButtonTooltips.add(x, y, width, height, tooltip);
+        return button;
     }
 
     /**
