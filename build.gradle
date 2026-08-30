@@ -1,5 +1,5 @@
 plugins {
-    id 'fabric-loom' version '1.15-SNAPSHOT'
+    id 'fabric-loom' version '1.17.13'
     id 'maven-publish'
 }
 
@@ -66,7 +66,8 @@ dependencies {
     modRuntimeOnly "maven.modrinth:fabric-permissions-api:62DUD085"
     // Development runtime performance mod; not bundled into published artifacts.
     modRuntimeOnly "maven.modrinth:AANobbMI:u1OEbNKx"
-    modRuntimeOnly "maven.modrinth:sodium-extra:M9kVcb0e"
+    // Sodium Extra 0.6.x targets the bundled Sodium 0.6 line for Minecraft 1.21.1.
+    modRuntimeOnly "maven.modrinth:sodium-extra:anDafurZ"
     // To change the versions see the gradle.properties file
     minecraft "com.mojang:minecraft:${project.minecraft_version}"
     mappings loom.officialMojangMappings()
@@ -191,6 +192,8 @@ tasks.named('remapJar') {
     archiveVersion.set("${loader_type}-${minecraft_version}-${mod_version}")
     destinationDirectory.set(file("${projectDir}/builds/${mod_version}"))
 }
+
+apply from: "gradle/network-smoke.gradle"
 
 // configure the maven publication
 publishing {
