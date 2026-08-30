@@ -35,21 +35,19 @@ public class ClearDustbinToServer implements NetworkPacket {
             if (player != null) {
                 String playerUUID = PlayerUtils.getPlayerUUIDString(player);
                 int page = AotakeSweep.getPlayerDustbinPage().getOrDefault(playerUUID, 1);
-                // 缓存区
-                if (packet.cache) {
-                    CommandUtils.executeCommand(player, String.format("/%s"
-                            , AotakeUtils.getCommand(EnumCommandType.CACHE_CLEAR))
-                    );
-                }
-                // 垃圾箱
-                else {
-                    CommandUtils.executeCommand(player, String.format("/%s%s"
-                            , AotakeUtils.getCommand(EnumCommandType.DUSTBIN_CLEAR)
-                            , packet.all ? "" : " " + page)
-                    );
-                }
+                CommandUtils.executeCommand(player, buildCommand(packet.all, packet.cache, page,
+                        AotakeUtils.getCommand(EnumCommandType.CACHE_CLEAR),
+                        AotakeUtils.getCommand(EnumCommandType.DUSTBIN_CLEAR)));
             }
         });
         ctx.markHandled();
+    }
+
+    static String buildCommand(boolean all, boolean cache, int page,
+                               String cacheCommand, String dustbinCommand) {
+        if (cache) {
+            return cacheCommand;
+        }
+        return all ? dustbinCommand : dustbinCommand + " " + page;
     }
 }
