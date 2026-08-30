@@ -62,6 +62,7 @@ repositories {
 }
 
 dependencies {
+    modRuntimeOnly "maven.modrinth:spark:XhFbpH8f"
     // Development runtime performance mod; not bundled into published artifacts.
     modRuntimeOnly "maven.modrinth:AANobbMI:rAfhHfow"
     // To change the versions see the gradle.properties file
