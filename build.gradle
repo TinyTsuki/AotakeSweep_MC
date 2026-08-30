@@ -32,6 +32,7 @@ loom {
 }
 
 repositories {
+    maven { name = "CurseMaven"; url = "https://www.cursemaven.com" }
     mavenLocal()
     maven {
         name = "Terraformers Maven"
@@ -57,6 +58,7 @@ repositories {
 }
 
 dependencies {
+    modRuntimeOnly "curse.maven:spark-361579:3337642"
     // Development runtime performance mod; not bundled into published artifacts.
     modRuntimeOnly "maven.modrinth:AANobbMI:YAGZ1cCS"
     // To change the versions see the gradle.properties file
