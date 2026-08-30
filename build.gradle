@@ -63,8 +63,10 @@ repositories {
 
 dependencies {
     modRuntimeOnly "maven.modrinth:spark:cALUj9l1"
+    modRuntimeOnly "maven.modrinth:fabric-permissions-api:62DUD085"
     // Development runtime performance mod; not bundled into published artifacts.
     modRuntimeOnly "maven.modrinth:AANobbMI:u1OEbNKx"
+    modRuntimeOnly "maven.modrinth:sodium-extra:M9kVcb0e"
     // To change the versions see the gradle.properties file
     minecraft "com.mojang:minecraft:${project.minecraft_version}"
     mappings loom.officialMojangMappings()
@@ -89,6 +91,24 @@ dependencies {
     modImplementation("xin.vanilla.banira:banira_codex:${loader_type}-${minecraft_version}-${banira_version}") {
         changing = true
     }
+}
+
+// Keeps the development client FPS counter enabled without affecting published artifacts.
+tasks.register('prepareDevFpsOverlay') {
+    doLast {
+        def options = project.file('run/config/sodium-extra-options.json')
+        def root = options.exists() ? new groovy.json.JsonSlurper().parse(options) : [:]
+        if (!(root instanceof Map)) root = [:]
+        def extra = root.extraSettings instanceof Map ? root.extraSettings : [:]
+        extra.showFps = true
+        root.extraSettings = extra
+        options.parentFile.mkdirs()
+        options.setText(groovy.json.JsonOutput.toJson(root), 'UTF-8')
+    }
+}
+
+tasks.named('runClient').configure {
+    dependsOn tasks.named('prepareDevFpsOverlay')
 }
 
 processResources {
