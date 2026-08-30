@@ -53,7 +53,17 @@ configurations.configureEach {
 
 apply from: "gradle/banira-local-fingerprint.gradle"
 
+repositories {
+    maven {
+        name = "Modrinth"
+        url = "https://api.modrinth.com/maven"
+        content { includeGroup "maven.modrinth" }
+    }
+}
+
 dependencies {
+    // Development runtime performance mod; not bundled into published artifacts.
+    modRuntimeOnly "maven.modrinth:AANobbMI:u1OEbNKx"
     // To change the versions see the gradle.properties file
     minecraft "com.mojang:minecraft:${project.minecraft_version}"
     mappings loom.officialMojangMappings()
