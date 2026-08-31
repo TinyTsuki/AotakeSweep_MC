@@ -84,8 +84,8 @@ public final class AotakeNetworkSmokeClientRunner {
     private void connect(Minecraft client) {
         String host = System.getProperty("aotake.networkSmoke.host", "127.0.0.1");
         int port = Integer.getInteger("aotake.networkSmoke.port", 25575);
-        ServerData server = new ServerData("Aotake Network Smoke", host + ":" + port, false);
-        ConnectScreen.startConnecting(client.screen, client, ServerAddress.parseString(server.ip), server, false);
+        ServerData server = new ServerData("Aotake Network Smoke", host + ":" + port, ServerData.Type.OTHER);
+        ConnectScreen.startConnecting(client.screen, client, ServerAddress.parseString(server.ip), server, false, null);
         AotakeNetworkSmokeStatus.append("CONNECT " + host + ":" + port);
         state = State.LOGIN_SYNC;
         ticks = 0;

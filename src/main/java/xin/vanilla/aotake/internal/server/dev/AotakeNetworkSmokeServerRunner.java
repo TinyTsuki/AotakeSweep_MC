@@ -422,7 +422,12 @@ public final class AotakeNetworkSmokeServerRunner {
                 builderType.getMethod("threadDumper", dumperType)
                         .invoke(builder, gameThread.getMethod("get").invoke(gameThreadDumper));
                 Class<?> grouperType = Class.forName("me.lucko.spark.common.sampler.ThreadGrouper", true, loader);
-                builderType.getMethod("threadGrouper", grouperType).invoke(builder, grouperType.getField("BY_POOL").get(null));
+                Method grouperMethod = method(builderType, "threadGrouper", 1);
+                Object grouperValue = threadGrouper(grouperType);
+                if (Supplier.class.isAssignableFrom(grouperMethod.getParameterTypes()[0]) && !(grouperValue instanceof Supplier)) {
+                    grouperValue = (Supplier<Object>) () -> threadGrouper(grouperType);
+                }
+                grouperMethod.invoke(builder, grouperValue);
                 Object container = platform.getClass().getMethod("getSamplerContainer").invoke(platform);
                 method(container.getClass(), "stopActiveSampler", 1).invoke(container, false);
                 Object sampler = method(builderType, "start", 1).invoke(builder, platform);
@@ -456,10 +461,7 @@ public final class AotakeNetworkSmokeServerRunner {
                 propsType.getMethod("creator", senderData).invoke(props,
                         senderData.getConstructor(String.class, java.util.UUID.class)
                                 .newInstance("Aotake network smoke", null));
-                Class<?> disambiguatorType = Class.forName("me.lucko.spark.common.util.MethodDisambiguator", true, loader);
-                Class<?> mergeType = Class.forName("me.lucko.spark.common.sampler.node.MergeMode", true, loader);
-                Supplier<Object> merge = () -> createMergeMode(mergeType, disambiguatorType);
-                propsType.getMethod("mergeMode", Supplier.class).invoke(props, merge);
+                configureMerge(propsType, props, loader);
                 propsType.getMethod("classSourceLookup", Supplier.class)
                         .invoke(props, (Supplier<Object>) () -> createClassSourceLookup(plugin));
                 Object proto = method(sampler.getClass(), "toProto", 2).invoke(sampler, platform, props);
@@ -499,6 +501,26 @@ public final class AotakeNetworkSmokeServerRunner {
                         .invoke(null, disambiguatorType.getConstructor().newInstance());
             } catch (ReflectiveOperationException error) {
                 throw new IllegalStateException("Unable to create Spark merge mode", error);
+            }
+        }
+
+        private static Object threadGrouper(Class<?> type) {
+            try {
+                return type.getField("BY_POOL").get(null);
+            } catch (ReflectiveOperationException error) {
+                throw new IllegalStateException("Unable to create Spark thread grouper", error);
+            }
+        }
+
+        private static void configureMerge(Class<?> propsType, Object props, ClassLoader loader) throws ReflectiveOperationException {
+            try {
+                Class<?> strategyType = Class.forName("me.lucko.spark.common.sampler.java.MergeStrategy", true, loader);
+                propsType.getMethod("mergeStrategy", strategyType).invoke(props, strategyType.getField("SAME_METHOD").get(null));
+            } catch (ClassNotFoundException ignored) {
+                Class<?> disambiguatorType = Class.forName("me.lucko.spark.common.util.MethodDisambiguator", true, loader);
+                Class<?> mergeType = Class.forName("me.lucko.spark.common.sampler.node.MergeMode", true, loader);
+                Supplier<Object> merge = () -> createMergeMode(mergeType, disambiguatorType);
+                propsType.getMethod("mergeMode", Supplier.class).invoke(props, merge);
             }
         }
 
