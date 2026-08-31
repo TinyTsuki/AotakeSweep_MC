@@ -4,6 +4,7 @@ plugins {
 }
 
 def javaVer = 17
+def aotakeNetworkSmokeServer = (project.findProperty('aotake.networkSmoke.server') ?: 'false').toString().toBoolean()
 
 version = project.mod_version
 mod_id = project.mod_id
@@ -52,6 +53,7 @@ configurations.configureEach {
 }
 
 apply from: "gradle/banira-local-fingerprint.gradle"
+apply from: "gradle/network-smoke.gradle"
 
 repositories {
     maven {
@@ -62,10 +64,12 @@ repositories {
 }
 
 dependencies {
-    modRuntimeOnly "maven.modrinth:sodium-extra:mDbF0LZT"
+    if (!aotakeNetworkSmokeServer) {
+        modRuntimeOnly "maven.modrinth:sodium-extra:mDbF0LZT"
+        // Development runtime performance mod; not bundled into published artifacts.
+        modRuntimeOnly "maven.modrinth:AANobbMI:OihdIimA"
+    }
     modRuntimeOnly "maven.modrinth:spark:XGW2fviP"
-    // Development runtime performance mod; not bundled into published artifacts.
-    modRuntimeOnly "maven.modrinth:AANobbMI:OihdIimA"
     // To change the versions see the gradle.properties file
     minecraft "com.mojang:minecraft:${project.minecraft_version}"
     mappings loom.officialMojangMappings()
@@ -112,6 +116,46 @@ tasks.register('prepareDevFpsOverlay') {
 }
 
 prepareBaniraDevFpsOverlay()
+
+// Loom does not expose nested runtime jars from client-only performance mods in dev runs.
+def aotakeDevRuntimeModsDirectory = {
+    def networkSmokeChild = (project.findProperty('aotake.networkSmoke.child') ?: 'false').toString().toBoolean()
+    file(networkSmokeChild ? 'run-network-smoke/client/mods' : 'run/mods')
+}
+def prepareAotakeDevRuntimeLibraries = tasks.register('prepareDevRuntimeLibraries', Copy) {
+    group = 'verification'
+    description = 'Extracts nested client runtime libraries needed by development-only performance mods.'
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    from({
+        (configurations.runtimeClasspath.files + configurations.modRuntimeOnly.files)
+                .findAll { file -> file.name.startsWith('sodium') || file.name.startsWith('AANobbMI') }
+                .collect { file -> zipTree(file) }
+    }) {
+        include 'META-INF/jars/*.jar'
+        eachFile { details -> details.path = details.name }
+        includeEmptyDirs = false
+    }
+    into aotakeDevRuntimeModsDirectory
+}
+
+tasks.matching { task -> task.name == 'runClient' }.configureEach {
+    dependsOn prepareAotakeDevRuntimeLibraries
+}
+
+tasks.register('verifyDevRuntimeLibraries') {
+    group = 'verification'
+    description = 'Verifies nested Sodium runtime libraries are available to the Fabric development client.'
+    dependsOn prepareAotakeDevRuntimeLibraries
+    doLast {
+        def names = aotakeDevRuntimeModsDirectory().listFiles()?.collect { it.name } ?: []
+        ['CaffeineConfig-'].each { prefix ->
+            if (!names.any { name -> name.startsWith(prefix) }) {
+                throw new GradleException("Missing development runtime library with prefix '${prefix}'")
+            }
+        }
+    }
+}
+
 processResources {
     inputs.property "mod_id", project.mod_id
     inputs.property "mod_name", project.mod_name
