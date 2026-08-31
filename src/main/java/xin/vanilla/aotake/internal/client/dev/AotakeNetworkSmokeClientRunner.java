@@ -2,20 +2,27 @@ package xin.vanilla.aotake.internal.client.dev;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.ConnectScreen;
+import net.minecraft.client.gui.screens.inventory.ContainerScreen;
 import net.minecraft.client.multiplayer.ServerData;
-import net.minecraft.client.multiplayer.resolver.ServerAddress;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import xin.vanilla.aotake.AotakeSweep;
 import xin.vanilla.aotake.internal.dev.AotakeNetworkSmokeStatus;
+import xin.vanilla.aotake.network.packet.OpenDustbinToServer;
 import xin.vanilla.aotake.network.packet.PlayerConfigSyncToServer;
 import xin.vanilla.banira.common.util.PacketUtils;
 
-/** 自动加入独立服务端并验证 Aotake 玩家偏好同步。 */
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+
+/** 自动连接独立服务端，并验证玩家偏好与垃圾箱容器同步。 */
 public final class AotakeNetworkSmokeClientRunner {
     private static final Logger LOGGER = LogManager.getLogger();
-    private static final int TIMEOUT_TICKS = 1400;
-    private static final int SERVER_SETTLE_TICKS = 620;
+    private static final int TIMEOUT_TICKS = 1200;
+
     private static AotakeNetworkSmokeClientRunner instance;
 
     private State state = State.CONNECT;
@@ -25,11 +32,15 @@ public final class AotakeNetworkSmokeClientRunner {
     }
 
     public static void register() {
-        if (AotakeNetworkSmokeStatus.enabled()) instance = new AotakeNetworkSmokeClientRunner();
+        if (AotakeNetworkSmokeStatus.enabled()) {
+            instance = new AotakeNetworkSmokeClientRunner();
+        }
     }
 
     public static void tick(Minecraft client) {
-        if (instance != null) instance.runTick(client);
+        if (instance != null) {
+            instance.runTick(client);
+        }
     }
 
     private void runTick(Minecraft client) {
@@ -43,16 +54,21 @@ public final class AotakeNetworkSmokeClientRunner {
                     if (ticks >= 20) connect(client);
                     break;
                 case LOGIN_SYNC:
-                    awaitLoginSync(client);
+                    waitForLoginSync(client);
                     break;
                 case CONFIG_ECHO:
-                    awaitConfigEcho(client);
+                    waitForConfigEcho(client);
                     break;
-                case SERVER_SETTLE:
-                    if (ticks >= SERVER_SETTLE_TICKS) finish(client);
+                case DUSTBIN:
+                    waitForDustbin(client);
+                    break;
+                case WAIT_SERVER:
+                    waitForServer(client);
+                    break;
+                case FINISHED:
                     break;
                 default:
-                    break;
+                    throw new IllegalStateException("Unknown smoke client state " + state);
             }
         } catch (Throwable error) {
             fail(client, error.toString());
@@ -61,38 +77,75 @@ public final class AotakeNetworkSmokeClientRunner {
 
     private void connect(Minecraft client) {
         String host = System.getProperty("aotake.networkSmoke.host", "127.0.0.1");
-        int port = Integer.getInteger("aotake.networkSmoke.port", 25577);
-        ServerData server = new ServerData("Aotake Network Smoke", host + ':' + port, ServerData.Type.OTHER);
-        ConnectScreen.startConnecting(client.screen, client, ServerAddress.parseString(server.ip), server, false, null);
+        int port = Integer.getInteger("aotake.networkSmoke.port", 25575);
+        ServerData server = new ServerData("Aotake Network Smoke", host + ':' + port, false);
+        client.setScreen(new ConnectScreen(client.screen, client, server));
         AotakeNetworkSmokeStatus.append("CONNECT " + host + ':' + port);
         state = State.LOGIN_SYNC;
         ticks = 0;
     }
 
-    private void awaitLoginSync(Minecraft client) {
+    private void waitForLoginSync(Minecraft client) {
         if (client.player == null || client.level == null || client.getSingleplayerServer() != null
-                || AotakeSweep.getClientServerTime().value() == 0L) return;
+                || AotakeSweep.getClientServerTime().val() <= 0L) {
+            return;
+        }
         AotakeNetworkSmokeStatus.append("PASS remote-login-sync");
-        if ("phase-one".equals(AotakeNetworkSmokeStatus.phase())) {
+        AotakeNetworkSmokeClientPlan.LoginAction action = AotakeNetworkSmokeClientPlan.afterLogin(
+                AotakeNetworkSmokeStatus.phase(), AotakeSweep.isClientCachedShowSweepResult(),
+                AotakeSweep.isClientCachedEnableWarningVoice());
+        if (action == AotakeNetworkSmokeClientPlan.LoginAction.SEND_PLAYER_CONFIG) {
             PacketUtils.sendPacketToServer(new PlayerConfigSyncToServer(false, false));
             state = State.CONFIG_ECHO;
-        } else if ("phase-two".equals(AotakeNetworkSmokeStatus.phase())) {
-            if (AotakeSweep.isClientCachedShowSweepResult() || AotakeSweep.isClientCachedEnableWarningVoice()) {
-                throw new IllegalStateException("Persisted player preferences were not synchronized");
-            }
-            AotakeNetworkSmokeStatus.append("PASS persisted-player-config-client");
-            finish(client);
         } else {
-            throw new IllegalStateException("Unknown network smoke phase " + AotakeNetworkSmokeStatus.phase());
+            AotakeNetworkSmokeStatus.append("PASS persisted-player-data-client");
+            PacketUtils.sendPacketToServer(new OpenDustbinToServer(0));
+            state = State.DUSTBIN;
         }
         ticks = 0;
     }
 
-    private void awaitConfigEcho(Minecraft client) {
-        if (AotakeSweep.isClientCachedShowSweepResult() || AotakeSweep.isClientCachedEnableWarningVoice()) return;
-        AotakeNetworkSmokeStatus.append("PASS player-config-roundtrip");
-        state = State.SERVER_SETTLE;
+    private void waitForConfigEcho(Minecraft client) {
+        if (AotakeSweep.isClientCachedShowSweepResult() || AotakeSweep.isClientCachedEnableWarningVoice()) {
+            return;
+        }
+        AotakeNetworkSmokeStatus.append("PASS config-roundtrip");
+        state = State.WAIT_SERVER;
         ticks = 0;
+    }
+
+    private void waitForDustbin(Minecraft client) {
+        if (!(client.screen instanceof ContainerScreen)) {
+            return;
+        }
+        ContainerScreen screen = (ContainerScreen) client.screen;
+        ItemStack stack = screen.getMenu().getSlot(0).getItem();
+        if (stack.getItem() != Items.EMERALD || stack.getCount() != 7) {
+            throw new IllegalStateException("Synchronized dustbin sentinel is missing: " + stack);
+        }
+        AotakeNetworkSmokeStatus.append("PASS persisted-world-data-client");
+        state = State.WAIT_SERVER;
+        ticks = 0;
+    }
+
+    private void waitForServer(Minecraft client) {
+        if (!serverFinished()) {
+            return;
+        }
+        finish(client);
+    }
+
+    private boolean serverFinished() {
+        String configured = System.getProperty("aotake.networkSmoke.serverStatus", "").trim();
+        if (configured.isEmpty()) {
+            return false;
+        }
+        try {
+            String status = new String(Files.readAllBytes(Paths.get(configured)), StandardCharsets.UTF_8);
+            return AotakeNetworkSmokeClientPlan.serverFinished(status, AotakeNetworkSmokeStatus.phase());
+        } catch (Exception ignored) {
+            return false;
+        }
     }
 
     private void finish(Minecraft client) {
@@ -102,12 +155,19 @@ public final class AotakeNetworkSmokeClientRunner {
         client.stop();
     }
 
-    private void fail(Minecraft client, String reason) {
+    private void fail(Minecraft client, String message) {
         state = State.FINISHED;
-        AotakeNetworkSmokeStatus.append("FAIL client " + reason);
-        LOGGER.error("Aotake network smoke client failed: {}", reason);
+        AotakeNetworkSmokeStatus.append("FAIL client " + message);
+        LOGGER.error("Aotake network smoke client failed: {}", message);
         client.stop();
     }
 
-    private enum State { CONNECT, LOGIN_SYNC, CONFIG_ECHO, SERVER_SETTLE, FINISHED }
+    private enum State {
+        CONNECT,
+        LOGIN_SYNC,
+        CONFIG_ECHO,
+        DUSTBIN,
+        WAIT_SERVER,
+        FINISHED
+    }
 }
