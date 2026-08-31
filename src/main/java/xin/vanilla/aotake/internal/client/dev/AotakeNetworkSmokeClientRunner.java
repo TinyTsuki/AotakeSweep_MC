@@ -80,8 +80,7 @@ public final class AotakeNetworkSmokeClientRunner {
         String host = System.getProperty("aotake.networkSmoke.host", "127.0.0.1");
         int port = Integer.getInteger("aotake.networkSmoke.port", 25575);
         ServerData server = new ServerData("Aotake Network Smoke", host + ':' + port, false);
-        client.setCurrentServer(server);
-        ConnectScreen.startConnecting(client.screen, client, ServerAddress.parseString(server.ip), server);
+        ConnectScreen.startConnecting(client.screen, client, ServerAddress.parseString(server.ip), server, false);
         AotakeNetworkSmokeStatus.append("CONNECT " + host + ':' + port);
         state = State.LOGIN_SYNC;
         ticks = 0;
