@@ -45,6 +45,7 @@ import java.util.function.Supplier;
 public final class AotakeNetworkSmokeServerRunner {
     private static final int SENTINEL_COUNT = 7;
     private static final int SENTINEL_CONFIG_VALUE = 11;
+    private static final int WORKLOAD_FILTER_RUNS_PER_TICK = 8;
 
     private static boolean ready;
     private static boolean conciseCommandVerified;
@@ -63,6 +64,8 @@ public final class AotakeNetworkSmokeServerRunner {
     private static List<ItemEntity> chunkItems = Collections.emptyList();
     private static Cow captureTarget;
     private static ReflectiveSparkProfile sparkProfile;
+    private static AotakeNetworkSmokeWorkload workload;
+    private static int workloadObservedEntities;
 
     private AotakeNetworkSmokeServerRunner() {
     }
@@ -220,6 +223,13 @@ public final class AotakeNetworkSmokeServerRunner {
                     throw new IllegalStateException("Captured entity payload was not added to inventory");
                 }
                 AotakeNetworkSmokeStatus.append("PASS entity-capture");
+                workload = new AotakeNetworkSmokeWorkload(gameplayTicks);
+                AotakeNetworkSmokeStatus.append("START sustained-gameplay-workload");
+                gameplayStep = GameplayStep.SUSTAINED;
+                return false;
+            case SUSTAINED:
+                if (!runSustainedGameplay(player)) return false;
+                AotakeNetworkSmokeStatus.append("PASS sustained-gameplay-workload");
                 gameplayStep = GameplayStep.COMPLETE;
                 return true;
             case COMPLETE:
@@ -227,6 +237,40 @@ public final class AotakeNetworkSmokeServerRunner {
             default:
                 throw new IllegalStateException("Unknown gameplay step " + gameplayStep);
         }
+    }
+
+    private static boolean runSustainedGameplay(ServerPlayer player) {
+        if (workload == null) throw new IllegalStateException("Missing sustained gameplay workload");
+        ServerLevel level = (ServerLevel) player.level();
+        for (int index = 0; index < WORKLOAD_FILTER_RUNS_PER_TICK; index++) {
+            workloadObservedEntities += AotakeUtils.getAllEntitiesByFilter(null, true).size();
+        }
+        if (workload.shouldTriggerSweepAt(gameplayTicks)) {
+            for (int index = 0; index < 6; index++) {
+                level.addFreshEntity(new ItemEntity(level, fixtureX(player) + index * 0.1D,
+                        fixtureY(player), fixtureZ(player), new ItemStack(Items.IRON_NUGGET)));
+            }
+            EventHandlerProxy.setNextSweepTime(System.currentTimeMillis() - 1L);
+        }
+        if (workload.shouldCaptureAt(gameplayTicks)) {
+            Cow target = EntityType.COW.create(level);
+            if (target == null) throw new IllegalStateException("Could not create sustained capture target");
+            target.moveTo(fixtureX(player), fixtureY(player), fixtureZ(player), 0.0F, 0.0F);
+            level.addFreshEntity(target);
+            player.setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(Items.STICK));
+            player.setShiftKeyDown(true);
+            player.setPose(Pose.CROUCHING);
+            InteractionResult interaction = EventHandlerProxy.onRightEntity(player, level, InteractionHand.MAIN_HAND,
+                    target, new EntityHitResult(target, Vec3.ZERO));
+            player.setShiftKeyDown(false);
+            player.setPose(Pose.STANDING);
+            if (interaction != InteractionResult.SUCCESS) {
+                throw new IllegalStateException("Sustained capture interaction was not consumed: " + interaction);
+            }
+        }
+        if (!workload.completeAt(gameplayTicks)) return false;
+        if (workloadObservedEntities <= 0) throw new IllegalStateException("Sustained entity filtering observed no entities");
+        return true;
     }
 
     private static void configureGameplayFixture() {
@@ -333,6 +377,7 @@ public final class AotakeNetworkSmokeServerRunner {
         WAIT_COUNTDOWN,
         WAIT_CHUNK,
         WAIT_CAPTURE,
+        SUSTAINED,
         COMPLETE
     }
 

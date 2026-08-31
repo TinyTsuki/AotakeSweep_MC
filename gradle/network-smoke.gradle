@@ -126,7 +126,7 @@ tasks.register('networkSmoke') {
                 waitFor(server, serverStatus, "FINISHED ${phase}", serverLog, 30)
                 if (!server.waitFor(60, TimeUnit.SECONDS) || server.exitValue() != 0) throw new GradleException("Server failed:\n${tailUtf8(serverLog)}")
                 def expectedServer = phase == 'phase-one'
-                        ? ['PASS concise-command-live-refresh', 'PASS countdown-cleanup', 'PASS chunk-candidates-visible', 'PASS chunk-cleanup', 'PASS entity-capture', 'PASS config-command-roundtrip', 'PASS server-config-roundtrip', 'PASS phase-one-world-write', 'PASS spark-profiler-active', 'PASS spark-report-written', 'FINISHED phase-one', 'PASS server-shutdown']
+                        ? ['PASS concise-command-live-refresh', 'PASS countdown-cleanup', 'PASS chunk-candidates-visible', 'PASS chunk-cleanup', 'PASS entity-capture', 'START sustained-gameplay-workload', 'PASS sustained-gameplay-workload', 'PASS config-command-roundtrip', 'PASS server-config-roundtrip', 'PASS phase-one-world-write', 'PASS spark-profiler-active', 'PASS spark-report-written', 'FINISHED phase-one', 'PASS server-shutdown']
                         : ['PASS persisted-command-config', 'PASS persisted-player-data', 'PASS persisted-world-data', 'FINISHED phase-two', 'PASS server-shutdown']
                 expectedServer.each { marker ->
                     if (!readUtf8(serverStatus).contains(marker)) throw new GradleException("Missing '${marker}':\n${readUtf8(serverStatus)}")
