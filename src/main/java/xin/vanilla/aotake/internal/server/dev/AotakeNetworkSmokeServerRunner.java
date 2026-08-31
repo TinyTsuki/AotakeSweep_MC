@@ -172,7 +172,7 @@ public final class AotakeNetworkSmokeServerRunner {
         if (++gameplayTicks > 1000) {
             throw new IllegalStateException("Gameplay smoke timed out in " + gameplayStep);
         }
-        ServerLevel level = player.getLevel();
+        ServerLevel level = (ServerLevel) player.level();
         switch (gameplayStep) {
             case PREPARE:
                 configureGameplayFixture();
