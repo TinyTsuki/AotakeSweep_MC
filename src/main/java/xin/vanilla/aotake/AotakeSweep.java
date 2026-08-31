@@ -109,7 +109,9 @@ public class AotakeSweep {
         ForgeAotakeGameEventAdapter.register(context.getModEventBus());
         AotakeNetworkSmokeServerRunner.register();
 
-        DistExecutor.safeRunWhenOn(Dist.CLIENT,
+        // Client bootstrap 的方法签名会引用 Screen；safeRunWhenOn 会在专服校验该签名，
+        // 因而必须使用延迟解析的分支调用，避免 dedicated server 触碰客户端类。
+        DistExecutor.unsafeRunWhenOn(Dist.CLIENT,
                 () -> xin.vanilla.aotake.client.AotakeClientBootstrap::init);
     }
 

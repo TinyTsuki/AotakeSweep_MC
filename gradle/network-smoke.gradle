@@ -89,6 +89,9 @@ def gradleCommand = { String runTask, String phase, File status, File report, Fi
     if (serverStatus != null) {
         command.add("-Paotake.networkSmoke.serverStatus=${serverStatus.absolutePath}".toString())
     }
+    if (runTask == 'runServer') {
+        command.add('-Paotake.networkSmoke.server=true')
+    }
     return command
 }
 
