@@ -6,6 +6,7 @@ import net.minecraft.client.gui.screen.inventory.ContainerScreen;
 import net.minecraft.client.multiplayer.ServerData;
 import net.minecraft.item.ItemStack;
 import net.minecraft.item.Items;
+import net.minecraft.util.text.StringTextComponent;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import xin.vanilla.aotake.AotakeSweep;
@@ -15,6 +16,9 @@ import xin.vanilla.aotake.network.packet.PlayerConfigSyncToServer;
 import xin.vanilla.banira.common.util.PacketUtils;
 
 import javax.annotation.Nonnull;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 
 /**
  * 自动连接独立服务端并验证真实网络包和容器同步。
@@ -27,6 +31,7 @@ public final class AotakeNetworkSmokeClientRunner {
 
     private State state = State.CONNECT;
     private int ticks;
+    private boolean disconnectRequested;
 
     private AotakeNetworkSmokeClientRunner() {
     }
@@ -63,6 +68,9 @@ public final class AotakeNetworkSmokeClientRunner {
                     break;
                 case DUSTBIN:
                     waitForDustbin(client);
+                    break;
+                case WAIT_SERVER:
+                    waitForServerShutdown(client);
                     break;
                 case FINISHED:
                     break;
@@ -110,7 +118,8 @@ public final class AotakeNetworkSmokeClientRunner {
             return;
         }
         AotakeNetworkSmokeStatus.append("PASS config-roundtrip");
-        finish(client, "phase-one");
+        state = State.WAIT_SERVER;
+        ticks = 0;
     }
 
     private void waitForDustbin(Minecraft client) {
@@ -119,11 +128,40 @@ public final class AotakeNetworkSmokeClientRunner {
         }
         ContainerScreen<?> screen = (ContainerScreen<?>) client.screen;
         ItemStack stack = screen.getMenu().getSlot(0).getItem();
-        if (stack.getItem() != Items.DIAMOND || stack.getCount() != 7) {
+        if (stack.getItem() != Items.EMERALD || stack.getCount() != 7) {
             throw new IllegalStateException("Synchronized dustbin sentinel is missing: " + stack);
         }
         AotakeNetworkSmokeStatus.append("PASS persisted-world-data-client");
-        finish(client, "phase-two");
+        state = State.WAIT_SERVER;
+        ticks = 0;
+    }
+
+    private void waitForServerShutdown(Minecraft client) {
+        if (!serverFinished()) {
+            return;
+        }
+        if (!disconnectRequested && client.getConnection() != null) {
+            disconnectRequested = true;
+            client.getConnection().getConnection().disconnect(new StringTextComponent("Aotake network smoke complete"));
+            return;
+        }
+        if (client.getConnection() != null && client.getConnection().getConnection().isConnected()) {
+            return;
+        }
+        finish(client, AotakeNetworkSmokeStatus.phase());
+    }
+
+    private boolean serverFinished() {
+        String configured = System.getProperty("aotake.networkSmoke.serverStatus", "").trim();
+        if (configured.isEmpty()) {
+            return false;
+        }
+        try {
+            return new String(Files.readAllBytes(Paths.get(configured)), StandardCharsets.UTF_8)
+                    .contains("FINISHED " + AotakeNetworkSmokeStatus.phase());
+        } catch (Exception ignored) {
+            return false;
+        }
     }
 
     private void finish(Minecraft client, String phase) {
@@ -145,6 +183,7 @@ public final class AotakeNetworkSmokeClientRunner {
         LOGIN_SYNC,
         CONFIG_ECHO,
         DUSTBIN,
+        WAIT_SERVER,
         FINISHED
     }
 }

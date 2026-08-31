@@ -18,6 +18,7 @@ public final class AotakeNetworkSmokeStatus {
     public static final String ENABLE_PROPERTY = "aotake.networkSmoke";
     public static final String PHASE_PROPERTY = "aotake.networkSmoke.phase";
     public static final String STATUS_PROPERTY = "aotake.networkSmoke.status";
+    public static final String SPARK_REPORT_PROPERTY = "aotake.networkSmoke.sparkReport";
 
     private static final Logger LOGGER = LogManager.getLogger();
 
@@ -31,6 +32,11 @@ public final class AotakeNetworkSmokeStatus {
     @Nonnull
     public static String phase() {
         return System.getProperty(PHASE_PROPERTY, "").trim();
+    }
+
+    @Nonnull
+    public static String sparkReport() {
+        return System.getProperty(SPARK_REPORT_PROPERTY, "").trim();
     }
 
     public static synchronized void append(@Nonnull String line) {
