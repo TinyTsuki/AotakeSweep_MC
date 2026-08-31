@@ -236,6 +236,7 @@ tasks.named('remapJar') {
 }
 
 apply from: "gradle/network-smoke.gradle"
+apply from: "gradle/spark-profile-report.gradle"
 
 // configure the maven publication
 publishing {
