@@ -14,6 +14,7 @@ import xin.vanilla.aotake.command.AotakeCommand;
 import xin.vanilla.aotake.config.ClientConfig;
 import xin.vanilla.aotake.config.CommonConfig;
 import xin.vanilla.aotake.internal.forge.event.ForgeAotakeGameEventAdapter;
+import xin.vanilla.aotake.internal.server.dev.AotakeNetworkSmokeServerRunner;
 import xin.vanilla.aotake.network.NetworkInit;
 import xin.vanilla.aotake.network.packet.SweepDataSyncToClient;
 import xin.vanilla.aotake.notification.AotakeNotificationTypes;
@@ -106,6 +107,7 @@ public class AotakeSweep {
 
         BaniraEventBus.Server.onStarting(server -> entitySweeper.clear());
         ForgeAotakeGameEventAdapter.register(context.getModEventBus());
+        AotakeNetworkSmokeServerRunner.register();
 
         DistExecutor.safeRunWhenOn(Dist.CLIENT,
                 () -> xin.vanilla.aotake.client.AotakeClientBootstrap::init);
