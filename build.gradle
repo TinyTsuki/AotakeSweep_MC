@@ -123,8 +123,11 @@ repositories {
 
 dependencies {
     runtimeOnly fg.deobf("maven.modrinth:spark:dZASdPFO")
-    // Development runtime performance mod; not bundled into published artifacts.
-    runtimeOnly fg.deobf("maven.modrinth:5ZwdcRci:UjgM7lFA")
+    // Dedicated-server smoke must not attempt to load the client-only FPS HUD mod.
+    if (!(project.findProperty('aotake.networkSmoke.server') ?: 'false').toString().toBoolean()) {
+        // Development runtime performance mod; not bundled into published artifacts.
+        runtimeOnly fg.deobf("maven.modrinth:5ZwdcRci:UjgM7lFA")
+    }
     minecraft "net.minecraftforge:forge:${minecraft_version}-${forge_version}"
 
     annotationProcessor 'org.spongepowered:mixin:0.8.5:processor'
