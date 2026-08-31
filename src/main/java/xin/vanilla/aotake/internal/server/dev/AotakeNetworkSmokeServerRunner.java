@@ -27,6 +27,7 @@ import xin.vanilla.aotake.event.EventHandlerProxy;
 import xin.vanilla.aotake.internal.dev.AotakeNetworkSmokeStatus;
 import xin.vanilla.aotake.util.AotakeUtils;
 import xin.vanilla.banira.api.BaniraServer;
+import xin.vanilla.banira.common.util.CommandUtils;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
@@ -143,10 +144,9 @@ public final class AotakeNetworkSmokeServerRunner {
             return;
         }
         if (!commandVerified) {
-            int commandResult = player.getServer().getCommands().performCommand(
-                    player.createCommandSourceStack().withPermission(4),
-                    "aotake config common base.batch.sweepBatchLimit " + SENTINEL_CONFIG_VALUE);
-            if (commandResult <= 0 || CommonConfig.get().base().batch().sweepBatchLimit() != SENTINEL_CONFIG_VALUE) {
+            boolean commandResult = CommandUtils.executeCommand(player,
+                    "aotake config common base.batch.sweepBatchLimit " + SENTINEL_CONFIG_VALUE, 4, true);
+            if (!commandResult || CommonConfig.get().base().batch().sweepBatchLimit() != SENTINEL_CONFIG_VALUE) {
                 throw new IllegalStateException("Config command did not update sweepBatchLimit");
             }
             AotakeNetworkSmokeStatus.append("PASS config-command-roundtrip");
@@ -337,10 +337,9 @@ public final class AotakeNetworkSmokeServerRunner {
     }
 
     private static void runConfigCommand(ServerPlayer player, String path, boolean value) {
-        int result = player.getServer().getCommands().performCommand(
-                player.createCommandSourceStack().withPermission(4),
-                "aotake config common " + path + " " + value);
-        if (result <= 0) {
+        boolean result = CommandUtils.executeCommand(player,
+                "aotake config common " + path + " " + value, 4, true);
+        if (!result) {
             throw new IllegalStateException("Config command failed for " + path + "=" + value);
         }
         commandRefreshWaitTicks = 0;
