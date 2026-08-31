@@ -11,6 +11,7 @@ import xin.vanilla.aotake.AotakeSweep;
 import xin.vanilla.aotake.command.AotakeCommand;
 import xin.vanilla.aotake.data.world.ChunkVaultSession;
 import xin.vanilla.aotake.event.EventHandlerProxy;
+import xin.vanilla.aotake.internal.server.dev.AotakeNetworkSmokeServerRunner;
 import xin.vanilla.banira.common.util.BaniraEventBus;
 
 /**
@@ -20,6 +21,7 @@ public final class FabricAotakeEntry implements ModInitializer {
     @Override
     public void onInitialize() {
         AotakeSweep.bootstrapCommon();
+        AotakeNetworkSmokeServerRunner.register();
         CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) -> AotakeCommand.register(dispatcher));
         UseItemCallback.EVENT.register(EventHandlerProxy::onPlayerUseItem);
         UseBlockCallback.EVENT.register(EventHandlerProxy::onRightBlock);
