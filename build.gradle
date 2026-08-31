@@ -4,6 +4,7 @@ plugins {
 }
 
 def javaVer = 17
+def aotakeNetworkSmokeServer = (project.findProperty('aotake.networkSmoke.server') ?: 'false').toString().toBoolean()
 
 version = project.mod_version
 mod_id = project.mod_id
@@ -52,6 +53,7 @@ configurations.configureEach {
 }
 
 apply from: "gradle/banira-local-fingerprint.gradle"
+apply from: "gradle/network-smoke.gradle"
 
 repositories {
     maven {
@@ -62,10 +64,12 @@ repositories {
 }
 
 dependencies {
-    modRuntimeOnly "maven.modrinth:sodium-extra:MTxUvPFz"
+    if (!aotakeNetworkSmokeServer) {
+        modRuntimeOnly "maven.modrinth:sodium-extra:MTxUvPFz"
+        // Development runtime performance mod; not bundled into published artifacts.
+        modRuntimeOnly "maven.modrinth:AANobbMI:rAfhHfow"
+    }
     modRuntimeOnly "maven.modrinth:spark:XhFbpH8f"
-    // Development runtime performance mod; not bundled into published artifacts.
-    modRuntimeOnly "maven.modrinth:AANobbMI:rAfhHfow"
     // To change the versions see the gradle.properties file
     minecraft "com.mojang:minecraft:${project.minecraft_version}"
     mappings loom.officialMojangMappings()

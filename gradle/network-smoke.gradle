@@ -1,0 +1,130 @@
+import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
+import java.util.concurrent.TimeUnit
+
+def smokeRoot = file("${projectDir}/run-network-smoke")
+def smokeServerDir = file("${smokeRoot}/server")
+def smokeClientDir = file("${smokeRoot}/client")
+def smokePort = 25575
+def smokeChild = (project.findProperty('aotake.networkSmoke.child') ?: 'false').toString().toBoolean()
+
+if (smokeChild) {
+    layout.buildDirectory.set(file(project.property('aotake.networkSmoke.buildDir')))
+    String phase = project.property('aotake.networkSmoke.phase').toString()
+    String status = project.property('aotake.networkSmoke.status').toString()
+    String report = project.property('aotake.networkSmoke.sparkReport').toString()
+    String serverStatus = project.findProperty('aotake.networkSmoke.serverStatus')?.toString() ?: ''
+    loom.runs {
+        configureEach {
+            property 'aotake.networkSmoke', 'true'
+            property 'aotake.networkSmoke.phase', phase
+            property 'aotake.networkSmoke.status', status
+            property 'aotake.networkSmoke.sparkReport', report
+        }
+        server {
+            runDir project.relativePath(smokeServerDir)
+            programArgs '--nogui', '--port', smokePort.toString()
+        }
+        client {
+            runDir project.relativePath(smokeClientDir)
+            property 'aotake.networkSmoke.host', '127.0.0.1'
+            property 'aotake.networkSmoke.port', smokePort.toString()
+            property 'aotake.networkSmoke.serverStatus', serverStatus
+            programArgs '--username', 'AotakeSmoke', '--uuid', 'f0c1198a-8756-35e9-8c49-d9e5605dc6cf'
+        }
+    }
+}
+
+def readUtf8 = { File file -> file.isFile() ? file.getText('UTF-8') : '' }
+def tailUtf8 = { File file -> file.isFile() ? file.readLines('UTF-8').takeRight(120).join(System.lineSeparator()) : '' }
+def destroy = { Process process ->
+    if (process?.isAlive()) {
+        process.toHandle().descendants().forEach { it.destroyForcibly() }
+        process.destroyForcibly()
+        process.waitFor(15, TimeUnit.SECONDS)
+    }
+}
+def waitFor = { Process process, File status, String marker, File log, int timeout ->
+    long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(timeout)
+    while (System.nanoTime() < deadline) {
+        String content = readUtf8(status)
+        if (content.contains('FAIL ')) throw new GradleException("Network smoke failed for '${marker}':\n${content}\n${tailUtf8(log)}")
+        if (content.contains(marker)) return
+        if (!process.isAlive()) throw new GradleException("Process exited before '${marker}' (${process.exitValue()}):\n${tailUtf8(log)}")
+        Thread.sleep(500L)
+    }
+    throw new GradleException("Timed out waiting for '${marker}':\n${tailUtf8(log)}")
+}
+def start = { String task, String phase, File status, File serverStatus, File report, File log ->
+    File childRoot = new File(smokeRoot, task == 'runServer' ? 'server-gradle' : 'client-gradle')
+    File wrapper = file("${projectDir}/${System.getProperty('os.name').toLowerCase().contains('windows') ? 'gradlew.bat' : 'gradlew'}")
+    List<String> command = System.getProperty('os.name').toLowerCase().contains('windows') ? ['cmd.exe', '/d', '/c', wrapper.absolutePath] : [wrapper.absolutePath]
+    command.addAll([task, '--no-daemon', '--console=plain', '--project-cache-dir', new File(childRoot, 'project-cache').absolutePath,
+                    '-Paotake.networkSmoke.child=true', "-Paotake.networkSmoke.phase=${phase}", "-Paotake.networkSmoke.status=${status.absolutePath}",
+                    "-Paotake.networkSmoke.sparkReport=${report.absolutePath}", "-Paotake.networkSmoke.buildDir=${new File(childRoot, 'build').absolutePath}"])
+    if (task == 'runServer') command.add('-Paotake.networkSmoke.server=true')
+    else command.add("-Paotake.networkSmoke.serverStatus=${serverStatus.absolutePath}")
+    log.parentFile.mkdirs()
+    ProcessBuilder builder = new ProcessBuilder(command.collect { it.toString() })
+    builder.directory(projectDir)
+    builder.redirectErrorStream(true)
+    builder.redirectOutput(log)
+    builder.start()
+}
+
+tasks.register('networkSmoke') {
+    group = 'verification'
+    description = 'Runs Aotake dedicated cleanup, capture, persistence, remote-client, and Spark smoke.'
+    doLast {
+        if (smokeChild) throw new GradleException('networkSmoke cannot run as a child')
+        delete smokeRoot
+        smokeServerDir.mkdirs()
+        smokeClientDir.mkdirs()
+        new File(smokeServerDir, 'eula.txt').setText('eula=true' + System.lineSeparator(), 'UTF-8')
+        new File(smokeServerDir, 'server.properties').setText(
+                "online-mode=false${System.lineSeparator()}server-port=${smokePort}${System.lineSeparator()}"
+                        + "level-name=network-smoke-world${System.lineSeparator()}view-distance=4${System.lineSeparator()}", 'UTF-8')
+        File evidence = file("${smokeRoot}/evidence/${DateTimeFormatter.ofPattern('yyyyMMdd-HHmmss').format(LocalDateTime.now())}")
+        evidence.mkdirs()
+        ['phase-one', 'phase-two'].each { phase ->
+            File serverStatus = new File(evidence, "server-${phase}.status")
+            File clientStatus = new File(evidence, "client-${phase}.status")
+            File report = new File(evidence, "spark-report-${phase}.sparkprofile")
+            File serverLog = new File(evidence, "server-${phase}.log")
+            File clientLog = new File(evidence, "client-${phase}.log")
+            Process server = null
+            Process client = null
+            try {
+                server = start('runServer', phase, serverStatus, serverStatus, report, serverLog)
+                waitFor(server, serverStatus, 'PASS server-ready', serverLog, 180)
+                client = start('runClient', phase, clientStatus, serverStatus, report, clientLog)
+                if (phase == 'phase-one') {
+                    waitFor(server, serverStatus, 'PASS spark-report-written', serverLog, 120)
+                    if (!report.isFile() || report.length() == 0L) throw new GradleException("Spark report was not written: ${report}")
+                }
+                waitFor(client, clientStatus, "FINISHED ${phase}", clientLog, 180)
+                if (!client.waitFor(45, TimeUnit.SECONDS) || client.exitValue() != 0) throw new GradleException("Client failed:\n${tailUtf8(clientLog)}")
+                waitFor(server, serverStatus, "FINISHED ${phase}", serverLog, 30)
+                if (!server.waitFor(60, TimeUnit.SECONDS) || server.exitValue() != 0) throw new GradleException("Server failed:\n${tailUtf8(serverLog)}")
+                def expectedServer = phase == 'phase-one'
+                        ? ['PASS concise-command-live-refresh', 'PASS countdown-cleanup', 'PASS chunk-candidates-visible', 'PASS chunk-cleanup', 'PASS entity-capture', 'PASS config-command-roundtrip', 'PASS server-config-roundtrip', 'PASS phase-one-world-write', 'PASS spark-profiler-active', 'PASS spark-report-written', 'FINISHED phase-one', 'PASS server-shutdown']
+                        : ['PASS persisted-command-config', 'PASS persisted-player-data', 'PASS persisted-world-data', 'FINISHED phase-two', 'PASS server-shutdown']
+                expectedServer.each { marker ->
+                    if (!readUtf8(serverStatus).contains(marker)) throw new GradleException("Missing '${marker}':\n${readUtf8(serverStatus)}")
+                }
+                def expectedClient = phase == 'phase-one'
+                        ? ['PASS remote-login-sync', 'PASS config-roundtrip', 'FINISHED phase-one']
+                        : ['PASS remote-login-sync', 'PASS persisted-player-data-client', 'PASS persisted-world-data-client', 'FINISHED phase-two']
+                expectedClient.each { marker ->
+                    if (!readUtf8(clientStatus).contains(marker)) throw new GradleException("Missing client '${marker}':\n${readUtf8(clientStatus)}")
+                }
+            } finally {
+                destroy(client)
+                destroy(server)
+            }
+        }
+        def crashes = fileTree(smokeRoot) { include '**/crash-reports/crash-*.txt' }.files
+        if (!crashes.isEmpty()) throw new GradleException("Network smoke created crash reports: ${crashes*.absolutePath}")
+        logger.lifecycle("Aotake network smoke FINISHED: ${evidence}")
+    }
+}
