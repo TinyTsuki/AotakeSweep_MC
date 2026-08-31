@@ -25,6 +25,8 @@ public class EntityFilter {
 
     // 缓存已解析的 filter spec（key 为 convertExpression 后的最终字符串）
     private final Map<String, FilterSpec> filterCache = new ConcurrentHashMap<>();
+    // 缓存完整规则组对应的匹配器，避免每次实体扫描重复组装相同规则。
+    private final Map<List<String>, Matcher> matcherCache = new ConcurrentHashMap<>();
     // 缓存已解析的 EntityDataAccessor（无显式类名时 key 含实体类名，避免跨类型错误复用）
     private static final Map<String, DataParameter<?>> accessorCache = new ConcurrentHashMap<>();
     // 缓存已解析的 ACCESSOR_KEY 路径（key 为完整 accessorPath 字符串）
@@ -34,6 +36,7 @@ public class EntityFilter {
 
     public void clear() {
         filterCache.clear();
+        matcherCache.clear();
         variableBuffer.remove();
     }
 
@@ -48,8 +51,13 @@ public class EntityFilter {
         if (CollectionUtils.isNullOrEmpty(config)) {
             return emptyMatcher;
         }
-        List<FilterSpec> specs = new ArrayList<>(config.size());
-        for (String raw : config) {
+        List<String> rules = Collections.unmodifiableList(new ArrayList<>(config));
+        return matcherCache.computeIfAbsent(rules, this::compileMatcher);
+    }
+
+    private Matcher compileMatcher(List<String> rules) {
+        List<FilterSpec> specs = new ArrayList<>(rules.size());
+        for (String raw : rules) {
             String fullKey = convertExpression(raw);
             specs.add(filterCache.computeIfAbsent(fullKey, this::compileSpec));
         }
