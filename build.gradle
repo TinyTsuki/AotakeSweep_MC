@@ -115,7 +115,6 @@ dependencies {
     runtimeOnly fg.deobf("maven.modrinth:spark:GygIHGfW")
     // Dedicated-server smoke must not attempt to load client-only FPS HUD mods.
     if (!(project.findProperty('aotake.networkSmoke.server') ?: 'false').toString().toBoolean()) {
-        runtimeOnly fg.deobf("curse.maven:rubidium-extra-654373:4513591")
         // Development runtime performance mod; not bundled into published artifacts.
         runtimeOnly fg.deobf("maven.modrinth:embeddium:xuVAgh89")
     }
