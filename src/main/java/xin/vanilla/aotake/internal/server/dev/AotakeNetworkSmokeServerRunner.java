@@ -28,7 +28,6 @@ import xin.vanilla.banira.api.BaniraServer;
 import xin.vanilla.banira.api.event.BaniraEvents;
 
 import java.io.IOException;
-import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.nio.file.Files;
@@ -39,6 +38,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Supplier;
 
 /** 真实专服内验证 Aotake 的玩法链、持久化与 Spark 原生报告。 */
 public final class AotakeNetworkSmokeServerRunner {
@@ -148,7 +148,7 @@ public final class AotakeNetworkSmokeServerRunner {
         switch (gameplayStep) {
             case PREPARE:
                 configureGameplayFixture();
-                sparkProfile = ReflectiveSparkProfile.start(level.getServer());
+                sparkProfile = ReflectiveSparkProfile.start();
                 AotakeNetworkSmokeStatus.append("PASS spark-profiler-active");
                 countdownItem = new ItemEntity(level, fixtureX(player), fixtureY(player), fixtureZ(player),
                         new ItemStack(Items.DIAMOND));
@@ -200,7 +200,7 @@ public final class AotakeNetworkSmokeServerRunner {
                 captureTarget.moveTo(24.5D, 65.0D, 24.5D, 0.0F, 0.0F);
                 level.addFreshEntity(captureTarget);
                 player.teleportTo(level, 23.5D, 65.0D, 24.5D, 0.0F, 0.0F);
-                player.inventory.add(new ItemStack(Items.STICK));
+                player.getInventory().add(new ItemStack(Items.STICK));
                 player.setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(Items.STICK));
                 player.setShiftKeyDown(true);
                 player.setPose(Pose.CROUCHING);
@@ -216,7 +216,7 @@ public final class AotakeNetworkSmokeServerRunner {
                 return false;
             case WAIT_CAPTURE:
                 if (captureTarget.isAlive()) return false;
-                if (player.inventory.items.stream().noneMatch(AotakeUtils::hasAotakeTag)) {
+                if (player.getInventory().items.stream().noneMatch(AotakeUtils::hasAotakeTag)) {
                     throw new IllegalStateException("Captured entity payload was not added to inventory");
                 }
                 AotakeNetworkSmokeStatus.append("PASS entity-capture");
@@ -340,38 +340,35 @@ public final class AotakeNetworkSmokeServerRunner {
     /** Spark 的 Fabric 导出 API 没有跨版本承诺，烟测仅反射调用其原生 sampler。 */
     @SuppressWarnings({"rawtypes", "unchecked"})
     private static final class ReflectiveSparkProfile {
-        private final Object plugin;
         private final Object platform;
         private final Object sampler;
         private final Future<?> future;
         private final Path reportPath;
         private boolean written;
 
-        private ReflectiveSparkProfile(Object plugin, Object platform, Object sampler, Future<?> future, Path reportPath) {
-            this.plugin = plugin;
+        private ReflectiveSparkProfile(Object platform, Object sampler, Future<?> future, Path reportPath) {
             this.platform = platform;
             this.sampler = sampler;
             this.future = future;
             this.reportPath = reportPath;
         }
 
-        private static ReflectiveSparkProfile start(MinecraftServer server) {
+        private static ReflectiveSparkProfile start() {
             try {
                 String configured = AotakeNetworkSmokeStatus.sparkReport();
                 if (configured.isEmpty()) throw new IllegalStateException("Missing Spark report path");
-                Object plugin = serverPlugin(server);
-                Class<?> pluginBase = plugin.getClass().getSuperclass();
-                Field platformField = pluginBase.getDeclaredField("platform");
-                platformField.setAccessible(true);
-                Object platform = platformField.get(plugin);
-                Field threadDumperField = pluginBase.getDeclaredField("threadDumper");
-                threadDumperField.setAccessible(true);
-                Object threadDumper = threadDumperField.get(plugin);
-                threadDumper.getClass().getMethod("ensureSetup").invoke(threadDumper);
+                Object platform = getPlatform();
+                Object plugin = getServerPlugin();
                 ClassLoader loader = platform.getClass().getClassLoader();
+                Object samplerContainer = platform.getClass().getMethod("getSamplerContainer").invoke(platform);
+                method(samplerContainer.getClass(), "stopActiveSampler", 1).invoke(samplerContainer, true);
                 Class<?> builderType = Class.forName("me.lucko.spark.common.sampler.SamplerBuilder", true, loader);
                 Object builder = builderType.getConstructor().newInstance();
-                builderType.getMethod("samplingInterval", double.class).invoke(builder, 10.0D);
+                Class<?> modeType = Class.forName("me.lucko.spark.common.sampler.SamplerMode", true, loader);
+                Object executionMode = Enum.valueOf((Class) modeType, "EXECUTION");
+                double interval = ((Number) modeType.getMethod("defaultInterval").invoke(executionMode)).doubleValue();
+                builderType.getMethod("mode", modeType).invoke(builder, executionMode);
+                builderType.getMethod("samplingInterval", double.class).invoke(builder, interval);
                 builderType.getMethod("completeAfter", long.class, TimeUnit.class).invoke(builder, 20L, TimeUnit.SECONDS);
                 builderType.getMethod("forceJavaSampler", boolean.class).invoke(builder, true);
                 Class<?> dumperType = Class.forName("me.lucko.spark.common.sampler.ThreadDumper", true, loader);
@@ -379,10 +376,10 @@ public final class AotakeNetworkSmokeServerRunner {
                         plugin.getClass().getMethod("getDefaultThreadDumper").invoke(plugin));
                 Class<?> grouperType = Class.forName("me.lucko.spark.common.sampler.ThreadGrouper", true, loader);
                 builderType.getMethod("threadGrouper", grouperType).invoke(builder, grouperType.getField("BY_POOL").get(null));
-                Object sampler = method(builderType, "start", 0).invoke(builder);
-                method(sampler.getClass(), "start", 0).invoke(sampler);
+                Object sampler = method(builderType, "start", 1).invoke(builder, platform);
+                method(samplerContainer.getClass(), "setActiveSampler", 1).invoke(samplerContainer, sampler);
                 Future<?> future = (Future<?>) method(sampler.getClass(), "getFuture", 0).invoke(sampler);
-                return new ReflectiveSparkProfile(plugin, platform, sampler, future, Paths.get(configured).toAbsolutePath());
+                return new ReflectiveSparkProfile(platform, sampler, future, Paths.get(configured).toAbsolutePath());
             } catch (ReflectiveOperationException error) {
                 throw new IllegalStateException("Unable to start Spark sampler for network smoke", error);
             }
@@ -397,43 +394,44 @@ public final class AotakeNetworkSmokeServerRunner {
             try {
                 ClassLoader loader = sampler.getClass().getClassLoader();
                 Class<?> propsType = Class.forName("me.lucko.spark.common.sampler.Sampler$ExportProps", true, loader);
-                Class<?> platformInfoType = Class.forName("me.lucko.spark.common.platform.PlatformInfo", true, loader);
-                Class<?> commandSenderType = Class.forName("me.lucko.spark.common.command.sender.CommandSender", true, loader);
-                Class<?> orderType = Class.forName("me.lucko.spark.common.sampler.ThreadNodeOrder", true, loader);
-                Class<?> mergeType = Class.forName("me.lucko.spark.common.sampler.node.MergeMode", true, loader);
-                Class<?> lookupType = Class.forName("me.lucko.spark.common.util.ClassSourceLookup", true, loader);
-                Class<?> senderType = Class.forName("me.lucko.spark.fabric.FabricCommandSender", true, loader);
-                Constructor<?> senderConstructor = senderType.getConstructors()[0];
-                Object sender = senderConstructor.newInstance(BaniraServer.currentAs(MinecraftServer.class), plugin);
-                Object props = propsType.getConstructor(platformInfoType, commandSenderType, java.util.Comparator.class,
-                                String.class, mergeType, lookupType)
-                        .newInstance(plugin.getClass().getMethod("getPlatformInfo").invoke(plugin), sender,
-                                orderType.getField("BY_TIME").get(null), "Aotake network smoke", mergeMode(),
-                                plugin.getClass().getMethod("createClassSourceLookup").invoke(plugin));
-                Object proto = method(sampler.getClass(), "toProto", 1).invoke(sampler, props);
+                Object props = propsType.getConstructor().newInstance();
+                Class<?> senderDataType = Class.forName("me.lucko.spark.common.command.sender.CommandSender$Data", true, loader);
+                Object creator = senderDataType.getConstructor(String.class, java.util.UUID.class)
+                        .newInstance("Aotake network smoke", null);
+                propsType.getMethod("creator", senderDataType).invoke(props, creator);
+                Supplier<Object> mergeMode = ReflectiveSparkProfile::newMergeMode;
+                Supplier<Object> classSourceLookup = () -> invokeClassSourceLookup(platform);
+                propsType.getMethod("mergeMode", Supplier.class).invoke(props, mergeMode);
+                propsType.getMethod("classSourceLookup", Supplier.class).invoke(props, classSourceLookup);
+                Object proto = method(sampler.getClass(), "toProto", 2).invoke(sampler, platform, props);
                 byte[] bytes = (byte[]) proto.getClass().getMethod("toByteArray").invoke(proto);
                 if (bytes.length == 0) throw new IllegalStateException("Spark report was empty");
                 Files.createDirectories(reportPath.getParent());
                 Files.write(reportPath, bytes);
                 written = true;
-                plugin.getClass().getMethod("disable").invoke(plugin);
                 return true;
             } catch (ReflectiveOperationException | IOException error) {
                 throw new IllegalStateException("Unable to write Spark report", error);
             }
         }
 
-        private static Object serverPlugin(MinecraftServer server) throws ReflectiveOperationException {
+        private static Object getPlatform() throws ReflectiveOperationException {
+            Object plugin = getServerPlugin();
+            Field platformField = plugin.getClass().getSuperclass().getDeclaredField("platform");
+            platformField.setAccessible(true);
+            return platformField.get(plugin);
+        }
+
+        private static Object getServerPlugin() throws ReflectiveOperationException {
             Class<?> modType = Class.forName("me.lucko.spark.fabric.FabricSparkMod");
             Field mod = modType.getDeclaredField("mod");
             mod.setAccessible(true);
-            Class<?> pluginType = Class.forName("me.lucko.spark.fabric.plugin.FabricServerSparkPlugin");
-            Object plugin = pluginType.getConstructor(modType, MinecraftServer.class).newInstance(mod.get(null), server);
-            pluginType.getMethod("enable").invoke(plugin);
-            return plugin;
+            Field plugin = modType.getDeclaredField("activeServerPlugin");
+            plugin.setAccessible(true);
+            return plugin.get(mod.get(null));
         }
 
-        private static Object mergeMode() {
+        private static Object newMergeMode() {
             try {
                 ClassLoader loader = ReflectiveSparkProfile.class.getClassLoader();
                 Class<?> disambiguator = Class.forName("me.lucko.spark.common.util.MethodDisambiguator", true, loader);
@@ -441,6 +439,14 @@ public final class AotakeNetworkSmokeServerRunner {
                 return merge.getMethod("sameMethod", disambiguator).invoke(null, disambiguator.getConstructor().newInstance());
             } catch (ReflectiveOperationException error) {
                 throw new IllegalStateException("Unable to create Spark merge mode", error);
+            }
+        }
+
+        private static Object invokeClassSourceLookup(Object platform) {
+            try {
+                return platform.getClass().getMethod("createClassSourceLookup").invoke(platform);
+            } catch (ReflectiveOperationException error) {
+                throw new IllegalStateException("Unable to create Spark class source lookup", error);
             }
         }
 
