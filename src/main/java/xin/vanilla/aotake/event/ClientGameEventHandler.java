@@ -10,6 +10,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import xin.vanilla.aotake.config.ClientConfig;
 import xin.vanilla.aotake.internal.client.dev.AotakeUiSmokeRunner;
+import xin.vanilla.aotake.internal.client.dev.AotakeNetworkSmokeClientRunner;
 import xin.vanilla.aotake.network.packet.OpenDustbinToServer;
 import xin.vanilla.aotake.screen.DustbinRender;
 import xin.vanilla.aotake.screen.ProgressRender;
@@ -41,6 +42,7 @@ public final class ClientGameEventHandler {
             return;
         }
         AotakeUiSmokeRunner.tick(Minecraft.getInstance());
+        AotakeNetworkSmokeClientRunner.tick(Minecraft.getInstance());
         if (Minecraft.getInstance().screen == null) {
             if (ClientModEventHandler.DUSTBIN_KEY.isDown() && System.currentTimeMillis() - lastTime > 100) {
                 lastTime = System.currentTimeMillis();
