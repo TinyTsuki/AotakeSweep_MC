@@ -111,6 +111,7 @@ repositories {
 }
 
 apply from: "gradle/banira-local-fingerprint.gradle"
+apply from: "gradle/network-smoke.gradle"
 
 repositories {
     maven {
