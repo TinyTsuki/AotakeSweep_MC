@@ -3,6 +3,8 @@ package xin.vanilla.aotake.internal.server.dev;
 /** Controls the bounded sustained gameplay segment of the dev-only smoke. */
 final class AotakeNetworkSmokeWorkload {
     static final int DURATION_TICKS = 320;
+    static final int CONTAINER_BURST_STACKS = 27;
+    static final int GLOBAL_ITEM_STACKS = 48;
 
     private final int startedAt;
 

@@ -13,4 +13,10 @@ public class AotakeNetworkSmokeWorkloadTest {
         assertFalse(workload.completeAt(369));
         assertTrue(workload.completeAt(370));
     }
+
+    @Test
+    public void exposesBoundedContainerAndGlobalItemFixtures() {
+        assertTrue(AotakeNetworkSmokeWorkload.CONTAINER_BURST_STACKS > 20);
+        assertTrue(AotakeNetworkSmokeWorkload.GLOBAL_ITEM_STACKS > AotakeNetworkSmokeWorkload.CONTAINER_BURST_STACKS);
+    }
 }

@@ -1,6 +1,7 @@
 package xin.vanilla.aotake.internal.server.dev;
 
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionHand;
@@ -13,6 +14,9 @@ import net.minecraft.world.entity.animal.Cow;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.entity.ChestBlockEntity;
+import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.EntityHitResult;
 import net.minecraft.world.phys.Vec3;
 import xin.vanilla.aotake.AotakeSweep;
@@ -62,10 +66,13 @@ public final class AotakeNetworkSmokeServerRunner {
     private static GameplayStep gameplayStep = GameplayStep.PREPARE;
     private static ItemEntity countdownItem;
     private static List<ItemEntity> chunkItems = Collections.emptyList();
+    private static List<ItemEntity> containerBurstItems = Collections.emptyList();
+    private static List<ItemEntity> globalItems = Collections.emptyList();
     private static Cow captureTarget;
     private static ReflectiveSparkProfile sparkProfile;
     private static AotakeNetworkSmokeWorkload workload;
     private static int workloadObservedEntities;
+    private static boolean globalTimedCleanupVerified;
 
     private AotakeNetworkSmokeServerRunner() {
     }
@@ -163,6 +170,14 @@ public final class AotakeNetworkSmokeServerRunner {
             case WAIT_COUNTDOWN:
                 if (countdownItem.isAlive()) return false;
                 AotakeNetworkSmokeStatus.append("PASS countdown-cleanup");
+                containerBurstItems = destroyContainerBurst(level, player);
+                EventHandlerProxy.setNextSweepTime(System.currentTimeMillis() - 1L);
+                AotakeNetworkSmokeStatus.append("START container-burst-cleanup");
+                gameplayStep = GameplayStep.WAIT_CONTAINER_BURST;
+                return false;
+            case WAIT_CONTAINER_BURST:
+                if (containerBurstItems.stream().anyMatch(Entity::isAlive)) return false;
+                AotakeNetworkSmokeStatus.append("PASS container-burst-cleanup");
                 List<ItemEntity> items = new ArrayList<>();
                 for (int index = 0; index < 4; index++) {
                     ItemEntity item = new ItemEntity(level, fixtureX(player) + index * 0.1D,
@@ -223,6 +238,9 @@ public final class AotakeNetworkSmokeServerRunner {
                     throw new IllegalStateException("Captured entity payload was not added to inventory");
                 }
                 AotakeNetworkSmokeStatus.append("PASS entity-capture");
+                CommonConfig.get().base().chunk().chunkCheckInterval(0L).chunkCheckLimit(64);
+                globalItems = createGlobalItems(level, player);
+                AotakeNetworkSmokeStatus.append("PASS global-item-fixture");
                 workload = new AotakeNetworkSmokeWorkload(gameplayTicks);
                 AotakeNetworkSmokeStatus.append("START sustained-gameplay-workload");
                 gameplayStep = GameplayStep.SUSTAINED;
@@ -252,6 +270,12 @@ public final class AotakeNetworkSmokeServerRunner {
             }
             EventHandlerProxy.setNextSweepTime(System.currentTimeMillis() - 1L);
         }
+        if (!globalTimedCleanupVerified
+                && !globalItems.isEmpty()
+                && globalItems.stream().noneMatch(Entity::isAlive)) {
+            globalTimedCleanupVerified = true;
+            AotakeNetworkSmokeStatus.append("PASS global-timed-cleanup");
+        }
         if (workload.shouldCaptureAt(gameplayTicks)) {
             Cow target = EntityType.COW.create(level);
             if (target == null) throw new IllegalStateException("Could not create sustained capture target");
@@ -270,7 +294,51 @@ public final class AotakeNetworkSmokeServerRunner {
         }
         if (!workload.completeAt(gameplayTicks)) return false;
         if (workloadObservedEntities <= 0) throw new IllegalStateException("Sustained entity filtering observed no entities");
+        if (!globalTimedCleanupVerified) {
+            throw new IllegalStateException("Timed sweep did not clear the distributed global item fixture");
+        }
         return true;
+    }
+
+    private static List<ItemEntity> destroyContainerBurst(ServerLevel level, ServerPlayer player) {
+        BlockPos position = BlockPos.containing(fixtureX(player), fixtureY(player), fixtureZ(player));
+        if (!level.setBlock(position, Blocks.CHEST.defaultBlockState(), 3)) {
+            throw new IllegalStateException("Could not place container burst fixture");
+        }
+        if (!(level.getBlockEntity(position) instanceof ChestBlockEntity chest)) {
+            throw new IllegalStateException("Container burst fixture did not create a chest");
+        }
+        for (int slot = 0; slot < AotakeNetworkSmokeWorkload.CONTAINER_BURST_STACKS; slot++) {
+            chest.setItem(slot, new ItemStack(Items.COBBLESTONE));
+        }
+        level.destroyBlock(position, true);
+        AABB bounds = new AABB(position.getX() - 1.0D, position.getY() - 1.0D, position.getZ() - 1.0D,
+                position.getX() + 2.0D, position.getY() + 2.0D, position.getZ() + 2.0D);
+        List<ItemEntity> result = level.getEntitiesOfClass(ItemEntity.class, bounds).stream()
+                .filter(item -> item.getItem().is(Items.COBBLESTONE))
+                .collect(java.util.stream.Collectors.toList());
+        if (result.size() < AotakeNetworkSmokeWorkload.CONTAINER_BURST_STACKS) {
+            throw new IllegalStateException("Container burst did not create all item entities: "
+                    + result.size() + "/" + AotakeNetworkSmokeWorkload.CONTAINER_BURST_STACKS);
+        }
+        return result;
+    }
+
+    private static List<ItemEntity> createGlobalItems(ServerLevel level, ServerPlayer player) {
+        List<ItemEntity> result = new ArrayList<>();
+        for (int index = 0; index < AotakeNetworkSmokeWorkload.GLOBAL_ITEM_STACKS; index++) {
+            int column = index % 4;
+            int row = (index / 4) % 4;
+            int offset = index / 16;
+            ItemEntity item = new ItemEntity(level,
+                    fixtureX(player) + (column - 1.5D) * 16.0D + offset * 0.2D,
+                    fixtureY(player),
+                    fixtureZ(player) + (row - 1.5D) * 16.0D + offset * 0.2D,
+                    new ItemStack(Items.IRON_NUGGET));
+            level.addFreshEntity(item);
+            result.add(item);
+        }
+        return result;
     }
 
     private static void configureGameplayFixture() {
@@ -375,6 +443,7 @@ public final class AotakeNetworkSmokeServerRunner {
     private enum GameplayStep {
         PREPARE,
         WAIT_COUNTDOWN,
+        WAIT_CONTAINER_BURST,
         WAIT_CHUNK,
         WAIT_CAPTURE,
         SUSTAINED,
