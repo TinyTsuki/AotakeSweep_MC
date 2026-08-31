@@ -7,7 +7,7 @@ import net.minecraft.client.multiplayer.ServerData;
 import net.minecraft.client.multiplayer.resolver.ServerAddress;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
-import net.minecraft.network.chat.TextComponent;
+import net.minecraft.network.chat.Component;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import xin.vanilla.aotake.AotakeSweep;
@@ -142,7 +142,7 @@ public final class AotakeNetworkSmokeClientRunner {
         }
         if (!disconnectRequested && client.getConnection() != null) {
             disconnectRequested = true;
-            client.getConnection().getConnection().disconnect(new TextComponent("Aotake network smoke complete"));
+            client.getConnection().getConnection().disconnect(Component.literal("Aotake network smoke complete"));
             return;
         }
         if (client.getConnection() != null && client.getConnection().getConnection().isConnected()) {
