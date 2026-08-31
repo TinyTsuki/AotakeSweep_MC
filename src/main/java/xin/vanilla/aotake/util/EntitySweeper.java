@@ -72,7 +72,6 @@ public class EntitySweeper {
     }
 
     public SweepResult addDrops(@NonNull List<Entity> entities, SweepResult result) {
-        if (result.getTotalBatch() == 0) LOGGER.debug("AddDrops started at {}", System.currentTimeMillis());
         this.init();
         SweepContext context = new SweepContext(CommonConfig.get().base());
 
@@ -121,7 +120,6 @@ public class EntitySweeper {
         result.incrementBatch();
 
         if (result.getBatch().get() >= result.getTotalBatch()) {
-            LOGGER.debug("AddDrops finished at {}", System.currentTimeMillis());
             ChunkVaultStorage.flushPending(AotakeServerRuntime.requireServer());
 
             List<ServerPlayer> players = AotakeServerRuntime.requireServer().getPlayerList().getPlayers();

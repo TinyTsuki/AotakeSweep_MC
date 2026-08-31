@@ -396,7 +396,6 @@ public class AotakeUtils {
     }
 
     public static List<Entity> getAllEntitiesByFilter(@Nullable List<Entity> entities, boolean chuck) {
-        LOGGER.debug("Entity filter started at {}", System.currentTimeMillis());
         if (CollectionUtils.isNullOrEmpty(entities)) {
             entities = EntityUtils.getAllEntities();
         }
@@ -420,7 +419,6 @@ public class AotakeUtils {
         Map<String, Integer> nonJunkTypeCounts = new HashMap<>();
         Map<ChunkKey, Integer> safeChunkCounts = new HashMap<>();
 
-        LOGGER.debug("Entity exceeded filter started at {}", System.currentTimeMillis());
         for (Entity entity : entities) {
             if (!prepareSweepCandidate(entity)) continue;
 
@@ -440,7 +438,6 @@ public class AotakeUtils {
             scanned.add(new EntityScanEntry(entity, safe, junk, type, chunkKey));
         }
 
-        LOGGER.debug("Entity safe filter started at {}", System.currentTimeMillis());
         int typeLimit = base.sweep().entityListLimit();
         Set<String> exceededTypes = new HashSet<>();
         for (Map.Entry<String, Integer> entry : nonJunkTypeCounts.entrySet()) {
@@ -457,7 +454,6 @@ public class AotakeUtils {
             }
         }
 
-        LOGGER.debug("Entity junk filter started at {}", System.currentTimeMillis());
         List<Entity> entityList = new ArrayList<>();
         for (EntityScanEntry entry : scanned) {
             boolean exceededType = !entry.junk && exceededTypes.contains(entry.type);
@@ -466,7 +462,6 @@ public class AotakeUtils {
                 entityList.add(entry.entity);
             }
         }
-        LOGGER.debug("Entity filter finished at {}", System.currentTimeMillis());
         return entityList;
     }
 
@@ -488,10 +483,8 @@ public class AotakeUtils {
     }
 
     public static void sweep() {
-        LOGGER.debug("Sweep started at {}", System.currentTimeMillis());
         List<Entity> entities = EntityUtils.getAllEntities();
         AotakeUtils.sweep(entities, false);
-        LOGGER.debug("Sweep finished at {}", System.currentTimeMillis());
     }
 
     /**
