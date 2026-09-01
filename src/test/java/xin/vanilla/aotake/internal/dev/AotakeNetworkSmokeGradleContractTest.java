@@ -16,5 +16,7 @@ public class AotakeNetworkSmokeGradleContractTest {
         assertTrue(script.contains("run-network-smoke"));
         assertTrue(script.contains("runServer"));
         assertTrue(script.contains("runClient"));
+        assertTrue(script.contains("PASS burst-drop-cleanup"));
+        assertTrue(script.contains("PASS global-batch-cleanup"));
     }
 }
