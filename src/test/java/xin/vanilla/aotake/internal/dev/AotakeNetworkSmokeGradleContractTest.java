@@ -18,5 +18,9 @@ public class AotakeNetworkSmokeGradleContractTest {
         assertTrue(script.contains("runClient"));
         assertTrue(script.contains("PASS burst-drop-cleanup"));
         assertTrue(script.contains("PASS global-batch-cleanup"));
+        int clientReady = script.indexOf("waitFor(client, clientStatus, 'PASS config-roundtrip', clientLog, 180)");
+        int sparkWritten = script.indexOf("waitFor(server, serverStatus, 'PASS spark-report-written', serverLog, 120)");
+        assertTrue(clientReady >= 0);
+        assertTrue(sparkWritten > clientReady);
     }
 }
