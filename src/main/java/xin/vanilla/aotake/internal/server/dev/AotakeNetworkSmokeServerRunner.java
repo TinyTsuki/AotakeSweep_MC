@@ -62,6 +62,8 @@ public final class AotakeNetworkSmokeServerRunner {
     private static GameplayStep gameplayStep = GameplayStep.PREPARE;
     private static ItemEntity countdownItem;
     private static List<ItemEntity> chunkItems = Collections.emptyList();
+    private static List<ItemEntity> burstDropItems = Collections.emptyList();
+    private static List<ItemEntity> globalSweepItems = Collections.emptyList();
     private static CowEntity captureTarget;
     private static ReflectiveSparkProfile sparkProfile;
 
@@ -220,6 +222,28 @@ public final class AotakeNetworkSmokeServerRunner {
                     return false;
                 }
                 AotakeNetworkSmokeStatus.append("PASS chunk-cleanup");
+                CommonConfig.get().base().chunk().chunkCheckInterval(0L);
+                burstDropItems = spawnItems(level, fixtureX(player), fixtureY(player), fixtureZ(player), 128, 0.9D);
+                EventHandlerProxy.setNextSweepTime(System.currentTimeMillis() - 1L);
+                AotakeNetworkSmokeStatus.append("START burst-drop-cleanup");
+                gameplayStep = GameplayStep.WAIT_BURST_DROP;
+                return false;
+            case WAIT_BURST_DROP:
+                if (burstDropItems.stream().anyMatch(Entity::isAlive)) return false;
+                AotakeNetworkSmokeStatus.append("PASS burst-drop-cleanup");
+                CommonConfig.get().base().chunk().chunkCheckInterval(1L).chunkCheckLimit(512);
+                globalSweepItems = new ArrayList<>();
+                for (int chunk = 0; chunk < 4; chunk++) {
+                    globalSweepItems.addAll(spawnItems(level, fixtureX(player) + chunk * 17.0D,
+                            fixtureY(player), fixtureZ(player), 48, 0.9D));
+                }
+                EventHandlerProxy.setNextSweepTime(System.currentTimeMillis() - 1L);
+                AotakeNetworkSmokeStatus.append("START global-batch-cleanup");
+                gameplayStep = GameplayStep.WAIT_GLOBAL_BATCH;
+                return false;
+            case WAIT_GLOBAL_BATCH:
+                if (globalSweepItems.stream().anyMatch(Entity::isAlive)) return false;
+                AotakeNetworkSmokeStatus.append("PASS global-batch-cleanup");
                 captureTarget = EntityType.COW.create(level);
                 if (captureTarget == null) throw new IllegalStateException("Could not create capture target");
                 captureTarget.moveTo(24.5D, 65.0D, 24.5D, 0.0F, 0.0F);
@@ -279,6 +303,19 @@ public final class AotakeNetworkSmokeServerRunner {
 
     private static double fixtureZ(ServerPlayerEntity player) {
         return (player.blockPosition().getZ() >> 4) * 16 + 8.5D;
+    }
+
+    private static List<ItemEntity> spawnItems(ServerWorld level, double x, double y, double z,
+                                               int count, double spacing) {
+        List<ItemEntity> items = new ArrayList<>(count);
+        int columns = (int) Math.ceil(Math.sqrt(count));
+        for (int index = 0; index < count; index++) {
+            ItemEntity item = new ItemEntity(level, x + (index % columns) * spacing,
+                    y, z + (index / columns) * spacing, new ItemStack(Items.PAPER));
+            level.addFreshEntity(item);
+            items.add(item);
+        }
+        return items;
     }
 
     /**
@@ -373,6 +410,8 @@ public final class AotakeNetworkSmokeServerRunner {
         PREPARE,
         WAIT_COUNTDOWN,
         WAIT_CHUNK,
+        WAIT_BURST_DROP,
+        WAIT_GLOBAL_BATCH,
         WAIT_CAPTURE,
         COMPLETE
     }
