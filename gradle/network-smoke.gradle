@@ -118,6 +118,7 @@ tasks.register('networkSmoke') {
                 waitFor(server, serverStatus, 'PASS server-ready', serverLog, 180)
                 client = start('runClient', phase, clientStatus, serverStatus, report, clientLog)
                 if (phase == 'phase-one') {
+                    waitFor(client, clientStatus, 'PASS config-roundtrip', clientLog, 180)
                     waitFor(server, serverStatus, 'PASS spark-report-written', serverLog, 120)
                     if (!report.isFile() || report.length() == 0L) throw new GradleException("Spark report was not written: ${report}")
                 }

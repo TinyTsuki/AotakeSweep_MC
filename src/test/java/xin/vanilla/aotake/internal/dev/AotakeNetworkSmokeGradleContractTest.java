@@ -16,5 +16,9 @@ public class AotakeNetworkSmokeGradleContractTest {
         assertTrue(script.contains("run-network-smoke"));
         assertTrue(script.contains("runServer"));
         assertTrue(script.contains("runClient"));
+        int clientReady = script.indexOf("waitFor(client, clientStatus, 'PASS config-roundtrip', clientLog, 180)");
+        int sparkWritten = script.indexOf("waitFor(server, serverStatus, 'PASS spark-report-written', serverLog, 120)");
+        assertTrue(clientReady >= 0);
+        assertTrue(sparkWritten > clientReady);
     }
 }
