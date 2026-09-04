@@ -199,7 +199,7 @@ tasks.register('networkSmoke') {
                         ? ['PASS config-command-roundtrip', 'PASS server-config-roundtrip',
                            'PASS countdown-cleanup', 'PASS chunk-cleanup', 'PASS burst-drop-cleanup',
                            'PASS global-batch-cleanup', 'PASS entity-capture',
-                           'PASS spark-profiler-active', 'PASS spark-report-written', 'PASS phase-one-world-write', 'FINISHED phase-one',
+                           'PASS spark-profiler-active', 'PASS sustained-cleanup-workload', 'PASS spark-report-written', 'PASS phase-one-world-write', 'FINISHED phase-one',
                            'PASS server-shutdown']
                         : ['PASS persisted-command-config', 'PASS persisted-player-data',
                            'PASS persisted-world-data', 'FINISHED phase-two',

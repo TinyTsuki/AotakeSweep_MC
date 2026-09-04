@@ -46,6 +46,8 @@ import java.util.concurrent.TimeUnit;
 public final class AotakeNetworkSmokeServerRunner {
     private static final int SENTINEL_COUNT = 7;
     private static final int SENTINEL_CONFIG_VALUE = 11;
+    private static final int SUSTAIN_CLEANUP_INTERVAL_TICKS = 10;
+    private static final int SUSTAIN_ITEMS_PER_CHUNK = 32;
     private static final ItemStack SENTINEL_STACK = new ItemStack(Items.EMERALD, SENTINEL_COUNT);
 
     private static boolean ready;
@@ -64,8 +66,11 @@ public final class AotakeNetworkSmokeServerRunner {
     private static List<ItemEntity> chunkItems = Collections.emptyList();
     private static List<ItemEntity> burstDropItems = Collections.emptyList();
     private static List<ItemEntity> globalSweepItems = Collections.emptyList();
+    private static List<ItemEntity> sustainedCleanupItems = Collections.emptyList();
     private static CowEntity captureTarget;
     private static ReflectiveSparkProfile sparkProfile;
+    private static int sustainedCleanupCycles;
+    private static int sustainCleanupCooldownTicks;
 
     private AotakeNetworkSmokeServerRunner() {
     }
@@ -176,8 +181,6 @@ public final class AotakeNetworkSmokeServerRunner {
         switch (gameplayStep) {
             case PREPARE:
                 configureGameplayFixture();
-                sparkProfile = ReflectiveSparkProfile.start();
-                AotakeNetworkSmokeStatus.append("PASS spark-profiler-active");
                 countdownItem = new ItemEntity(level, fixtureX(player), fixtureY(player), fixtureZ(player), new ItemStack(Items.DIAMOND));
                 level.addFreshEntity(countdownItem);
                 EventHandlerProxy.setNextSweepTime(System.currentTimeMillis() - 1L);
@@ -270,8 +273,37 @@ public final class AotakeNetworkSmokeServerRunner {
                     throw new IllegalStateException("Captured entity payload was not added to inventory");
                 }
                 AotakeNetworkSmokeStatus.append("PASS entity-capture");
-                gameplayStep = GameplayStep.COMPLETE;
-                return true;
+                sparkProfile = ReflectiveSparkProfile.start();
+                AotakeNetworkSmokeStatus.append("PASS spark-profiler-active");
+                AotakeNetworkSmokeStatus.append("START sustained-cleanup-workload");
+                gameplayStep = GameplayStep.SUSTAIN_CLEANUP;
+                return false;
+            case SUSTAIN_CLEANUP:
+                if (!sustainedCleanupItems.isEmpty()) {
+                    if (sustainedCleanupItems.stream().anyMatch(Entity::isAlive)) {
+                        return false;
+                    }
+                    sustainedCleanupItems = Collections.emptyList();
+                    sustainedCleanupCycles++;
+                }
+                if (!AotakeNetworkSmokeProfilePlan.shouldContinue(sparkProfile.written(), sustainedCleanupCycles)) {
+                    AotakeNetworkSmokeStatus.append("PASS sustained-cleanup-workload");
+                    gameplayStep = GameplayStep.COMPLETE;
+                    return true;
+                }
+                if (++sustainCleanupCooldownTicks < SUSTAIN_CLEANUP_INTERVAL_TICKS) {
+                    return false;
+                }
+                sustainCleanupCooldownTicks = 0;
+                sustainedCleanupItems = new ArrayList<>();
+                for (int chunk = 0; chunk < 4; chunk++) {
+                    sustainedCleanupItems.addAll(spawnItems(level, fixtureX(player) + chunk * 17.0D,
+                            fixtureY(player), fixtureZ(player), SUSTAIN_ITEMS_PER_CHUNK, 0.9D));
+                }
+                // The scheduled global scan is covered above. Feed this profiler fixture straight
+                // into the same cleanup pipeline so unloaded-chunk timing cannot stall the run.
+                AotakeUtils.sweep(new ArrayList<>(sustainedCleanupItems), true);
+                return false;
             case COMPLETE:
                 return true;
             default:
@@ -413,6 +445,7 @@ public final class AotakeNetworkSmokeServerRunner {
         WAIT_BURST_DROP,
         WAIT_GLOBAL_BATCH,
         WAIT_CAPTURE,
+        SUSTAIN_CLEANUP,
         COMPLETE
     }
 

@@ -14,6 +14,7 @@ import xin.vanilla.aotake.internal.dev.AotakeNetworkSmokeStatus;
 import xin.vanilla.aotake.network.packet.OpenDustbinToServer;
 import xin.vanilla.aotake.network.packet.PlayerConfigSyncToServer;
 import xin.vanilla.banira.common.util.PacketUtils;
+import xin.vanilla.banira.common.util.PlayerUtils;
 
 import javax.annotation.Nonnull;
 import java.nio.charset.StandardCharsets;
@@ -63,6 +64,9 @@ public final class AotakeNetworkSmokeClientRunner {
                 case LOGIN_SYNC:
                     waitForLoginSync(client);
                     break;
+                case WAIT_C2S_READY:
+                    waitForCustomChannel(client);
+                    break;
                 case CONFIG_ECHO:
                     waitForConfigEcho(client);
                     break;
@@ -97,6 +101,15 @@ public final class AotakeNetworkSmokeClientRunner {
             return;
         }
         AotakeNetworkSmokeStatus.append("PASS remote-login-sync");
+        state = State.WAIT_C2S_READY;
+        ticks = 0;
+    }
+
+    private void waitForCustomChannel(Minecraft client) {
+        if (client.player == null || !AotakeNetworkSmokeClientPlan.isCustomChannelReady(
+                ticks, PlayerUtils.isRemoteServerModInstalled(client.player, AotakeSweep.MODID))) {
+            return;
+        }
         if ("phase-one".equals(AotakeNetworkSmokeStatus.phase())) {
             PacketUtils.sendPacketToServer(new PlayerConfigSyncToServer(false, false));
             state = State.CONFIG_ECHO;
@@ -181,6 +194,7 @@ public final class AotakeNetworkSmokeClientRunner {
     private enum State {
         CONNECT,
         LOGIN_SYNC,
+        WAIT_C2S_READY,
         CONFIG_ECHO,
         DUSTBIN,
         WAIT_SERVER,
