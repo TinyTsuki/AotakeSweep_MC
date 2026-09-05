@@ -419,7 +419,6 @@ public final class AotakeNetworkSmokeServerRunner {
                 Class<?> grouperType = Class.forName("me.lucko.spark.common.sampler.ThreadGrouper", true, loader);
                 builderType.getMethod("threadGrouper", grouperType).invoke(builder, grouperType.getField("BY_POOL").get(null));
                 Object sampler = method(builderType, "start", 0).invoke(builder);
-                method(sampler.getClass(), "start", 0).invoke(sampler);
                 Future<?> future = (Future<?>) method(sampler.getClass(), "getFuture", 0).invoke(sampler);
                 return new ReflectiveSparkProfile(plugin, platform, sampler, future, Paths.get(configured).toAbsolutePath());
             } catch (ReflectiveOperationException error) {
