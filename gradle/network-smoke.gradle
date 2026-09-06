@@ -1,12 +1,15 @@
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import java.util.concurrent.TimeUnit
+import groovy.json.JsonOutput
+import java.security.MessageDigest
 
 def smokeRoot = file("${projectDir}/run-network-smoke")
 def smokeServerDir = file("${smokeRoot}/server")
 def smokeClientDir = file("${smokeRoot}/client")
 def smokePort = 25575
 def smokeChild = (project.findProperty('aotake.networkSmoke.child') ?: 'false').toString().toBoolean()
+def mutableThresholds = (project.findProperty('aotake.networkSmoke.mutableThresholds') ?: 'false').toString().toBoolean()
 
 // 服务端和客户端使用独立输出目录，避免两个 Gradle 运行任务争用构建文件。
 if (smokeChild) {
@@ -22,6 +25,10 @@ if (smokeChild) {
             property 'aotake.networkSmoke.status', status
             property 'aotake.networkSmoke.sparkReport', sparkReport
             property 'aotake.networkSmoke.serverStatus', serverStatus
+            property 'aotake.networkSmoke.mutableThresholds', mutableThresholds.toString()
+            ['clientSparkReport', 'checkpoint'].each { name ->
+                property "aotake.networkSmoke.${name}", project.property("aotake.networkSmoke.${name}").toString()
+            }
         }
         server {
             workingDirectory smokeServerDir
@@ -81,9 +88,12 @@ def gradleCommand = { String runTask, String phase, File status, File report, Fi
             '--console=plain',
             '--project-cache-dir', projectCacheDir.absolutePath,
             '-Paotake.networkSmoke.child=true',
+            "-Paotake.networkSmoke.mutableThresholds=${mutableThresholds}".toString(),
             "-Paotake.networkSmoke.phase=${phase}".toString(),
             "-Paotake.networkSmoke.status=${status.absolutePath}".toString(),
             "-Paotake.networkSmoke.sparkReport=${report.absolutePath}".toString(),
+            "-Paotake.networkSmoke.clientSparkReport=${new File(status.parentFile, "spark-client-report-${phase}.sparkprofile").absolutePath}".toString(),
+            "-Paotake.networkSmoke.checkpoint=${new File(status.parentFile, 'final-checkpoint.properties').absolutePath}".toString(),
             "-Paotake.networkSmoke.buildDir=${childBuildDir.absolutePath}".toString()
     ])
     if (serverStatus != null) {
@@ -142,7 +152,13 @@ tasks.register('networkSmoke') {
         if (smokeChild) {
             throw new GradleException('networkSmoke cannot run inside its child Gradle process')
         }
-        delete smokeRoot
+        [smokeServerDir, smokeClientDir].each { directory ->
+            if (directory.canonicalFile.parentFile != smokeRoot.canonicalFile
+                    || !['server', 'client'].contains(directory.name)) {
+                throw new GradleException("Refusing to clean non-isolated directory: ${directory}")
+            }
+            delete directory
+        }
         smokeServerDir.mkdirs()
         smokeClientDir.mkdirs()
         File sparkConfig = new File(smokeServerDir, 'config/spark/config.json')
@@ -157,6 +173,26 @@ tasks.register('networkSmoke') {
         String runId = DateTimeFormatter.ofPattern('yyyyMMdd-HHmmss').format(LocalDateTime.now())
         File evidence = file("${smokeRoot}/evidence/${runId}")
         evidence.mkdirs()
+        def sha256 = { File input -> MessageDigest.getInstance('SHA-256').digest(input.bytes).encodeHex().toString() }
+        def sources = fileTree(projectDir) {
+            include 'src/**', 'scripts/**', 'gradle/**', 'build.gradle', 'settings.gradle', 'gradle.properties'
+        }.files.sort { left, right -> left.path <=> right.path }
+        def runtimeJars = configurations.runtimeClasspath.files.findAll { it.isFile() &&
+                (it.name.contains('banira_codex') || it.name.toLowerCase().startsWith('spark-')) }
+        def profiler = runtimeJars.find { it.name.toLowerCase().startsWith('spark-') }
+        if (profiler == null) throw new GradleException('Spark runtime not found')
+        new File(evidence, 'spark-runtime-phase-one.txt').setText(profiler.absolutePath + System.lineSeparator(), 'UTF-8')
+        new File(evidence, 'source-state.json').setText(JsonOutput.prettyPrint(JsonOutput.toJson([
+                commit: providers.exec { commandLine 'git', 'rev-parse', 'HEAD' }.standardOutput.asText.get().trim(),
+                status: providers.exec { commandLine 'git', 'status', '--porcelain', '--untracked-files=all' }.standardOutput.asText.get(),
+                files: sources.collectEntries { source ->
+                    [(projectDir.toPath().relativize(source.toPath()).toString().replace('\\', '/')): sha256(source)]
+                },
+                runtimeJars: runtimeJars.collectEntries { [(it.absolutePath): sha256(it)] },
+                serverSampleSeconds: 60, clientSampleSeconds: 20, cycles: 20,
+                mutableThresholds: mutableThresholds,
+                paperPerCycle: mutableThresholds ? 2000 : 2528, globalEntitiesPerCycle: 160
+        ])) + System.lineSeparator(), 'UTF-8')
 
         ['phase-one', 'phase-two'].each { phase ->
             File serverStatus = new File(evidence, "server-${phase}.status")
@@ -178,6 +214,11 @@ tasks.register('networkSmoke') {
                     if (!report.isFile() || report.length() == 0L) {
                         throw new GradleException("Spark report was not written: ${report}")
                     }
+                    waitForStatus(client, clientStatus, 'PASS client-ui-spark-report-written', clientLog, 120)
+                    File clientReport = new File(evidence, "spark-client-report-${phase}.sparkprofile")
+                    if (!clientReport.isFile() || clientReport.length() == 0L) {
+                        throw new GradleException("Client Spark report missing: ${clientReport}")
+                    }
                 } else {
                     waitForStatus(client, clientStatus, 'PASS persisted-world-data-client', clientLog, 180)
                 }
@@ -192,27 +233,44 @@ tasks.register('networkSmoke') {
                 }
 
                 verifyMarkers(clientStatus, phase == 'phase-one'
-                        ? ['PASS remote-login-sync', 'PASS config-roundtrip', 'FINISHED phase-one']
+                        ? ['PASS remote-login-sync', 'PASS config-roundtrip',
+                           'PASS client-ui-spark-report-written', 'PASS client-ui-sustained-workload', 'FINISHED phase-one']
                         : ['PASS remote-login-sync', 'PASS persisted-player-data-client',
                            'PASS persisted-world-data-client', 'FINISHED phase-two'])
                 verifyMarkers(serverStatus, phase == 'phase-one'
                         ? ['PASS config-command-roundtrip', 'PASS server-config-roundtrip',
                            'PASS countdown-cleanup', 'PASS chunk-cleanup', 'PASS burst-drop-cleanup',
                            'PASS global-batch-cleanup', 'PASS entity-capture',
+                           'PASS measured-cleanup', 'PASS operation container-break', 'PASS operation container-recovery',
+                           'PASS operation global-countdown-recovery', 'PASS operation chunk-recovery',
+                           'PASS operation capture-submit', 'PASS operation capture-complete',
+                           'PASS operation pipeline-submit', 'PASS operation pipeline-complete', 'PASS final-checkpoint',
                            'PASS spark-profiler-active', 'PASS sustained-cleanup-workload', 'PASS spark-report-written', 'PASS phase-one-world-write', 'FINISHED phase-one',
                            'PASS server-shutdown']
-                        : ['PASS persisted-command-config', 'PASS persisted-player-data',
+                        : ['PASS persisted-command-config', 'PASS persisted-player-data', 'PASS persisted-final-cycle',
                            'PASS persisted-world-data', 'FINISHED phase-two',
                            'PASS server-shutdown'])
             } finally {
                 destroyProcessTree(client)
                 destroyProcessTree(server)
+                [server: smokeServerDir, client: smokeClientDir].each { side, directory ->
+                    copy {
+                        from new File(directory, 'crash-reports')
+                        into new File(evidence, "${side}-${phase}-crash-reports")
+                        include 'crash-*.txt'
+                    }
+                    copy {
+                        from new File(directory, 'config')
+                        into new File(evidence, "${side}-${phase}-config")
+                        include 'aotake_sweep*'
+                    }
+                }
             }
         }
 
-        List<File> crashReports = fileTree(smokeRoot) {
-            include '**/crash-reports/crash-*.txt'
-        }.files as List<File>
+        List<File> crashReports = [smokeServerDir, smokeClientDir].collectMany { directory ->
+            fileTree(directory) { include '**/crash-reports/crash-*.txt' }.files as List<File>
+        }
         if (!crashReports.isEmpty()) {
             throw new GradleException("Network smoke created crash reports: ${crashReports*.absolutePath}")
         }
