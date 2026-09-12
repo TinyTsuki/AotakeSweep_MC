@@ -51,6 +51,7 @@ public final class AotakeNetworkSmokeClientRunner {
     private long startedAt;
     private long stateStartedAt;
     private final ServerSignals server = new ServerSignals();
+    private final AotakeNetworkSmokeNotificationsCheck notifications = new AotakeNetworkSmokeNotificationsCheck();
     private AotakeNetworkSmokeScreens ui;
     private ReflectiveClientSparkProfile spark;
     private long uiStartedAt;
@@ -161,6 +162,7 @@ public final class AotakeNetworkSmokeClientRunner {
                 ticks, PlayerUtils.isRemoteServerModInstalled(client.player, AotakeSweep.MODID))) {
             return;
         }
+        if (!notifications.verifyWhenReady(client)) return;
         if ("phase-one".equals(AotakeNetworkSmokeStatus.phase())) {
             PacketUtils.sendPacketToServer(new PlayerConfigSyncToServer(false, false));
             transition(State.CONFIG_ECHO);

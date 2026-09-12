@@ -232,6 +232,10 @@ tasks.register('networkSmoke') {
                     throw new GradleException("Client exited with ${client.exitValue()}:\n${tailUtf8(clientLog, 120)}")
                 }
 
+                verifyMarkers(clientStatus, ['PASS notification-routes-client types=11',
+                        'PASS notification-production-received help vault-list'])
+                verifyMarkers(serverStatus, ['PASS notification-routes-submitted types=11',
+                        'PASS notification-production-commands help vault-list'])
                 verifyMarkers(clientStatus, phase == 'phase-one'
                         ? ['PASS remote-login-sync', 'PASS config-roundtrip',
                            'PASS client-ui-spark-report-written', 'PASS client-ui-sustained-workload', 'FINISHED phase-one']

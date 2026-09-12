@@ -6,6 +6,7 @@ import net.minecraft.entity.Pose;
 import net.minecraft.entity.passive.CowEntity;
 import net.minecraft.entity.item.ItemEntity;
 import net.minecraft.entity.player.ServerPlayerEntity;
+import xin.vanilla.aotake.internal.dev.AotakeNetworkSmokeNotifications;
 import net.minecraft.inventory.Inventory;
 import net.minecraft.item.ItemStack;
 import net.minecraft.item.Items;
@@ -134,6 +135,7 @@ public final class AotakeNetworkSmokeServerRunner {
     }
 
     private static void runWritePhase(ServerPlayerEntity player) {
+        if (!AotakeNetworkSmokeNotifications.sendWhenReady(player)) return;
         if (!conciseCommandVerified) {
             if (!verifyConciseCommandRefresh(player)) {
                 return;
@@ -433,6 +435,7 @@ public final class AotakeNetworkSmokeServerRunner {
     }
 
     private static void runVerifyPhase(ServerPlayerEntity player) {
+        if (!AotakeNetworkSmokeNotifications.sendWhenReady(player)) return;
         java.util.Properties checkpoint = new java.util.Properties();
         try (java.io.Reader reader = Files.newBufferedReader(checkpointPath(), java.nio.charset.StandardCharsets.UTF_8)) {
             checkpoint.load(reader);
