@@ -294,6 +294,7 @@ public final class AotakeNetworkSmokeClientRunner {
     }
 
     private void finish(Minecraft client, String phase) {
+        xin.vanilla.aotake.internal.dev.AotakeNetworkSmokeConfigs.verify(true);
         state = State.FINISHED;
         AotakeNetworkSmokeStatus.append("FINISHED " + phase);
         LOGGER.info("Aotake network smoke client finished {}", phase);

@@ -173,6 +173,7 @@ public final class AotakeNetworkSmokeServerRunner {
         writeCheckpoint(player);
         AotakeNetworkSmokeStatus.append("PASS server-config-roundtrip");
         AotakeNetworkSmokeStatus.append("PASS phase-one-world-write");
+        xin.vanilla.aotake.internal.dev.AotakeNetworkSmokeConfigs.verify(false);
         AotakeNetworkSmokeStatus.append("FINISHED phase-one");
         finished = true;
     }
@@ -472,6 +473,7 @@ public final class AotakeNetworkSmokeServerRunner {
             throw new IllegalStateException("Persisted dustbin sentinel is missing: " + stack);
         }
         AotakeNetworkSmokeStatus.append("PASS persisted-world-data");
+        xin.vanilla.aotake.internal.dev.AotakeNetworkSmokeConfigs.verify(false);
         AotakeNetworkSmokeStatus.append("FINISHED phase-two");
         finished = true;
     }

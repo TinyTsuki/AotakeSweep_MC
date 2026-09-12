@@ -236,6 +236,8 @@ tasks.register('networkSmoke') {
                         'PASS notification-production-received help vault-list'])
                 verifyMarkers(serverStatus, ['PASS notification-routes-submitted types=11',
                         'PASS notification-production-commands help vault-list'])
+                String configMarker = phase == 'phase-one' ? 'PASS complete-config-snapshot' : 'PASS complete-config-restart'
+                [clientStatus, serverStatus].each { status -> verifyMarkers(status, [configMarker]) }
                 verifyMarkers(clientStatus, phase == 'phase-one'
                         ? ['PASS remote-login-sync', 'PASS config-roundtrip',
                            'PASS client-ui-spark-report-written', 'PASS client-ui-sustained-workload', 'FINISHED phase-one']
