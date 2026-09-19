@@ -6,6 +6,7 @@ import net.minecraft.world.entity.Pose;
 import net.minecraft.world.entity.animal.Cow;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.server.level.ServerPlayer;
+import xin.vanilla.aotake.internal.dev.AotakeNetworkSmokeNotifications;
 import net.minecraft.world.SimpleContainer;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
@@ -46,7 +47,7 @@ import java.util.function.Supplier;
  * 在独立服务端内写入并复核网络 smoke 的持久化哨兵。
  */
 public final class AotakeNetworkSmokeServerRunner {
-    private static final long SPARK_SAMPLE_SECONDS = 3L;
+    private static final long SPARK_SAMPLE_SECONDS = 60L;
     private static final int SENTINEL_COUNT = 7;
     private static final int SENTINEL_CONFIG_VALUE = 11;
     private static final ItemStack SENTINEL_STACK = new ItemStack(Items.EMERALD, SENTINEL_COUNT);
@@ -69,6 +70,8 @@ public final class AotakeNetworkSmokeServerRunner {
     private static List<ItemEntity> globalSweepItems = Collections.emptyList();
     private static Cow captureTarget;
     private static ReflectiveSparkProfile sparkProfile;
+    private static AotakeNetworkSmokeWorkload measuredWorkload;
+    private static int measuredChunkWaitTicks;
 
     private AotakeNetworkSmokeServerRunner() {
     }
@@ -136,6 +139,7 @@ public final class AotakeNetworkSmokeServerRunner {
     }
 
     private static void runWritePhase(ServerPlayer player) {
+        if (!AotakeNetworkSmokeNotifications.sendWhenReady(player)) return;
         if (!conciseCommandVerified) {
             if (!verifyConciseCommandRefresh(player)) {
                 return;
@@ -162,25 +166,35 @@ public final class AotakeNetworkSmokeServerRunner {
         WorldTrashData.getTrashContainer(player, 1);
         WorldTrashData trashData = WorldTrashData.get(player);
         SimpleContainer firstPage = trashData.getInventoryList().get(0);
+        ItemStack displaced = firstPage.getItem(0);
+        if (!displaced.isEmpty()) {
+            trashData.getDropList().add(new xin.vanilla.banira.common.data.KeyValue<>(
+                    new xin.vanilla.banira.common.data.WorldCoordinate(player), displaced.copy()));
+        }
         firstPage.setItem(0, SENTINEL_STACK.copy());
         trashData.setDirty();
+        writeCheckpoint(player);
         AotakeNetworkSmokeStatus.append("PASS server-config-roundtrip");
         AotakeNetworkSmokeStatus.append("PASS phase-one-world-write");
+        xin.vanilla.aotake.internal.dev.AotakeNetworkSmokeConfigs.verify(false);
         AotakeNetworkSmokeStatus.append("FINISHED phase-one");
         finished = true;
     }
 
     private static boolean runGameplay(ServerPlayer player) {
-        if (++gameplayTicks > 1000) {
+        if (++gameplayTicks > 2400) {
             throw new IllegalStateException("Gameplay smoke timed out in " + gameplayStep);
         }
         ServerLevel level = player.getLevel();
         switch (gameplayStep) {
             case PREPARE:
                 configureGameplayFixture();
-                sparkProfile = ReflectiveSparkProfile.start(player.getServer());
-                AotakeNetworkSmokeStatus.append("PASS spark-profiler-active");
+                player.setGameMode(net.minecraft.world.level.GameType.CREATIVE);
+                player.setNoGravity(true);
+                player.getAbilities().flying = true;
+                player.onUpdateAbilities();
                 countdownItem = new ItemEntity(level, fixtureX(player), fixtureY(player), fixtureZ(player), new ItemStack(Items.DIAMOND));
+                stabilizeFixture(countdownItem, "countdown");
                 level.addFreshEntity(countdownItem);
                 EventHandlerProxy.setNextSweepTime(System.currentTimeMillis() - 1L);
                 AotakeNetworkSmokeStatus.append("START countdown-cleanup");
@@ -188,16 +202,17 @@ public final class AotakeNetworkSmokeServerRunner {
                 return false;
             case WAIT_COUNTDOWN:
                 if (countdownItem.isAlive()) return false;
+                requireRecovered(Items.DIAMOND, 1);
                 AotakeNetworkSmokeStatus.append("PASS countdown-cleanup");
                 List<ItemEntity> items = new ArrayList<>();
                 for (int index = 0; index < 4; index++) {
                     ItemEntity item = new ItemEntity(level, fixtureX(player) + index * 0.1D,
                             fixtureY(player), fixtureZ(player), new ItemStack(Items.GOLD_INGOT));
+                    stabilizeFixture(item, "chunk-" + index);
                     level.addFreshEntity(item);
                     items.add(item);
                 }
                 chunkItems = items;
-                CommonConfig.get().base().chunk().chunkCheckInterval(1L);
                 AotakeNetworkSmokeStatus.append("START chunk-cleanup");
                 gameplayStep = GameplayStep.WAIT_CHUNK;
                 return false;
@@ -209,12 +224,16 @@ public final class AotakeNetworkSmokeServerRunner {
                     if (visibleCandidates < chunkItems.size()) {
                         if (++chunkWaitTicks > 100) {
                             throw new IllegalStateException("Chunk cleanup candidates were not visible: "
-                                    + visibleCandidates + "/" + chunkItems.size());
+                                    + visibleCandidates + "/" + chunkItems.size() + " alive="
+                                    + chunkItems.stream().filter(Entity::isAlive).count()
+                                    + " rules=" + CommonConfig.get().base().chunk().chunkCheckEntityList()
+                                    + " mode=" + CommonConfig.get().base().chunk().chunkCheckEntityListMode());
                         }
                         return false;
                     }
                     chunkCandidatesVisible = true;
                     chunkWaitTicks = 0;
+                    CommonConfig.get().base().chunk().chunkCheckInterval(1L);
                     AotakeNetworkSmokeStatus.append("PASS chunk-candidates-visible");
                 }
                 if (chunkItems.stream().anyMatch(Entity::isAlive)) {
@@ -224,6 +243,7 @@ public final class AotakeNetworkSmokeServerRunner {
                     return false;
                 }
                 AotakeNetworkSmokeStatus.append("PASS chunk-cleanup");
+                requireRecovered(Items.GOLD_INGOT, 4);
                 CommonConfig.get().base().chunk().chunkCheckInterval(0L);
                 burstDropItems = spawnItems(level, fixtureX(player), fixtureY(player), fixtureZ(player), 128, 0.9D);
                 EventHandlerProxy.setNextSweepTime(System.currentTimeMillis() - 1L);
@@ -232,6 +252,7 @@ public final class AotakeNetworkSmokeServerRunner {
                 return false;
             case WAIT_BURST_DROP:
                 if (burstDropItems.stream().anyMatch(Entity::isAlive)) return false;
+                requireRecovered(Items.PAPER, 128);
                 AotakeNetworkSmokeStatus.append("PASS burst-drop-cleanup");
                 CommonConfig.get().base().chunk().chunkCheckInterval(1L).chunkCheckLimit(512);
                 globalSweepItems = new ArrayList<>();
@@ -245,6 +266,7 @@ public final class AotakeNetworkSmokeServerRunner {
                 return false;
             case WAIT_GLOBAL_BATCH:
                 if (globalSweepItems.stream().anyMatch(Entity::isAlive)) return false;
+                requireRecovered(Items.PAPER, 320);
                 AotakeNetworkSmokeStatus.append("PASS global-batch-cleanup");
                 captureTarget = EntityType.COW.create(level);
                 if (captureTarget == null) throw new IllegalStateException("Could not create capture target");
@@ -272,6 +294,34 @@ public final class AotakeNetworkSmokeServerRunner {
                     throw new IllegalStateException("Captured entity payload was not added to inventory");
                 }
                 AotakeNetworkSmokeStatus.append("PASS entity-capture");
+                long preparedAt = System.nanoTime();
+                measuredWorkload = new AotakeNetworkSmokeWorkload(player);
+                AotakeNetworkSmokeStatus.append("PASS measured-fixture preparation-ns=" + (System.nanoTime() - preparedAt));
+                gameplayStep = GameplayStep.WAIT_MEASURED_CHUNKS;
+                return false;
+            case WAIT_MEASURED_CHUNKS:
+                // Loading FULL chunks does not make their entity sections queryable yet.
+                if (!measuredWorkload.chunksReady()) {
+                    if (++measuredChunkWaitTicks > 200) throw new IllegalStateException("Measured chunks did not become ready");
+                    return false;
+                }
+                AotakeNetworkSmokeStatus.append("PASS measured-chunks-ready chunks=4 wait-ticks=" + measuredChunkWaitTicks);
+                sparkProfile = ReflectiveSparkProfile.start(player.getServer());
+                AotakeNetworkSmokeStatus.append("PASS spark-profiler-active");
+                AotakeNetworkSmokeStatus.append("PASS sustained-ready");
+                AotakeNetworkSmokeStatus.append("START sustained-cleanup-workload");
+                gameplayStep = GameplayStep.SUSTAIN_CLEANUP;
+                return false;
+            case SUSTAIN_CLEANUP:
+                AotakeNetworkSmokeProfilePlan.shouldContinue(sparkProfile.samplingEnded(), measuredWorkload.cycles());
+                boolean pending = !measuredWorkload.complete();
+                boolean complete = measuredWorkload.tick();
+                if (pending && sparkProfile.samplingEnded()) {
+                    throw new IllegalStateException("Sampler expired during measured cleanup operations");
+                }
+                if (!complete || !sparkProfile.written()) return false;
+                measuredWorkload.report();
+                AotakeNetworkSmokeStatus.append("PASS sustained-cleanup-workload");
                 gameplayStep = GameplayStep.COMPLETE;
                 return true;
             case COMPLETE:
@@ -314,10 +364,24 @@ public final class AotakeNetworkSmokeServerRunner {
         for (int index = 0; index < count; index++) {
             ItemEntity item = new ItemEntity(level, x + (index % columns) * spacing,
                     y, z + (index / columns) * spacing, new ItemStack(Items.PAPER));
+            stabilizeFixture(item, x + ":" + index);
             level.addFreshEntity(item);
             items.add(item);
         }
         return items;
+    }
+
+    private static void stabilizeFixture(ItemEntity item, String identity) {
+        item.getItem().getOrCreateTag().putString("aotakeSmokeWarmup", identity);
+        item.setNoGravity(true);
+        item.setDeltaMovement(Vec3.ZERO);
+        item.setPickUpDelay(32767);
+    }
+
+    private static void requireRecovered(net.minecraft.world.item.Item item, int expected) {
+        int actual = AotakeNetworkSmokeWorkload.recoveredItem(item);
+        if (actual != expected) throw new IllegalStateException("Warmup recovery mismatch: " + item
+                + " expected=" + expected + " actual=" + actual);
     }
 
     /**
@@ -383,6 +447,23 @@ public final class AotakeNetworkSmokeServerRunner {
     }
 
     private static void runVerifyPhase(ServerPlayer player) {
+        if (!AotakeNetworkSmokeNotifications.sendWhenReady(player)) return;
+        java.util.Properties checkpoint = new java.util.Properties();
+        try (java.io.Reader reader = Files.newBufferedReader(checkpointPath(), java.nio.charset.StandardCharsets.UTF_8)) {
+            checkpoint.load(reader);
+        } catch (java.io.IOException error) {
+            throw new IllegalStateException("Missing restart checkpoint", error);
+        }
+        if (!player.getUUID().toString().equals(checkpoint.getProperty("player"))
+                || Integer.parseInt(checkpoint.getProperty("cycles")) != AotakeNetworkSmokeProfilePlan.REQUIRED_CYCLES
+                || Integer.parseInt(checkpoint.getProperty("paper")) != expectedPaper()
+                || AotakeNetworkSmokeWorkload.recoveredPaper() != expectedPaper()
+                || Integer.parseInt(checkpoint.getProperty("captured")) != 20
+                || AotakeNetworkSmokeWorkload.capturedCount(player) != 20) {
+            throw new IllegalStateException("Final cleanup payload was not restored: paper="
+                    + AotakeNetworkSmokeWorkload.recoveredPaper() + " captured=" + AotakeNetworkSmokeWorkload.capturedCount(player));
+        }
+        AotakeNetworkSmokeStatus.append("PASS persisted-final-cycle cycles=20 paper=" + expectedPaper() + " captured=20");
         if (CommonConfig.get().base().batch().sweepBatchLimit() != SENTINEL_CONFIG_VALUE) {
             throw new IllegalStateException("Command config value was not restored from disk");
         }
@@ -403,8 +484,38 @@ public final class AotakeNetworkSmokeServerRunner {
             throw new IllegalStateException("Persisted dustbin sentinel is missing: " + stack);
         }
         AotakeNetworkSmokeStatus.append("PASS persisted-world-data");
+        xin.vanilla.aotake.internal.dev.AotakeNetworkSmokeConfigs.verify(false);
         AotakeNetworkSmokeStatus.append("FINISHED phase-two");
         finished = true;
+    }
+
+    private static Path checkpointPath() {
+        String value = System.getProperty("aotake.networkSmoke.checkpoint", "").trim();
+        if (value.isEmpty()) throw new IllegalStateException("Missing cleanup checkpoint path");
+        return Paths.get(value);
+    }
+
+    private static void writeCheckpoint(ServerPlayer player) {
+        int paper = AotakeNetworkSmokeWorkload.recoveredPaper();
+        int captured = AotakeNetworkSmokeWorkload.capturedCount(player);
+        if (paper != expectedPaper() || captured != 20 || measuredWorkload.cycles() != 20) {
+            throw new IllegalStateException("Incomplete final cleanup checkpoint");
+        }
+        java.util.Properties checkpoint = new java.util.Properties();
+        checkpoint.setProperty("player", player.getUUID().toString());
+        checkpoint.setProperty("cycles", Integer.toString(measuredWorkload.cycles()));
+        checkpoint.setProperty("paper", Integer.toString(paper));
+        checkpoint.setProperty("captured", Integer.toString(captured));
+        try (java.io.Writer writer = Files.newBufferedWriter(checkpointPath(), java.nio.charset.StandardCharsets.UTF_8)) {
+            checkpoint.store(writer, "Aotake final cleanup checkpoint");
+        } catch (java.io.IOException error) {
+            throw new IllegalStateException("Unable to write cleanup checkpoint", error);
+        }
+        AotakeNetworkSmokeStatus.append("PASS final-checkpoint cycles=20 paper=" + paper + " captured=20");
+    }
+
+    private static int expectedPaper() {
+        return AotakeNetworkSmokeProfilePlan.REQUIRED_CYCLES * AotakeNetworkSmokeWorkload.PAPER_PER_CYCLE;
     }
 
     private enum GameplayStep {
@@ -414,10 +525,12 @@ public final class AotakeNetworkSmokeServerRunner {
         WAIT_BURST_DROP,
         WAIT_GLOBAL_BATCH,
         WAIT_CAPTURE,
+        WAIT_MEASURED_CHUNKS,
+        SUSTAIN_CLEANUP,
         COMPLETE
     }
 
-    /** Spark 1.10 的采样与导出 API 通过反射隔离，避免成为运行时硬依赖。 */
+    /** Spark 1.10 sampler/export API, isolated from production dependencies. */
     @SuppressWarnings({"rawtypes", "unchecked"})
     private static final class ReflectiveSparkProfile {
         private final Object sampler, platform, plugin;
@@ -475,6 +588,11 @@ public final class AotakeNetworkSmokeServerRunner {
 
         private boolean written() {
             return written;
+        }
+
+        private boolean samplingEnded() {
+            return stopRequested || future.isDone()
+                    || System.nanoTime() - startedAt >= TimeUnit.SECONDS.toNanos(SPARK_SAMPLE_SECONDS);
         }
 
         private boolean writeWhenComplete() {
