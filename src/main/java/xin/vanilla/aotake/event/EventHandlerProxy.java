@@ -30,6 +30,7 @@ import org.apache.logging.log4j.Logger;
 import xin.vanilla.aotake.AotakeComponent;
 import xin.vanilla.aotake.AotakeSweep;
 import xin.vanilla.aotake.config.CommonConfig;
+import xin.vanilla.aotake.config.CommonConfigView;
 import xin.vanilla.aotake.data.ChunkKey;
 import xin.vanilla.aotake.data.ConcurrentShuffleList;
 import xin.vanilla.aotake.data.player.PlayerSweepData;
@@ -281,7 +282,7 @@ public class EventHandlerProxy {
                     overcrowdedChunks.forEach(entry -> {
                         List<Entity> entities = entry.getValue();
                         if (entities.isEmpty()) return;
-                        CommonConfig.ChunkView chunk = CommonConfig.get().base().chunk();
+                        CommonConfigView.BaseView.ChunkView chunk = CommonConfig.get().base().chunk();
                         int retained = ChunkCleanupPolicy.retainedCount(
                                 entities.size(), chunk.chunkCheckLimit(), chunk.chunkCheckRetain());
                         entities.subList(0, retained).clear();

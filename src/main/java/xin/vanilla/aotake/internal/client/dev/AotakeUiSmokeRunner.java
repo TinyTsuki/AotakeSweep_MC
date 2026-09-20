@@ -1,5 +1,7 @@
 package xin.vanilla.aotake.internal.client.dev;
 
+import xin.vanilla.banira.api.BaniraConfigs;
+
 import com.mojang.blaze3d.platform.InputConstants;
 import com.mojang.blaze3d.platform.NativeImage;
 import com.mojang.brigadier.CommandDispatcher;
@@ -124,9 +126,9 @@ public final class AotakeUiSmokeRunner {
                         AotakeSweep.isClientCachedShowSweepResult(),
                         AotakeSweep.isClientCachedEnableWarningVoice())),
                 new Step("client-config", false, () -> new ConfigEditorScreen(
-                        ClientConfig.get().holder(), new ConfigEditorScreen.Args())),
+                        BaniraConfigs.holder(ClientConfig.class), new ConfigEditorScreen.Args())),
                 new Step("common-config", true, () -> new ConfigEditorScreen(
-                        CommonConfig.get().holder(), new ConfigEditorScreen.Args()))
+                        BaniraConfigs.holder(CommonConfig.class), new ConfigEditorScreen.Args()))
         );
     }
 
@@ -222,7 +224,7 @@ public final class AotakeUiSmokeRunner {
      * 先访问关键公共 API，尽早暴露配置和键位注册时序问题。
      */
     private static void validateIntegration() {
-        if (ClientConfig.get().holder() == null || CommonConfig.get().holder() == null) {
+        if (BaniraConfigs.holder(ClientConfig.class) == null || BaniraConfigs.holder(CommonConfig.class) == null) {
             throw new IllegalStateException("Aotake config holder is not registered");
         }
         ClientModEventHandler.DUSTBIN_KEY.currentKey();
@@ -232,8 +234,8 @@ public final class AotakeUiSmokeRunner {
         if (!AotakeLang.get().getI18nFiles().contains("zh_cn")) {
             throw new IllegalStateException("Bundled zh_cn language was not discovered");
         }
-        validateConfigTooltips("client", ClientConfig.get().holder());
-        validateConfigTooltips("common", CommonConfig.get().holder());
+        validateConfigTooltips("client", BaniraConfigs.holder(ClientConfig.class));
+        validateConfigTooltips("common", BaniraConfigs.holder(CommonConfig.class));
         validateCommandRootRemoval();
     }
 
