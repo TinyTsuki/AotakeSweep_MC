@@ -27,6 +27,37 @@ import static org.junit.Assert.assertSame;
  */
 public class ConfigViewContractTest {
 
+    @org.junit.BeforeClass
+    public static void initializeRegistryDefaults() {
+        net.minecraft.util.registry.Bootstrap.bootStrap();
+    }
+
+    @Test
+    public void commaExpressionsRoundTripWithoutImplicitSaves() throws Exception {
+        ConfigBaselineFixture fixture = new ConfigBaselineFixture(CommonConfig.class);
+        CommonConfig.SweepView view = CommonConfigAccess.root(fixture.holder).base().sweep();
+        java.util.List<String> rules = Arrays.asList(
+                "tick, clazz, itemClazz -> tick >= 5", "minecraft:arrow");
+        view.entityList(rules);
+        assertEquals(rules, view.entityList());
+        assertEquals(2, view.entityList().size());
+        view.entityList().clear();
+        assertEquals(rules, view.entityList());
+        assertEquals(0, fixture.saves);
+        fixture.holder.save();
+        assertEquals(1, fixture.saves);
+    }
+
+    @Test
+    public void emptyCommandPrefixRemainsEmptyAndNullFallsBack() throws Exception {
+        ConfigBaselineFixture fixture = new ConfigBaselineFixture(CommonConfig.class);
+        CommonConfig.CommandView view = CommonConfigAccess.root(fixture.holder).command();
+        fixture.values.put("command.commandPrefix", "");
+        assertEquals("", view.commandPrefix());
+        fixture.values.put("command.commandPrefix", null);
+        assertEquals("aotake", view.commandPrefix());
+    }
+
     private static final String MOD_ID = "aotake_sweep";
     private static final String DEFAULT_COMMAND_PREFIX = "aotake";
 
