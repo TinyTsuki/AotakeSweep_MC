@@ -7,7 +7,6 @@ import lombok.experimental.Accessors;
 import net.minecraft.entity.EntityType;
 import net.minecraft.item.Items;
 import xin.vanilla.aotake.AotakeSweep;
-import xin.vanilla.aotake.config.access.CommonConfigAccess;
 import xin.vanilla.aotake.enums.*;
 import xin.vanilla.aotake.util.AotakeUtils;
 import xin.vanilla.banira.common.config.BaniraConfig;
@@ -22,7 +21,8 @@ import java.util.*;
 /**
  * 通用配置
  */
-@Config(name = AotakeSweep.MODID + "-common", type = ConfigScope.COMMON)
+@Config(name = AotakeSweep.MODID + "-common", type = ConfigScope.COMMON,
+        generateView = true, viewUnbound = Config.UnboundAccess.DEFAULTS)
 public class CommonConfig implements ConfigData {
 
     public CommonConfig() {
@@ -56,8 +56,8 @@ public class CommonConfig implements ConfigData {
 
     // endregion 配置结构
 
-    public static RootView get() {
-        return CommonConfigAccess.root(BaniraConfig.holder(CommonConfig.class));
+    public static CommonConfigView get() {
+        return CommonConfigView.get();
     }
 
     public static void save() {
@@ -65,346 +65,6 @@ public class CommonConfig implements ConfigData {
         if (h != null) {
             h.save();
         }
-    }
-
-    public interface RootView {
-        BaseView base();
-
-        CommandView command();
-
-        ConciseView concise();
-
-        PermissionView permission();
-
-        ConfigHolder holder();
-    }
-
-    public interface BaseView {
-        DustbinView dustbin();
-
-        SweepView sweep();
-
-        SafeView safe();
-
-        ChunkView chunk();
-
-        EntityCatchView entityCatch();
-
-        BatchView batch();
-    }
-
-    public interface DustbinView {
-        int dustbinPageLimit();
-
-        DustbinView dustbinPageLimit(int value);
-
-        int cacheLimit();
-
-        DustbinView cacheLimit(int value);
-
-        long selfCleanInterval();
-
-        DustbinView selfCleanInterval(long value);
-
-        List<EnumSelfCleanMode> selfCleanMode();
-
-        DustbinView selfCleanMode(List<EnumSelfCleanMode> value);
-
-        EnumOverflowMode dustbinOverflowMode();
-
-        DustbinView dustbinOverflowMode(EnumOverflowMode value);
-
-        boolean dustbinPersistent();
-
-        DustbinView dustbinPersistent(boolean value);
-
-        int dropStatsFileLimit();
-
-        DustbinView dropStatsFileLimit(int value);
-
-        List<String> dustbinBlockPositions();
-
-        DustbinView dustbinBlockPositions(List<String> value);
-
-        EnumDustbinMode dustbinBlockMode();
-
-        DustbinView dustbinBlockMode(EnumDustbinMode value);
-    }
-
-    public interface SweepView {
-        boolean sweepWhenNoPlayer();
-
-        SweepView sweepWhenNoPlayer(boolean value);
-
-        String sweepWarningContent();
-
-        SweepView sweepWarningContent(String value);
-
-        String sweepWarningVoice();
-
-        SweepView sweepWarningVoice(String value);
-
-        int sweepWarningVoiceVolume();
-
-        SweepView sweepWarningVoiceVolume(int value);
-
-        long sweepInterval();
-
-        SweepView sweepInterval(long value);
-
-        List<String> entityList();
-
-        SweepView entityList(List<String> value);
-
-        EnumListType entityListMode();
-
-        SweepView entityListMode(EnumListType value);
-
-        int entityListLimit();
-
-        SweepView entityListLimit(int value);
-
-        List<String> entityRedlist();
-
-        SweepView entityRedlist(List<String> value);
-    }
-
-    public interface SafeView {
-        List<String> safeBlocks();
-
-        SafeView safeBlocks(List<String> value);
-
-        List<String> safeBlocksBelow();
-
-        SafeView safeBlocksBelow(List<String> value);
-
-        List<String> safeBlocksAbove();
-
-        SafeView safeBlocksAbove(List<String> value);
-
-        int safeBlocksEntityLimit();
-
-        SafeView safeBlocksEntityLimit(int value);
-    }
-
-    public interface ChunkView {
-        long chunkCheckInterval();
-
-        ChunkView chunkCheckInterval(long value);
-
-        int chunkCheckLimit();
-
-        ChunkView chunkCheckLimit(int value);
-
-        double chunkCheckRetain();
-
-        ChunkView chunkCheckRetain(double value);
-
-        boolean chunkCheckNotice();
-
-        ChunkView chunkCheckNotice(boolean value);
-
-        EnumChunkCheckMode chunkCheckMode();
-
-        ChunkView chunkCheckMode(EnumChunkCheckMode value);
-
-        List<String> chunkCheckEntityList();
-
-        ChunkView chunkCheckEntityList(List<String> value);
-
-        EnumListType chunkCheckEntityListMode();
-
-        ChunkView chunkCheckEntityListMode(EnumListType value);
-
-        boolean chunkCheckOnlyNotice();
-
-        ChunkView chunkCheckOnlyNotice(boolean value);
-
-        boolean chunkVaultEnabled();
-
-        ChunkView chunkVaultEnabled(boolean value);
-
-        int chunkVaultRetentionDays();
-
-        ChunkView chunkVaultRetentionDays(int value);
-
-        int chunkVaultBucketHours();
-
-        ChunkView chunkVaultBucketHours(int value);
-    }
-
-    public interface EntityCatchView {
-        List<String> catchEntity();
-
-        EntityCatchView catchEntity(List<String> value);
-
-        boolean allowCatchEntity();
-
-        EntityCatchView allowCatchEntity(boolean value);
-
-        List<String> catchItem();
-
-        EntityCatchView catchItem(List<String> value);
-    }
-
-    public interface BatchView {
-        int sweepEntityLimit();
-
-        BatchView sweepEntityLimit(int value);
-
-        int sweepEntityInterval();
-
-        BatchView sweepEntityInterval(int value);
-
-        int sweepBatchLimit();
-
-        BatchView sweepBatchLimit(int value);
-    }
-
-    public interface CommandView {
-        String commandPrefix();
-
-        CommandView commandPrefix(String value);
-
-        String commandLanguage();
-
-        CommandView commandLanguage(String value);
-
-        String commandVirtualOp();
-
-        CommandView commandVirtualOp(String value);
-
-        String commandDustbinOpen();
-
-        CommandView commandDustbinOpen(String value);
-
-        String commandDustbinClear();
-
-        CommandView commandDustbinClear(String value);
-
-        String commandDustbinDrop();
-
-        CommandView commandDustbinDrop(String value);
-
-        String commandCacheClear();
-
-        CommandView commandCacheClear(String value);
-
-        String commandCacheDrop();
-
-        CommandView commandCacheDrop(String value);
-
-        String commandSweep();
-
-        CommandView commandSweep(String value);
-
-        String commandClearDrop();
-
-        CommandView commandClearDrop(String value);
-
-        String commandDelaySweep();
-
-        CommandView commandDelaySweep(String value);
-
-        String commandChunkVault();
-
-        CommandView commandChunkVault(String value);
-    }
-
-    public interface ConciseView {
-        boolean conciseLanguage();
-
-        ConciseView conciseLanguage(boolean value);
-
-        boolean conciseVirtualOp();
-
-        ConciseView conciseVirtualOp(boolean value);
-
-        boolean conciseDustbinOpen();
-
-        ConciseView conciseDustbinOpen(boolean value);
-
-        boolean conciseDustbinClear();
-
-        ConciseView conciseDustbinClear(boolean value);
-
-        boolean conciseDustbinDrop();
-
-        ConciseView conciseDustbinDrop(boolean value);
-
-        boolean conciseCacheClear();
-
-        ConciseView conciseCacheClear(boolean value);
-
-        boolean conciseCacheDrop();
-
-        ConciseView conciseCacheDrop(boolean value);
-
-        boolean conciseSweep();
-
-        ConciseView conciseSweep(boolean value);
-
-        boolean conciseClearDrop();
-
-        ConciseView conciseClearDrop(boolean value);
-
-        boolean conciseDelaySweep();
-
-        ConciseView conciseDelaySweep(boolean value);
-
-        boolean conciseChunkVault();
-
-        ConciseView conciseChunkVault(boolean value);
-    }
-
-    public interface PermissionView {
-        int permissionVirtualOp();
-
-        PermissionView permissionVirtualOp(int value);
-
-        int permissionDustbinOpen();
-
-        PermissionView permissionDustbinOpen(int value);
-
-        int permissionDustbinOpenOther();
-
-        PermissionView permissionDustbinOpenOther(int value);
-
-        int permissionDustbinClear();
-
-        PermissionView permissionDustbinClear(int value);
-
-        int permissionDustbinDrop();
-
-        PermissionView permissionDustbinDrop(int value);
-
-        int permissionCacheClear();
-
-        PermissionView permissionCacheClear(int value);
-
-        int permissionCacheDrop();
-
-        PermissionView permissionCacheDrop(int value);
-
-        int permissionSweep();
-
-        PermissionView permissionSweep(int value);
-
-        int permissionClearDrop();
-
-        PermissionView permissionClearDrop(int value);
-
-        int permissionDelaySweep();
-
-        PermissionView permissionDelaySweep(int value);
-
-        int permissionCatchPlayer();
-
-        PermissionView permissionCatchPlayer(int value);
-
-        int permissionChunkVault();
-
-        PermissionView permissionChunkVault(int value);
     }
 
     @Getter
@@ -824,7 +484,7 @@ public class CommonConfig implements ConfigData {
     }
 
     private static void applyResetDefaults() {
-        RootView c = get();
+        CommonConfigView c = get();
         c.base().dustbin()
                 .dustbinPageLimit(2)
                 .cacheLimit(5000)

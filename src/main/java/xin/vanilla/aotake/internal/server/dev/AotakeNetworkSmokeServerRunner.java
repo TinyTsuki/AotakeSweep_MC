@@ -20,6 +20,7 @@ import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.event.entity.player.PlayerInteractEvent;
 import xin.vanilla.aotake.AotakeSweep;
 import xin.vanilla.aotake.config.CommonConfig;
+import xin.vanilla.aotake.config.CommonConfigView;
 import xin.vanilla.aotake.data.player.PlayerSweepData;
 import xin.vanilla.aotake.data.world.WorldTrashData;
 import xin.vanilla.aotake.enums.EnumChunkCheckMode;
@@ -320,7 +321,7 @@ public final class AotakeNetworkSmokeServerRunner {
     }
 
     private static void configureGameplayFixture() {
-        CommonConfig.BaseView base = CommonConfig.get().base();
+        CommonConfigView.BaseView base = CommonConfig.get().base();
         base.sweep().sweepWhenNoPlayer(true).sweepInterval(TimeUnit.HOURS.toMillis(1L))
                 .entityList(Collections.singletonList("minecraft:item"))
                 .entityListMode(EnumListType.BLACK).entityListLimit(Integer.MAX_VALUE);

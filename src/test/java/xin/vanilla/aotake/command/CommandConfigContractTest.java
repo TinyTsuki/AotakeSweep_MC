@@ -44,8 +44,11 @@ import static org.junit.Assert.assertTrue;
  */
 public class CommandConfigContractTest {
 
+    @org.junit.BeforeClass
+    public static void bootstrapDefaults() { net.minecraft.util.registry.Bootstrap.bootStrap(); }
+
     @Test
-    public void defaultCommandConfigProducesStableCommands() {
+    public void defaultCommandConfigProducesStableCommands() throws Exception {
         installPlatform(new MapStore());
 
         assertEquals("aotake help", AotakeUtils.getCommand(EnumCommandType.HELP));
@@ -61,7 +64,7 @@ public class CommandConfigContractTest {
     }
 
     @Test
-    public void commandConfigOverridesAreVisibleThroughPublicHelpers() {
+    public void commandConfigOverridesAreVisibleThroughPublicHelpers() throws Exception {
         MapStore store = new MapStore();
         store.values.put("command.commandPrefix", "sweep");
         store.values.put("command.commandLanguage", "lang");
@@ -75,11 +78,8 @@ public class CommandConfigContractTest {
         assertEquals(2, AotakeUtils.getCommandPermissionLevel(EnumCommandType.VIRTUAL_OP));
     }
 
-    private static void installPlatform(MapStore store) {
-        ConfigHolder holder = ConfigHolder.create("aotake_sweep", "aotake-common", ConfigScope.COMMON, store,
-                Collections.<ConfigEntryDescriptor>emptyList(),
-                Collections.<String, String>emptyMap(),
-                Collections.<String, ConfigCategoryTitleSpec>emptyMap());
+    private static void installPlatform(MapStore store) throws Exception {
+        ConfigHolder holder = xin.vanilla.aotake.config.ConfigBaselineFixture.holderWithValues(CommonConfig.class, store.values);
         BaniraPlatforms.install(new TestPlatform(new TestConfigService().holder(CommonConfig.class, holder)));
     }
 

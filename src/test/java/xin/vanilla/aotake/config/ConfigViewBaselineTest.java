@@ -2,8 +2,6 @@ package xin.vanilla.aotake.config;
 
 import org.junit.Test;
 import org.junit.BeforeClass;
-import xin.vanilla.aotake.config.access.ClientConfigAccess;
-import xin.vanilla.aotake.config.access.CommonConfigAccess;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -18,10 +16,12 @@ public class ConfigViewBaselineTest {
         ConfigBaselineFixture fixture = new ConfigBaselineFixture(CommonConfig.class);
         Map<String, Object> baseline = new LinkedHashMap<>();
         baseline.put("schema", fixture.schema());
-        baseline.put("unbound", ConfigBaselineFixture.readView(CommonConfigAccess.root(null), CommonConfig.RootView.class));
-        baseline.put("defaults", ConfigBaselineFixture.readView(CommonConfigAccess.root(fixture.holder), CommonConfig.RootView.class));
+        ConfigBaselineFixture.bind(CommonConfig.class, null);
+        baseline.put("unbound", ConfigBaselineFixture.readView(CommonConfigView.get(), CommonConfigView.class));
+        fixture.bind(CommonConfig.class);
+        baseline.put("defaults", ConfigBaselineFixture.readView(CommonConfigView.get(), CommonConfigView.class));
         fixture.nonDefaultValues();
-        baseline.put("changed", ConfigBaselineFixture.readView(CommonConfigAccess.root(fixture.holder), CommonConfig.RootView.class));
+        baseline.put("changed", ConfigBaselineFixture.readView(CommonConfigView.get(), CommonConfigView.class));
         ConfigBaselineFixture.assertSnapshot("common", baseline);
     }
 
@@ -30,10 +30,12 @@ public class ConfigViewBaselineTest {
         ConfigBaselineFixture fixture = new ConfigBaselineFixture(ClientConfig.class);
         Map<String, Object> baseline = new LinkedHashMap<>();
         baseline.put("schema", fixture.schema());
-        baseline.put("unbound", ConfigBaselineFixture.readView(ClientConfigAccess.root(null), ClientConfig.RootView.class));
-        baseline.put("defaults", ConfigBaselineFixture.readView(ClientConfigAccess.root(fixture.holder), ClientConfig.RootView.class));
+        ConfigBaselineFixture.bind(ClientConfig.class, null);
+        baseline.put("unbound", ConfigBaselineFixture.readView(ClientConfigView.get(), ClientConfigView.class));
+        fixture.bind(ClientConfig.class);
+        baseline.put("defaults", ConfigBaselineFixture.readView(ClientConfigView.get(), ClientConfigView.class));
         fixture.nonDefaultValues();
-        baseline.put("changed", ConfigBaselineFixture.readView(ClientConfigAccess.root(fixture.holder), ClientConfig.RootView.class));
+        baseline.put("changed", ConfigBaselineFixture.readView(ClientConfigView.get(), ClientConfigView.class));
         ConfigBaselineFixture.assertSnapshot("client", baseline);
     }
 }

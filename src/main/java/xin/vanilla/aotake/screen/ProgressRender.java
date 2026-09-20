@@ -8,6 +8,7 @@ import net.minecraftforge.client.event.RenderGameOverlayEvent;
 import xin.vanilla.aotake.AotakeSweep;
 import xin.vanilla.aotake.Identifier;
 import xin.vanilla.aotake.config.ClientConfig;
+import xin.vanilla.aotake.config.ClientConfigView;
 import xin.vanilla.aotake.enums.EnumProgressBarTextAlignH;
 import xin.vanilla.aotake.enums.EnumProgressBarTextAlignV;
 import xin.vanilla.aotake.enums.EnumProgressBarType;
@@ -35,10 +36,10 @@ public final class ProgressRender {
     }
 
     public static void render(RenderGameOverlayEvent event, boolean showProgressHeld) {
-        ClientConfig.ProgressBarView cp = ClientConfig.get().progressBar();
-        ClientConfig.ProgressBarLeafView cpl = cp.leaf();
-        ClientConfig.ProgressBarPoleView cpp = cp.pole();
-        ClientConfig.ProgressBarTextView cpt = cp.text();
+        ClientConfigView.ProgressBarView cp = ClientConfig.get().progressBar();
+        ClientConfigView.ProgressBarView.LeafView cpl = cp.leaf();
+        ClientConfigView.ProgressBarView.PoleView cpp = cp.pole();
+        ClientConfigView.ProgressBarView.TextView cpt = cp.text();
         if (event instanceof RenderGameOverlayEvent.Post
                 && ((cpp.hideExperienceBarPole() && cp.progressBarDisplayNormal().contains(EnumProgressBarType.POLE))
                 || (cpt.hideExperienceBarText() && cp.progressBarDisplayNormal().contains(EnumProgressBarType.TEXT))
@@ -122,8 +123,8 @@ public final class ProgressRender {
     }
 
     private static int getLeafX() {
-        ClientConfig.ProgressBarLeafView cpl = ClientConfig.get().progressBar().leaf();
-        ClientConfig.ProgressBarPoleView cpp = ClientConfig.get().progressBar().pole();
+        ClientConfigView.ProgressBarView.LeafView cpl = ClientConfig.get().progressBar().leaf();
+        ClientConfigView.ProgressBarView.PoleView cpp = ClientConfig.get().progressBar().pole();
         int baseX = getPoleX();
         int width = cpp.progressBarPoleWidth();
         double x;
@@ -156,8 +157,8 @@ public final class ProgressRender {
     }
 
     private static int getLeafY() {
-        ClientConfig.ProgressBarLeafView cpl = ClientConfig.get().progressBar().leaf();
-        ClientConfig.ProgressBarPoleView cpp = ClientConfig.get().progressBar().pole();
+        ClientConfigView.ProgressBarView.LeafView cpl = ClientConfig.get().progressBar().leaf();
+        ClientConfigView.ProgressBarView.PoleView cpp = ClientConfig.get().progressBar().pole();
         int baseY = getPoleY();
         int height = cpp.progressBarPoleHeight();
         double y;
@@ -188,7 +189,7 @@ public final class ProgressRender {
     }
 
     private static int getPoleX() {
-        ClientConfig.ProgressBarPoleView cpp = ClientConfig.get().progressBar().pole();
+        ClientConfigView.ProgressBarView.PoleView cpp = ClientConfig.get().progressBar().pole();
         int width = Minecraft.getInstance().getWindow().getGuiScaledWidth();
         double x;
         String xString = cpp.progressBarPolePosition().split(",")[0];
@@ -218,7 +219,7 @@ public final class ProgressRender {
     }
 
     private static int getPoleY() {
-        ClientConfig.ProgressBarPoleView cpp = ClientConfig.get().progressBar().pole();
+        ClientConfigView.ProgressBarView.PoleView cpp = ClientConfig.get().progressBar().pole();
         int height = Minecraft.getInstance().getWindow().getGuiScaledHeight();
         double y;
         String yString = cpp.progressBarPolePosition().split(",")[1];
@@ -248,7 +249,7 @@ public final class ProgressRender {
     /**
      * 倒计时文字
      */
-    private static void drawProgressCountdownText(Minecraft mc, MatrixStack stack, ClientConfig.ProgressBarTextView cpt, double scale) {
+    private static void drawProgressCountdownText(Minecraft mc, MatrixStack stack, ClientConfigView.ProgressBarView.TextView cpt, double scale) {
         String line = getText();
         if (line.isEmpty()) {
             return;
@@ -308,8 +309,8 @@ public final class ProgressRender {
     /**
      * 配置中「相对竹竿」的参考点（屏幕坐标），不含文字尺寸。
      */
-    private static double[] progressTextAnchorScreen(ClientConfig.ProgressBarTextView cpt) {
-        ClientConfig.ProgressBarPoleView cpp = ClientConfig.get().progressBar().pole();
+    private static double[] progressTextAnchorScreen(ClientConfigView.ProgressBarView.TextView cpt) {
+        ClientConfigView.ProgressBarView.PoleView cpp = ClientConfig.get().progressBar().pole();
         double baseX = getPoleX();
         double baseY = getPoleY();
         int poleW = cpp.progressBarPoleWidth();

@@ -5,14 +5,11 @@ import lombok.Getter;
 import lombok.Setter;
 import lombok.experimental.Accessors;
 import xin.vanilla.aotake.AotakeSweep;
-import xin.vanilla.aotake.config.access.ClientConfigAccess;
 import xin.vanilla.aotake.enums.EnumDustbinClientUiStyle;
 import xin.vanilla.aotake.enums.EnumProgressBarTextAlignH;
 import xin.vanilla.aotake.enums.EnumProgressBarTextAlignV;
 import xin.vanilla.aotake.enums.EnumProgressBarType;
-import xin.vanilla.banira.common.config.BaniraConfig;
 import xin.vanilla.banira.common.config.ConfigData;
-import xin.vanilla.banira.common.config.ConfigHolder;
 import xin.vanilla.banira.common.config.ConfigScope;
 import xin.vanilla.banira.common.config.annotation.Config;
 import xin.vanilla.banira.common.config.annotation.ConfigEntry;
@@ -24,7 +21,8 @@ import java.util.List;
 /**
  * 客户端配置，由 Banira 配置服务构建并在配置编辑器中编辑。
  */
-@Config(name = AotakeSweep.MODID + "-client", type = ConfigScope.CLIENT)
+@Config(name = AotakeSweep.MODID + "-client", type = ConfigScope.CLIENT,
+        generateView = true, viewUnbound = Config.UnboundAccess.DEFAULTS)
 public class ClientConfig implements ConfigData {
 
     @Getter(AccessLevel.NONE)
@@ -42,136 +40,8 @@ public class ClientConfig implements ConfigData {
     public ClientConfig() {
     }
 
-    public static RootView get() {
-        return ClientConfigAccess.root(BaniraConfig.holder(ClientConfig.class));
-    }
-
-    public interface RootView {
-        ProgressBarView progressBar();
-
-        DustbinView dustbin();
-
-        ConfigHolder holder();
-    }
-
-    public interface ProgressBarView {
-        List<EnumProgressBarType> progressBarDisplayNormal();
-
-        ProgressBarView progressBarDisplayNormal(List<EnumProgressBarType> value);
-
-        List<EnumProgressBarType> progressBarDisplayHold();
-
-        ProgressBarView progressBarDisplayHold(List<EnumProgressBarType> value);
-
-        boolean progressBarKeyApplyMode();
-
-        ProgressBarView progressBarKeyApplyMode(boolean value);
-
-        ProgressBarLeafView leaf();
-
-        ProgressBarPoleView pole();
-
-        ProgressBarTextView text();
-    }
-
-    public interface ProgressBarLeafView {
-        boolean hideExperienceBarLeaf();
-
-        ProgressBarLeafView hideExperienceBarLeaf(boolean value);
-
-        int progressBarLeafScreenQuadrant();
-
-        ProgressBarLeafView progressBarLeafScreenQuadrant(int value);
-
-        String progressBarLeafPosition();
-
-        ProgressBarLeafView progressBarLeafPosition(String value);
-
-        EnumPosition progressBarLeafBase();
-
-        ProgressBarLeafView progressBarLeafBase(EnumPosition value);
-
-        double progressBarLeafAngle();
-
-        ProgressBarLeafView progressBarLeafAngle(double value);
-
-        int progressBarLeafHeight();
-
-        ProgressBarLeafView progressBarLeafHeight(int value);
-
-        int progressBarLeafWidth();
-
-        ProgressBarLeafView progressBarLeafWidth(int value);
-    }
-
-    public interface ProgressBarPoleView {
-        boolean hideExperienceBarPole();
-
-        ProgressBarPoleView hideExperienceBarPole(boolean value);
-
-        int progressBarPoleScreenQuadrant();
-
-        ProgressBarPoleView progressBarPoleScreenQuadrant(int value);
-
-        String progressBarPolePosition();
-
-        ProgressBarPoleView progressBarPolePosition(String value);
-
-        EnumPosition progressBarPoleBase();
-
-        ProgressBarPoleView progressBarPoleBase(EnumPosition value);
-
-        double progressBarPoleAngle();
-
-        ProgressBarPoleView progressBarPoleAngle(double value);
-
-        int progressBarPoleHeight();
-
-        ProgressBarPoleView progressBarPoleHeight(int value);
-
-        int progressBarPoleWidth();
-
-        ProgressBarPoleView progressBarPoleWidth(int value);
-    }
-
-    public interface ProgressBarTextView {
-        boolean hideExperienceBarText();
-
-        ProgressBarTextView hideExperienceBarText(boolean value);
-
-        int progressBarTextScreenQuadrant();
-
-        ProgressBarTextView progressBarTextScreenQuadrant(int value);
-
-        String progressBarTextPosition();
-
-        ProgressBarTextView progressBarTextPosition(String value);
-
-        EnumProgressBarTextAlignH progressBarTextAlignH();
-
-        ProgressBarTextView progressBarTextAlignH(EnumProgressBarTextAlignH value);
-
-        EnumProgressBarTextAlignV progressBarTextAlignV();
-
-        ProgressBarTextView progressBarTextAlignV(EnumProgressBarTextAlignV value);
-
-        double progressBarTextAngle();
-
-        ProgressBarTextView progressBarTextAngle(double value);
-
-        int progressBarTextSize();
-
-        ProgressBarTextView progressBarTextSize(int value);
-
-        String progressBarTextColor();
-
-        ProgressBarTextView progressBarTextColor(String value);
-    }
-
-    public interface DustbinView {
-        EnumDustbinClientUiStyle dustbinUiStyle();
-
-        DustbinView dustbinUiStyle(EnumDustbinClientUiStyle value);
+    public static ClientConfigView get() {
+        return ClientConfigView.get();
     }
 
     @Getter
