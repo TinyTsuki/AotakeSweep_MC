@@ -7,6 +7,7 @@ def smokeServerDir = file("${smokeRoot}/server")
 def smokeClientDir = file("${smokeRoot}/client")
 def smokePort = 25575
 def smokeChild = (project.findProperty('aotake.networkSmoke.child') ?: 'false').toString().toBoolean()
+def mutableThresholds = (project.findProperty('aotake.networkSmoke.mutableThresholds') ?: 'false').toString().toBoolean()
 
 if (smokeChild) {
     layout.buildDirectory.set(file(project.property('aotake.networkSmoke.buildDir')))
@@ -20,6 +21,7 @@ if (smokeChild) {
             property 'aotake.networkSmoke.phase', phase
             property 'aotake.networkSmoke.status', status
             property 'aotake.networkSmoke.sparkReport', report
+            property 'aotake.networkSmoke.mutableThresholds', mutableThresholds.toString()
         }
         server {
             runDir project.relativePath(smokeServerDir)
@@ -61,7 +63,8 @@ def start = { String task, String phase, File status, File serverStatus, File re
     List<String> command = System.getProperty('os.name').toLowerCase().contains('windows') ? ['cmd.exe', '/d', '/c', wrapper.absolutePath] : [wrapper.absolutePath]
     command.addAll([task, '--no-daemon', '--console=plain', '--project-cache-dir', new File(childRoot, 'project-cache').absolutePath,
                     '-Paotake.networkSmoke.child=true', "-Paotake.networkSmoke.phase=${phase}", "-Paotake.networkSmoke.status=${status.absolutePath}",
-                    "-Paotake.networkSmoke.sparkReport=${report.absolutePath}", "-Paotake.networkSmoke.buildDir=${new File(childRoot, 'build').absolutePath}"])
+                    "-Paotake.networkSmoke.sparkReport=${report.absolutePath}", "-Paotake.networkSmoke.buildDir=${new File(childRoot, 'build').absolutePath}",
+                    "-Paotake.networkSmoke.mutableThresholds=${mutableThresholds}"])
     if (task == 'runServer') command.add('-Paotake.networkSmoke.server=true')
     else command.add("-Paotake.networkSmoke.serverStatus=${serverStatus.absolutePath}")
     log.parentFile.mkdirs()
@@ -77,7 +80,7 @@ tasks.register('networkSmoke') {
     description = 'Runs Aotake dedicated cleanup, capture, persistence, remote-client, and Spark smoke.'
     doLast {
         if (smokeChild) throw new GradleException('networkSmoke cannot run as a child')
-        delete smokeRoot
+        delete smokeServerDir, smokeClientDir
         smokeServerDir.mkdirs()
         smokeClientDir.mkdirs()
         new File(smokeServerDir, 'eula.txt').setText('eula=true' + System.lineSeparator(), 'UTF-8')
@@ -86,6 +89,21 @@ tasks.register('networkSmoke') {
                         + "level-name=network-smoke-world${System.lineSeparator()}view-distance=4${System.lineSeparator()}", 'UTF-8')
         File evidence = file("${smokeRoot}/evidence/${DateTimeFormatter.ofPattern('yyyyMMdd-HHmmss').format(LocalDateTime.now())}")
         evidence.mkdirs()
+        def sha256 = { File path -> java.security.MessageDigest.getInstance('SHA-256').digest(path.bytes).encodeHex().toString() }
+        def inputs = [:]
+        (fileTree('src').files + fileTree('gradle').files
+                + [file('build.gradle'), file('settings.gradle'), file('gradle.properties')]).findAll { it.isFile() }.each {
+            inputs[project.relativePath(it).replace('\\', '/')] = sha256(it)
+        }
+        def jars = [:]
+        (configurations.runtimeClasspath.files + configurations.modRuntimeOnly.files).findAll {
+            it.isFile() && it.name.endsWith('.jar')
+        }.each { jars[it.absolutePath] = sha256(it) }
+        new File(evidence, 'source-state.json').setText(groovy.json.JsonOutput.prettyPrint(
+                groovy.json.JsonOutput.toJson([files: inputs, runtimeJars: jars, mutableThresholds: mutableThresholds])), 'UTF-8')
+        File spark = configurations.modRuntimeOnly.files.find { it.name.startsWith('spark-') }
+        if (spark == null) throw new GradleException('Missing Spark runtime')
+        new File(evidence, 'spark-runtime-phase-one.txt').setText(spark.absolutePath, 'UTF-8')
         ['phase-one', 'phase-two'].each { phase ->
             File serverStatus = new File(evidence, "server-${phase}.status")
             File clientStatus = new File(evidence, "client-${phase}.status")
@@ -112,6 +130,16 @@ tasks.register('networkSmoke') {
                         : ['PASS persisted-command-config', 'PASS persisted-player-data', 'PASS persisted-world-data', 'FINISHED phase-two', 'PASS server-shutdown']
                 expectedServer.each { marker ->
                     if (!readUtf8(serverStatus).contains(marker)) throw new GradleException("Missing '${marker}':\n${readUtf8(serverStatus)}")
+                }
+                def configMarker = phase == 'phase-one' ? 'PASS complete-config-snapshot' : 'PASS complete-config-restart'
+                if (!readUtf8(serverStatus).contains(configMarker) || !readUtf8(clientStatus).contains(configMarker)) {
+                    throw new GradleException("Missing complete generated-config verification in ${phase}")
+                }
+                def workloadMarkers = phase == 'phase-one'
+                        ? ['PASS vanilla-item-use', 'PASS measured-chunks-ready chunks=4', 'PASS measured-cleanup cycles=20', 'PASS sustained-cleanup-workload']
+                        : ['PASS persisted-measured-payload']
+                workloadMarkers.each { marker ->
+                    if (!readUtf8(serverStatus).contains(marker)) throw new GradleException("Missing '${marker}'")
                 }
                 def expectedClient = phase == 'phase-one'
                         ? ['PASS remote-login-sync', 'PASS config-roundtrip', 'FINISHED phase-one']
