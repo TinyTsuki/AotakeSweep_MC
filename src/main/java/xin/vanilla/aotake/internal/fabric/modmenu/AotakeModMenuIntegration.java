@@ -1,5 +1,7 @@
 package xin.vanilla.aotake.internal.fabric.modmenu;
 
+import xin.vanilla.banira.api.BaniraConfigs;
+
 import com.terraformersmc.modmenu.api.ConfigScreenFactory;
 import com.terraformersmc.modmenu.api.ModMenuApi;
 import xin.vanilla.aotake.config.ClientConfig;
@@ -13,7 +15,7 @@ public final class AotakeModMenuIntegration implements ModMenuApi {
     @Override
     public ConfigScreenFactory<?> getModConfigScreenFactory() {
         return parent -> new ConfigEditorScreen(
-                ClientConfig.get().holder(),
+                BaniraConfigs.holder(ClientConfig.class),
                 new ConfigEditorScreen.Args().parentScreen(parent));
     }
 }

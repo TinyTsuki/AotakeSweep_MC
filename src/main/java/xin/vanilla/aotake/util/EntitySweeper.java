@@ -20,6 +20,7 @@ import xin.vanilla.aotake.AotakeComponent;
 import xin.vanilla.aotake.AotakeLang;
 import xin.vanilla.aotake.AotakeSweep;
 import xin.vanilla.aotake.config.CommonConfig;
+import xin.vanilla.aotake.config.CommonConfigView;
 import xin.vanilla.aotake.data.ConcurrentShuffleList;
 import xin.vanilla.aotake.data.DropStatistics;
 import xin.vanilla.aotake.data.SweepResult;
@@ -399,11 +400,11 @@ public class EntitySweeper {
         private final int sweepBatchLimit;
         private final int warningVoiceVolume;
 
-        private SweepContext(CommonConfig.BaseView base) {
-            CommonConfig.SweepView sweep = base.sweep();
-            CommonConfig.EntityCatchView entityCatch = base.entityCatch();
-            CommonConfig.DustbinView dustbin = base.dustbin();
-            CommonConfig.BatchView batch = base.batch();
+        private SweepContext(CommonConfigView.BaseView base) {
+            CommonConfigView.BaseView.SweepView sweep = base.sweep();
+            CommonConfigView.BaseView.EntityCatchView entityCatch = base.entityCatch();
+            CommonConfigView.BaseView.DustbinView dustbin = base.dustbin();
+            CommonConfigView.BaseView.BatchView batch = base.batch();
 
             EntityFilter filter = AotakeSweep.getEntityFilter();
             this.redlist = filter.compile(sweep.entityRedlist());
