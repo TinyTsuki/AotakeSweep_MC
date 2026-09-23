@@ -37,6 +37,7 @@ public final class AotakeNetworkSmokeConfigs {
         if (holder == null) throw new IllegalStateException("Missing config holder " + configClass.getName());
         String phase = AotakeNetworkSmokeStatus.phase();
         try {
+            verifyGenerated(client ? ClientConfig.get() : CommonConfig.get(), "", holder);
             JsonObject snapshot = verify(holder, BaniraDataPaths.gameConfigPath(), phase);
             AotakeNetworkSmokeStatus.append(("phase-one".equals(phase)
                     ? "PASS complete-config-snapshot" : "PASS complete-config-restart")
@@ -88,6 +89,23 @@ public final class AotakeNetworkSmokeConfigs {
             }
         }
         return current;
+    }
+
+    private static void verifyGenerated(Object view, String prefix, ConfigHolder holder) {
+        try {
+            for (java.lang.reflect.Method method : view.getClass().getDeclaredMethods()) {
+                if (!java.lang.reflect.Modifier.isPublic(method.getModifiers())
+                        || java.lang.reflect.Modifier.isStatic(method.getModifiers())
+                        || method.getParameterCount() != 0 || method.getName().equals("handle")) continue;
+                Object value = method.invoke(view);
+                String path = prefix + method.getName();
+                if (method.getReturnType().getEnclosingClass() == view.getClass()) {
+                    verifyGenerated(value, path + ".", holder);
+                } else {
+                    requireEqual("generated", path, normalize(holder.get(path)), normalize(value));
+                }
+            }
+        } catch (ReflectiveOperationException error) { throw new IllegalStateException(error); }
     }
 
     private static Set<String> paths(JsonObject object) {

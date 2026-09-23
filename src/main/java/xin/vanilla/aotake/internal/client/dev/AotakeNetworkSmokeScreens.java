@@ -1,5 +1,7 @@
 package xin.vanilla.aotake.internal.client.dev;
 
+import xin.vanilla.banira.api.BaniraConfigs;
+
 import com.mojang.blaze3d.vertex.PoseStack;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.Screen;
@@ -215,7 +217,7 @@ public final class AotakeNetworkSmokeScreens {
 
     private final class ClientConfigView extends ConfigEditorScreen {
         private ClientConfigView() {
-            super(ClientConfig.get().holder(), new ConfigEditorScreen.Args());
+            super(BaniraConfigs.holder(ClientConfig.class), new ConfigEditorScreen.Args());
         }
 
         @Override
