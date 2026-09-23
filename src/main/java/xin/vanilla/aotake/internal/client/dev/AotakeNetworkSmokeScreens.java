@@ -1,5 +1,7 @@
 package xin.vanilla.aotake.internal.client.dev;
 
+import xin.vanilla.banira.api.BaniraConfigs;
+
 import com.mojang.blaze3d.vertex.PoseStack;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.Screen;
@@ -21,6 +23,7 @@ import xin.vanilla.banira.client.gui.BaniraScreen;
 import xin.vanilla.banira.client.gui.ConfigEditorScreen;
 import xin.vanilla.banira.client.gui.tooltip.TooltipRequestCollector;
 import xin.vanilla.banira.client.gui.widget.CollapsiblePanelWidget;
+import xin.vanilla.banira.client.gui.widget.BaseWidget;
 import xin.vanilla.banira.client.gui.widget.IWidget;
 import xin.vanilla.banira.client.gui.widget.TooltipWidget;
 
@@ -167,6 +170,15 @@ public final class AotakeNetworkSmokeScreens {
         }
     }
 
+    // Render input and cached widget hover must use the same simulated pointer.
+    static void updateRenderHover(List<IWidget> widgets, double mouseX, double mouseY) {
+        for (IWidget widget : widgets) {
+            if (!widget.visible() || !widget.enabled()) continue;
+            if (widget instanceof BaseWidget) ((BaseWidget) widget).updateMouseHover(mouseX, mouseY);
+            updateRenderHover(widget.children(), mouseX, mouseY);
+        }
+    }
+
     // Dev-only runtime updater; replaying render-pre would clear deferred tooltips.
     private static void updateRenderInput(BaniraScreen screen, double mouseX, double mouseY) {
         try {
@@ -175,6 +187,7 @@ public final class AotakeNetworkSmokeScreens {
                 renderInputUpdate = state.getClass().getMethod("handleDrawScreenPre", double.class, double.class);
             }
             renderInputUpdate.invoke(state, mouseX, mouseY);
+            updateRenderHover(screen.widgets(), mouseX, mouseY);
         } catch (ReflectiveOperationException error) {
             throw new IllegalStateException("Unable to update smoke render input", error);
         }
@@ -269,7 +282,7 @@ public final class AotakeNetworkSmokeScreens {
 
     private final class ClientConfigView extends ConfigEditorScreen {
         private ClientConfigView() {
-            super(ClientConfig.get().holder(), new ConfigEditorScreen.Args());
+            super(BaniraConfigs.holder(ClientConfig.class), new ConfigEditorScreen.Args());
         }
 
         @Override

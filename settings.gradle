@@ -13,3 +13,6 @@ plugins {
 }
 
 rootProject.name = 'aotake-sweep'
+
+
+apply from: 'gradle/config-view-processor-settings.gradle'

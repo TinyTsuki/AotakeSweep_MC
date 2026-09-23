@@ -17,6 +17,7 @@ import xin.vanilla.aotake.network.packet.SweepDataSyncToClient;
 import xin.vanilla.aotake.notification.AotakeNotificationTypes;
 import xin.vanilla.aotake.util.AotakeUtils;
 import xin.vanilla.banira.api.BaniraCommonSettings;
+import xin.vanilla.banira.api.BaniraConfigs;
 import xin.vanilla.banira.common.enums.EnumI18nType;
 import xin.vanilla.banira.common.util.*;
 
@@ -84,18 +85,18 @@ public class ConfigCommand {
                                 .suggests((context, builder) -> {
                                     String input = CommandUtils.getStringEmpty(context, "configKey");
                                     CommandUtils.configKeySuggestion(
-                                            CommonConfig.get().holder(), builder, input);
+                                            BaniraConfigs.holder(CommonConfig.class), builder, input);
                                     return builder.buildFuture();
                                 })
                                 .then(Commands.argument("configValue", StringArgumentType.word())
                                         .suggests((context, builder) -> {
                                             String configKey = StringArgumentType.getString(context, "configKey");
                                             CommandUtils.configValueSuggestion(
-                                                    CommonConfig.get().holder(), builder, configKey);
+                                                    BaniraConfigs.holder(CommonConfig.class), builder, configKey);
                                             return builder.buildFuture();
                                         })
                                         .executes(context -> CommandUtils.executeModifyConfig(
-                                                CommonConfig.get().holder(), context))
+                                                BaniraConfigs.holder(CommonConfig.class), context))
                                 )
                         )
                 )// endregion 修改common配置
