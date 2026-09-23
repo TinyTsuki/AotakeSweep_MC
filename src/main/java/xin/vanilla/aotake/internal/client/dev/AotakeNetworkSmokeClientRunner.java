@@ -22,7 +22,7 @@ import java.nio.file.Paths;
 /** 自动连接独立服务端，并验证玩家偏好与垃圾箱容器同步。 */
 public final class AotakeNetworkSmokeClientRunner {
     private static final Logger LOGGER = LogManager.getLogger();
-    private static final int TIMEOUT_TICKS = 1200;
+    private static final int TIMEOUT_TICKS = 2400;
 
     private static AotakeNetworkSmokeClientRunner instance;
 
@@ -77,6 +77,7 @@ public final class AotakeNetworkSmokeClientRunner {
     }
 
     private void connect(Minecraft client) {
+        if (client.getOverlay() != null) return;
         String host = System.getProperty("aotake.networkSmoke.host", "127.0.0.1");
         int port = Integer.getInteger("aotake.networkSmoke.port", 25575);
         ServerData server = new ServerData("Aotake Network Smoke", host + ':' + port, false);
@@ -92,6 +93,11 @@ public final class AotakeNetworkSmokeClientRunner {
             return;
         }
         AotakeNetworkSmokeStatus.append("PASS remote-login-sync");
+        if ("phase-one".equals(AotakeNetworkSmokeStatus.phase())) {
+            xin.vanilla.aotake.config.ClientConfig.get().progressBar().text().progressBarTextPosition("48%,12");
+            xin.vanilla.aotake.config.ClientConfig.get().handle().save();
+        }
+        xin.vanilla.aotake.internal.dev.AotakeNetworkSmokeConfigs.verify(true);
         AotakeNetworkSmokeClientPlan.LoginAction action = AotakeNetworkSmokeClientPlan.afterLogin(
                 AotakeNetworkSmokeStatus.phase(), AotakeSweep.isClientCachedShowSweepResult(),
                 AotakeSweep.isClientCachedEnableWarningVoice());
