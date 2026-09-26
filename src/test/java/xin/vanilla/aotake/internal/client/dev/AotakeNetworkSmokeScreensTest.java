@@ -1,7 +1,11 @@
 package xin.vanilla.aotake.internal.client.dev;
 
 import org.junit.Test;
+import net.minecraft.client.gui.GuiGraphics;
+import xin.vanilla.banira.client.data.ScreenCoordinate;
+import xin.vanilla.banira.client.gui.widget.BaseWidget;
 
+import java.util.Collections;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.junit.Assert.assertEquals;
@@ -9,6 +13,30 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 public class AotakeNetworkSmokeScreensTest {
+    @Test
+    public void simulatedRenderHoverUpdatesChildrenAndRestoresRealPointer() {
+        HoverProbe parent = new HoverProbe(20, 30, 100, 100);
+        HoverProbe child = new HoverProbe(10, 10, 30, 20);
+        child.parent(parent);
+        assertFalse(child.inside());
+        AotakeNetworkSmokeScreens.updateRenderHover(Collections.singletonList(parent), 35, 45);
+        assertTrue(parent.inside());
+        assertTrue(child.inside());
+        AotakeNetworkSmokeScreens.updateRenderHover(Collections.singletonList(parent), 0, 0);
+        assertFalse(parent.inside());
+        assertFalse(child.inside());
+    }
+
+    private static final class HoverProbe extends BaseWidget {
+        private HoverProbe(int x, int y, int width, int height) {
+            super(null, new ScreenCoordinate(x, y, width, height));
+        }
+
+        private boolean inside() { return mouseInside; }
+
+        @Override public void render(GuiGraphics graphics, float partialTicks) { }
+    }
+
     @Test
     public void rejectsFramesThatStartBeforeOrFinishAfterSampling() {
         AtomicBoolean sampling = new AtomicBoolean(true);
