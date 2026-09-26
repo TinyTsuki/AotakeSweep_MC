@@ -9,4 +9,6 @@ pluginManagement {
     }
 }
 
+apply from: 'gradle/config-view-processor-settings.gradle'
+
 rootProject.name = 'aotake-sweep'

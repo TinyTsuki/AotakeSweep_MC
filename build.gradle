@@ -3,6 +3,8 @@ plugins {
     id 'maven-publish'
 }
 
+apply from: 'gradle/config-view-processor.gradle'
+
 def javaVer = 21
 def aotakeNetworkSmokeServer = (project.findProperty('aotake.networkSmoke.server') ?: 'false').toString().toBoolean()
 

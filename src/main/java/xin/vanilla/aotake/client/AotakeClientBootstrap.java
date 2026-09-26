@@ -1,5 +1,7 @@
 package xin.vanilla.aotake.client;
 
+import xin.vanilla.banira.api.BaniraConfigs;
+
 import net.minecraft.client.Minecraft;
 import net.minecraft.resources.ResourceLocation;
 import xin.vanilla.aotake.AotakeComponent;
@@ -44,12 +46,12 @@ public final class AotakeClientBootstrap {
         Component label = AotakeComponent.get().transClient("key.aotake_sweep.categories");
         QuickActionContextMenuItem editClientConfig = new QuickActionContextMenuItem(
                 AotakeComponent.get().transClientAuto("edit_client_config"),
-                ctx -> ConfigEditorScreen.open(ClientConfig.get().holder(), ctx.currentScreen())
+                ctx -> ConfigEditorScreen.open(BaniraConfigs.holder(ClientConfig.class), ctx.currentScreen())
         );
         Consumer<QuickActionContext> action = ctx -> PacketUtils.sendPacketToServer(new OpenDustbinToServer(0));
         QuickActionContextMenuItem editCommonConfig = new QuickActionContextMenuItem(
                 AotakeComponent.get().transClientAuto("edit_common_config"),
-                ctx -> ConfigEditorScreen.open(CommonConfig.get().holder(), ctx.currentScreen())
+                ctx -> ConfigEditorScreen.open(BaniraConfigs.holder(CommonConfig.class), ctx.currentScreen())
         );
         QuickActionContextMenuItem editPlayerConfig = new QuickActionContextMenuItem(
                 AotakeComponent.get().transClientAuto("edit_player_config"),
