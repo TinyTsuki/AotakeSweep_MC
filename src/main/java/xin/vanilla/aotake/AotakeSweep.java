@@ -107,6 +107,7 @@ public class AotakeSweep {
 
         BaniraEventBus.Server.onStarting(server -> entitySweeper.clear());
         NeoForgeAotakeGameEventAdapter.register(modEventBus);
+        xin.vanilla.aotake.internal.server.dev.AotakeNetworkSmokeServerRunner.register(modEventBus);
 
         if (FMLEnvironment.dist == Dist.CLIENT) {
             xin.vanilla.aotake.client.AotakeClientBootstrap.init();

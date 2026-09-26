@@ -6,6 +6,8 @@ plugins {
     id 'net.neoforged.gradle.userdev' version '7.0.181'
 }
 
+apply from: 'gradle/config-view-processor.gradle'
+
 def javaVer = 21
 
 group = mod_group_id
@@ -82,6 +84,8 @@ repositories {
 }
 
 apply from: "gradle/banira-local-fingerprint.gradle"
+apply from: "gradle/network-smoke.gradle"
+apply from: "gradle/spark-profile-report.gradle"
 
 repositories {
     maven {
@@ -93,9 +97,11 @@ repositories {
 
 dependencies {
     runtimeOnly "maven.modrinth:spark:v5qtqRQi"
-    runtimeOnly "curse.maven:rubidium-extra-654373:6860464"
-    // Development runtime performance mod; not bundled into published artifacts.
-    runtimeOnly "maven.modrinth:embeddium:J7b96IEd"
+    if (!(project.findProperty('aotake.networkSmoke.server') ?: 'false').toString().toBoolean()) {
+        runtimeOnly "curse.maven:rubidium-extra-654373:6860464"
+        // Development runtime performance mods; not bundled into published artifacts.
+        runtimeOnly "maven.modrinth:embeddium:J7b96IEd"
+    }
     implementation "net.neoforged:neoforge:${neo_version}"
 
     testImplementation 'junit:junit:4.13.2'

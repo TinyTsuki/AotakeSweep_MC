@@ -39,6 +39,7 @@ import xin.vanilla.aotake.AotakeComponent;
 import xin.vanilla.aotake.AotakeLang;
 import xin.vanilla.aotake.AotakeSweep;
 import xin.vanilla.aotake.config.CommonConfig;
+import xin.vanilla.aotake.config.CommonConfigView;
 import xin.vanilla.aotake.config.WarningConfig;
 import xin.vanilla.aotake.data.ChunkKey;
 import xin.vanilla.aotake.data.SweepResult;
@@ -319,7 +320,7 @@ public class AotakeUtils {
     }
 
     public static boolean isJunkEntity(Entity entity, boolean chuck) {
-        CommonConfig.BaseView base = CommonConfig.get().base();
+        CommonConfigView.BaseView base = CommonConfig.get().base();
         List<String> rules = chuck ? base.chunk().chunkCheckEntityList() : base.sweep().entityList();
         EnumListType mode = chuck ? base.chunk().chunkCheckEntityListMode() : base.sweep().entityListMode();
         return isJunkEntity(entity, CollectionUtils.isNullOrEmpty(rules), mode,
@@ -379,7 +380,7 @@ public class AotakeUtils {
         initSafeBlocks();
 
         Map<Level, Map<BlockPos, BlockState>> blockStateCache = new IdentityHashMap<>();
-        CommonConfig.BaseView base = CommonConfig.get().base();
+        CommonConfigView.BaseView base = CommonConfig.get().base();
         List<String> rules = chuck ? base.chunk().chunkCheckEntityList() : base.sweep().entityList();
         EnumListType listMode = chuck ? base.chunk().chunkCheckEntityListMode() : base.sweep().entityListMode();
         boolean emptyRules = CollectionUtils.isNullOrEmpty(rules);

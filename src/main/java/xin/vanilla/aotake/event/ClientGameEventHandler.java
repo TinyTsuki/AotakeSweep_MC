@@ -37,6 +37,7 @@ public final class ClientGameEventHandler {
 
     private static void onClientTick(ClientTickEvent.Post event) {
         AotakeUiSmokeRunner.tick(Minecraft.getInstance());
+        xin.vanilla.aotake.internal.client.dev.AotakeNetworkSmokeClientRunner.tick(Minecraft.getInstance());
         if (Minecraft.getInstance().screen == null) {
             if (ClientModEventHandler.DUSTBIN_KEY.isDown() && System.currentTimeMillis() - lastTime > 100) {
                 lastTime = System.currentTimeMillis();

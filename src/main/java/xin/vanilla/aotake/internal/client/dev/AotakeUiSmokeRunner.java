@@ -19,6 +19,7 @@ import org.apache.logging.log4j.Logger;
 import xin.vanilla.aotake.AotakeSweep;
 import xin.vanilla.aotake.config.ClientConfig;
 import xin.vanilla.aotake.config.CommonConfig;
+import xin.vanilla.banira.api.BaniraConfigs;
 import xin.vanilla.aotake.config.DustbinGuiLayoutCache;
 import xin.vanilla.aotake.enums.EnumDustbinClientUiStyle;
 import xin.vanilla.aotake.event.ClientModEventHandler;
@@ -101,9 +102,9 @@ public final class AotakeUiSmokeRunner {
                         AotakeSweep.isClientCachedShowSweepResult(),
                         AotakeSweep.isClientCachedEnableWarningVoice())),
                 new Step("client-config", () -> new ConfigEditorScreen(
-                        ClientConfig.get().holder(), new ConfigEditorScreen.Args())),
+                        BaniraConfigs.holder(ClientConfig.class), new ConfigEditorScreen.Args())),
                 new Step("common-config", () -> new ConfigEditorScreen(
-                        CommonConfig.get().holder(), new ConfigEditorScreen.Args())),
+                        BaniraConfigs.holder(CommonConfig.class), new ConfigEditorScreen.Args())),
                 new Step("banira-long-press", LongPressSmokeScreen::new)
         );
     }
@@ -225,7 +226,7 @@ public final class AotakeUiSmokeRunner {
      * 先访问关键公共 API，尽早暴露配置和键位注册时序问题。
      */
     private static void validateIntegration() {
-        if (ClientConfig.get().holder() == null || CommonConfig.get().holder() == null) {
+        if (BaniraConfigs.handle(ClientConfig.class) == null || BaniraConfigs.handle(CommonConfig.class) == null) {
             throw new IllegalStateException("Aotake config holder is not registered");
         }
         ClientModEventHandler.DUSTBIN_KEY.currentKey();
