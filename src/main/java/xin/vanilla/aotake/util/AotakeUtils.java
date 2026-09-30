@@ -4,6 +4,7 @@ import xin.vanilla.aotake.internal.server.AotakeRuleRuntime;
 import xin.vanilla.aotake.rule.RuleGeneration;
 import xin.vanilla.aotake.rule.RuleManager;
 import xin.vanilla.aotake.rule.RuleExecutionException;
+import xin.vanilla.aotake.sweep.DefaultSweepFilter;
 
 import lombok.NonNull;
 import net.minecraft.block.BlockState;
@@ -427,71 +428,15 @@ public class AotakeUtils {
                 || !SAFE_BLOCKS_ABOVE.isEmpty()
                 || !SAFE_BLOCKS_ABOVE_STATE.isEmpty();
 
-        List<EntityScanEntry> scanned = new ArrayList<>(entities.size());
-        Map<String, Integer> nonJunkTypeCounts = new HashMap<>();
-        Map<ChunkKey, Integer> safeChunkCounts = new HashMap<>();
-
-        for (Entity entity : entities) {
-            if (!prepareSweepCandidate(entity)) continue;
-
-            boolean safe = hasSafeRules && isSafeEntity(blockStateCache, entity);
-            ChunkKey chunkKey = null;
-            if (safe) {
-                chunkKey = ChunkKey.of(entity);
-                safeChunkCounts.merge(chunkKey, 1, Integer::sum);
-            }
-
-            boolean junk = generation.shouldClean(chuck, entity);
-            String type = null;
-            if (!junk) {
-                type = EntityUtils.getEntityRegistryString(entity);
-                nonJunkTypeCounts.merge(type, 1, Integer::sum);
-            }
-            scanned.add(new EntityScanEntry(entity, safe, junk, type, chunkKey));
-        }
-
-        int typeLimit = base.sweep().entityListLimit();
-        Set<String> exceededTypes = new HashSet<>();
-        for (Map.Entry<String, Integer> entry : nonJunkTypeCounts.entrySet()) {
-            if (entry.getValue() > typeLimit) {
-                exceededTypes.add(entry.getKey());
-            }
-        }
-
-        int safeLimit = base.safe().safeBlocksEntityLimit();
-        Set<ChunkKey> exceededChunks = new HashSet<>();
-        for (Map.Entry<ChunkKey, Integer> entry : safeChunkCounts.entrySet()) {
-            if (entry.getValue() > safeLimit) {
-                exceededChunks.add(entry.getKey());
-            }
-        }
-
-        List<Entity> entityList = new ArrayList<>();
-        for (EntityScanEntry entry : scanned) {
-            boolean exceededType = !entry.junk && exceededTypes.contains(entry.type);
-            boolean exceededSafe = entry.safe && exceededChunks.contains(entry.chunkKey);
-            if ((!entry.safe && entry.junk) || exceededType || exceededSafe) {
-                entityList.add(entry.entity);
-            }
-        }
-        return entityList;
-    }
-
-    private static final class EntityScanEntry {
-        private final Entity entity;
-        private final boolean safe;
-        private final boolean junk;
-        private final String type;
-        private final ChunkKey chunkKey;
-
-        private EntityScanEntry(Entity entity, boolean safe, boolean junk,
-                                String type, ChunkKey chunkKey) {
-            this.entity = entity;
-            this.safe = safe;
-            this.junk = junk;
-            this.type = type;
-            this.chunkKey = chunkKey;
-        }
+        return new DefaultSweepFilter<Entity, ChunkKey>(
+                base.sweep().entityListLimit(), base.safe().safeBlocksEntityLimit(), entity -> {
+                    if (!prepareSweepCandidate(entity)) return null;
+                    boolean safe = hasSafeRules && isSafeEntity(blockStateCache, entity);
+                    ChunkKey chunkKey = safe ? ChunkKey.of(entity) : null;
+                    boolean junk = generation.shouldClean(chuck, entity);
+                    return new DefaultSweepFilter.Entry<>(entity, safe, junk,
+                            junk ? null : EntityUtils.getEntityRegistryString(entity), chunkKey);
+                }).select(entities);
     }
 
     public static void sweep() {
