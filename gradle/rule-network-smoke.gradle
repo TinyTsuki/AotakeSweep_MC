@@ -1,0 +1,123 @@
+import java.util.concurrent.TimeUnit
+
+if (project.hasProperty('aotake.optionalSmoke.root')) {
+    def root = file(project.property('aotake.optionalSmoke.root'))
+    configurations.runtimeClasspath.exclude(group: 'curse.maven')
+    dependencies.add('runtimeOnly', files(project.property('aotake.optionalSmoke.probe')))
+    minecraft.runs.client {
+        workingDirectory new File(root, 'client')
+        property 'optional.root', root.absolutePath
+        property 'optional.expectedMods', 'true'
+        args '--username', 'OptionalSmoke', '--uuid', '11111111-2222-3333-4444-555555555555'
+        jvmArgs.removeAll { it.contains('HotswapAgent') || it.contains('AllowEnhancedClassRedefinition') }
+    }
+}
+
+def ruleChild = project.hasProperty('aotake.ruleNetworkSmoke.root')
+if (ruleChild) {
+    def root = file(project.property('aotake.ruleNetworkSmoke.root'))
+    def side = project.property('aotake.ruleNetworkSmoke.side').toString()
+    layout.buildDirectory.set(new File(root, side + '-build'))
+    configurations.runtimeClasspath.exclude(group: 'curse.maven')
+    minecraft.runs.configureEach {
+        property 'aotake.ruleNetworkSmoke', 'true'
+        property 'aotake.ruleNetworkSmoke.root', root.absolutePath
+        property 'aotake.ruleNetworkSmoke.phase', project.property('aotake.ruleNetworkSmoke.phase').toString()
+        property 'aotake.ruleNetworkSmoke.port', project.property('aotake.ruleNetworkSmoke.port').toString()
+        jvmArgs.removeAll { it.contains('HotswapAgent') || it.contains('AllowEnhancedClassRedefinition') }
+    }
+    minecraft.runs.server {
+        workingDirectory new File(root, 'server')
+        args '--nogui', '--port', project.property('aotake.ruleNetworkSmoke.port').toString()
+    }
+    minecraft.runs.client {
+        workingDirectory new File(root, 'client')
+        args '--username', 'RuleSmoke', '--uuid', '836b3118-17e6-3a18-9233-d1580853e8b4'
+    }
+}
+
+tasks.register('ruleNetworkSmoke') {
+    group = 'verification'
+    description = 'Bounded rule migration, remote config, reload, cancellation and restart checks'
+    doLast {
+        if (ruleChild) throw new GradleException('Cannot nest ruleNetworkSmoke')
+        def root = layout.buildDirectory.dir('rule-network-smoke/' + System.currentTimeMillis()).get().asFile
+        root.mkdirs()
+        logger.lifecycle('Rule network evidence: ' + root)
+        int port
+        new ServerSocket(0, 1, InetAddress.getLoopbackAddress()).withCloseable { port = it.localPort }
+        def serverDir = new File(root, 'server')
+        def clientDir = new File(root, 'client')
+        new File(serverDir, 'config').mkdirs(); clientDir.mkdirs()
+        def acceptedEula = file('run-network-smoke-archive/server/eula.txt')
+        if (!acceptedEula.isFile()) acceptedEula = file('run-network-smoke/server/eula.txt')
+        if (!acceptedEula.isFile()) acceptedEula = file('../AotakeSweep/run-network-smoke/server/eula.txt')
+        if (!acceptedEula.isFile() || !acceptedEula.getText('UTF-8').contains('eula=true')) throw new GradleException('Existing accepted local smoke EULA is required')
+        new File(serverDir, 'eula.txt').setText(acceptedEula.getText('UTF-8'), 'UTF-8')
+        new File(serverDir, 'server.properties').setText('server-ip=127.0.0.1\nonline-mode=false\nview-distance=2\nspawn-protection=0\nspawn-animals=false\nspawn-monsters=false\nspawn-npcs=false\ngenerate-structures=false\nlevel-type=flat\nmax-tick-time=60000\n', 'UTF-8')
+        new File(clientDir, 'options.txt').setText('pauseOnLostFocus:false\nmaxFps:30\nrenderDistance:2\n', 'UTF-8')
+        new File(serverDir, 'config/aotake_sweep-common.toml').setText('''[base.sweep]
+entityList = ["tick -> tick >= 5"]
+entityListMode = "BLACK"
+entityRedlist = ["tick -> tick < 0"]
+sweepInterval = 0
+[base.chunk]
+chunkCheckEntityList = ["tick -> tick >= 6"]
+chunkCheckEntityListMode = "BLACK"
+chunkCheckInterval = 0
+chunkVaultEnabled = true
+[base.entityCatch]
+catchEntity = ["tick -> tick < 1"]
+[base.batch]
+sweepBatchLimit = 17
+sweepEntityLimit = 1
+sweepEntityInterval = 40
+''', 'UTF-8')
+        def children = []
+        def start = { String side, String phase ->
+            def log = new File(root, (phase == 'restart' ? 'restart' : side) + '.log')
+            def command = [new File(System.getProperty('java.home'), 'bin/java.exe').absolutePath,
+                '-classpath', file('gradle/wrapper/gradle-wrapper.jar').absolutePath, 'org.gradle.wrapper.GradleWrapperMain',
+                side == 'server' ? 'runServer' : 'runClient', '--offline', '--console=plain', '--no-daemon',
+                '--project-cache-dir', new File(root, side + '-cache').absolutePath,
+                '-Paotake.ruleNetworkSmoke.root=' + root.absolutePath, '-Paotake.ruleNetworkSmoke.side=' + side,
+                '-Paotake.ruleNetworkSmoke.phase=' + phase, '-Paotake.ruleNetworkSmoke.port=' + port]
+            def process = new ProcessBuilder(command).directory(projectDir).redirectErrorStream(true).redirectOutput(log).start()
+            children.add(process)
+            return process
+        }
+        def await = { Process process, String side, String marker ->
+            def status = new File(root, side + '.status')
+            long end = System.nanoTime() + TimeUnit.SECONDS.toNanos(180)
+            while (System.nanoTime() < end) {
+                String value = status.isFile() ? status.getText('UTF-8') : ''
+                if (value.contains('FAIL ')) throw new GradleException(value + '\nSee ' + root)
+                if (value.contains(marker)) return
+                if (!process.isAlive()) throw new GradleException('Premature ' + side + ' exit; see ' + root)
+                Thread.sleep(250)
+            }
+            throw new GradleException('Timed out at ' + marker + '; see ' + root)
+        }
+        def exited = { Process process ->
+            if (!process.waitFor(30, TimeUnit.SECONDS) || process.exitValue() != 0) throw new GradleException('Abnormal process shutdown; see ' + root)
+        }
+        try {
+            def server = start('server', 'initial')
+            await(server, 'server', 'PASS four-list-production-migration')
+            def client = start('client', 'initial')
+            await(client, 'client', 'FINISHED rule-network-client')
+            await(server, 'server', 'PASS server-shutdown')
+            exited(client); exited(server)
+            def restarted = start('server', 'restart')
+            await(restarted, 'restart', 'PASS server-shutdown'); exited(restarted)
+            ['client', 'server', 'restart'].each { logger.lifecycle(new File(root, it + '.status').getText('UTF-8').trim()) }
+        } finally {
+            children.each { process ->
+                if (process.isAlive()) {
+                    process.toHandle().descendants().forEach { it.destroyForcibly() }
+                    process.destroyForcibly(); process.waitFor(10, TimeUnit.SECONDS)
+                }
+            }
+        }
+    }
+}
