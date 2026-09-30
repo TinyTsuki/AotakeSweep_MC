@@ -69,7 +69,7 @@ final class AotakeRuleManagerSmokeClientRunner {
             for (RuleGeneration.RuleList list : RuleGeneration.RuleList.values())
                 require(generation.matches(list, entity), "Native rule failed: " + list);
             require(!generation.shouldClean(false, entity), "WHITE match was not protected");
-            String id = store.loadCatalog().sources().keySet().iterator().next();
+            String id = ((List<String>) holder.get(RuleMigrationTransaction.LISTS.get(0))).get(0).substring(7);
             sourcePath = store.root().resolve("rules/sources/" + id + ".java");
             source = new String(Files.readAllBytes(sourcePath), StandardCharsets.UTF_8);
             writeSource(source.replace("return ", "if (context.tick() < 0) throw new IllegalStateException(\"probe\"); return "));

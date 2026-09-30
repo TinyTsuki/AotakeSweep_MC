@@ -39,7 +39,7 @@
     "base.chunk.chunkCheckEntityList": {
       "type": "STRING_LIST",
       "default": [
-        "customName, hasOwner, createProcessing \u003d [CreateData.Processing.Time] -\u003e customName !\u003d null || hasOwner || createProcessing \u003e 0"
+        "script:builtin_protection"
       ],
       "min": null,
       "max": null,
@@ -374,7 +374,7 @@
         "minecraft:arrow",
         "minecraft:spectral_arrow",
         "minecraft:experience_orb",
-        "tick, clazz, itemClazz, createProcessing \u003d [CreateData.Processing.Time] -\u003e tick \u003e\u003d 5 \u0026\u0026 clazz :\u003e itemClazz \u0026\u0026 (createProcessing \u003c\u003d 0 || createProcessing \u003d\u003d null)"
+        "script:builtin_cleanup"
       ],
       "min": null,
       "max": null,
@@ -907,7 +907,7 @@
     "base.batch.sweepEntityInterval": 2,
     "base.batch.sweepEntityLimit": 500,
     "base.chunk.chunkCheckEntityList": [
-      "customName, hasOwner, createProcessing \u003d [CreateData.Processing.Time] -\u003e customName !\u003d null || hasOwner || createProcessing \u003e 0"
+      "script:builtin_protection"
     ],
     "base.chunk.chunkCheckEntityListMode": "WHITE",
     "base.chunk.chunkCheckInterval": 5000,
@@ -945,7 +945,7 @@
       "minecraft:arrow",
       "minecraft:spectral_arrow",
       "minecraft:experience_orb",
-      "tick, clazz, itemClazz, createProcessing \u003d [CreateData.Processing.Time] -\u003e tick \u003e\u003d 5 \u0026\u0026 clazz :\u003e itemClazz \u0026\u0026 (createProcessing \u003c\u003d 0 || createProcessing \u003d\u003d null)"
+      "script:builtin_cleanup"
     ],
     "base.sweep.entityListLimit": 250,
     "base.sweep.entityListMode": "BLACK",
@@ -996,7 +996,7 @@
     "base.batch.sweepEntityInterval": 2,
     "base.batch.sweepEntityLimit": 500,
     "base.chunk.chunkCheckEntityList": [
-      "customName, hasOwner, createProcessing \u003d [CreateData.Processing.Time] -\u003e customName !\u003d null || hasOwner || createProcessing \u003e 0"
+      "script:builtin_protection"
     ],
     "base.chunk.chunkCheckEntityListMode": "WHITE",
     "base.chunk.chunkCheckInterval": 5000,
@@ -1034,7 +1034,7 @@
       "minecraft:arrow",
       "minecraft:spectral_arrow",
       "minecraft:experience_orb",
-      "tick, clazz, itemClazz, createProcessing \u003d [CreateData.Processing.Time] -\u003e tick \u003e\u003d 5 \u0026\u0026 clazz :\u003e itemClazz \u0026\u0026 (createProcessing \u003c\u003d 0 || createProcessing \u003d\u003d null)"
+      "script:builtin_cleanup"
     ],
     "base.sweep.entityListLimit": 250,
     "base.sweep.entityListMode": "BLACK",

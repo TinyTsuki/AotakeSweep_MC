@@ -37,7 +37,7 @@ public final class RuleManager<S> implements AutoCloseable {
         this.contexts = Objects.requireNonNull(contexts);
         // Native binding construction is checked on the owner before committing the candidate.
         migration = new RuleMigrationTransaction(store, holder, session, plan -> {});
-        reloads = new RuleReloadCoordinator(worker, owner, () -> migration.prepare(holder.snapshotForEdit(RuleMigrationTransaction.PATHS)));
+        reloads = new RuleReloadCoordinator(worker, owner, () -> migration.prepare(holder.snapshotForEdit(RuleMigrationTransaction.PATHS), true));
         unregister.add(holder.onEdit(this::validateEdit));
         unregister.add(holder.onSaved(this::configChanged));
         unregister.add(holder.onReloaded(this::configChanged));
@@ -173,7 +173,12 @@ public final class RuleManager<S> implements AutoCloseable {
 
     private void configChanged(Set<String> paths) {
         if (closed || committing.get() != null || Collections.disjoint(paths, RuleMigrationTransaction.PATHS)) return;
-        owner.execute(() -> { if (!closed) reload(); });
+        owner.execute(() -> {
+            if (!closed) reload().whenComplete((id, failure) -> {
+                if (failure != null && !closed) org.apache.logging.log4j.LogManager.getLogger()
+                        .error("Aotake rule reload failed; no new generation was activated", failure);
+            });
+        });
     }
 
     @Override public void close() {

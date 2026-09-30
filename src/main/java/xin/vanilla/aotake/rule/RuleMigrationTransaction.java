@@ -42,10 +42,15 @@ public final class RuleMigrationTransaction {
     }
 
     public synchronized CompletableFuture<PreparedMigration> prepare(ConfigEditSnapshot snapshot) {
+        return prepare(snapshot, false);
+    }
+
+    synchronized CompletableFuture<PreparedMigration> prepare(ConfigEditSnapshot snapshot, boolean installBuiltins) {
         long ticket = ++sequence;
         try {
             RecoveryResult recovery = recover();
             if (recovery.state == RecoveryState.BLOCKED) throw new IOException(recovery.diagnostic);
+            if (installBuiltins) BuiltinRules.install(store);
             if (!snapshot.getValues().keySet().equals(PATHS)) throw new IllegalArgumentException("Snapshot must include four lists and their modes");
             if (snapshot.getSourceBytes().length > RuleFileStore.MAX_CONFIG_BYTES) throw new IOException("Config backup exceeds size limit");
             RuleCatalog existing = store.loadCatalog(); Map<String,RuleSource> additions = new LinkedHashMap<>();

@@ -1,4 +1,6 @@
 {
+  "word.aotake_sweep.rules_reload_success": "本地清理规则已重新加载",
+  "word.aotake_sweep.rules_reload_failure": "本地清理规则加载失败，请检查服务端日志",
   "key.aotake_sweep.categories": "竹叶清",
   "key.aotake_sweep.open_dustbin": "打开垃圾箱",
   "key.aotake_sweep.open_dustbin_next": "垃圾箱下一页",

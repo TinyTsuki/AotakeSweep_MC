@@ -349,7 +349,10 @@ public class RuleManagerTest {
             while ((task = owner.poll()) == null && System.nanoTime() < deadline) Thread.sleep(1);
             assertNotNull("Owner callback was not scheduled", task); task.run();
         }
-        Path sourcePath() throws Exception { return store.root().resolve(RuleCatalog.sourcePath(store.loadCatalog().sources().keySet().iterator().next())); }
+        Path sourcePath() throws Exception {
+            String reference = ((List<String>) holder.get(RuleMigrationTransaction.LISTS.get(0))).get(0);
+            return store.root().resolve(RuleCatalog.sourcePath(reference.substring(7)));
+        }
         String source() throws Exception { return new String(Files.readAllBytes(sourcePath()), StandardCharsets.UTF_8); }
         void replaceSource(String text) throws Exception { Files.write(sourcePath(), text.getBytes(StandardCharsets.UTF_8)); }
         @Override public void close() { if (manager != null) manager.close(); session.close(); drain(); config.close(); }

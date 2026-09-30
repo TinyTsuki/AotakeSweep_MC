@@ -77,6 +77,16 @@ public class EventHandlerProxy {
      */
     private static String lastCountdownWarningDispatchKey = null;
     private static final AtomicBoolean chunkSweepLock = new AtomicBoolean(false);
+    private static List<Entity> pendingChunkCleanup;
+    private static long cleanupEpoch;
+
+    public static void resetCleanupState() {
+        cleanupEpoch++;
+        if (pendingChunkCleanup != null) pendingChunkCleanup.clear();
+        pendingChunkCleanup = null;
+        chunkSweepLock.set(false);
+        lastChunkCheckTime = 0;
+    }
     private static final Map<String, Long> lastCatchTick = new ConcurrentHashMap<>();
     private static final Map<String, Long> lastUseEntityTick = new ConcurrentHashMap<>();
     private static final Map<String, Long> suppressUseItemTick = new ConcurrentHashMap<>();
@@ -193,7 +203,9 @@ public class EventHandlerProxy {
                 long start = System.currentTimeMillis();
                 boolean advanced = CommonConfig.get().base().chunk().chunkCheckMode() != EnumChunkCheckMode.DEFAULT;
                 Map<ChunkKey, List<Entity>> chunkEntities = new HashMap<>();
-                for (Entity entity : AotakeUtils.getAllEntitiesByFilter(null, true)) {
+                xin.vanilla.aotake.rule.RuleGeneration<Entity> generation = xin.vanilla.aotake.internal.server.AotakeRuleRuntime
+                        .acquire(xin.vanilla.aotake.rule.RuleManager.RuleUse.CHUNK);
+                for (Entity entity : AotakeUtils.getAllEntitiesByFilter(null, true, generation)) {
                     String dimension = entity.level != null
                             ? entity.level.dimension().location().toString()
                             : "unknown";
@@ -289,17 +301,22 @@ public class EventHandlerProxy {
                         entities.subList(0, retained).clear();
                     });
 
+                    List<Entity> pendingEntities = overcrowdedChunks.stream()
+                            .flatMap(entry -> entry.getValue().stream()).collect(Collectors.toList());
+                    pendingChunkCleanup = pendingEntities;
+                    long epoch = cleanupEpoch;
                     BaniraScheduler.schedule(server, 25, () -> {
+                        if (epoch != cleanupEpoch) return;
                         try {
                             LOGGER.debug("Chunk sweep started at {}", System.currentTimeMillis());
-                            List<Entity> entities = overcrowdedChunks.stream()
-                                    .flatMap(entry -> entry.getValue().stream())
-                                    .collect(Collectors.toList());
-                            AotakeUtils.sweep(entities, true, true);
+                            if (!CommonConfig.get().base().chunk().chunkCheckOnlyNotice())
+                                AotakeUtils.sweep(pendingEntities, true, true, generation);
                         } catch (Exception e) {
                             CLEANUP_ERRORS.log(LOGGER, "Chunk entity sweep", e);
                         } finally {
                             LOGGER.debug("Chunk sweep finished");
+                            pendingEntities.clear();
+                            pendingChunkCleanup = null;
                             chunkSweepLock.set(false);
                         }
                     });

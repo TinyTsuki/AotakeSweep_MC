@@ -18,7 +18,7 @@ import xin.vanilla.aotake.internal.server.dev.AotakeNetworkSmokeServerRunner;
 import xin.vanilla.aotake.network.NetworkInit;
 import xin.vanilla.aotake.network.packet.SweepDataSyncToClient;
 import xin.vanilla.aotake.notification.AotakeNotificationTypes;
-import xin.vanilla.aotake.util.EntityFilter;
+import xin.vanilla.aotake.internal.server.AotakeRuleRuntime;
 import xin.vanilla.aotake.util.EntitySweeper;
 import xin.vanilla.banira.api.BaniraConfigs;
 import xin.vanilla.banira.api.BaniraServer;
@@ -89,8 +89,6 @@ public class AotakeSweep {
 
     @Getter
     private static final EntitySweeper entitySweeper = new EntitySweeper();
-    @Getter
-    private static final EntityFilter entityFilter = new EntityFilter();
 
     public AotakeSweep() {
         // Forge 会在 common setup 前加载 COMMON/CLIENT 配置，必须在构造阶段完成注册。
@@ -105,7 +103,21 @@ public class AotakeSweep {
         });
         FMLJavaModLoadingContext.get().getModEventBus().addListener(this::onCommonSetup);
 
-        BaniraEventBus.Server.onStarting(server -> entitySweeper.clear());
+        BaniraEventBus.Server.onStarting(event -> {
+            entitySweeper.clear();
+            xin.vanilla.aotake.event.EventHandlerProxy.resetCleanupState();
+            AotakeRuleRuntime.start(event.serverAs(net.minecraft.server.MinecraftServer.class));
+        });
+        BaniraEventBus.Server.onStopping(event -> {
+            net.minecraft.server.MinecraftServer server = event.serverAs(net.minecraft.server.MinecraftServer.class);
+            try {
+                if (server != null) server.getAllLevels().forEach(EntitySweeper::flushPendingRemovals);
+            } finally {
+                entitySweeper.clear();
+                xin.vanilla.aotake.event.EventHandlerProxy.resetCleanupState();
+                AotakeRuleRuntime.stop();
+            }
+        });
         AotakeNetworkSmokeServerRunner.register();
         ForgeAotakeGameEventAdapter.register();
 

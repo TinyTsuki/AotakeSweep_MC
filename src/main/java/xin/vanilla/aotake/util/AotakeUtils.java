@@ -1,5 +1,10 @@
 package xin.vanilla.aotake.util;
 
+import xin.vanilla.aotake.internal.server.AotakeRuleRuntime;
+import xin.vanilla.aotake.rule.RuleGeneration;
+import xin.vanilla.aotake.rule.RuleManager;
+import xin.vanilla.aotake.rule.RuleExecutionException;
+
 import lombok.NonNull;
 import net.minecraft.block.BlockState;
 import net.minecraft.command.CommandSource;
@@ -332,7 +337,6 @@ public class AotakeUtils {
         SAFE_BLOCKS_BELOW = null;
         SAFE_BLOCKS_ABOVE_STATE = null;
         SAFE_BLOCKS_ABOVE = null;
-        AotakeSweep.getEntityFilter().clear();
     }
 
     public static List<Entity> getAllEntities() {
@@ -350,38 +354,20 @@ public class AotakeUtils {
     }
 
     /**
-     * 在扫描和延迟批处理前统一剔除失效实体，并静默回收空物品实体。
+     * 扫描只剔除失效实体，不安排移除或写入垃圾箱。
      */
     public static boolean prepareSweepCandidate(Entity entity) {
         if (entity == null || entity instanceof PlayerEntity || !entity.isAlive()
                 || !(entity.level instanceof ServerWorld)) {
             return false;
         }
-        if (entity instanceof ItemEntity && ((ItemEntity) entity).getItem().isEmpty()) {
-            EntitySweeper.scheduleRemoveEntity(entity, false);
-            return false;
-        }
-        return true;
+        return !EntitySweeper.isPendingRemoval(entity)
+                && (!(entity instanceof ItemEntity) || !((ItemEntity) entity).getItem().isEmpty());
     }
 
     public static boolean isJunkEntity(Entity entity, boolean chuck) {
-        CommonConfigView.BaseView base = CommonConfig.get().base();
-        List<String> rules = chuck ? base.chunk().chunkCheckEntityList() : base.sweep().entityList();
-        EnumListType mode = chuck ? base.chunk().chunkCheckEntityListMode() : base.sweep().entityListMode();
-        return isJunkEntity(entity, CollectionUtils.isNullOrEmpty(rules), mode,
-                AotakeSweep.getEntityFilter().compile(rules));
-    }
-
-    private static boolean isJunkEntity(Entity entity, boolean emptyRules, EnumListType mode,
-                                        EntityFilter.Matcher matcher) {
-        if (entity == null || entity instanceof PlayerEntity) {
-            return false;
-        }
-        if (emptyRules) {
-            return EntityRulePolicy.shouldClean(true, mode, false);
-        }
-        boolean matched = matcher.matches(entity);
-        return EntityRulePolicy.shouldClean(false, mode, matched);
+        RuleGeneration<Entity> generation = AotakeRuleRuntime.acquire(chuck ? RuleManager.RuleUse.CHUNK : RuleManager.RuleUse.SWEEP);
+        return prepareSweepCandidate(entity) && generation.shouldClean(chuck, entity);
     }
 
     public static boolean isSafeEntity(Map<World, Map<BlockPos, BlockState>> blockStateCache, Entity entity) {
@@ -419,17 +405,20 @@ public class AotakeUtils {
     }
 
     public static List<Entity> getAllEntitiesByFilter(@Nullable List<Entity> entities, boolean chuck) {
-        if (CollectionUtils.isNullOrEmpty(entities)) {
+        return getAllEntitiesByFilter(entities, chuck,
+                AotakeRuleRuntime.acquire(chuck ? RuleManager.RuleUse.CHUNK : RuleManager.RuleUse.SWEEP));
+    }
+
+    public static List<Entity> getAllEntitiesByFilter(@Nullable List<Entity> entities, boolean chuck, RuleGeneration<Entity> generation) {
+        generation.requireUsable();
+        if (!AotakeRuleRuntime.isUsable(generation.id())) throw new RuleExecutionException(generation.id(), "Stale entity scan");
+        if (entities == null) {
             entities = EntityUtils.getAllEntities();
         }
         initSafeBlocks();
 
         Map<World, Map<BlockPos, BlockState>> blockStateCache = new IdentityHashMap<>();
         CommonConfigView.BaseView base = CommonConfig.get().base();
-        List<String> rules = chuck ? base.chunk().chunkCheckEntityList() : base.sweep().entityList();
-        EnumListType listMode = chuck ? base.chunk().chunkCheckEntityListMode() : base.sweep().entityListMode();
-        boolean emptyRules = CollectionUtils.isNullOrEmpty(rules);
-        EntityFilter.Matcher matcher = AotakeSweep.getEntityFilter().compile(rules);
 
         boolean hasSafeRules = !SAFE_BLOCKS.isEmpty()
                 || !SAFE_BLOCKS_STATE.isEmpty()
@@ -452,7 +441,7 @@ public class AotakeUtils {
                 safeChunkCounts.merge(chunkKey, 1, Integer::sum);
             }
 
-            boolean junk = isJunkEntity(entity, emptyRules, listMode, matcher);
+            boolean junk = generation.shouldClean(chuck, entity);
             String type = null;
             if (!junk) {
                 type = EntityUtils.getEntityRegistryString(entity);
@@ -524,6 +513,10 @@ public class AotakeUtils {
      * @param chunkOverloadVault 为 true 时，回收物品写入区块暂存目录（若配置启用），而非全局垃圾箱。
      */
     public static void sweep(List<Entity> entities, boolean filtered, boolean chunkOverloadVault) {
+        sweep(entities, filtered, chunkOverloadVault, null);
+    }
+
+    public static void sweep(List<Entity> entities, boolean filtered, boolean chunkOverloadVault, RuleGeneration<Entity> expected) {
         MinecraftServer server = BaniraServer.currentAs(MinecraftServer.class);
         // 服务器已关闭
         if (!BaniraServer.isRunning() || server == null) return;
@@ -537,85 +530,61 @@ public class AotakeUtils {
                 return;
             }
 
-            List<Entity> list = filtered ? entities : getAllEntitiesByFilter(entities, false);
-
-            // if (CollectionUtils.isNotNullOrEmpty(list)) {
-            // 清空旧的物品
-            if (CommonConfig.get().base().dustbin().selfCleanMode().contains(EnumSelfCleanMode.SWEEP_CLEAR)) {
-                switch (CommonConfig.get().base().dustbin().dustbinBlockMode()) {
-                    case VIRTUAL: {
-                        clearVirtualDustbin();
-                    }
-                    break;
-                    case BLOCK: {
-                        clearDustbinBlock();
-                    }
-                    break;
-                    default: {
-                        clearVirtualDustbin();
-                        clearDustbinBlock();
-                    }
-                }
-            }
+            RuleGeneration<Entity> generation = expected == null
+                    ? AotakeRuleRuntime.acquire(chunkOverloadVault ? RuleManager.RuleUse.CHUNK : RuleManager.RuleUse.SWEEP) : expected;
+            generation.requireUsable();
+            if (!AotakeRuleRuntime.isUsable(generation.id())) throw new RuleExecutionException(generation.id(), "Stale sweep request");
+            List<Entity> list = filtered ? entities : getAllEntitiesByFilter(entities, false, generation);
             SweepResult sweepResult = new SweepResult().setChunkOverloadVault(chunkOverloadVault);
             if (chunkOverloadVault && CommonConfig.get().base().chunk().chunkVaultEnabled()) {
                 sweepResult.setChunkVaultTimePrefix(ChunkVaultStorage.vaultTimePrefix());
                 sweepResult.setChunkVaultRunId(ChunkVaultStorage.newVaultRunId());
             }
-            AotakeSweep.getEntitySweeper().addDrops(list, sweepResult);
-            // }
+            AotakeSweep.getEntitySweeper().addDrops(list, sweepResult, generation);
 
         } catch (Exception e) {
-            SWEEP_ERRORS.log(LOGGER, "Entity sweep", e);
-            for (ServerPlayerEntity p : players) {
-                String language = AotakeLang.getPlayerLanguage(p);
-                Component msg = getWarningMessage("error", language, null);
-                PlayerSweepData playerData = PlayerSweepData.getData(p);
-                if (playerData.isShowSweepResult()) {
-                    MessageUtils.sendNotification(p, AotakeComponent.get().empty()
-                                    .append(msg)
-                                    .append(AotakeComponent.get().literal("[x]")
-                                            .color(EnumMCColor.RED.getColor())
-                                            .hoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT
-                                                    , AotakeComponent.get().transAuto("not_show_button")
-                                                    .toVanilla(language))
-                                            )
-                                            .clickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND
-                                                    , "/" + AotakeUtils.getCommandPrefix() + " config player showSweepResult change")
-                                            )
-                                    )
-                            , AotakeNotificationTypes.SWEEP_RESULT_INTERACTIVE);
-                }
-                if (playerData.isEnableWarningVoice()) {
-                    String voice = getWarningVoice("error");
-                    float volume = CommonConfig.get().base().sweep().sweepWarningVoiceVolume() / 100f;
-                    if (StringUtils.isNotNullOrEmpty(voice)) {
-                        CommandUtils.executeCommandNoOutput(p, String.format("playsound %s voice @s ~ ~ ~ %s", voice, volume));
-                    }
+            reportSweepFailure(e);
+        }
+    }
+
+    public static void reportSweepFailure(Exception e) {
+        SWEEP_ERRORS.log(LOGGER, "Entity sweep", e);
+        MinecraftServer server = BaniraServer.currentAs(MinecraftServer.class);
+        if (server == null) return;
+        for (ServerPlayerEntity p : server.getPlayerList().getPlayers()) {
+            String language = AotakeLang.getPlayerLanguage(p);
+            Component msg = getWarningMessage("error", language, null);
+            PlayerSweepData playerData = PlayerSweepData.getData(p);
+            if (playerData.isShowSweepResult()) {
+                MessageUtils.sendNotification(p, AotakeComponent.get().empty()
+                                .append(msg)
+                                .append(AotakeComponent.get().literal("[x]")
+                                        .color(EnumMCColor.RED.getColor())
+                                        .hoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT
+                                                , AotakeComponent.get().transAuto("not_show_button")
+                                                .toVanilla(language))
+                                        )
+                                        .clickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND
+                                                , "/" + AotakeUtils.getCommandPrefix() + " config player showSweepResult change")
+                                        )
+                                )
+                        , AotakeNotificationTypes.SWEEP_RESULT_INTERACTIVE);
+            }
+            if (playerData.isEnableWarningVoice()) {
+                String voice = getWarningVoice("error");
+                float volume = CommonConfig.get().base().sweep().sweepWarningVoiceVolume() / 100f;
+                if (StringUtils.isNotNullOrEmpty(voice)) {
+                    CommandUtils.executeCommandNoOutput(p, String.format("playsound %s voice @s ~ ~ ~ %s", voice, volume));
                 }
             }
         }
     }
 
-    private static void clearVirtualDustbin() {
+    public static void clearVirtualDustbin() {
         WorldTrashData.get().getDropList().clear();
         List<Inventory> inventories = WorldTrashData.get().getInventoryList();
         if (CollectionUtils.isNotNullOrEmpty(inventories)) inventories.forEach(Inventory::clearContent);
         WorldTrashData.get().setDirty();
-    }
-
-    private static void clearDustbinBlock() {
-        for (String pos : CommonConfig.get().base().dustbin().dustbinBlockPositions()) {
-            WorldCoordinate coordinate = WorldCoordinate.fromString(pos);
-            if (coordinate != null) {
-                IItemHandler handler = getBlockItemHandler(coordinate);
-                if (handler != null) {
-                    for (int i = 0; i < handler.getSlots(); i++) {
-                        handler.extractItem(i, handler.getSlotLimit(i), false);
-                    }
-                }
-            }
-        }
     }
 
     /**

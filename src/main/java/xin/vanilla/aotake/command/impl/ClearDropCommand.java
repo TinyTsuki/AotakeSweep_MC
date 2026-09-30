@@ -65,11 +65,18 @@ public class ClearDropCommand {
             }
             entities = entities.stream()
                     .filter(Objects::nonNull)
+                    .filter(AotakeUtils::prepareSweepCandidate)
                     .filter(entity -> !(entity instanceof PlayerEntity))
                     .filter(entity -> withEntity || entity instanceof ItemEntity)
                     .collect(Collectors.toList());
-            if (!ignoreFilter)
-                entities = AotakeUtils.getAllEntitiesByFilter(entities, false);
+            if (!ignoreFilter) {
+                try {
+                    entities = AotakeUtils.getAllEntitiesByFilter(entities, false);
+                } catch (xin.vanilla.aotake.rule.RuleExecutionException failure) {
+                    AotakeUtils.reportSweepFailure(failure);
+                    return 0;
+                }
+            }
 
             SweepResult result = new SweepResult();
             entities.forEach(entity -> {

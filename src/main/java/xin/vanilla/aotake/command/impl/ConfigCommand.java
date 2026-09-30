@@ -24,6 +24,7 @@ import xin.vanilla.banira.common.util.*;
 public class ConfigCommand {
     public static LiteralArgumentBuilder<CommandSource> config() {
         return Commands.literal("config")
+                .then(RuleReloadCommand.register())
                 // 设置配置模式
                 .then(Commands.literal("mode")
                         .requires(source -> AotakeUtils.hasCommandPermission(source, EnumCommandType.CONFIG))

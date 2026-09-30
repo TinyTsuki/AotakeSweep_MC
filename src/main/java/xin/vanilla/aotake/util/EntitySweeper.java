@@ -33,6 +33,10 @@ import xin.vanilla.aotake.enums.EnumDustbinMode;
 import xin.vanilla.aotake.enums.EnumOverflowMode;
 import xin.vanilla.aotake.enums.EnumSelfCleanMode;
 import xin.vanilla.aotake.internal.platform.EntityRemovalBridge;
+import xin.vanilla.aotake.internal.server.AotakeRuleRuntime;
+import xin.vanilla.aotake.rule.CleanupRuleGate;
+import xin.vanilla.aotake.rule.RuleGeneration;
+import xin.vanilla.aotake.rule.RuleManager;
 import xin.vanilla.aotake.notification.AotakeNotificationTypes;
 import xin.vanilla.banira.api.BaniraServer;
 import xin.vanilla.banira.common.data.Component;
@@ -42,21 +46,18 @@ import xin.vanilla.banira.common.enums.EnumMCColor;
 import xin.vanilla.banira.common.util.*;
 
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentLinkedQueue;
 
 @SuppressWarnings("resource")
 public class EntitySweeper {
     private static final Logger LOGGER = LogManager.getLogger();
     private static final RateLimitedErrorLogger ENTITY_ERRORS = new RateLimitedErrorLogger(60_000L);
 
-    private static final Map<RegistryKey<World>, Queue<Entity>> pendingRemovals = new ConcurrentHashMap<>();
-    private static final Map<Entity, Boolean> pendingRemovalOptions = new ConcurrentHashMap<>();
+    private static final RemovalLedger<RegistryKey<World>, Entity> removals = new RemovalLedger<>();
 
     private List<Inventory> inventoryList;
     private ConcurrentShuffleList<KeyValue<WorldCoordinate, ItemStack>> dropList;
 
-    private final Set<Entity> entitiesToRemove = Collections.newSetFromMap(new IdentityHashMap<>());
+    private final Set<SweepJob> jobs = Collections.newSetFromMap(new IdentityHashMap<>());
 
     private void init() {
         WorldTrashData worldTrashData = WorldTrashData.get();
@@ -69,60 +70,101 @@ public class EntitySweeper {
     }
 
     public void clear() {
+        for (SweepJob job : new ArrayList<>(jobs)) job.cancel();
+        ChunkVaultStorage.flushPending();
+        removals.clear();
         this.inventoryList = null;
         this.dropList = null;
     }
 
     public SweepResult addDrops(@NonNull List<Entity> entities, SweepResult result) {
-        this.init();
+        return addDrops(entities, result, AotakeRuleRuntime.acquire(RuleManager.RuleUse.RECYCLE));
+    }
+
+    public SweepResult addDrops(@NonNull List<Entity> entities, SweepResult result, RuleGeneration<Entity> generation) {
+        CleanupRuleGate<Entity> gate = new CleanupRuleGate<>(generation, () -> AotakeRuleRuntime.isUsable(generation.id()));
+        gate.requireUsable();
         SweepContext context = new SweepContext(CommonConfig.get().base());
+        List<Entity> eligible = eligible(entities);
+        gate.prepare(eligible, entity -> entity instanceof ItemEntity, !context.catchItems.isEmpty());
+        List<List<Entity>> batches = eligible.isEmpty() ? Collections.singletonList(new ArrayList<>())
+                : CollectionUtils.splitToCollections(eligible, context.sweepEntityLimit, context.sweepBatchLimit);
+        this.init();
+        result.setTotalBatch(batches.size());
+        SweepJob job = new SweepJob(gate, generation, batches, result, context);
+        jobs.add(job);
+        job.run();
+        return result;
+    }
 
-        if (result.getTotalBatch() == 0 && CollectionUtils.isNotNullOrEmpty(entities) && entities.size() > context.sweepEntityLimit) {
-            List<List<Entity>> lists = CollectionUtils.splitToCollections(entities, context.sweepEntityLimit, context.sweepBatchLimit);
-            result.setTotalBatch(lists.size());
-            if (lists.size() > 1) {
-                for (int i = 1; i < lists.size(); i++) {
-                    List<Entity> entityList = lists.get(i);
-                    BaniraScheduler.schedule(BaniraServer.require(MinecraftServer.class)
-                            , context.sweepEntityInterval * i
-                            , () -> AotakeSweep.getEntitySweeper().addDrops(entityList, result)
-                    );
-                }
-                entities = lists.get(0);
-            }
-        }
-        if (result.getTotalBatch() == 0) {
-            result.setTotalBatch(1);
-        }
-
+    private static List<Entity> eligible(List<Entity> entities) {
+        List<Entity> eligible = new ArrayList<>();
         Set<Entity> seenEntities = Collections.newSetFromMap(new IdentityHashMap<>());
         for (Entity original : entities) {
             Entity canonical = (original instanceof PartEntity) ? ((PartEntity<?>) original).getParent() : original;
-            if (!seenEntities.add(canonical) || !AotakeUtils.prepareSweepCandidate(canonical)) {
-                continue;
-            }
+            if (seenEntities.add(canonical) && AotakeUtils.prepareSweepCandidate(canonical)) eligible.add(canonical);
+        }
+        return eligible;
+    }
+
+    private final class SweepJob implements Runnable {
+        private final CleanupRuleGate<Entity> gate;
+        private final RuleGeneration<Entity> generation;
+        private final List<List<Entity>> batches;
+        private final SweepResult result;
+        private final SweepContext context;
+        private int index;
+        private boolean canceled;
+
+        private SweepJob(CleanupRuleGate<Entity> gate, RuleGeneration<Entity> generation,
+                         List<List<Entity>> batches, SweepResult result, SweepContext context) {
+            this.gate = gate; this.generation = generation;
+            this.batches = new ArrayList<>();
+            for (List<Entity> batch : batches) this.batches.add(new ArrayList<>(batch));
+            this.result = result; this.context = context;
+        }
+
+        void cancel() { canceled = true; batches.clear(); jobs.remove(this); }
+
+        @Override public void run() {
+            if (canceled) return;
             try {
-                result.add(this.processDrop(canonical, result, context));
-            } catch (RuntimeException e) {
-                ENTITY_ERRORS.log(LOGGER, "Process sweep entity " + canonical.getStringUUID(), e);
-            }
-        }
-
-        if (!entitiesToRemove.isEmpty()) {
-            for (Entity entity : entitiesToRemove) {
-                if (entity.isAlive() && entity.level instanceof ServerWorld) {
-                    scheduleRemoveEntity(entity, false);
+                List<CleanupRuleGate.Decision<Entity>> decisions = gate.prepare(eligible(batches.get(index)),
+                        entity -> entity instanceof ItemEntity, !context.catchItems.isEmpty());
+                if (index == 0 && context.selfCleanModes.contains(EnumSelfCleanMode.SWEEP_CLEAR)) {
+                    if (context.dustbinMode != EnumDustbinMode.BLOCK) AotakeUtils.clearVirtualDustbin();
+                    if (context.dustbinMode != EnumDustbinMode.VIRTUAL) {
+                        for (WorldCoordinate position : context.blockPositions) {
+                            IItemHandler handler = AotakeUtils.getBlockItemHandler(position);
+                            if (handler != null) for (int slot = 0; slot < handler.getSlots(); slot++) handler.extractItem(slot, handler.getSlotLimit(slot), false);
+                        }
+                    }
                 }
+                for (CleanupRuleGate.Decision<Entity> decision : decisions) {
+                    generation.requireUsable();
+                    if (AotakeUtils.prepareSweepCandidate(decision.subject()))
+                        result.add(processDrop(decision.subject(), result, context, decision.recycle()));
+                }
+                batches.get(index).clear();
+                finishBatch(result, context);
+                if (++index >= batches.size()) cancel();
+                else BaniraScheduler.schedule(BaniraServer.require(MinecraftServer.class), context.sweepEntityInterval, this);
+            } catch (RuntimeException failure) {
+                cancel();
+                AotakeUtils.reportSweepFailure(failure);
+            } finally {
+                // Committed items survive cancellation of the remaining generation-bound work.
+                ChunkVaultStorage.flushPending();
+                WorldTrashData.get().setDirty();
             }
         }
-        entitiesToRemove.clear();
+    }
 
-        WorldTrashData.get().setDirty();
-
+    private void finishBatch(SweepResult result, SweepContext context) {
         result.incrementBatch();
 
         if (result.getBatch().get() >= result.getTotalBatch()) {
-            ChunkVaultStorage.flushPending(BaniraServer.require(MinecraftServer.class));
+            ChunkVaultStorage.flushPending();
 
             List<ServerPlayerEntity> players = BaniraServer.require(MinecraftServer.class).getPlayerList().getPlayers();
             for (ServerPlayerEntity p : players) {
@@ -163,10 +205,9 @@ public class EntitySweeper {
             LOGGER.debug("AddDrops {}/{} at {}", result.getBatch().get(), result.getTotalBatch(), System.currentTimeMillis());
         }
 
-        return result;
     }
 
-    private SweepResult processDrop(@NonNull Entity original, SweepResult batchResult, SweepContext context) {
+    private SweepResult processDrop(@NonNull Entity original, SweepResult batchResult, SweepContext context, boolean recycle) {
         SweepResult result = new SweepResult();
         WorldCoordinate coordinate = new WorldCoordinate(original);
         Entity entity = (original instanceof PartEntity) ? ((PartEntity<?>) original).getParent() : original;
@@ -181,18 +222,14 @@ public class EntitySweeper {
         if (entity instanceof ItemEntity) {
             ItemStack item = ((ItemEntity) entity).getItem();
             result.setItemCount(item.getCount());
-            if (!context.redlist.matches(entity)) {
+            if (recycle) {
                 itemToRecycle = item.copy();
             }
-            // 延迟移除
-            entitiesToRemove.add(entity);
         }
         // 处理其他实体
         else {
             // 回收实体
-            if (!context.catchItems.isEmpty()
-                    && context.catchMatcher.matches(entity)
-            ) {
+            if (recycle) {
                 String randomItem = CollectionUtils.getRandomElement(context.catchItems);
                 itemToRecycle = ItemUtils.deserializeItemStack(randomItem);
                 CompoundNBT tag = itemToRecycle.getOrCreateTag();
@@ -212,8 +249,10 @@ public class EntitySweeper {
                 result.setRecycledEntityCount(1);
             }
             result.setEntityCount(1);
-            entitiesToRemove.add(entity);
         }
+
+        // Own the entity before transferring items: nested callbacks and retries cannot recycle it again.
+        scheduleRemoveEntity(entity, false);
 
         // 记录清理历史
         WorldTrashData.get().getDropCount().add(new DropStatistics(coordinate
@@ -387,8 +426,6 @@ public class EntitySweeper {
      * 单批次配置快照，避免每个实体重复创建配置代理和解析垃圾箱坐标。
      */
     private static final class SweepContext {
-        private final EntityFilter.Matcher redlist;
-        private final EntityFilter.Matcher catchMatcher;
         private final List<String> catchItems;
         private final boolean chunkVaultEnabled;
         private final EnumDustbinMode dustbinMode;
@@ -407,9 +444,6 @@ public class EntitySweeper {
             CommonConfigView.BaseView.DustbinView dustbin = base.dustbin();
             CommonConfigView.BaseView.BatchView batch = base.batch();
 
-            EntityFilter filter = AotakeSweep.getEntityFilter();
-            this.redlist = filter.compile(sweep.entityRedlist());
-            this.catchMatcher = filter.compile(entityCatch.catchEntity());
             this.catchItems = new ArrayList<>(entityCatch.catchItem());
             this.chunkVaultEnabled = base.chunk().chunkVaultEnabled();
             this.dustbinMode = dustbin.dustbinBlockMode();
@@ -438,30 +472,22 @@ public class EntitySweeper {
         if (canonical == null || !canonical.isAlive() || !(canonical.level instanceof ServerWorld)) return;
         RegistryKey<World> dimensionKey = canonical.level.dimension();
 
-        Boolean existing = pendingRemovalOptions.putIfAbsent(canonical, keepData);
-        if (existing == null) {
-            pendingRemovals
-                    .computeIfAbsent(dimensionKey, k -> new ConcurrentLinkedQueue<>())
-                    .add(canonical);
-        } else if (keepData && !existing) {
-            pendingRemovalOptions.replace(canonical, false, true);
-        }
+        removals.schedule(dimensionKey, canonical, keepData);
     }
 
-    public static void flushPendingRemovals(ServerWorld world) {
-        Queue<Entity> queue = pendingRemovals.get(world.dimension());
-        if (queue == null) return;
+    public static boolean isPendingRemoval(Entity entity) { return removals.contains(entity); }
 
-        Entity entity;
-        while ((entity = queue.poll()) != null) {
-            Boolean keepData = pendingRemovalOptions.remove(entity);
-            if (keepData == null || !entity.isAlive()) continue;
+    public static void flushPendingRemovals(ServerWorld world) {
+        removals.flush(world.dimension(), (entity, keepData) -> {
+            if (!entity.isAlive()) return true;
             try {
                 EntityRemovalBridge.discard(world, entity, keepData);
+                return !entity.isAlive();
             } catch (RuntimeException e) {
                 ENTITY_ERRORS.log(LOGGER, "Discard sweep entity " + entity.getStringUUID(), e);
+                return false;
             }
-        }
+        });
     }
 
 }
