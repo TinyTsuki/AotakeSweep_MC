@@ -1,0 +1,6 @@
+package xin.vanilla.banira.generated.policies;
+
+import xin.vanilla.aotake.api.sweep.DefaultSweepPolicy;
+
+public class CustomSweepPolicy extends DefaultSweepPolicy<Void> {
+}

@@ -1,12 +1,17 @@
 package xin.vanilla.aotake.rule;
 
 import xin.vanilla.aotake.api.rule.EntityRule;
-import xin.vanilla.banira.api.script.ScriptSession;
+import xin.vanilla.aotake.api.rule.NativeMemberSpec;
+import xin.vanilla.aotake.api.rule.NativeMembers;
+import xin.vanilla.aotake.api.sweep.SweepPolicy;
+import xin.vanilla.banira.api.script.*;
 import xin.vanilla.banira.common.config.*;
 
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.function.Function;
+import java.util.function.BiFunction;
+import java.util.function.Consumer;
 
 /** Server-owned rule publication. Construct, acquire, reload and close on the server thread. */
 public final class RuleManager<S> implements AutoCloseable {
@@ -14,11 +19,16 @@ public final class RuleManager<S> implements AutoCloseable {
 
     private final Thread ownerThread = Thread.currentThread();
     private final Executor owner;
+    private final RuleFileStore store;
     private final ConfigHolder holder;
     private final ScriptSession<EntityRule> session;
     private final RuleMigrationTransaction migration;
-    private final RuleReloadCoordinator reloads;
-    private final Function<RuleBindingPlan,LazyRuleContext<S>> contexts;
+    private final RuleReloadCoordinator<Candidate> reloads;
+    private final SweepPolicyFileStore policyStore;
+    private final ScriptSession<ScriptFactory<SweepPolicy>> policySession;
+    private final BiFunction<List<NativeMemberSpec>,ClassLoader,NativeMembers> nativeBinder;
+    private volatile SweepPolicyCatalog.Prepared approvedPolicies;
+    private final BiFunction<RuleBindingPlan,NativeMembers,LazyRuleContext<S>> contexts;
     private final List<Runnable> unregister = new ArrayList<>();
     private final ThreadLocal<RuleCatalog> committing = new ThreadLocal<>();
     private volatile RuleCatalog approved;
@@ -28,19 +38,60 @@ public final class RuleManager<S> implements AutoCloseable {
     private boolean publishing, reloadAfterPublication;
     private long sequence;
     private String unavailable = "Rules have not been loaded";
+    private static final Set<String> SELECTION_PATHS;
+    static {
+        Set<String> paths = new LinkedHashSet<>(RuleMigrationTransaction.PATHS);
+        paths.add(SweepPolicyCatalog.CONFIG_PATH); SELECTION_PATHS = Collections.unmodifiableSet(paths);
+    }
 
     public RuleManager(RuleFileStore store, ConfigHolder holder, ScriptSession<EntityRule> session,
                        Executor worker, Executor owner, Function<RuleBindingPlan,LazyRuleContext<S>> contexts) {
+        this(store, holder, session, worker, owner, (plan, members) -> contexts.apply(plan),
+                BaniraScripts.openFactorySession("aotake_sweep", SweepPolicy.class, "1", ScriptLimits.defaults(), owner),
+                (specs, loader) -> { throw new IllegalArgumentException("Native policy bindings require a platform binder"); });
+    }
+
+    public RuleManager(RuleFileStore store, ConfigHolder holder, ScriptSession<EntityRule> session,
+                       Executor worker, Executor owner, BiFunction<RuleBindingPlan,NativeMembers,LazyRuleContext<S>> contexts,
+                       ScriptSession<ScriptFactory<SweepPolicy>> policySession,
+                       BiFunction<List<NativeMemberSpec>,ClassLoader,NativeMembers> nativeBinder) {
+        this.store = Objects.requireNonNull(store);
         this.holder = Objects.requireNonNull(holder);
         this.session = Objects.requireNonNull(session);
         this.owner = Objects.requireNonNull(owner);
         this.contexts = Objects.requireNonNull(contexts);
+        this.policySession = Objects.requireNonNull(policySession); this.nativeBinder = Objects.requireNonNull(nativeBinder);
+        policyStore = new SweepPolicyFileStore(store);
         // Native binding construction is checked on the owner before committing the candidate.
         migration = new RuleMigrationTransaction(store, holder, session, plan -> {});
-        reloads = new RuleReloadCoordinator(worker, owner, () -> migration.prepare(holder.snapshotForEdit(RuleMigrationTransaction.PATHS), true));
+        reloads = new RuleReloadCoordinator<>(worker, owner, this::prepareCandidate);
         unregister.add(holder.onEdit(this::validateEdit));
         unregister.add(holder.onSaved(this::configChanged));
         unregister.add(holder.onReloaded(this::configChanged));
+    }
+
+    private CompletableFuture<Candidate> prepareCandidate() {
+        try {
+            ConfigEditSnapshot selection, rules;
+            synchronized (holder) {
+                selection = holder.snapshotForEdit(SELECTION_PATHS);
+                rules = holder.snapshotForEdit(RuleMigrationTransaction.PATHS);
+            }
+            SweepPolicyCatalog catalog = policyStore.load();
+            CompletableFuture<PreparedScripts<ScriptFactory<SweepPolicy>>> policies = catalog.prepare(policySession);
+            return migration.prepare(rules, true).thenCombine(policies,
+                    (preparedRules, preparedPolicies) -> new Candidate(selection, preparedRules, catalog, preparedPolicies));
+        } catch (Exception error) { return failed(error); }
+    }
+
+    public Set<String> policyIds() {
+        checkOwner();
+        return approvedPolicies == null ? Collections.singleton(SweepPolicyCatalog.DEFAULT_ID) : approvedPolicies.ids();
+    }
+
+    public RuleGeneration<S>.PolicyLease leasePolicy(Consumer<String> cancelled) {
+        RuleGeneration<S> generation = acquire(RuleUse.SWEEP);
+        return generation.lease(holder.snapshotForEdit(holder.valuePaths()), cancelled);
     }
 
     public RuleGeneration<S> acquire(RuleUse use) {
@@ -89,7 +140,7 @@ public final class RuleManager<S> implements AutoCloseable {
         });
     }
 
-    private void finish(CompletableFuture<Long> result, RuleMigrationTransaction.PreparedMigration candidate, Throwable failure) {
+    private void finish(CompletableFuture<Long> result, Candidate prepared, Throwable failure) {
         checkOwner();
         if (closed) { result.completeExceptionally(new CancellationException("Rule manager closed")); return; }
         if (pending != result) return;
@@ -99,21 +150,31 @@ public final class RuleManager<S> implements AutoCloseable {
         publishing = true;
         try {
             if (failure != null) throw new CompletionException(failure);
+            RuleMigrationTransaction.PreparedMigration candidate = prepared.rules;
+            SweepPolicyCatalog.Prepared policies = prepared.policies.bind(prepared.compiled, nativeBinder);
+            policies.verifyFiles();
             Map<String,Object> values = new LinkedHashMap<>(candidate.snapshot().getValues());
+            values.put(SweepPolicyCatalog.CONFIG_PATH, prepared.selection.getValues().get(SweepPolicyCatalog.CONFIG_PATH));
             values.putAll(candidate.changes());
-            replacement = new RuleGeneration<>(++sequence, new RuleGeneration.Selection(values), candidate.catalog(), candidate.compiled().scripts(), contexts);
+            Map<String,NativeMembers> ruleMembers = candidate.catalog().prepareMembers(candidate.compiled().scripts(), nativeBinder);
+            replacement = new RuleGeneration<>(++sequence, new RuleGeneration.Selection(values), candidate.catalog(), candidate.compiled().scripts(), contexts, policies, ruleMembers);
             committing.set(candidate.catalog());
             ConfigCommitResult commit;
             try { commit = migration.commit(candidate); }
             finally { committing.remove(); }
             if (commit == ConfigCommitResult.CONFLICT) throw new IllegalStateException("Configuration changed during rule preparation");
             if (!replacement.hasSelection(selection())) throw new IllegalStateException("Rule selection changed before publication");
+            policies.verifyFiles();
             // Save listeners may request another reload (or stop the world) inside commit.
             if (!closed && !reloadAfterPublication) {
-                if (!session.publish(candidate.compiled())) throw new IllegalStateException("Compiled candidate expired before publication");
+                // Both compiler results stay private candidates. Only this aggregate becomes executable.
                 if (active != null) active.retire("Replaced by rule generation " + replacement.id());
+                if (closed || reloadAfterPublication || !replacement.hasSelection(selection())) throw new IllegalStateException("Rule publication interrupted during retirement");
+                candidate.catalog().verifyFiles(store);
+                policies.verifyFiles();
                 active = replacement;
                 approved = candidate.catalog();
+                approvedPolicies = policies;
                 published = true;
             }
         } catch (Exception | LinkageError error) {
@@ -154,12 +215,19 @@ public final class RuleManager<S> implements AutoCloseable {
     private RuleGeneration.Selection selection() {
         Map<String,Object> values = new LinkedHashMap<>();
         synchronized (holder) {
-            for (String path : RuleMigrationTransaction.PATHS) values.put(path, holder.get(path));
+            for (String path : SELECTION_PATHS) values.put(path, holder.get(path));
             return new RuleGeneration.Selection(values);
         }
     }
 
     private void validateEdit(ConfigEditOrigin origin, Map<String,Object> values) {
+        if (values.containsKey(SweepPolicyCatalog.CONFIG_PATH)) {
+            Object id = values.get(SweepPolicyCatalog.CONFIG_PATH);
+            if (!(id instanceof String)) throw new IllegalArgumentException("Expected sweep policy ID");
+            SweepPolicyCatalog.Prepared policies = approvedPolicies;
+            if (policies != null) policies.requireId((String) id);
+            else if (!SweepPolicyCatalog.DEFAULT_ID.equals(id)) throw new IllegalArgumentException("Policy has not been locally prepared: " + id);
+        }
         RuleCatalog catalog = origin == ConfigEditOrigin.LOCAL_MIGRATION ? committing.get() : null;
         if (catalog == null) catalog = approved;
         if (catalog != null) { catalog.guard().validate(origin, values); return; }
@@ -172,7 +240,7 @@ public final class RuleManager<S> implements AutoCloseable {
     }
 
     private void configChanged(Set<String> paths) {
-        if (closed || committing.get() != null || Collections.disjoint(paths, RuleMigrationTransaction.PATHS)) return;
+        if (closed || committing.get() != null || Collections.disjoint(paths, SELECTION_PATHS)) return;
         owner.execute(() -> {
             if (!closed) reload().whenComplete((id, failure) -> {
                 if (failure != null && !closed) org.apache.logging.log4j.LogManager.getLogger()
@@ -188,11 +256,12 @@ public final class RuleManager<S> implements AutoCloseable {
         for (Runnable remove : unregister) remove.run();
         unregister.clear();
         reloads.close();
-        session.close();
         approved = null;
+        approvedPolicies = null;
         committing.remove();
         if (active != null) active.retire("Rule manager closed");
         active = null;
+        session.close(); policySession.close();
         if (pending != null) pending.completeExceptionally(new CancellationException("Rule manager closed"));
         pending = null;
     }
@@ -206,5 +275,15 @@ public final class RuleManager<S> implements AutoCloseable {
     }
     private static <T> CompletableFuture<T> failed(Throwable error) {
         CompletableFuture<T> result = new CompletableFuture<>(); result.completeExceptionally(error); return result;
+    }
+
+    private static final class Candidate {
+        final ConfigEditSnapshot selection;
+        final RuleMigrationTransaction.PreparedMigration rules;
+        final SweepPolicyCatalog policies;
+        final PreparedScripts<ScriptFactory<SweepPolicy>> compiled;
+        Candidate(ConfigEditSnapshot selection, RuleMigrationTransaction.PreparedMigration rules, SweepPolicyCatalog policies, PreparedScripts<ScriptFactory<SweepPolicy>> compiled) {
+            this.selection = selection; this.rules = rules; this.policies = policies; this.compiled = compiled;
+        }
     }
 }

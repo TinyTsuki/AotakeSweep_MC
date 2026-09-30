@@ -5,8 +5,10 @@ import net.minecraft.server.MinecraftServer;
 import org.apache.logging.log4j.LogManager;
 import xin.vanilla.aotake.AotakeSweep;
 import xin.vanilla.aotake.api.rule.EntityRule;
+import xin.vanilla.aotake.api.sweep.SweepPolicy;
 import xin.vanilla.aotake.config.CommonConfig;
 import xin.vanilla.aotake.internal.forge.rule.ForgeEntityRuleContext;
+import xin.vanilla.aotake.internal.forge.rule.ForgeNativeMembers;
 import xin.vanilla.aotake.rule.*;
 import xin.vanilla.banira.api.script.*;
 import xin.vanilla.banira.common.config.BaniraConfig;
@@ -34,11 +36,13 @@ public final class AotakeRuleRuntime {
         };
         ScriptSession<EntityRule> scripts = BaniraScripts.open(AotakeSweep.MODID, EntityRule.class,
                 RuleSource.CONTRACT_VERSION, ScriptLimits.defaults(), executor);
+        ScriptSession<ScriptFactory<SweepPolicy>> policies = BaniraScripts.openFactorySession(AotakeSweep.MODID,
+                SweepPolicy.class, "1", ScriptLimits.defaults(), executor);
         try {
             manager = new RuleManager<>(RuleFileStore.local(), BaniraConfig.holder(CommonConfig.class), scripts,
-                    worker, executor, ForgeEntityRuleContext::new);
+                    worker, executor, ForgeEntityRuleContext::new, policies, ForgeNativeMembers::prepare);
         } catch (RuntimeException | Error failure) {
-            scripts.close();
+            scripts.close(); policies.close();
             stop();
             throw failure;
         }

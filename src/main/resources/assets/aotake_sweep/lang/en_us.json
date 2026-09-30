@@ -173,5 +173,6 @@
   "word.aotake_sweep.enum_source_type_accessor_key": "Value from synced entity field.",
   "word.aotake_sweep.enum_source_type_literal": "Fixed string literal.",
   "word.aotake_sweep.enum_source_type_nbt_path": "Value from entity NBT path.",
-  "word.aotake_sweep.enum_source_type_predefined": "Built-in variable source."
+  "word.aotake_sweep.enum_source_type_predefined": "Built-in variable source.",
+  "word.aotake_sweep.sweep_policy_description": "Cleanup policy ID\nUse builtin:default or a locally prepared policy ID\nRun config rules reload after editing local sources"
 }

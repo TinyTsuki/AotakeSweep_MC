@@ -2,6 +2,8 @@ package xin.vanilla.aotake.rule;
 
 import com.google.gson.*;
 import xin.vanilla.banira.api.script.ScriptSource;
+import xin.vanilla.aotake.api.rule.*;
+import java.util.function.BiFunction;
 import xin.vanilla.banira.common.config.ConfigEditGuard;
 import xin.vanilla.banira.common.util.JsonUtils;
 import java.io.IOException;
@@ -25,6 +27,16 @@ public final class RuleCatalog {
         this.originalManifest = originalManifest == null ? null : originalManifest.clone();
     }
     public Map<String,RuleSource> sources() { return sources; }
+    Map<String, NativeMembers> prepareMembers(Map<String, EntityRule> compiled,
+                                            BiFunction<List<NativeMemberSpec>, ClassLoader, NativeMembers> binder) throws IOException {
+        Map<String, NativeMembers> result = new LinkedHashMap<>();
+        for (String id : sources.keySet()) {
+            JsonObject metadata = manifest.getAsJsonObject("rules").getAsJsonObject(id);
+            NativeMemberDeclarations declarations = NativeMemberDeclarations.read(metadata.has("nativeMembers") ? metadata.get("nativeMembers") : new JsonArray());
+            result.put(id, declarations.prepare(Objects.requireNonNull(compiled.get(id), "Compiled rule missing: " + id).getClass().getClassLoader(), binder));
+        }
+        return Collections.unmodifiableMap(result);
+    }
     public static boolean isResource(String rule) { return rule != null && RESOURCE.matcher(rule).matches() && !rule.startsWith("script:"); }
     public static String requireId(String id) {
         if (id == null || !ID.matcher(id).matches()) throw new IllegalArgumentException("Invalid script id: " + id);

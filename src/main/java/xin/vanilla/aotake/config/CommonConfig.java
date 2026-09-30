@@ -141,6 +141,9 @@ public class CommonConfig implements ConfigData {
     @Setter
     @Accessors(chain = true, fluent = true)
     public static class SweepSection {
+        @ConfigEntry.Gui.Tooltip(translationKey = "word.aotake_sweep.sweep_policy_description")
+        private String sweepPolicyId = "builtin:default";
+
         @ConfigEntry.Gui.Tooltip(zh_cn = "服务器无玩家时是否仍执行自动扫地", en_us = "Run auto-sweep when no players are online.")
         private boolean sweepWhenNoPlayer = false;
 

@@ -5,18 +5,18 @@ import java.util.concurrent.*;
 import java.util.function.Supplier;
 
 /** One pending batch, at most one preparation in flight; completion is dispatched to the owner. */
-public final class RuleReloadCoordinator implements AutoCloseable {
+public final class RuleReloadCoordinator<T> implements AutoCloseable {
     private final Executor worker, owner;
-    private final Supplier<CompletableFuture<RuleMigrationTransaction.PreparedMigration>> prepare;
-    private CompletableFuture<RuleMigrationTransaction.PreparedMigration> pending;
+    private final Supplier<CompletableFuture<T>> prepare;
+    private CompletableFuture<T> pending;
     private long requested;
     private boolean closed;
 
-    public RuleReloadCoordinator(Executor worker, Executor owner, Supplier<CompletableFuture<RuleMigrationTransaction.PreparedMigration>> prepare) {
+    public RuleReloadCoordinator(Executor worker, Executor owner, Supplier<CompletableFuture<T>> prepare) {
         this.worker = Objects.requireNonNull(worker); this.owner = Objects.requireNonNull(owner); this.prepare = Objects.requireNonNull(prepare);
     }
-    public CompletableFuture<RuleMigrationTransaction.PreparedMigration> requestReload() {
-        CompletableFuture<RuleMigrationTransaction.PreparedMigration> result; boolean start;
+    public CompletableFuture<T> requestReload() {
+        CompletableFuture<T> result; boolean start;
         synchronized (this) {
             if (closed) { result = new CompletableFuture<>(); result.completeExceptionally(new CancellationException("Rule reload closed")); return result; }
             requested++; start = pending == null;
@@ -43,8 +43,8 @@ public final class RuleReloadCoordinator implements AutoCloseable {
             catch (RuntimeException rejected) { reject(rejected); }
         }
     }
-    private void complete(long ticket, RuleMigrationTransaction.PreparedMigration candidate, Throwable error) {
-        CompletableFuture<RuleMigrationTransaction.PreparedMigration> result; boolean retry;
+    private void complete(long ticket, T candidate, Throwable error) {
+        CompletableFuture<T> result; boolean retry;
         synchronized (this) {
             if (closed || pending == null) return;
             retry = ticket != requested; result = pending;
@@ -55,7 +55,7 @@ public final class RuleReloadCoordinator implements AutoCloseable {
         else result.complete(candidate);
     }
     private void reject(Throwable error) {
-        CompletableFuture<RuleMigrationTransaction.PreparedMigration> result;
+        CompletableFuture<T> result;
         synchronized (this) { result = pending; pending = null; }
         if (result != null) result.completeExceptionally(error);
     }

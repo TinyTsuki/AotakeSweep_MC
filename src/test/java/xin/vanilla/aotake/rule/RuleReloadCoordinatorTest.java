@@ -10,7 +10,7 @@ public class RuleReloadCoordinatorTest {
     @Test public void coalescesBurstAndDiscardsAnObsoleteResultOnTheOwnerThread() {
         Queue<Runnable> io = new ArrayDeque<>(), owner = new ArrayDeque<>();
         List<CompletableFuture<RuleMigrationTransaction.PreparedMigration>> jobs = new ArrayList<>();
-        RuleReloadCoordinator coordinator = new RuleReloadCoordinator(io::add, owner::add, () -> {
+        RuleReloadCoordinator<RuleMigrationTransaction.PreparedMigration> coordinator = new RuleReloadCoordinator<>(io::add, owner::add, () -> {
             CompletableFuture<RuleMigrationTransaction.PreparedMigration> job = new CompletableFuture<>(); jobs.add(job); return job;
         });
         CompletableFuture<RuleMigrationTransaction.PreparedMigration> result = coordinator.requestReload();
@@ -25,15 +25,15 @@ public class RuleReloadCoordinatorTest {
     }
     @Test public void closeAndExecutorRejectionReleasePendingRequests() {
         Queue<Runnable> io = new ArrayDeque<>(), owner = new ArrayDeque<>(); AtomicInteger calls = new AtomicInteger();
-        RuleReloadCoordinator coordinator = new RuleReloadCoordinator(io::add, owner::add, () -> { calls.incrementAndGet(); return new CompletableFuture<>(); });
+        RuleReloadCoordinator<Object> coordinator = new RuleReloadCoordinator<>(io::add, owner::add, () -> { calls.incrementAndGet(); return new CompletableFuture<>(); });
         CompletableFuture<?> pending = coordinator.requestReload(); coordinator.close(); io.remove().run();
         assertTrue(pending.isCompletedExceptionally()); assertEquals(0, calls.get());
         assertTrue(coordinator.requestReload().isCompletedExceptionally());
-        RuleReloadCoordinator rejected = new RuleReloadCoordinator(task -> { throw new RejectedExecutionException("stopped"); }, Runnable::run, () -> new CompletableFuture<>());
+        RuleReloadCoordinator<Object> rejected = new RuleReloadCoordinator<>(task -> { throw new RejectedExecutionException("stopped"); }, Runnable::run, () -> new CompletableFuture<>());
         assertTrue(rejected.requestReload().isCompletedExceptionally()); rejected.close();
     }
     @Test public void preparationFailureReachesCallerAndNextRequestCanRetry() {
-        RuleReloadCoordinator coordinator = new RuleReloadCoordinator(Runnable::run, Runnable::run, () -> { throw new IllegalStateException("read failed"); });
+        RuleReloadCoordinator<Object> coordinator = new RuleReloadCoordinator<>(Runnable::run, Runnable::run, () -> { throw new IllegalStateException("read failed"); });
         CompletableFuture<?> first = coordinator.requestReload();
         assertTrue(first.isCompletedExceptionally()); assertTrue(coordinator.requestReload().isCompletedExceptionally()); coordinator.close();
     }

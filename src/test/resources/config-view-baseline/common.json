@@ -433,6 +433,18 @@
       "permissionKey": null,
       "keyChords": false
     },
+    "base.sweep.sweepPolicyId": {
+      "type": "STRING",
+      "default": "builtin:default",
+      "min": null,
+      "max": null,
+      "precision": 2,
+      "enum": null,
+      "permission": "INHERIT",
+      "permissionLevel": null,
+      "permissionKey": null,
+      "keyChords": false
+    },
     "base.sweep.sweepWarningContent": {
       "type": "STRING",
       "default": "",
@@ -951,6 +963,7 @@
     "base.sweep.entityListMode": "BLACK",
     "base.sweep.entityRedlist": [],
     "base.sweep.sweepInterval": 600000,
+    "base.sweep.sweepPolicyId": "builtin:default",
     "base.sweep.sweepWarningContent": "",
     "base.sweep.sweepWarningVoice": "",
     "base.sweep.sweepWarningVoiceVolume": 33,
@@ -1040,6 +1053,7 @@
     "base.sweep.entityListMode": "BLACK",
     "base.sweep.entityRedlist": [],
     "base.sweep.sweepInterval": 600000,
+    "base.sweep.sweepPolicyId": "builtin:default",
     "base.sweep.sweepWarningContent": "",
     "base.sweep.sweepWarningVoice": "",
     "base.sweep.sweepWarningVoiceVolume": 33,
@@ -1134,6 +1148,7 @@
       "minecraft:arrow"
     ],
     "base.sweep.sweepInterval": 7,
+    "base.sweep.sweepPolicyId": "baseline,base.sweep.sweepPolicyId",
     "base.sweep.sweepWarningContent": "baseline,base.sweep.sweepWarningContent",
     "base.sweep.sweepWarningVoice": "baseline,base.sweep.sweepWarningVoice",
     "base.sweep.sweepWarningVoiceVolume": 7,

@@ -174,5 +174,6 @@
   "word.aotake_sweep.enum_source_type_accessor_key": "实体数据同步字段取值",
   "word.aotake_sweep.enum_source_type_literal": "固定字符串字面量取值",
   "word.aotake_sweep.enum_source_type_nbt_path": "从实体NBT路径读取取值",
-  "word.aotake_sweep.enum_source_type_predefined": "使用内置预定义变量源"
+  "word.aotake_sweep.enum_source_type_predefined": "使用内置预定义变量源",
+  "word.aotake_sweep.sweep_policy_description": "清理流程策略 ID\n使用 builtin:default 或已在本机准备成功的策略 ID\n修改本地源码后执行 config rules reload"
 }

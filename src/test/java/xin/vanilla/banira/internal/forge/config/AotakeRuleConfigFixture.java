@@ -17,6 +17,7 @@ public final class AotakeRuleConfigFixture implements AutoCloseable {
         for (String path : RuleMigrationTransaction.LISTS) values.put(path, builder.defineList(path,
                 Arrays.asList("minecraft:arrow", "tick -> tick >= 5", "minecraft:*"), value -> value instanceof String));
         for (String path : RuleMigrationTransaction.MODES) values.put(path, builder.define(path, "WHITE"));
+        values.put("base.sweep.sweepPolicyId", builder.define("base.sweep.sweepPolicyId", "builtin:default"));
         values.put("unrelated", builder.defineInRange("unrelated", 1, 0, 20));
         ForgeConfigSpec spec = builder.build(); ForgeConfigBackend backend = new ForgeConfigBackend(spec, values);
         holder = ConfigHolder.create("test", "test-common", ConfigScope.COMMON, backend, Collections.emptyList(), Collections.emptyMap(), Collections.emptyMap());

@@ -262,7 +262,8 @@ public class RuleManagerTest {
             try {
                 CompletableFuture<Long> reload = f.manager.reload();
                 workers.remove().run();
-                f.nextOwnerTask(); f.nextOwnerTask();
+                long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(15);
+                while (!once[0] && System.nanoTime() < deadline) { f.drain(); Thread.sleep(1); }
                 assertTrue("Save listener was not exercised", once[0]);
                 assertFalse("Older candidate was published despite a newer request", reload.isDone());
                 assertEquals(1, workers.size());
@@ -335,6 +336,10 @@ public class RuleManagerTest {
         Map<String,Object> value = new HashMap<>(); value.put("resource", resource); value.put("tick", tick); return value;
     }
     static final class Context extends LazyRuleContext<Map<String,Object>> {
+        xin.vanilla.aotake.api.rule.NativeMembers members = xin.vanilla.aotake.api.rule.NativeMembers.EMPTY;
+        @Override public xin.vanilla.aotake.api.rule.NativeMembers members() { return members; }
+        int clearCalls;
+        @Override public void clear() { super.clear(); clearCalls++; }
         @Override protected Object read(RuleBindingPlan.Binding binding) { return subject().get(binding.payload()); }
         boolean released() { return subject() == null; }
     }
@@ -359,9 +364,10 @@ public class RuleManagerTest {
             manager = new RuleManager<>(store, holder, session, worker, task -> {
                 if (rejectOwner) throw new RejectedExecutionException("Owner temporarily unavailable");
                 owner.add(task);
-            }, plan -> {
-                Context context = new Context(); contexts.add(context); return context;
-            });
+            }, (plan, members) -> {
+                Context context = new Context(); context.members = members; contexts.add(context); return context;
+            }, BaniraScripts.openFactorySession("aotake_sweep", xin.vanilla.aotake.api.sweep.SweepPolicy.class, "1", ScriptLimits.defaults(), owner::add),
+                    (specs, loader) -> xin.vanilla.aotake.internal.forge.rule.ForgeNativeMembers.prepare(specs, loader, (kind, name) -> name));
         }
         <T> T await(CompletableFuture<T> future) throws Exception {
             long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(15);
