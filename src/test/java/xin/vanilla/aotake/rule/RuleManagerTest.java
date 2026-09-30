@@ -89,6 +89,25 @@ public class RuleManagerTest {
         }
     }
 
+    @Test public void unchangedBatchGateDoesNotAllocateASelectionSnapshot() throws Exception {
+        java.lang.management.ThreadMXBean bean = java.lang.management.ManagementFactory.getThreadMXBean();
+        org.junit.Assume.assumeTrue(bean instanceof com.sun.management.ThreadMXBean);
+        com.sun.management.ThreadMXBean allocations = (com.sun.management.ThreadMXBean) bean;
+        org.junit.Assume.assumeTrue(allocations.isThreadAllocatedMemorySupported());
+        allocations.setThreadAllocatedMemoryEnabled(true);
+        try (Fixture f = fixture()) {
+            long id = f.await(f.manager.reload());
+            for (int i = 0; i < 20000; i++) assertTrue(f.manager.isUsable(id));
+            long thread = Thread.currentThread().getId();
+            long before = allocations.getThreadAllocatedBytes(thread);
+            for (int i = 0; i < 10000; i++) assertTrue(f.manager.isUsable(id));
+            long perCheck = (allocations.getThreadAllocatedBytes(thread) - before) / 10000;
+            assertTrue("Unchanged gate allocated " + perCheck + " bytes per check", perCheck < 1024);
+            f.holder.set(RuleMigrationTransaction.LISTS.get(3), Collections.singletonList("minecraft:arrow"));
+            assertFalse("Unsaved edits must still invalidate immediately", f.manager.isUsable(id));
+        }
+    }
+
     @Test public void runtimeFailurePoisonsWholeGenerationAndNeverBecomesWhiteListNonMatch() throws Exception {
         try (Fixture f = fixture()) {
             f.await(f.manager.reload());

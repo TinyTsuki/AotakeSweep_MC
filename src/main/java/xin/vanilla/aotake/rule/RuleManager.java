@@ -208,7 +208,7 @@ public final class RuleManager<S> implements AutoCloseable {
         if (closed) throw new RuleExecutionException(-1, "Rule manager closed");
         if (active == null) return;
         boolean same;
-        try { same = active.hasSelection(selection()); }
+        try { same = active.hasSelection(holder); }
         catch (RuntimeException error) { same = false; }
         if (!same) {
             active.retire("Rule lists or modes changed; awaiting verified replacement");

@@ -4,6 +4,7 @@ import xin.vanilla.aotake.api.rule.EntityRule;
 import xin.vanilla.aotake.api.rule.NativeMembers;
 import xin.vanilla.aotake.api.sweep.SweepPolicy;
 import xin.vanilla.banira.common.config.ConfigEditSnapshot;
+import xin.vanilla.banira.common.config.ConfigHolder;
 import xin.vanilla.aotake.enums.EnumListType;
 import xin.vanilla.aotake.util.EntityRulePolicy;
 
@@ -162,6 +163,7 @@ public final class RuleGeneration<S> {
 
     boolean isUsable() { checkOwner(); return unavailable == null; }
     boolean hasSelection(Selection expected) { return selection.equals(expected); }
+    boolean hasSelection(ConfigHolder holder) { return selection.matches(holder); }
 
     void retire(String reason) {
         checkOwner();
@@ -228,6 +230,22 @@ public final class RuleGeneration<S> {
                 modes.add(mode instanceof EnumListType ? (EnumListType) mode : EnumListType.valueOf(String.valueOf(mode)));
             }
             this.modes = Collections.unmodifiableList(modes);
+        }
+
+        boolean matches(ConfigHolder holder) {
+            // Keep checking live edits at every boundary without rebuilding the immutable snapshot.
+            synchronized (holder) {
+                if (!holder.matchesStoredValue(SweepPolicyCatalog.CONFIG_PATH, policyId)) return false;
+                for (int i = 0; i < lists.size(); i++) {
+                    if (!holder.matchesStoredValue(RuleMigrationTransaction.LISTS.get(i), lists.get(i))) return false;
+                }
+                for (int i = 0; i < modes.size(); i++) {
+                    String path = RuleMigrationTransaction.MODES.get(i);
+                    if (!holder.matchesStoredValue(path, modes.get(i))
+                            && !holder.matchesStoredValue(path, modes.get(i).name())) return false;
+                }
+                return true;
+            }
         }
 
         @Override public boolean equals(Object other) {
