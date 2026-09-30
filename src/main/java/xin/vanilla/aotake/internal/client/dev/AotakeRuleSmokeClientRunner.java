@@ -25,6 +25,10 @@ public final class AotakeRuleSmokeClientRunner {
     private AotakeRuleSmokeClientRunner() { }
     public static void tick(Minecraft client) {
         if (FMLEnvironment.production || !Boolean.getBoolean("aotake.scriptSmoke") || finished || client.getOverlay() != null) return;
+        if ("migration".equals(System.getProperty("aotake.scriptSmoke.mode"))) {
+            AotakeRuleMigrationSmokeClientRunner.tick(client);
+            return;
+        }
         try {
             if (session == null) {
                 sources = Arrays.asList(source("create", "tick, clazz, itemClazz, createProcessing = [CreateData.Processing.Time] -> tick >= 5 && clazz :> itemClazz && (createProcessing <= 0 || createProcessing == null)"),
