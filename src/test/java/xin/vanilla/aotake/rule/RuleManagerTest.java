@@ -18,6 +18,32 @@ import static org.junit.Assert.*;
 public class RuleManagerTest {
     @Rule public TemporaryFolder temporary = new TemporaryFolder();
 
+    @Test public void legacyDefaultsMigrateAlongsideInstalledBuiltinsWithoutClassCollisions() throws Exception {
+        try (Fixture f = fixture(false)) {
+            f.holder.set(RuleMigrationTransaction.LISTS.get(0), Collections.singletonList(LegacyRuleMigrationTest.CREATE));
+            f.holder.set(RuleMigrationTransaction.LISTS.get(1), Collections.singletonList(LegacyRuleMigrationTest.CREATE));
+            f.holder.set(RuleMigrationTransaction.LISTS.get(2), Collections.singletonList(LegacyRuleMigrationTest.PROTECTION));
+            f.holder.set(RuleMigrationTransaction.LISTS.get(3), Collections.singletonList("minecraft:pig"));
+            f.holder.save(); f.start();
+            f.await(f.manager.reload());
+            RuleGeneration<Map<String,Object>> generation = f.manager.acquire(RuleManager.RuleUse.SWEEP);
+            Map<String,Object> subject = entity("minecraft:item", 8);
+            subject.put("clazz", String.class); subject.put("itemClazz", Object.class); subject.put("hasOwner", false);
+            assertTrue(generation.matches(RuleGeneration.RuleList.SWEEP, subject));
+            assertTrue(generation.matches(RuleGeneration.RuleList.CHUNK, subject));
+            assertFalse(generation.matches(RuleGeneration.RuleList.REDLIST, subject));
+            assertFalse(generation.matches(RuleGeneration.RuleList.CAPTURE, subject));
+            assertEquals(4, f.store.loadCatalog().sources().size());
+            List<?> sweepRules = f.holder.get(RuleMigrationTransaction.LISTS.get(0));
+            List<?> chunkRules = f.holder.get(RuleMigrationTransaction.LISTS.get(1));
+            assertEquals(sweepRules, chunkRules);
+            for (int i = 0; i < 3; i++) assertTrue(((List<?>) f.holder.get(RuleMigrationTransaction.LISTS.get(i))).get(0).toString().startsWith("script:legacy_"));
+            byte[] manifest = Files.readAllBytes(f.store.root().resolve(RuleFileStore.MANIFEST));
+            f.await(f.manager.reload());
+            assertArrayEquals(manifest, Files.readAllBytes(f.store.root().resolve(RuleFileStore.MANIFEST)));
+        }
+    }
+
     @Test public void startupBlocksUntilMigrationCommitThenUsesAllFourListsAndCapturedModes() throws Exception {
         try (Fixture f = fixture()) {
             for (RuleManager.RuleUse use : RuleManager.RuleUse.values())

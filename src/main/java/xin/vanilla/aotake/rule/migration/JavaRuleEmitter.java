@@ -29,7 +29,8 @@ public final class JavaRuleEmitter {
         JavaRuleEmitter emitter = new JavaRuleEmitter(ast, plan);
         String expression = emitter.body();
         String hash = sha(ast.source);
-        String simpleName = "AotakeRule_" + hash;
+        // Built-in and migrated rules can share text while remaining independently editable.
+        String simpleName = "AotakeRule_" + sha(id + "\n" + hash);
         String className = "xin.vanilla.banira.generated." + simpleName;
         String source = "package xin.vanilla.banira.generated;\n"
                 + "public final class " + simpleName + " implements xin.vanilla.aotake.api.rule.EntityRule {\n"

@@ -72,7 +72,10 @@ public final class ForgeRuleBindings {
         if (terminal == AtomicBoolean.class) terminal = Boolean.class;
         if (!binding.type().isAssignableFrom(box(terminal))) throw diagnostic(binding, "Declared binding type disagrees with field type " + terminal.getName());
         return object -> {
-            if (!receiverType.isInstance(object)) throw new IllegalStateException("Binding receiver must be " + receiverType.getName());
+            if (!receiverType.isInstance(object)) {
+                if (binding.nullable()) return null;
+                throw new IllegalStateException("Binding receiver must be " + receiverType.getName());
+            }
             Object value = object;
             for (Reader reader : readers) { if (value == null) return null; value = reader.read(value); }
             return unwrap(value);

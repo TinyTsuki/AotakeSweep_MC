@@ -9,6 +9,20 @@ public class RuleBindingPlanTest {
     public static class Holder { public int count = 7; public List<String> names = Arrays.asList("a", "b"); }
     public static class Other { }
     public static class Nested { public Optional<Holder> child = Optional.of(new Holder()); }
+    @Test public void optionalSubtypeBindingDoesNotFaultMixedEntityScans() {
+        RuleBindingPlan.Binding optional = new RuleBindingPlan.Binding("v", "field",
+                Holder.class.getName() + ":count", Integer.class, true, 0);
+        ForgeRuleBindings.Reader reader = ForgeRuleBindings.field(optional, Object.class, getClass().getClassLoader());
+        assertEquals(7, reader.read(new Holder()));
+        assertNull("An unrelated subject has no optional subtype field", reader.read(new Other()));
+        assertEquals("A skipped subject must not poison the next read", 7, reader.read(new Holder()));
+        RuleBindingPlan.Binding required = new RuleBindingPlan.Binding("v", "field",
+                Holder.class.getName() + ":count", Integer.class, false, 0);
+        ForgeRuleBindings.Reader strict = ForgeRuleBindings.field(required, Object.class, getClass().getClassLoader());
+        assertThrows(IllegalStateException.class, () -> strict.read(new Other()));
+        assertThrows(RuleDiagnostic.class, () -> ForgeRuleBindings.field(new RuleBindingPlan.Binding("v", "field",
+                Holder.class.getName() + ":missing", Integer.class, true, 0), Object.class, getClass().getClassLoader()));
+    }
     @Test public void nestedOptionalAndListBindingsAreResolvedWithoutAnEntitySample() {
         RuleBindingPlan.Binding b = new RuleBindingPlan.Binding("v", "field", Nested.class.getName() + ":child.names.1", String.class, true, 0);
         ForgeRuleBindings.Reader reader = ForgeRuleBindings.field(b, Nested.class, getClass().getClassLoader());
