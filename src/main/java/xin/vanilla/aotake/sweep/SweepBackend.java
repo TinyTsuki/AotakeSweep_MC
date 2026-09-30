@@ -9,7 +9,7 @@ import java.util.List;
 public interface SweepBackend {
     long generationId();
     void requireUsable();
-    ServerAccess server(Runnable guard);
+    ServerAccess server(Runnable callbackGuard, Runnable entityGuard);
     NativeMembers members();
     ConfigEditSnapshot configuration();
     List<EntityAccess> collect(SweepRequest request, SweepScope scope, Runnable guard);

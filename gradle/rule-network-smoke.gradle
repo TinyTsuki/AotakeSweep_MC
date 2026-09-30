@@ -14,13 +14,18 @@ if (project.hasProperty('aotake.optionalSmoke.root')) {
 }
 
 def ruleChild = project.hasProperty('aotake.ruleNetworkSmoke.root')
+def policyChild = project.findProperty('aotake.ruleNetworkSmoke.kind') == 'policy'
 if (ruleChild) {
     def root = file(project.property('aotake.ruleNetworkSmoke.root'))
     def side = project.property('aotake.ruleNetworkSmoke.side').toString()
     layout.buildDirectory.set(new File(root, side + '-build'))
     configurations.runtimeClasspath.exclude(group: 'curse.maven')
     minecraft.runs.configureEach {
-        property 'aotake.ruleNetworkSmoke', 'true'
+        property 'aotake.ruleNetworkSmoke', policyChild ? 'false' : 'true'
+        property 'aotake.policySmoke', policyChild ? 'true' : 'false'
+        property 'aotake.policySmoke.root', root.absolutePath
+        property 'aotake.policySmoke.phase', project.property('aotake.ruleNetworkSmoke.phase').toString()
+        property 'aotake.policySmoke.port', project.property('aotake.ruleNetworkSmoke.port').toString()
         property 'aotake.ruleNetworkSmoke.root', root.absolutePath
         property 'aotake.ruleNetworkSmoke.phase', project.property('aotake.ruleNetworkSmoke.phase').toString()
         property 'aotake.ruleNetworkSmoke.port', project.property('aotake.ruleNetworkSmoke.port').toString()
@@ -36,12 +41,12 @@ if (ruleChild) {
     }
 }
 
-tasks.register('ruleNetworkSmoke') {
+def registerNetworkSmoke = { String taskName, boolean policy -> tasks.register(taskName) {
     group = 'verification'
-    description = 'Bounded rule migration, remote config, reload, cancellation and restart checks'
+    description = policy ? 'Bounded sweep policy, native binding, remote config and restart checks' : 'Bounded rule migration, remote config, reload, cancellation and restart checks'
     doLast {
         if (ruleChild) throw new GradleException('Cannot nest ruleNetworkSmoke')
-        def root = layout.buildDirectory.dir('rule-network-smoke/' + System.currentTimeMillis()).get().asFile
+        def root = layout.buildDirectory.dir((policy ? 'policy-network-smoke/' : 'rule-network-smoke/') + System.currentTimeMillis()).get().asFile
         root.mkdirs()
         logger.lifecycle('Rule network evidence: ' + root)
         int port
@@ -73,6 +78,31 @@ sweepBatchLimit = 17
 sweepEntityLimit = 1
 sweepEntityInterval = 40
 ''', 'UTF-8')
+        if (policy) {
+            new File(serverDir, 'config/aotake_sweep-common.toml').setText('''[base.sweep]
+entityList = ["minecraft:apple"]
+entityListMode = "BLACK"
+entityRedlist = []
+sweepInterval = 0
+sweepWhenNoPlayer = true
+[base.safe]
+safeBlocks = []
+safeBlocksBelow = []
+safeBlocksAbove = []
+[base.chunk]
+chunkCheckEntityList = ["minecraft:apple"]
+chunkCheckEntityListMode = "BLACK"
+chunkCheckInterval = 0
+chunkVaultEnabled = true
+[base.entityCatch]
+catchEntity = []
+[base.batch]
+sweepBatchLimit = 17
+sweepEntityLimit = 50
+sweepEntityInterval = 2
+''', 'UTF-8')
+            copy { from('src/test/resources/rules') { include 'NativeEntityProbe.java', 'NativeEntityProbe.members.json', 'SmokeSweepPolicy.java', 'PolicyAudit.java' }; into new File(root, 'fixtures') }
+        }
         def children = []
         def start = { String side, String phase ->
             def log = new File(root, (phase == 'restart' ? 'restart' : side) + '.log')
@@ -81,7 +111,8 @@ sweepEntityInterval = 40
                 side == 'server' ? 'runServer' : 'runClient', '--offline', '--console=plain', '--no-daemon',
                 '--project-cache-dir', new File(root, side + '-cache').absolutePath,
                 '-Paotake.ruleNetworkSmoke.root=' + root.absolutePath, '-Paotake.ruleNetworkSmoke.side=' + side,
-                '-Paotake.ruleNetworkSmoke.phase=' + phase, '-Paotake.ruleNetworkSmoke.port=' + port]
+                '-Paotake.ruleNetworkSmoke.phase=' + phase, '-Paotake.ruleNetworkSmoke.port=' + port,
+                '-Paotake.ruleNetworkSmoke.kind=' + (policy ? 'policy' : 'rules')]
             def process = new ProcessBuilder(command).directory(projectDir).redirectErrorStream(true).redirectOutput(log).start()
             children.add(process)
             return process
@@ -103,9 +134,9 @@ sweepEntityInterval = 40
         }
         try {
             def server = start('server', 'initial')
-            await(server, 'server', 'PASS four-list-production-migration')
+            await(server, 'server', policy ? 'READY policy-runtime' : 'PASS four-list-production-migration')
             def client = start('client', 'initial')
-            await(client, 'client', 'FINISHED rule-network-client')
+            await(client, 'client', policy ? 'FINISHED policy-network-client' : 'FINISHED rule-network-client')
             await(server, 'server', 'PASS server-shutdown')
             exited(client); exited(server)
             def restarted = start('server', 'restart')
@@ -121,3 +152,6 @@ sweepEntityInterval = 40
         }
     }
 }
+}
+registerNetworkSmoke('ruleNetworkSmoke', false)
+registerNetworkSmoke('policyNetworkSmoke', true)

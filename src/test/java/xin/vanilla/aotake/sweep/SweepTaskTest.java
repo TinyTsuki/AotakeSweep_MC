@@ -8,6 +8,63 @@ import java.util.concurrent.atomic.AtomicReference;
 import static org.junit.Assert.*;
 
 public class SweepTaskTest {
+    @Test public void worldQueryCandidatesSurviveCollectionCallbacksButNotTaskEnd() {
+        for (boolean addAfter : new boolean[]{false, true}) {
+            SweepFixture b = new SweepFixture(); b.add("a"); b.add("b");
+            AtomicReference<EntityAccess> retained = new AtomicReference<>();
+            AtomicReference<xin.vanilla.aotake.api.rule.WorldAccess> world = new AtomicReference<>();
+            SweepTask<Void> t = task(b, new DefaultSweepPolicy<Void>() {
+                private List<EntityAccess> query(SweepContext c) {
+                    world.set(c.server().world("overworld").get());
+                    List<EntityAccess> result = world.get().entities(0, 0, 0, 10, 10, 10);
+                    retained.set(result.get(0));
+                    return result;
+                }
+                public List<EntityAccess> collectEntities(SweepContext c, Void s) {
+                    return addAfter ? new ArrayList<>() : query(c);
+                }
+                public void afterCollect(SweepContext c, Void s, List<EntityAccess> es) {
+                    if (addAfter) es.addAll(query(c));
+                }
+                public void onFinish(SweepContext c, Void s, SweepOutcome outcome) {
+                    assertEquals("a", retained.get().resourceId());
+                    assertThrows(IllegalStateException.class, () -> world.get().entities(0, 0, 0, 10, 10, 10));
+                }
+            });
+            run(t);
+            assertEquals(SweepPhase.SUCCESS, t.phase()); assertEquals(2, t.outcome().processed());
+            assertThrows(IllegalStateException.class, () -> retained.get().resourceId());
+        }
+    }
+
+    @Test public void retirementKeepsEntityViewsReadableUntilTerminalCallbacksComplete() {
+        for (boolean duringBatch : new boolean[]{false, true}) {
+            SweepFixture b = new SweepFixture() {
+                public void execute(BatchContext c, Progress p) {
+                    super.execute(c, p); if (duringBatch) usable = false;
+                }
+            };
+            b.add("a"); b.add("b");
+            AtomicReference<EntityAccess> retained = new AtomicReference<>();
+            SweepTask<Void> t = task(b, new DefaultSweepPolicy<Void>() {
+                public void afterCollect(SweepContext c, Void s, List<EntityAccess> es) { retained.set(es.get(0)); }
+                public void afterBatch(BatchContext c, Void s, BatchResult r) {
+                    assertEquals("a", c.entities().get(0).resourceId()); b.events.add("read-after");
+                }
+                public void onFinish(SweepContext c, Void s, SweepOutcome o) {
+                    assertEquals("a", retained.get().resourceId()); b.events.add("read-finish");
+                }
+            });
+            PreparedSweep ready = t.prepare();
+            if (!duringBatch) b.usable = false;
+            ready.start();
+            while (t.phase() == SweepPhase.RUNNING) t.runNextBatch();
+            assertEquals(SweepPhase.CANCELLED, t.phase()); assertEquals(duringBatch ? 1 : 0, b.executed);
+            assertTrue(b.events.contains("read-finish")); assertEquals(0, b.faults);
+            assertThrows(IllegalStateException.class, () -> retained.get().resourceId());
+        }
+    }
+
     private SweepRequest request() { return SweepRequest.builder(SweepTrigger.COMMAND, SweepOperation.RECYCLE).batchSize(1).build(); }
     private <S> SweepTask<S> task(SweepFixture b, SweepPolicy<S> p) { return new SweepTask<>(UUID.randomUUID(), request(), b, p); }
     private void run(SweepTask<?> task) {

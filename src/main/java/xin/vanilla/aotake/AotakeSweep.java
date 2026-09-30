@@ -125,6 +125,7 @@ public class AotakeSweep {
         });
         AotakeNetworkSmokeServerRunner.register();
         xin.vanilla.aotake.internal.server.dev.AotakeRuleNetworkSmokeServerRunner.register();
+        xin.vanilla.aotake.internal.server.dev.AotakeSweepPolicySmokeServerRunner.register();
         ForgeAotakeGameEventAdapter.register();
 
         DistExecutor.safeRunWhenOn(Dist.CLIENT,

@@ -58,7 +58,7 @@ public final class ForgeSweepBackend implements SweepBackend {
     public void requireUsable(){
         if(AotakeSweep.isDisable() || !server.isRunning() || !manager.isUsable(generation.id())) throw new IllegalStateException("Sweep generation unavailable");
     }
-    public ServerAccess server(Runnable guard){ return new ForgeServerAccess(()->server,guard); }
+    public ServerAccess server(Runnable callbackGuard,Runnable entityGuard){ return new ForgeServerAccess(()->server,callbackGuard,entityGuard); }
     public NativeMembers members(){ return lease.members(); }
     public ConfigEditSnapshot configuration(){ return lease.configuration(); }
     public List<EntityAccess> collect(SweepRequest request,SweepScope scope,Runnable guard) {

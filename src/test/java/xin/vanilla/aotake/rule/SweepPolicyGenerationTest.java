@@ -17,6 +17,26 @@ public class SweepPolicyGenerationTest {
     private void source(RuleManagerTest.Fixture f, String text) throws Exception { Files.write(f.store.path(SweepPolicyFileStoreTest.SOURCE), text.getBytes(StandardCharsets.UTF_8)); }
     private String source(RuleManagerTest.Fixture f) throws Exception { return RuleFileStore.utf8(f.store.read(SweepPolicyFileStoreTest.SOURCE, RuleFileStore.MAX_SOURCE_BYTES)); }
 
+    @Test public void realSmokeSourceGroupCompilesWithJaninoBeforeLaunchingGame() throws Exception {
+        try (RuleManagerTest.Fixture f = fixture()) {
+            f.await(f.manager.reload());
+            for (String name : Arrays.asList("SmokeSweepPolicy.java", "PolicyAudit.java")) {
+                try (java.io.InputStream input = getClass().getResourceAsStream("/rules/" + name)) {
+                    assertNotNull(input);
+                    Files.copy(input, f.store.path("rules/policies/sources/" + name));
+                }
+            }
+            Files.write(f.store.path(SweepPolicyFileStore.MANIFEST), ("{\"policySchema\":1,\"apiVersion\":\"1\",\"policies\":[{\"id\":\"smoke\","
+                    + "\"entryClassName\":\"xin.vanilla.banira.generated.SmokeSweepPolicy\",\"sourceFiles\":[\"SmokeSweepPolicy.java\",\"PolicyAudit.java\"],\"nativeMembers\":[]}]}").getBytes(StandardCharsets.UTF_8));
+            f.await(f.manager.reload());
+            f.holder.set(SweepPolicyCatalog.CONFIG_PATH, "smoke");
+            f.await(f.manager.reload());
+            try (RuleGeneration<Map<String, Object>>.PolicyLease lease = f.manager.leasePolicy(reason -> {})) {
+                assertEquals("xin.vanilla.banira.generated.SmokeSweepPolicy", lease.policy().getClass().getName());
+            }
+        }
+    }
+
     @Test public void compilesWholeGenerationAndCreatesIndependentTaskInstances() throws Exception {
         try (RuleManagerTest.Fixture f = fixture()) {
             f.await(f.manager.reload());

@@ -37,12 +37,29 @@ class SweepFixture implements SweepBackend {
     }
     public long generationId() { return 7; }
     public void requireUsable() { if (!usable) throw new IllegalStateException("retired"); }
-    public ServerAccess server(Runnable guard) { return null; }
+    public ServerAccess server(Runnable guard, Runnable entityGuard) {
+        WorldAccess world = (WorldAccess) Proxy.newProxyInstance(WorldAccess.class.getClassLoader(), new Class<?>[]{WorldAccess.class}, (p, m, a) -> {
+            guard.run();
+            if (!m.getName().equals("entities")) throw new UnsupportedOperationException(m.getName());
+            List<EntityAccess> result = new ArrayList<>();
+            for (EntityAccess e : source) result.add(view(node(e), entityGuard));
+            return result;
+        });
+        return (ServerAccess) Proxy.newProxyInstance(ServerAccess.class.getClassLoader(), new Class<?>[]{ServerAccess.class}, (p, m, a) -> {
+            guard.run();
+            if (m.getName().equals("world")) return Optional.of(world);
+            throw new UnsupportedOperationException(m.getName());
+        });
+    }
     public NativeMembers members() { return NativeMembers.EMPTY; }
     public ConfigEditSnapshot configuration() {
         return new ConfigEditSnapshot(this, "test", new byte[0], Collections.singletonMap("limit", typeLimit));
     }
-    public List<EntityAccess> collect(SweepRequest request, SweepScope scope, Runnable guard) { return source; }
+    public List<EntityAccess> collect(SweepRequest request, SweepScope scope, Runnable guard) {
+        List<EntityAccess> result = new ArrayList<>();
+        for (EntityAccess e : source) result.add(view(node(e), guard));
+        return result;
+    }
     public EntityAccess normalize(EntityAccess e, SweepScope scope, Runnable guard) {
         Node n = node(e);
         if (n.parent != null) n = n.parent;

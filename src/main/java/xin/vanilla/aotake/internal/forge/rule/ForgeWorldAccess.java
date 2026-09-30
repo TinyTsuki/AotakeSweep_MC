@@ -13,13 +13,18 @@ import java.util.function.Supplier;
 public final class ForgeWorldAccess implements WorldAccess {
     private final Supplier<World> source;
     private final Runnable guard;
+    private final Runnable entityGuard;
     public ForgeWorldAccess(Supplier<World> source, Runnable guard) {
+        this(source, guard, guard);
+    }
+    public ForgeWorldAccess(Supplier<World> source, Runnable guard, Runnable entityGuard) {
         this.source = Objects.requireNonNull(source); this.guard = Objects.requireNonNull(guard);
+        this.entityGuard = Objects.requireNonNull(entityGuard);
     }
     private World current() { guard.run(); return Objects.requireNonNull(source.get(), "world"); }
     @Override public String dimensionId() { return current().dimension().location().toString(); }
     @Override public long gameTime() { return current().getGameTime(); }
-    @Override public List<EntityAccess> players() { return ForgeEntityAccess.views(current().players(), guard); }
+    @Override public List<EntityAccess> players() { return ForgeEntityAccess.views(current().players(), entityGuard); }
     @Override public List<EntityAccess> entities(double minX, double minY, double minZ, double maxX, double maxY, double maxZ) {
         double[] bounds = { minX, minY, minZ, maxX, maxY, maxZ };
         for (double value : bounds) if (!Double.isFinite(value)) throw new IllegalArgumentException("Entity bounds must be finite");
@@ -30,7 +35,7 @@ public final class ForgeWorldAccess implements WorldAccess {
         }
         World world = current();
         return ForgeEntityAccess.views(world.getEntities((Entity) null,
-                new AxisAlignedBB(minX, minY, minZ, maxX, maxY, maxZ), entity -> !entity.removed), guard);
+                new AxisAlignedBB(minX, minY, minZ, maxX, maxY, maxZ), entity -> !entity.removed), entityGuard);
     }
     @Override public Optional<BlockAccess> block(int x, int y, int z) {
         World world = current();

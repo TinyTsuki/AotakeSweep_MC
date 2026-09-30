@@ -56,7 +56,6 @@ public final class SweepTask<S> {
     private void checkEntityView() {
         checkOwner();
         if (closed) throw new IllegalStateException("Sweep task has ended");
-        backend.requireUsable();
     }
     private void checkpoint() {
         if (cancellationReason != null) throw new Cancelled(cancellationReason);
@@ -306,7 +305,7 @@ public final class SweepTask<S> {
         public boolean ignoreFilter() { check(); return request.ignoreFilter(); }
         public boolean preFiltered() { check(); return request.preFiltered(); }
         public Map<String, Object> configuration() { check(); return configuration == null ? Collections.emptyMap() : configuration; }
-        public ServerAccess server() { check(); return backend.server(this::check); }
+        public ServerAccess server() { check(); return backend.server(this::check, SweepTask.this::checkEntityView); }
         public NativeMembers members() { check(); return backend.members(); }
         public void requestScope(SweepScope requested) {
             check();

@@ -101,7 +101,7 @@ public class SweepTaskLeaseTest {
         Backend(RuleManager<Map<String,Object>> manager, RuleGeneration<Map<String,Object>>.PolicyLease lease) { this.manager=manager; this.lease=lease; }
         public long generationId(){ return lease.generationId() + (wrongGeneration ? 1 : 0); }
         public void requireUsable(){ if(!manager.isUsable(generationId())) throw new IllegalStateException("retired"); }
-        public ServerAccess server(Runnable guard){ return null; }
+        public ServerAccess server(Runnable callbackGuard,Runnable entityGuard){ return null; }
         public NativeMembers members(){ return lease.members(); }
         public ConfigEditSnapshot configuration(){ return lease.configuration(); }
         public List<EntityAccess> collect(SweepRequest r,SweepScope s,Runnable g){ return Collections.emptyList(); }
