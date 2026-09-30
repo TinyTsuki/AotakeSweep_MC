@@ -25,6 +25,10 @@ public final class AotakeRuleSmokeClientRunner {
     private AotakeRuleSmokeClientRunner() { }
     public static void tick(Minecraft client) {
         if (FMLEnvironment.production || !Boolean.getBoolean("aotake.scriptSmoke") || finished || client.getOverlay() != null) return;
+        if ("manager".equals(System.getProperty("aotake.scriptSmoke.mode"))) {
+            AotakeRuleManagerSmokeClientRunner.tick(client);
+            return;
+        }
         if ("migration".equals(System.getProperty("aotake.scriptSmoke.mode"))) {
             AotakeRuleMigrationSmokeClientRunner.tick(client);
             return;

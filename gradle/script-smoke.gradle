@@ -3,7 +3,7 @@ import java.util.concurrent.TimeUnit
 def smokeDirectory = layout.buildDirectory.dir('script-smoke').get().asFile
 def statusFile = new File(smokeDirectory, 'client.status')
 def mode = (project.findProperty('aotake.scriptSmokeMode') ?: 'rules').toString()
-if (!(mode in ['rules', 'migration'])) throw new GradleException('Unknown rule smoke mode: ' + mode)
+if (!(mode in ['rules', 'migration', 'manager'])) throw new GradleException('Unknown rule smoke mode: ' + mode)
 if (project.hasProperty('aotake.scriptSmoke')) {
     configurations.runtimeClasspath.exclude(group: 'curse.maven')
     minecraft.runs.client {
@@ -29,7 +29,7 @@ tasks.register('scriptSmoke') {
         try {
             if (!process.waitFor(180, TimeUnit.SECONDS)) throw new GradleException('Rule client smoke timed out')
             def status = statusFile.isFile() ? statusFile.getText('UTF-8') : ''
-            def expected = mode == 'migration' ? 'FINISHED migration-client' : 'FINISHED rule-client'
+            def expected = mode == 'rules' ? 'FINISHED rule-client' : 'FINISHED ' + mode + '-client'
             if (process.exitValue() != 0 || !status.contains(expected) || status.contains('FAIL')) {
                 throw new GradleException('Rule client smoke failed; see ' + new File(smokeDirectory, 'client.log'))
             }
