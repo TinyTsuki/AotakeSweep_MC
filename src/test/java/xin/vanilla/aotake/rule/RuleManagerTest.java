@@ -330,6 +330,25 @@ public class RuleManagerTest {
         }
     }
 
+    @Test public void sweepFaultCancelsAllCurrentLeasesWithoutPoisoningReplacement() throws Exception {
+        try (Fixture f = fixture()) {
+            long original = f.await(f.manager.reload());
+            List<String> cancellations = new ArrayList<>();
+            RuleGeneration<Map<String, Object>>.PolicyLease first = f.manager.leasePolicy(cancellations::add);
+            RuleGeneration<Map<String, Object>>.PolicyLease second = f.manager.leasePolicy(cancellations::add);
+            try {
+                f.manager.failGeneration(original, new IllegalStateException("policy failed"));
+                assertFalse(f.manager.isUsable(original));
+                assertEquals(2, cancellations.size());
+                assertNotNull(first.configuration());
+                long replacement = f.await(f.manager.reload());
+                assertNotEquals(original, replacement);
+                f.manager.failGeneration(original, new IllegalStateException("late failure"));
+                assertTrue(f.manager.isUsable(replacement));
+            } finally { first.close(); second.close(); }
+        }
+    }
+
     private Fixture fixture() throws Exception { return fixture(true); }
     private Fixture fixture(boolean start) throws Exception { return new Fixture(temporary.newFolder().toPath(), start); }
     static Map<String,Object> entity(String resource, int tick) {

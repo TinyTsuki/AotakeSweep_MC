@@ -10,6 +10,7 @@ public final class PreparedSweep {
     PreparedSweep(SweepTask<?> task, long generationId) { this.task = task; this.generationId = generationId; }
     public UUID taskId() { return task.id(); }
     public long generationId() { return generationId; }
+    public int selectedCount() { return task.selectedCount(); }
     public void start() {
         consume();
         task.start();

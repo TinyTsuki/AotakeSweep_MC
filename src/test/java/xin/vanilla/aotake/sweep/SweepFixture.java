@@ -6,7 +6,7 @@ import xin.vanilla.banira.common.config.ConfigEditSnapshot;
 import java.lang.reflect.Proxy;
 import java.util.*;
 
-final class SweepFixture implements SweepBackend {
+class SweepFixture implements SweepBackend {
     static final class Node {
         final String id;
         boolean safe, junk = true, valid = true;

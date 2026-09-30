@@ -56,7 +56,6 @@ public final class ForgeAotakeGameEventAdapter {
             ModConfig config = event.getConfig();
             ConfigHolder common = BaniraConfig.holder(CommonConfig.class);
             if (common != null && config.getFileName().contains(common.getConfigName()) && BaniraServer.isRunning()) {
-                AotakeUtils.clearEntityFilterCaches();
             }
         } catch (Exception ignored) {
             // 配置事件可能早于服务端状态建立，此时无需刷新运行时缓存。

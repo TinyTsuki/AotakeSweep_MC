@@ -19,6 +19,7 @@ public final class SweepTask<S> {
     private SweepScope scope;
     private Map<String, Object> configuration;
     private List<EntityAccess> selected = Collections.emptyList();
+    private List<List<EntityAccess>> batches = Collections.emptyList();
     private final IdentityHashMap<Object, DefaultSweepFilter.Entry<EntityAccess, Object>> defaultScans = new IdentityHashMap<>();
     private SweepPhase phase = SweepPhase.CREATED;
     private SweepOutcome outcome;
@@ -45,6 +46,7 @@ public final class SweepTask<S> {
     public UUID id() { return id; }
     public SweepPhase phase() { return phase; }
     public SweepOutcome outcome() { return outcome; }
+    int selectedCount() { checkDriver(); return selectedCount; }
     void onCompletion(Runnable completion) { checkDriver(); this.completion = Objects.requireNonNull(completion); }
     void checkDriver() {
         checkOwner();
@@ -180,8 +182,9 @@ public final class SweepTask<S> {
             skipped += selectedCount - selected.size();
             requireContinue(step(Hook.BEFORE_CLEANUP, c -> policy.beforeCleanup(c, state, Collections.unmodifiableList(selected))), "beforeCleanup");
             phase = SweepPhase.RUNNING;
-            batchCount = selected.isEmpty() ? (request.operation() == SweepOperation.RECYCLE ? 1 : 0)
-                    : (selected.size() - 1) / request.batchSize() + 1;
+            batches = selected.isEmpty() && request.operation() == SweepOperation.RECYCLE
+                    ? Collections.singletonList(Collections.emptyList()) : backend.batches(request, Collections.unmodifiableList(selected));
+            batchCount = batches.size();
             if (batchCount == 0) finish(SweepPhase.SUCCESS, "no candidates", null);
         } catch (RuntimeException | Error error) { terminate(error); }
         finally { driving = false; }
@@ -193,8 +196,8 @@ public final class SweepTask<S> {
         driving = true;
         try {
             checkpoint();
-            int end = offset + Math.min(request.batchSize(), selected.size() - offset);
-            List<EntityAccess> entities = Collections.unmodifiableList(selected.subList(offset, end));
+            List<EntityAccess> entities = Collections.unmodifiableList(batches.get(batchIndex));
+            int end = offset + entities.size();
             SweepBackend.Progress progress = new SweepBackend.Progress(entities.size());
             Throwable failure = null;
             boolean cancel = false;
@@ -261,7 +264,7 @@ public final class SweepTask<S> {
                     afterRelease = () -> {};
                     outcome = snapshot(stoppedAt, reason, failure);
                     closed = true;
-                    selected = Collections.emptyList(); defaultScans.clear(); state = null; policy = null; backend = null; request = null; configuration = null;
+                    selected = Collections.emptyList(); batches = Collections.emptyList(); defaultScans.clear(); state = null; policy = null; backend = null; request = null; configuration = null;
                     Runnable done = completion; completion = () -> {};
                     finishing = false;
                     done.run();

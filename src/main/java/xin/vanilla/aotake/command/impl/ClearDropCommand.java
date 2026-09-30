@@ -1,5 +1,9 @@
 package xin.vanilla.aotake.command.impl;
 
+import xin.vanilla.aotake.internal.server.AotakeSweepRuntime;
+import xin.vanilla.aotake.internal.forge.sweep.ForgeSweepTarget;
+import xin.vanilla.aotake.api.sweep.SweepOperation;
+import xin.vanilla.aotake.api.sweep.SweepTrigger;
 import com.mojang.brigadier.Command;
 import com.mojang.brigadier.arguments.BoolArgumentType;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
@@ -7,11 +11,7 @@ import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import net.minecraft.command.CommandSource;
 import net.minecraft.command.Commands;
 import net.minecraft.command.arguments.DimensionArgument;
-import net.minecraft.entity.Entity;
-import net.minecraft.entity.item.ItemEntity;
-import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.entity.player.ServerPlayerEntity;
-import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.server.ServerWorld;
 import xin.vanilla.aotake.AotakeComponent;
 import xin.vanilla.aotake.AotakeLang;
@@ -20,19 +20,11 @@ import xin.vanilla.aotake.config.CommonConfig;
 import xin.vanilla.aotake.data.SweepResult;
 import xin.vanilla.aotake.data.player.PlayerSweepData;
 import xin.vanilla.aotake.enums.EnumCommandType;
-import xin.vanilla.aotake.notification.AotakeNotificationTypes;
 import xin.vanilla.aotake.util.AotakeUtils;
-import xin.vanilla.banira.api.BaniraServer;
 import xin.vanilla.banira.common.data.Component;
 import xin.vanilla.banira.common.util.CommandUtils;
-import xin.vanilla.banira.common.util.EntityUtils;
-import xin.vanilla.banira.common.util.MessageUtils;
 import xin.vanilla.banira.common.util.NumberUtils;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Objects;
-import java.util.stream.Collectors;
 
 @SuppressWarnings("resource")
 public class ClearDropCommand {
@@ -52,51 +44,20 @@ public class ClearDropCommand {
             boolean withEntity = CommandUtils.getBooleanDefault(context, "withEntity", false);
             boolean ignoreFilter = CommandUtils.getBooleanDefault(context, "ignoreFilter", false);
 
-            List<Entity> entities;
-            if (range > 0) {
-                ServerPlayerEntity player = context.getSource().getPlayerOrException();
-                entities = new ArrayList<>(player.level.getEntitiesOfClass(Entity.class, player.getBoundingBox().inflate(range)));
-            } else if (dimension != null) {
-                entities = EntityUtils.getAllEntities().stream()
-                        .filter(entity -> entity.level == dimension)
-                        .collect(Collectors.toList());
-            } else {
-                entities = EntityUtils.getAllEntities();
+            ServerPlayerEntity player = range > 0 ? context.getSource().getPlayerOrException() : null;
+            String dimensionId = player != null ? player.level.dimension().location().toString()
+                    : dimension == null ? null : dimension.dimension().location().toString();
+            ForgeSweepTarget target =
+                    new ForgeSweepTarget(dimensionId,
+                            player == null ? null : player.getBoundingBox().inflate(range), withEntity);
+            try {
+                AotakeSweepRuntime.submit(
+                        SweepTrigger.COMMAND, SweepOperation.DELETE,
+                        target, ignoreFilter, null, false, new SweepResult(), AotakeSweep.getEntitySweeper(), null);
+            } catch (RuntimeException failure) {
+                AotakeUtils.reportSweepFailure(failure);
+                return 0;
             }
-            entities = entities.stream()
-                    .filter(Objects::nonNull)
-                    .filter(AotakeUtils::prepareSweepCandidate)
-                    .filter(entity -> !(entity instanceof PlayerEntity))
-                    .filter(entity -> withEntity || entity instanceof ItemEntity)
-                    .collect(Collectors.toList());
-            if (!ignoreFilter) {
-                try {
-                    entities = AotakeUtils.getAllEntitiesByFilter(entities, false);
-                } catch (xin.vanilla.aotake.rule.RuleExecutionException failure) {
-                    AotakeUtils.reportSweepFailure(failure);
-                    return 0;
-                }
-            }
-
-            SweepResult result = new SweepResult();
-            entities.forEach(entity -> {
-                if (entity instanceof ItemEntity) {
-                    result.plusItemCount(((ItemEntity) entity).getItem().getCount());
-                } else {
-                    result.plusEntityCount();
-                }
-                AotakeUtils.removeEntity(entity, false);
-            });
-
-            BaniraServer.require(MinecraftServer.class)
-                    .getPlayerList()
-                    .getPlayers()
-                    .forEach(player -> MessageUtils.sendNotification(player
-                            , AotakeUtils.getWarningMessage(result.isEmpty() ? "fail" : "success"
-                                    , AotakeLang.getPlayerLanguage(player)
-                                    , result
-                            )
-                            , AotakeNotificationTypes.ADMIN_BROADCAST));
             return 1;
         };
 

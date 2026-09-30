@@ -1,5 +1,9 @@
 package xin.vanilla.aotake.util;
 
+import xin.vanilla.aotake.internal.server.AotakeSweepRuntime;
+import xin.vanilla.aotake.internal.forge.sweep.ForgeSweepTarget;
+import xin.vanilla.aotake.api.sweep.SweepOperation;
+import xin.vanilla.aotake.api.sweep.SweepTrigger;
 import lombok.NonNull;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.item.ItemEntity;
@@ -21,7 +25,6 @@ import xin.vanilla.aotake.AotakeComponent;
 import xin.vanilla.aotake.AotakeLang;
 import xin.vanilla.aotake.AotakeSweep;
 import xin.vanilla.aotake.config.CommonConfig;
-import xin.vanilla.aotake.config.CommonConfigView;
 import xin.vanilla.aotake.data.ConcurrentShuffleList;
 import xin.vanilla.aotake.data.DropStatistics;
 import xin.vanilla.aotake.data.SweepResult;
@@ -59,7 +62,7 @@ public class EntitySweeper {
     private List<Inventory> inventoryList;
     private ConcurrentShuffleList<KeyValue<WorldCoordinate, ItemStack>> dropList;
 
-    private final Set<SweepJob> jobs = Collections.newSetFromMap(new IdentityHashMap<>());
+
 
     private void init() {
         WorldTrashData worldTrashData = WorldTrashData.get();
@@ -72,7 +75,6 @@ public class EntitySweeper {
     }
 
     public void clear() {
-        for (SweepJob job : new ArrayList<>(jobs)) job.cancel();
         ChunkVaultStorage.flushPending();
         removals.clear();
         this.inventoryList = null;
@@ -84,18 +86,9 @@ public class EntitySweeper {
     }
 
     public SweepResult addDrops(@NonNull List<Entity> entities, SweepResult result, RuleGeneration<Entity> generation) {
-        CleanupRuleGate<Entity> gate = new CleanupRuleGate<>(generation, () -> AotakeRuleRuntime.isUsable(generation.id()));
-        gate.requireUsable();
-        SweepContext context = new SweepContext(CommonConfig.get().base());
-        List<Entity> eligible = eligible(entities);
-        gate.prepare(eligible, entity -> entity instanceof ItemEntity, !context.catchItems.isEmpty());
-        List<List<Entity>> batches = eligible.isEmpty() ? Collections.singletonList(new ArrayList<>())
-                : CollectionUtils.splitToCollections(eligible, context.sweepEntityLimit, context.sweepBatchLimit);
-        this.init();
-        result.setTotalBatch(batches.size());
-        SweepJob job = new SweepJob(gate, batches, result, context);
-        jobs.add(job);
-        job.run();
+        AotakeSweepRuntime.submit(SweepTrigger.COMMAND,
+                SweepOperation.RECYCLE, ForgeSweepTarget.all(),
+                false, entities, true, result, this, generation);
         return result;
     }
 
@@ -109,39 +102,7 @@ public class EntitySweeper {
         return eligible;
     }
 
-    private final class SweepJob implements Runnable {
-        private final List<List<Entity>> batches;
-        private final SweepResult result;
-        private final SweepContext context;
-        private final RecyclingBatch committer;
-        private int index;
-        private boolean canceled;
 
-        private SweepJob(CleanupRuleGate<Entity> gate,
-                         List<List<Entity>> batches, SweepResult result, SweepContext context) {
-            this.batches = new ArrayList<>();
-            for (List<Entity> batch : batches) this.batches.add(new ArrayList<>(batch));
-            this.result = result; this.context = context;
-            this.committer = new RecyclingBatch(gate, result, context);
-        }
-
-        void cancel() { canceled = true; batches.clear(); jobs.remove(this); }
-
-        @Override public void run() {
-            if (canceled) return;
-            try {
-                List<Entity> batch = batches.get(index);
-                committer.execute(batch, new SweepBackend.Progress(batch.size()));
-                batches.get(index).clear();
-                finishBatch(result, context);
-                if (++index >= batches.size()) cancel();
-                else BaniraScheduler.schedule(BaniraServer.require(MinecraftServer.class), context.sweepEntityInterval, this);
-            } catch (RuntimeException failure) {
-                cancel();
-                AotakeUtils.reportSweepFailure(failure);
-            }
-        }
-    }
 
     /** One recycling transaction state shared by every batch of a cleanup task. */
     public final class RecyclingBatch {
@@ -178,7 +139,7 @@ public class EntitySweeper {
         public void execute(List<Entity> entities, SweepBackend.Progress progress) { executor.execute(entities, progress); }
     }
 
-    public RecyclingBatch beginRecycling(SweepResult result, RuleGeneration<Entity> generation, CommonConfigView.BaseView settings) {
+    public RecyclingBatch beginRecycling(SweepResult result, RuleGeneration<Entity> generation, CommonConfig.BaseCategory settings) {
         return new RecyclingBatch(new CleanupRuleGate<>(generation, () -> AotakeRuleRuntime.isUsable(generation.id())),
                 result, new SweepContext(settings));
     }
@@ -188,51 +149,44 @@ public class EntitySweeper {
         finally { WorldTrashData.get().setDirty(); }
     }
 
-    private void finishBatch(SweepResult result, SweepContext context) {
-        result.incrementBatch();
+    public void notifyResult(SweepResult result, CommonConfig.BaseCategory settings) {
+        ChunkVaultStorage.flushPending();
 
-        if (result.getBatch().get() >= result.getTotalBatch()) {
-            ChunkVaultStorage.flushPending();
-
-            List<ServerPlayerEntity> players = BaniraServer.require(MinecraftServer.class).getPlayerList().getPlayers();
-            for (ServerPlayerEntity p : players) {
-                String language = AotakeLang.getPlayerLanguage(p);
-                Component msg = AotakeUtils.getWarningMessage(result.isEmpty() ? "fail" : "success"
-                        , language
-                        , result);
-                PlayerSweepData playerData = PlayerSweepData.getData(p);
-                if (playerData.isShowSweepResult()) {
-                    String openCom = "/" + AotakeUtils.getCommand(EnumCommandType.DUSTBIN_OPEN);
-                    msg.clickEvent(new ClickEvent(ClickEvent.Action.SUGGEST_COMMAND, openCom))
-                            .hoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT
-                                    , AotakeComponent.get().literal(openCom).toVanilla())
-                            );
-                    MessageUtils.sendNotification(p, AotakeComponent.get().empty()
-                                    .append(msg)
-                                    .append(AotakeComponent.get().literal("[x]")
-                                            .color(EnumMCColor.RED.getColor())
-                                            .hoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT
-                                                    , AotakeComponent.get().transAuto("not_show_button")
-                                                    .toVanilla(language))
-                                            )
-                                            .clickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND
-                                                    , "/" + AotakeUtils.getCommandPrefix() + " config player showSweepResult change")
-                                            )
-                                    )
-                            , AotakeNotificationTypes.SWEEP_RESULT_INTERACTIVE);
-                }
-                if (playerData.isEnableWarningVoice()) {
-                    String voice = AotakeUtils.getWarningVoice(result.isEmpty() ? "fail" : "success");
-                    float volume = context.warningVoiceVolume / 100f;
-                    if (StringUtils.isNotNullOrEmpty(voice)) {
-                        CommandUtils.executeCommandNoOutput(p, String.format("playsound %s voice @s ~ ~ ~ %s", voice, volume));
-                    }
+        List<ServerPlayerEntity> players = BaniraServer.require(MinecraftServer.class).getPlayerList().getPlayers();
+        for (ServerPlayerEntity p : players) {
+            String language = AotakeLang.getPlayerLanguage(p);
+            Component msg = AotakeUtils.getWarningMessage(result.isEmpty() ? "fail" : "success"
+                    , language
+                    , result);
+            PlayerSweepData playerData = PlayerSweepData.getData(p);
+            if (playerData.isShowSweepResult()) {
+                String openCom = "/" + AotakeUtils.getCommand(EnumCommandType.DUSTBIN_OPEN);
+                msg.clickEvent(new ClickEvent(ClickEvent.Action.SUGGEST_COMMAND, openCom))
+                        .hoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT
+                                , AotakeComponent.get().literal(openCom).toVanilla())
+                        );
+                MessageUtils.sendNotification(p, AotakeComponent.get().empty()
+                                .append(msg)
+                                .append(AotakeComponent.get().literal("[x]")
+                                        .color(EnumMCColor.RED.getColor())
+                                        .hoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT
+                                                , AotakeComponent.get().transAuto("not_show_button")
+                                                .toVanilla(language))
+                                        )
+                                        .clickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND
+                                                , "/" + AotakeUtils.getCommandPrefix() + " config player showSweepResult change")
+                                        )
+                                )
+                        , AotakeNotificationTypes.SWEEP_RESULT_INTERACTIVE);
+            }
+            if (playerData.isEnableWarningVoice()) {
+                String voice = AotakeUtils.getWarningVoice(result.isEmpty() ? "fail" : "success");
+                float volume = settings.sweep().sweepWarningVoiceVolume() / 100f;
+                if (StringUtils.isNotNullOrEmpty(voice)) {
+                    CommandUtils.executeCommandNoOutput(p, String.format("playsound %s voice @s ~ ~ ~ %s", voice, volume));
                 }
             }
-        } else {
-            LOGGER.debug("AddDrops {}/{} at {}", result.getBatch().get(), result.getTotalBatch(), System.currentTimeMillis());
         }
-
     }
 
     private SweepResult processDrop(@NonNull Entity original, SweepResult batchResult, SweepContext context, boolean recycle, SweepBackend.Progress progress) {
@@ -465,16 +419,10 @@ public class EntitySweeper {
         private final EnumOverflowMode overflowMode;
         private final int cacheLimit;
         private final List<WorldCoordinate> blockPositions;
-        private final int sweepEntityLimit;
-        private final int sweepEntityInterval;
-        private final int sweepBatchLimit;
-        private final int warningVoiceVolume;
 
-        private SweepContext(CommonConfigView.BaseView base) {
-            CommonConfigView.BaseView.SweepView sweep = base.sweep();
-            CommonConfigView.BaseView.EntityCatchView entityCatch = base.entityCatch();
-            CommonConfigView.BaseView.DustbinView dustbin = base.dustbin();
-            CommonConfigView.BaseView.BatchView batch = base.batch();
+        private SweepContext(CommonConfig.BaseCategory base) {
+            CommonConfig.EntityCatchSection entityCatch = base.entityCatch();
+            CommonConfig.DustbinSection dustbin = base.dustbin();
 
             this.catchItems = new ArrayList<>(entityCatch.catchItem());
             this.chunkVaultEnabled = base.chunk().chunkVaultEnabled();
@@ -492,10 +440,6 @@ public class EntitySweeper {
                 } catch (RuntimeException ignored) {
                 }
             }
-            this.sweepEntityLimit = batch.sweepEntityLimit();
-            this.sweepEntityInterval = batch.sweepEntityInterval();
-            this.sweepBatchLimit = batch.sweepBatchLimit();
-            this.warningVoiceVolume = sweep.sweepWarningVoiceVolume();
         }
     }
 

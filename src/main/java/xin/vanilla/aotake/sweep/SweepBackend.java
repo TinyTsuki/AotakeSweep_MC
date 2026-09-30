@@ -21,6 +21,9 @@ public interface SweepBackend {
     /** Only final DEFAULT decisions are included, with their captured scan data. */
     List<EntityAccess> filter(SweepRequest request, List<DefaultSweepFilter.Entry<EntityAccess, Object>> entries);
     List<EntityAccess> preflight(SweepRequest request, SweepScope scope, List<EntityAccess> selected);
+    default List<List<EntityAccess>> batches(SweepRequest request, List<EntityAccess> selected) {
+        return xin.vanilla.banira.common.util.CollectionUtils.splitToCollections(selected, request.batchSize());
+    }
     /** Record each committed effect before moving on to any operation that can throw. */
     void execute(BatchContext context, Progress progress);
     void flush();

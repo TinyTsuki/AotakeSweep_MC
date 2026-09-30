@@ -103,6 +103,11 @@ public final class RuleManager<S> implements AutoCloseable {
         return active;
     }
 
+    public void failGeneration(long id, Throwable failure) {
+        checkOwner();
+        if (active != null && active.id() == id) active.retire("Sweep policy failed: " + failure.getMessage());
+    }
+
     public boolean isUsable(long generationId) {
         checkOwner();
         if (!closed) refreshSelection();

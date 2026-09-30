@@ -119,7 +119,12 @@ public final class AotakeRuleNetworkSmokeServerRunner {
                     write(source, originalSource); pending = AotakeRuleRuntime.reload(); state = 10; break;
                 case 10:
                     if (!pending.isDone()) return;
-                    pending.join(); startBatches(); state = 11; break;
+                    pending.join(); startBatches(); state = 12; break;
+                case 12:
+                    if (result.getBatch().get() == 0) return;
+                    require(result.getBatch().get() == 1 && vaultCount() == 2, "First batch did not commit exactly one stack");
+                    holder.set(RuleMigrationTransaction.MODES.get(0), "WHITE"); holder.save();
+                    pending = AotakeRuleRuntime.reload(); deadlineTick = ticks + 50; state = 11; break;
                 case 11:
                     if (!pending.isDone() || ticks < deadlineTick) return;
                     pending.join();
@@ -146,9 +151,6 @@ public final class AotakeRuleNetworkSmokeServerRunner {
         }
         result = new SweepResult().setChunkOverloadVault(true).setChunkVaultTimePrefix("rule_smoke").setChunkVaultRunId("cancellation");
         sweeper.addDrops(new ArrayList<Entity>(drops), result);
-        require(result.getBatch().get() == 1 && vaultCount() == 2, "First batch did not commit exactly one stack");
-        holder.set(RuleMigrationTransaction.MODES.get(0), "WHITE"); holder.save();
-        pending = AotakeRuleRuntime.reload(); deadlineTick = ticks + 50;
     }
     private static Path configPath() { return BaniraDataPaths.gameConfigPath().resolve(holder.getConfigName() + ".toml"); }
     private static void externalEdit() throws IOException {

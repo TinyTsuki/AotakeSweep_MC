@@ -1,5 +1,6 @@
 package xin.vanilla.aotake;
 
+import xin.vanilla.aotake.internal.server.AotakeSweepRuntime;
 import lombok.Getter;
 import lombok.Setter;
 import net.minecraft.entity.player.ServerPlayerEntity;
@@ -107,15 +108,19 @@ public class AotakeSweep {
             entitySweeper.clear();
             xin.vanilla.aotake.event.EventHandlerProxy.resetCleanupState();
             AotakeRuleRuntime.start(event.serverAs(net.minecraft.server.MinecraftServer.class));
+            AotakeSweepRuntime.start(event.serverAs(net.minecraft.server.MinecraftServer.class));
         });
         BaniraEventBus.Server.onStopping(event -> {
             net.minecraft.server.MinecraftServer server = event.serverAs(net.minecraft.server.MinecraftServer.class);
             try {
-                if (server != null) server.getAllLevels().forEach(EntitySweeper::flushPendingRemovals);
+                try { AotakeSweepRuntime.stop(); }
+                finally { if (server != null) server.getAllLevels().forEach(EntitySweeper::flushPendingRemovals); }
             } finally {
-                entitySweeper.clear();
-                xin.vanilla.aotake.event.EventHandlerProxy.resetCleanupState();
-                AotakeRuleRuntime.stop();
+                try { entitySweeper.clear(); }
+                finally {
+                    xin.vanilla.aotake.event.EventHandlerProxy.resetCleanupState();
+                    AotakeRuleRuntime.stop();
+                }
             }
         });
         AotakeNetworkSmokeServerRunner.register();

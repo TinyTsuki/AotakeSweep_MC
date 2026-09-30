@@ -51,6 +51,24 @@ public class SweepCoordinatorTest {
         assertEquals(Collections.singletonList("constructor failed"), failures); assertEquals(2, created[0]); assertEquals(0, c.active());
     }
 
+    @Test public void completionFailureDoesNotPreventOtherTasksFromReleasing() {
+        List<SweepTask<?>> tasks = new ArrayList<>();
+        List<String> failures = new ArrayList<>();
+        SweepCoordinator coordinator = new SweepCoordinator((id, request) -> {
+            SweepTask<?> task = new SweepTask<>(id, request, new SweepFixture(), new DefaultSweepPolicy<>());
+            tasks.add(task);
+            return task;
+        }, ready -> {}, (id, error) -> failures.add(error.getMessage()), task -> {
+            throw new IllegalStateException("completion notification failed");
+        });
+        SweepRequest request = SweepRequest.builder(SweepTrigger.COMMAND, SweepOperation.RECYCLE).build();
+        coordinator.submit(request); coordinator.submit(request); coordinator.tick();
+        coordinator.stop();
+        assertEquals(0, coordinator.active());
+        assertEquals(2, failures.size());
+        for (SweepTask<?> task : tasks) assertEquals(SweepPhase.CANCELLED, task.phase());
+    }
+
     @Test public void crossThreadSubmissionIsRejected() throws Exception {
         SweepCoordinator c = new SweepCoordinator((id, r) -> null, p -> {}, (id, error) -> { throw new AssertionError(error); });
         ExecutionException error = assertThrows(ExecutionException.class, () -> CompletableFuture.runAsync(() -> c.submit(SweepRequest.builder(SweepTrigger.COMMAND, SweepOperation.DELETE).build())).get(3, TimeUnit.SECONDS));

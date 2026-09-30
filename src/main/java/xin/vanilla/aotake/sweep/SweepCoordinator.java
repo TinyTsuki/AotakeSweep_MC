@@ -10,11 +10,17 @@ public final class SweepCoordinator {
     private final BiFunction<UUID, SweepRequest, SweepTask<?>> factory;
     private final Consumer<PreparedSweep> ready;
     private final BiConsumer<UUID, Throwable> failures;
+    private final Consumer<SweepTask<?>> completed;
     private final Deque<Pending> pending = new ArrayDeque<>();
     private final Map<UUID, SweepTask<?>> active = new LinkedHashMap<>();
     private boolean stopped, draining;
     public SweepCoordinator(BiFunction<UUID, SweepRequest, SweepTask<?>> factory, Consumer<PreparedSweep> ready, BiConsumer<UUID, Throwable> failures) {
+        this(factory, ready, failures, task -> {});
+    }
+    public SweepCoordinator(BiFunction<UUID, SweepRequest, SweepTask<?>> factory, Consumer<PreparedSweep> ready,
+                            BiConsumer<UUID, Throwable> failures, Consumer<SweepTask<?>> completed) {
         this.factory = Objects.requireNonNull(factory); this.ready = Objects.requireNonNull(ready); this.failures = Objects.requireNonNull(failures);
+        this.completed = Objects.requireNonNull(completed);
     }
     public UUID submit(SweepRequest request) {
         checkOwner(); if (stopped) throw new IllegalStateException("Sweep coordinator stopped");
@@ -33,7 +39,14 @@ public final class SweepCoordinator {
                     task = Objects.requireNonNull(factory.apply(next.id, next.request), "task factory result");
                     if (!next.id.equals(task.id())) throw new IllegalStateException("Task identity mismatch");
                     final SweepTask<?> registered = task;
-                    task.onCompletion(() -> active.remove(next.id, registered));
+                    task.onCompletion(() -> {
+                        active.remove(next.id, registered);
+                        try { completed.accept(registered); }
+                        catch (RuntimeException | Error error) {
+                            SweepTask.rethrowFatal(error);
+                            failures.accept(next.id, error);
+                        }
+                    });
                     active.put(next.id, task);
                     if (stopped) { task.cancel("server stopped"); continue; }
                     PreparedSweep prepared = task.prepare();
@@ -49,7 +62,16 @@ public final class SweepCoordinator {
     public void stop() {
         checkOwner(); if (stopped) return;
         stopped = true; pending.clear();
-        for (SweepTask<?> task : new ArrayList<>(active.values())) task.cancel("server stopped");
+        RuntimeException failure = null;
+        for (SweepTask<?> task : new ArrayList<>(active.values())) {
+            try { task.cancel("server stopped"); }
+            catch (RuntimeException | Error error) {
+                SweepTask.rethrowFatal(error);
+                if (failure == null) failure = new IllegalStateException("Sweep shutdown failed", error);
+                else failure.addSuppressed(error);
+            }
+        }
+        if (failure != null) throw failure;
     }
     public int queued() { checkOwner(); return pending.size(); }
     public int active() { checkOwner(); return active.size(); }

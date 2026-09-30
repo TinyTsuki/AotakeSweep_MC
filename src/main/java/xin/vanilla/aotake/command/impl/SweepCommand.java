@@ -1,12 +1,16 @@
 package xin.vanilla.aotake.command.impl;
 
+import xin.vanilla.aotake.data.SweepResult;
+import xin.vanilla.aotake.internal.server.AotakeSweepRuntime;
+import xin.vanilla.aotake.internal.forge.sweep.ForgeSweepTarget;
+import xin.vanilla.aotake.api.sweep.SweepOperation;
+import xin.vanilla.aotake.api.sweep.SweepTrigger;
 import com.mojang.brigadier.Command;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import net.minecraft.command.CommandSource;
 import net.minecraft.command.Commands;
 import net.minecraft.command.arguments.DimensionArgument;
-import net.minecraft.entity.Entity;
 import net.minecraft.entity.player.ServerPlayerEntity;
 import net.minecraft.world.server.ServerWorld;
 import xin.vanilla.aotake.AotakeComponent;
@@ -17,14 +21,9 @@ import xin.vanilla.aotake.data.player.PlayerSweepData;
 import xin.vanilla.aotake.enums.EnumCommandType;
 import xin.vanilla.aotake.util.AotakeUtils;
 import xin.vanilla.banira.common.data.Component;
-import xin.vanilla.banira.common.util.BaniraScheduler;
 import xin.vanilla.banira.common.util.CommandUtils;
-import xin.vanilla.banira.common.util.EntityUtils;
 import xin.vanilla.banira.common.util.NumberUtils;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.stream.Collectors;
 
 public class SweepCommand {
     public static LiteralArgumentBuilder<CommandSource> sweep() {
@@ -40,19 +39,20 @@ public class SweepCommand {
             if (range == 0)
                 range = NumberUtils.toInt(CommandUtils.replaceResourcePath(CommandUtils.getStringEx(context, "dimension", "")));
             ServerWorld dimension = CommandUtils.getDimensionDefault(context, "dimension", null);
-            List<Entity> entities;
-            if (range > 0) {
-                ServerPlayerEntity player = context.getSource().getPlayerOrException();
-                entities = new ArrayList<>(player.level.getEntitiesOfClass(Entity.class, player.getBoundingBox().inflate(range)));
-            } else if (dimension != null) {
-                entities = EntityUtils.getAllEntities().stream()
-                        .filter(entity -> entity.level == dimension)
-                        .collect(Collectors.toList());
-            } else {
-                entities = EntityUtils.getAllEntities();
+            ServerPlayerEntity player = range > 0 ? context.getSource().getPlayerOrException() : null;
+            String dimensionId = player != null ? player.level.dimension().location().toString()
+                    : dimension == null ? null : dimension.dimension().location().toString();
+            ForgeSweepTarget target =
+                    new ForgeSweepTarget(dimensionId,
+                            player == null ? null : player.getBoundingBox().inflate(range), true);
+            try {
+                AotakeSweepRuntime.submit(
+                        SweepTrigger.COMMAND, SweepOperation.RECYCLE,
+                        target, false, null, false, new SweepResult(), AotakeSweep.getEntitySweeper(), null);
+            } catch (RuntimeException failure) {
+                AotakeUtils.reportSweepFailure(failure);
+                return 0;
             }
-
-            BaniraScheduler.schedule(context.getSource().getServer(), 1, () -> AotakeUtils.sweep(entities, false));
             return 1;
         };
 

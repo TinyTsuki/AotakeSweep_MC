@@ -1,10 +1,15 @@
 package xin.vanilla.aotake.util;
 
+import xin.vanilla.aotake.sweep.SweepConfiguration;
+import xin.vanilla.aotake.internal.server.AotakeSweepRuntime;
+import xin.vanilla.aotake.internal.forge.sweep.ForgeSweepFilter;
+import xin.vanilla.aotake.internal.forge.sweep.ForgeSweepTarget;
+import xin.vanilla.aotake.api.sweep.SweepOperation;
+import xin.vanilla.aotake.api.sweep.SweepTrigger;
 import xin.vanilla.aotake.internal.server.AotakeRuleRuntime;
 import xin.vanilla.aotake.rule.RuleGeneration;
 import xin.vanilla.aotake.rule.RuleManager;
 import xin.vanilla.aotake.rule.RuleExecutionException;
-import xin.vanilla.aotake.sweep.DefaultSweepFilter;
 
 import lombok.NonNull;
 import net.minecraft.block.BlockState;
@@ -28,7 +33,6 @@ import net.minecraft.util.math.BlockRayTraceResult;
 import net.minecraft.util.math.vector.Vector3d;
 import net.minecraft.util.text.event.ClickEvent;
 import net.minecraft.util.text.event.HoverEvent;
-import net.minecraft.world.World;
 import net.minecraft.world.server.ServerWorld;
 import net.minecraftforge.common.util.LazyOptional;
 import net.minecraftforge.fml.ModList;
@@ -42,16 +46,11 @@ import xin.vanilla.aotake.AotakeComponent;
 import xin.vanilla.aotake.AotakeLang;
 import xin.vanilla.aotake.AotakeSweep;
 import xin.vanilla.aotake.config.CommonConfig;
-import xin.vanilla.aotake.config.CommonConfigView;
 import xin.vanilla.aotake.config.WarningConfig;
-import xin.vanilla.aotake.data.ChunkKey;
 import xin.vanilla.aotake.data.SweepResult;
 import xin.vanilla.aotake.data.player.PlayerSweepData;
-import xin.vanilla.aotake.data.world.ChunkVaultStorage;
 import xin.vanilla.aotake.data.world.WorldTrashData;
 import xin.vanilla.aotake.enums.EnumCommandType;
-import xin.vanilla.aotake.enums.EnumListType;
-import xin.vanilla.aotake.enums.EnumSelfCleanMode;
 import xin.vanilla.aotake.event.EventHandlerProxy;
 import xin.vanilla.aotake.network.packet.DustbinPageSyncToClient;
 import xin.vanilla.aotake.notification.AotakeNotificationTypes;
@@ -63,7 +62,6 @@ import xin.vanilla.banira.common.util.*;
 
 import javax.annotation.Nullable;
 import java.util.*;
-import java.util.stream.Collectors;
 
 
 @SuppressWarnings({"resource"})
@@ -276,69 +274,7 @@ public class AotakeUtils {
 
     // region 扫地
 
-    private static Set<BlockState> SAFE_BLOCKS_STATE;
-    private static Set<String> SAFE_BLOCKS;
-    private static Set<BlockState> SAFE_BLOCKS_BELOW_STATE;
-    private static Set<String> SAFE_BLOCKS_BELOW;
-    private static Set<BlockState> SAFE_BLOCKS_ABOVE_STATE;
-    private static Set<String> SAFE_BLOCKS_ABOVE;
 
-    private static void initSafeBlocks() {
-        if (SAFE_BLOCKS_STATE == null) {
-            SAFE_BLOCKS_STATE = new HashSet<>(CommonConfig.get().base().safe().safeBlocks().stream()
-                    .map(BlockUtils::deserializeBlockState)
-                    .filter(Objects::nonNull)
-                    .distinct()
-                    .collect(Collectors.toList()));
-        }
-        if (SAFE_BLOCKS == null) {
-            SAFE_BLOCKS = new HashSet<>(CommonConfig.get().base().safe().safeBlocks().stream()
-                    .filter(Objects::nonNull)
-                    .map(s -> (String) s)
-                    .distinct()
-                    .collect(Collectors.toList()));
-        }
-        if (SAFE_BLOCKS_BELOW_STATE == null) {
-            SAFE_BLOCKS_BELOW_STATE = new HashSet<>(CommonConfig.get().base().safe().safeBlocksBelow().stream()
-                    .map(BlockUtils::deserializeBlockState)
-                    .filter(Objects::nonNull)
-                    .distinct()
-                    .collect(Collectors.toList()));
-        }
-        if (SAFE_BLOCKS_BELOW == null) {
-            SAFE_BLOCKS_BELOW = new HashSet<>(CommonConfig.get().base().safe().safeBlocksBelow().stream()
-                    .filter(Objects::nonNull)
-                    .map(s -> (String) s)
-                    .distinct()
-                    .collect(Collectors.toList()));
-        }
-        if (SAFE_BLOCKS_ABOVE_STATE == null) {
-            SAFE_BLOCKS_ABOVE_STATE = new HashSet<>(CommonConfig.get().base().safe().safeBlocksAbove().stream()
-                    .map(BlockUtils::deserializeBlockState)
-                    .filter(Objects::nonNull)
-                    .distinct()
-                    .collect(Collectors.toList()));
-        }
-        if (SAFE_BLOCKS_ABOVE == null) {
-            SAFE_BLOCKS_ABOVE = new HashSet<>(CommonConfig.get().base().safe().safeBlocksAbove().stream()
-                    .filter(Objects::nonNull)
-                    .map(s -> (String) s)
-                    .distinct()
-                    .collect(Collectors.toList()));
-        }
-    }
-
-    /**
-     * 配置重载后清理派生集合，避免继续使用旧安全方块规则。
-     */
-    public static void clearEntityFilterCaches() {
-        SAFE_BLOCKS_STATE = null;
-        SAFE_BLOCKS = null;
-        SAFE_BLOCKS_BELOW_STATE = null;
-        SAFE_BLOCKS_BELOW = null;
-        SAFE_BLOCKS_ABOVE_STATE = null;
-        SAFE_BLOCKS_ABOVE = null;
-    }
 
     public static List<Entity> getAllEntities() {
         List<Entity> entities = new ArrayList<>();
@@ -371,39 +307,7 @@ public class AotakeUtils {
         return prepareSweepCandidate(entity) && generation.shouldClean(chuck, entity);
     }
 
-    public static boolean isSafeEntity(Map<World, Map<BlockPos, BlockState>> blockStateCache, Entity entity) {
-        World level = entity.level;
-        BlockPos position = entity.blockPosition();
 
-        boolean stateFlag = false;
-        if (!SAFE_BLOCKS.isEmpty() || !SAFE_BLOCKS_STATE.isEmpty()) {
-            BlockState state = cachedBlockState(blockStateCache, level, position);
-            stateFlag = SAFE_BLOCKS.contains(BlockUtils.getBlockRegistryString(state))
-                    || SAFE_BLOCKS_STATE.contains(state);
-        }
-
-        boolean belowFlag = false;
-        if (!SAFE_BLOCKS_BELOW.isEmpty() || !SAFE_BLOCKS_BELOW_STATE.isEmpty()) {
-            BlockState below = cachedBlockState(blockStateCache, level, position.below());
-            belowFlag = SAFE_BLOCKS_BELOW.contains(BlockUtils.getBlockRegistryString(below))
-                    || SAFE_BLOCKS_BELOW_STATE.contains(below);
-        }
-
-        boolean aboveFlag = false;
-        if (!SAFE_BLOCKS_ABOVE.isEmpty() || !SAFE_BLOCKS_ABOVE_STATE.isEmpty()) {
-            BlockState above = cachedBlockState(blockStateCache, level, position.above());
-            aboveFlag = SAFE_BLOCKS_ABOVE.contains(BlockUtils.getBlockRegistryString(above))
-                    || SAFE_BLOCKS_ABOVE_STATE.contains(above);
-        }
-
-        return stateFlag || belowFlag || aboveFlag;
-    }
-
-    private static BlockState cachedBlockState(Map<World, Map<BlockPos, BlockState>> cache,
-                                               World level, BlockPos position) {
-        return cache.computeIfAbsent(level, ignored -> new HashMap<>())
-                .computeIfAbsent(position, level::getBlockState);
-    }
 
     public static List<Entity> getAllEntitiesByFilter(@Nullable List<Entity> entities, boolean chuck) {
         return getAllEntitiesByFilter(entities, chuck,
@@ -413,83 +317,30 @@ public class AotakeUtils {
     public static List<Entity> getAllEntitiesByFilter(@Nullable List<Entity> entities, boolean chuck, RuleGeneration<Entity> generation) {
         generation.requireUsable();
         if (!AotakeRuleRuntime.isUsable(generation.id())) throw new RuleExecutionException(generation.id(), "Stale entity scan");
-        if (entities == null) {
-            entities = EntityUtils.getAllEntities();
-        }
-        initSafeBlocks();
-
-        Map<World, Map<BlockPos, BlockState>> blockStateCache = new IdentityHashMap<>();
-        CommonConfigView.BaseView base = CommonConfig.get().base();
-
-        boolean hasSafeRules = !SAFE_BLOCKS.isEmpty()
-                || !SAFE_BLOCKS_STATE.isEmpty()
-                || !SAFE_BLOCKS_BELOW.isEmpty()
-                || !SAFE_BLOCKS_BELOW_STATE.isEmpty()
-                || !SAFE_BLOCKS_ABOVE.isEmpty()
-                || !SAFE_BLOCKS_ABOVE_STATE.isEmpty();
-
-        return new DefaultSweepFilter<Entity, ChunkKey>(
-                base.sweep().entityListLimit(), base.safe().safeBlocksEntityLimit(), entity -> {
-                    if (!prepareSweepCandidate(entity)) return null;
-                    boolean safe = hasSafeRules && isSafeEntity(blockStateCache, entity);
-                    ChunkKey chunkKey = safe ? ChunkKey.of(entity) : null;
-                    boolean junk = generation.shouldClean(chuck, entity);
-                    return new DefaultSweepFilter.Entry<>(entity, safe, junk,
-                            junk ? null : EntityUtils.getEntityRegistryString(entity), chunkKey);
-                }).select(entities);
+        xin.vanilla.banira.common.config.ConfigHolder holder = xin.vanilla.banira.common.config.BaniraConfig.holder(CommonConfig.class);
+        CommonConfig.BaseCategory settings = SweepConfiguration.base(holder.snapshotForEdit(holder.valuePaths()));
+        return new ForgeSweepFilter(settings, generation, chuck)
+                .select(entities == null ? EntityUtils.getAllEntities() : entities);
     }
 
     public static void sweep() {
-        List<Entity> entities = EntityUtils.getAllEntities();
-        AotakeUtils.sweep(entities, false);
+        submitSweep(null, false, false, null, SweepTrigger.SCHEDULED);
     }
 
-    /**
-     * 执行清理
-     *
-     * @param entities 实体列表
-     * @param filtered 实体列表是否已过滤
-     */
-    public static void sweep(List<Entity> entities, boolean filtered) {
-        sweep(entities, filtered, false);
-    }
-
-    /**
-     * @param chunkOverloadVault 为 true 时，回收物品写入区块暂存目录（若配置启用），而非全局垃圾箱。
-     */
-    public static void sweep(List<Entity> entities, boolean filtered, boolean chunkOverloadVault) {
-        sweep(entities, filtered, chunkOverloadVault, null);
-    }
-
+    public static void sweep(List<Entity> entities, boolean filtered) { sweep(entities, filtered, false); }
+    public static void sweep(List<Entity> entities, boolean filtered, boolean chunkOverloadVault) { sweep(entities, filtered, chunkOverloadVault, null); }
     public static void sweep(List<Entity> entities, boolean filtered, boolean chunkOverloadVault, RuleGeneration<Entity> expected) {
-        MinecraftServer server = BaniraServer.currentAs(MinecraftServer.class);
-        // 服务器已关闭
-        if (!BaniraServer.isRunning() || server == null) return;
+        submitSweep(entities, filtered, chunkOverloadVault, expected, SweepTrigger.COMMAND);
+    }
 
-        List<ServerPlayerEntity> players = server.getPlayerList().getPlayers();
-
+    private static void submitSweep(List<Entity> entities, boolean filtered, boolean chunkOverloadVault, RuleGeneration<Entity> expected,
+                                    SweepTrigger trigger) {
+        if (!BaniraServer.isRunning()) return;
         try {
-            // 若服务器没有玩家
-            if (CollectionUtils.isNullOrEmpty(players) && !CommonConfig.get().base().sweep().sweepWhenNoPlayer()) {
-                LOGGER.debug("No player online, sweep canceled");
-                return;
-            }
-
-            RuleGeneration<Entity> generation = expected == null
-                    ? AotakeRuleRuntime.acquire(chunkOverloadVault ? RuleManager.RuleUse.CHUNK : RuleManager.RuleUse.SWEEP) : expected;
-            generation.requireUsable();
-            if (!AotakeRuleRuntime.isUsable(generation.id())) throw new RuleExecutionException(generation.id(), "Stale sweep request");
-            List<Entity> list = filtered ? entities : getAllEntitiesByFilter(entities, false, generation);
-            SweepResult sweepResult = new SweepResult().setChunkOverloadVault(chunkOverloadVault);
-            if (chunkOverloadVault && CommonConfig.get().base().chunk().chunkVaultEnabled()) {
-                sweepResult.setChunkVaultTimePrefix(ChunkVaultStorage.vaultTimePrefix());
-                sweepResult.setChunkVaultRunId(ChunkVaultStorage.newVaultRunId());
-            }
-            AotakeSweep.getEntitySweeper().addDrops(list, sweepResult, generation);
-
-        } catch (Exception e) {
-            reportSweepFailure(e);
-        }
+            AotakeSweepRuntime.submit(trigger, SweepOperation.RECYCLE,
+                    ForgeSweepTarget.all(), false, entities, filtered,
+                    new SweepResult().setChunkOverloadVault(chunkOverloadVault), AotakeSweep.getEntitySweeper(), expected);
+        } catch (RuntimeException failure) { reportSweepFailure(failure); }
     }
 
     public static void reportSweepFailure(Exception e) {
