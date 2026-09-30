@@ -23,6 +23,7 @@ public final class SweepTask<S> {
     private SweepPhase phase = SweepPhase.CREATED;
     private SweepOutcome outcome;
     private Runnable completion = () -> {};
+    private Runnable afterRelease;
     private final List<String> diagnostics = new ArrayList<>();
     private Hook hook;
     private long callback;
@@ -33,9 +34,13 @@ public final class SweepTask<S> {
     private boolean pendingPersistence;
 
     public SweepTask(UUID id, SweepRequest request, SweepBackend backend, SweepPolicy<S> policy) {
+        this(id, request, backend, policy, () -> {});
+    }
+    SweepTask(UUID id, SweepRequest request, SweepBackend backend, SweepPolicy<S> policy, Runnable afterRelease) {
         this.id = Objects.requireNonNull(id, "id"); this.request = Objects.requireNonNull(request, "request");
         this.backend = Objects.requireNonNull(backend, "backend"); this.policy = Objects.requireNonNull(policy, "policy");
         generationId = backend.generationId(); scope = request.scope();
+        this.afterRelease = Objects.requireNonNull(afterRelease);
     }
     public UUID id() { return id; }
     public SweepPhase phase() { return phase; }
@@ -152,6 +157,16 @@ public final class SweepTask<S> {
         return result;
     }
 
+    void completeScan(String reason) {
+        checkDriver();
+        if (phase != SweepPhase.READY) throw new IllegalStateException("Sweep is not ready");
+        Objects.requireNonNull(reason);
+        driving = true;
+        try { checkpoint(); finish(SweepPhase.SUCCESS, reason, null); }
+        catch (RuntimeException | Error error) { terminate(error); }
+        finally { driving = false; }
+    }
+
     void start() {
         checkDriver();
         if (phase != SweepPhase.READY) throw new IllegalStateException("Sweep is not ready");
@@ -241,6 +256,9 @@ public final class SweepTask<S> {
                 try { backend.release(); }
                 catch (RuntimeException | Error error) { rethrowFatal(error); diagnostics.add(message(error)); if (failure == null) { failure = error; phase = SweepPhase.FAILED; } }
                 finally {
+                    try { afterRelease.run(); }
+                    catch (RuntimeException | Error error) { rethrowFatal(error); diagnostics.add(message(error)); if (failure == null) { failure = error; phase = SweepPhase.FAILED; } }
+                    afterRelease = () -> {};
                     outcome = snapshot(stoppedAt, reason, failure);
                     closed = true;
                     selected = Collections.emptyList(); defaultScans.clear(); state = null; policy = null; backend = null; request = null; configuration = null;

@@ -33,6 +33,7 @@ public interface SweepBackend {
         private boolean pendingPersistence;
         public Progress(int size) { if (size < 0) throw new IllegalArgumentException("size"); this.size = size; }
         public int processed() { return processed; }
+        public int accounted() { return processed + skipped + failed; }
         public void processed(int count, int committed, int pendingRemoval, boolean pendingPersistence) {
             check(count);
             if (committed < 0 || pendingRemoval < 0) throw new IllegalArgumentException("Negative commit count");

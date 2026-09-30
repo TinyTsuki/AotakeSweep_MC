@@ -11,9 +11,18 @@ public final class PreparedSweep {
     public UUID taskId() { return task.id(); }
     public long generationId() { return generationId; }
     public void start() {
+        consume();
+        task.start();
+    }
+    /** Complete a chunk check without invoking cleanup hooks or an empty recycle batch. */
+    public void completeScan(String reason) {
+        if (reason == null) throw new NullPointerException("reason");
+        consume();
+        task.completeScan(reason);
+    }
+    private void consume() {
         task.checkDriver();
         if (consumed) throw new IllegalStateException("Prepared sweep already consumed");
         consumed = true;
-        task.start();
     }
 }

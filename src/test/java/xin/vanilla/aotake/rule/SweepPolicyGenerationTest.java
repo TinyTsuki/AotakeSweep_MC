@@ -2,7 +2,7 @@ package xin.vanilla.aotake.rule;
 
 import org.junit.*;
 import org.junit.rules.TemporaryFolder;
-import xin.vanilla.aotake.api.sweep.SweepPolicy;
+import xin.vanilla.aotake.api.sweep.*;
 import xin.vanilla.banira.common.config.ConfigEditOrigin;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -53,12 +53,44 @@ public class SweepPolicyGenerationTest {
         try (RuleManagerTest.Fixture f = fixture()) {
             long id = f.await(f.manager.reload());
             String original = f.source(); f.replaceSource(original + " bad");
-            source(f, source(f).replace("extends DefaultSweepPolicy<Void>", "extends DefaultSweepPolicy<String>"));
+            source(f, source(f).replace("extends DefaultSweepPolicy<Object>", "extends DefaultSweepPolicy<String>"));
             assertThrows(ExecutionException.class, () -> f.await(f.manager.reload()));
             assertTrue(f.manager.isUsable(id));
             try (RuleGeneration<Map<String, Object>>.PolicyLease lease = f.manager.leasePolicy(reason -> {})) { assertEquals("builtin:default", lease.policyId()); }
             assertTrue(f.session.active().isEmpty());
         }
+    }
+
+    @Test public void unbridgedExternalHookIsRejectedWithoutReplacingHealthyGeneration() throws Exception {
+        try (RuleManagerTest.Fixture f = fixture()) {
+            f.await(f.manager.reload()); f.holder.set(SweepPolicyCatalog.CONFIG_PATH, "custom");
+            long id = f.await(f.manager.reload());
+            source(f, "package xin.vanilla.banira.generated.policies; public class CustomSweepPolicy extends xin.vanilla.aotake.api.sweep.DefaultSweepPolicy<Void> { public void onFinish(xin.vanilla.aotake.api.sweep.SweepContext c, Void state, xin.vanilla.aotake.api.sweep.SweepOutcome result){} }");
+            ExecutionException error = assertThrows(ExecutionException.class, () -> f.await(f.manager.reload()));
+            Throwable cause = error; while (cause.getCause() != null && !(cause instanceof IllegalArgumentException)) cause = cause.getCause();
+            assertTrue(cause.getMessage(), cause.getMessage().contains("Object for the state parameter"));
+            assertTrue(f.manager.isUsable(id));
+        }
+    }
+
+    @Test public void externalCovariantReturnBridgeStillDispatchesToCustomStateFactory() throws Exception {
+        try (RuleManagerTest.Fixture f = fixture()) {
+            f.await(f.manager.reload());
+            source(f, "package xin.vanilla.banira.generated.policies; public class CustomSweepPolicy extends xin.vanilla.aotake.api.sweep.DefaultSweepPolicy<Object> { @Override public String createState(xin.vanilla.aotake.api.sweep.SweepContext c){return \"state\";} }");
+            f.holder.set(SweepPolicyCatalog.CONFIG_PATH, "custom"); f.await(f.manager.reload());
+            try (RuleGeneration<Map<String, Object>>.PolicyLease lease = f.manager.leasePolicy(reason -> {})) {
+                assertEquals("state", lease.policy().createState(null));
+            }
+        }
+    }
+
+    @Test public void compiledGenericHooksWithBridgesRemainSupported() {
+        SweepPolicyCatalog.validateHooks(TypedPolicy.class);
+    }
+
+    public static class TypedPolicy extends DefaultSweepPolicy<String> {
+        @Override public String createState(SweepContext context) { return "state"; }
+        @Override public void onFinish(SweepContext context, String state, SweepOutcome outcome) { }
     }
 
     @Test public void policySelectionChangedDuringPreparationRejectsStaleCandidate() throws Exception {

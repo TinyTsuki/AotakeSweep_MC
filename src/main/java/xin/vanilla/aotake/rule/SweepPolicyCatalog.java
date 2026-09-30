@@ -4,6 +4,8 @@ import xin.vanilla.aotake.api.rule.*;
 import xin.vanilla.aotake.api.sweep.*;
 import xin.vanilla.banira.api.script.*;
 import java.io.IOException;
+import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.BiFunction;
@@ -30,10 +32,37 @@ public final class SweepPolicyCatalog {
         if (!compiled.scripts().keySet().equals(groups.keySet())) throw new IllegalArgumentException("Compiled policy catalog mismatch");
         Map<String, NativeMembers> bindings = new LinkedHashMap<>();
         for (Map.Entry<String, ScriptFactory<SweepPolicy>> entry : compiled.scripts().entrySet()) {
-            ClassLoader loader = entry.getValue().entryType().getClassLoader();
+            Class<? extends SweepPolicy> type = entry.getValue().entryType();
+            validateHooks(type);
+            ClassLoader loader = type.getClassLoader();
             bindings.put(entry.getKey(), members.get(entry.getKey()).prepare(loader, binder));
         }
         return new Prepared(this, compiled.scripts(), bindings);
+    }
+    /** Janino erases generic parameters without their bridges; reject hooks that silently use the default. */
+    static void validateHooks(Class<? extends SweepPolicy> type) {
+        for (Class<?> current = type; current != null && current != DefaultSweepPolicy.class; current = current.getSuperclass()) {
+            for (Method declared : current.getDeclaredMethods()) {
+                for (Method hook : SweepPolicy.class.getMethods()) {
+                    if (!declared.getName().equals(hook.getName())) continue;
+                    // Include covariant-return bridges; getDeclaredMethod may select the specialized return type.
+                    boolean overrides = false;
+                    for (Method candidate : current.getDeclaredMethods()) {
+                        if (candidate.getName().equals(hook.getName())
+                                && Arrays.equals(candidate.getParameterTypes(), hook.getParameterTypes())
+                                && candidate.getReturnType() == hook.getReturnType()
+                                && Modifier.isPublic(candidate.getModifiers()) && !Modifier.isStatic(candidate.getModifiers())) {
+                            overrides = true;
+                            break;
+                        }
+                    }
+                    if (!overrides) {
+                        throw new IllegalArgumentException("Policy hook does not override " + hook.getName()
+                                + "; external policies must use Object for the state parameter and createState return type: " + declared);
+                    }
+                }
+            }
+        }
     }
     public void verifyFiles() throws IOException {
         for (Map.Entry<String, byte[]> file : files.entrySet()) {

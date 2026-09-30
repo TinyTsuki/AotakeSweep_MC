@@ -37,6 +37,8 @@ import xin.vanilla.aotake.internal.server.AotakeRuleRuntime;
 import xin.vanilla.aotake.rule.CleanupRuleGate;
 import xin.vanilla.aotake.rule.RuleGeneration;
 import xin.vanilla.aotake.rule.RuleManager;
+import xin.vanilla.aotake.sweep.SweepBackend;
+import xin.vanilla.aotake.sweep.SweepBatchCommitter;
 import xin.vanilla.aotake.notification.AotakeNotificationTypes;
 import xin.vanilla.banira.api.BaniraServer;
 import xin.vanilla.banira.common.data.Component;
@@ -91,7 +93,7 @@ public class EntitySweeper {
                 : CollectionUtils.splitToCollections(eligible, context.sweepEntityLimit, context.sweepBatchLimit);
         this.init();
         result.setTotalBatch(batches.size());
-        SweepJob job = new SweepJob(gate, generation, batches, result, context);
+        SweepJob job = new SweepJob(gate, batches, result, context);
         jobs.add(job);
         job.run();
         return result;
@@ -108,20 +110,19 @@ public class EntitySweeper {
     }
 
     private final class SweepJob implements Runnable {
-        private final CleanupRuleGate<Entity> gate;
-        private final RuleGeneration<Entity> generation;
         private final List<List<Entity>> batches;
         private final SweepResult result;
         private final SweepContext context;
+        private final RecyclingBatch committer;
         private int index;
         private boolean canceled;
 
-        private SweepJob(CleanupRuleGate<Entity> gate, RuleGeneration<Entity> generation,
+        private SweepJob(CleanupRuleGate<Entity> gate,
                          List<List<Entity>> batches, SweepResult result, SweepContext context) {
-            this.gate = gate; this.generation = generation;
             this.batches = new ArrayList<>();
             for (List<Entity> batch : batches) this.batches.add(new ArrayList<>(batch));
             this.result = result; this.context = context;
+            this.committer = new RecyclingBatch(gate, result, context);
         }
 
         void cancel() { canceled = true; batches.clear(); jobs.remove(this); }
@@ -129,9 +130,35 @@ public class EntitySweeper {
         @Override public void run() {
             if (canceled) return;
             try {
-                List<CleanupRuleGate.Decision<Entity>> decisions = gate.prepare(eligible(batches.get(index)),
-                        entity -> entity instanceof ItemEntity, !context.catchItems.isEmpty());
-                if (index == 0 && context.selfCleanModes.contains(EnumSelfCleanMode.SWEEP_CLEAR)) {
+                List<Entity> batch = batches.get(index);
+                committer.execute(batch, new SweepBackend.Progress(batch.size()));
+                batches.get(index).clear();
+                finishBatch(result, context);
+                if (++index >= batches.size()) cancel();
+                else BaniraScheduler.schedule(BaniraServer.require(MinecraftServer.class), context.sweepEntityInterval, this);
+            } catch (RuntimeException failure) {
+                cancel();
+                AotakeUtils.reportSweepFailure(failure);
+            }
+        }
+    }
+
+    /** One recycling transaction state shared by every batch of a cleanup task. */
+    public final class RecyclingBatch {
+        private final Map<Entity, Boolean> decisions = new IdentityHashMap<>();
+        private final SweepBatchCommitter<Entity> executor;
+        private RecyclingBatch(CleanupRuleGate<Entity> gate, SweepResult result, SweepContext context) {
+            executor = new SweepBatchCommitter<>(new SweepBatchCommitter.Operations<Entity>() {
+                public void requireUsable() { gate.requireUsable(); }
+                public void prepare(List<Entity> entities) {
+                    decisions.clear();
+                    for (CleanupRuleGate.Decision<Entity> decision : gate.prepare(EntitySweeper.eligible(entities),
+                            entity -> entity instanceof ItemEntity, !context.catchItems.isEmpty()))
+                        decisions.put(decision.subject(), decision.recycle());
+                }
+                public void begin() {
+                    init();
+                    if (!context.selfCleanModes.contains(EnumSelfCleanMode.SWEEP_CLEAR)) return;
                     if (context.dustbinMode != EnumDustbinMode.BLOCK) AotakeUtils.clearVirtualDustbin();
                     if (context.dustbinMode != EnumDustbinMode.VIRTUAL) {
                         for (WorldCoordinate position : context.blockPositions) {
@@ -140,24 +167,25 @@ public class EntitySweeper {
                         }
                     }
                 }
-                for (CleanupRuleGate.Decision<Entity> decision : decisions) {
-                    generation.requireUsable();
-                    if (AotakeUtils.prepareSweepCandidate(decision.subject()))
-                        result.add(processDrop(decision.subject(), result, context, decision.recycle()));
+                public boolean eligible(Entity entity) { return decisions.containsKey(entity) && AotakeUtils.prepareSweepCandidate(entity); }
+                public void commit(Entity entity, SweepBackend.Progress progress) {
+                    boolean recycle = decisions.get(entity);
+                    result.add(processDrop(entity, result, context, recycle, progress));
                 }
-                batches.get(index).clear();
-                finishBatch(result, context);
-                if (++index >= batches.size()) cancel();
-                else BaniraScheduler.schedule(BaniraServer.require(MinecraftServer.class), context.sweepEntityInterval, this);
-            } catch (RuntimeException failure) {
-                cancel();
-                AotakeUtils.reportSweepFailure(failure);
-            } finally {
-                // Committed items survive cancellation of the remaining generation-bound work.
-                ChunkVaultStorage.flushPending();
-                WorldTrashData.get().setDirty();
-            }
+                public void flush() { try { flushPendingStorage(); } finally { decisions.clear(); } }
+            });
         }
+        public void execute(List<Entity> entities, SweepBackend.Progress progress) { executor.execute(entities, progress); }
+    }
+
+    public RecyclingBatch beginRecycling(SweepResult result, RuleGeneration<Entity> generation, CommonConfigView.BaseView settings) {
+        return new RecyclingBatch(new CleanupRuleGate<>(generation, () -> AotakeRuleRuntime.isUsable(generation.id())),
+                result, new SweepContext(settings));
+    }
+
+    public static void flushPendingStorage() {
+        try { ChunkVaultStorage.flushPending(); }
+        finally { WorldTrashData.get().setDirty(); }
     }
 
     private void finishBatch(SweepResult result, SweepContext context) {
@@ -207,7 +235,7 @@ public class EntitySweeper {
 
     }
 
-    private SweepResult processDrop(@NonNull Entity original, SweepResult batchResult, SweepContext context, boolean recycle) {
+    private SweepResult processDrop(@NonNull Entity original, SweepResult batchResult, SweepContext context, boolean recycle, SweepBackend.Progress progress) {
         SweepResult result = new SweepResult();
         WorldCoordinate coordinate = new WorldCoordinate(original);
         Entity entity = (original instanceof PartEntity) ? ((PartEntity<?>) original).getParent() : original;
@@ -252,7 +280,11 @@ public class EntitySweeper {
         }
 
         // Own the entity before transferring items: nested callbacks and retries cannot recycle it again.
-        scheduleRemoveEntity(entity, false);
+        if (!tryScheduleRemoveEntity(entity, false)) {
+            progress.skipped(1);
+            return new SweepResult();
+        }
+        progress.processed(1, recycle ? 1 : 0, 1, true);
 
         // 记录清理历史
         WorldTrashData.get().getDropCount().add(new DropStatistics(coordinate
@@ -468,11 +500,15 @@ public class EntitySweeper {
     }
 
     public static void scheduleRemoveEntity(Entity entity, boolean keepData) {
+        tryScheduleRemoveEntity(entity, keepData);
+    }
+
+    public static boolean tryScheduleRemoveEntity(Entity entity, boolean keepData) {
         Entity canonical = entity instanceof PartEntity ? ((PartEntity<?>) entity).getParent() : entity;
-        if (canonical == null || !canonical.isAlive() || !(canonical.level instanceof ServerWorld)) return;
+        if (canonical == null || !canonical.isAlive() || !(canonical.level instanceof ServerWorld)) return false;
         RegistryKey<World> dimensionKey = canonical.level.dimension();
 
-        removals.schedule(dimensionKey, canonical, keepData);
+        return removals.schedule(dimensionKey, canonical, keepData);
     }
 
     public static boolean isPendingRemoval(Entity entity) { return removals.contains(entity); }
