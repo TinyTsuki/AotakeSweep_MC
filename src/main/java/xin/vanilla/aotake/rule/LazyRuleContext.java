@@ -15,34 +15,57 @@ public abstract class LazyRuleContext<S> implements EntityRuleContext {
     };
     private S subject;
     private RuleBindingPlan plan;
+    private long frame, nextFrame;
     private Object[] values = new Object[0];
     private boolean[] loaded = new boolean[0];
-    private final Object[] builtinValues = new Object[BUILTINS.length];
-    private final boolean[] builtinLoaded = new boolean[BUILTINS.length];
+    private Object[] builtinValues = new Object[BUILTINS.length];
+    private boolean[] builtinLoaded = new boolean[BUILTINS.length];
 
     public final void reset(S subject, RuleBindingPlan plan) {
         bindPlan(plan);
         clear();
         this.subject = Objects.requireNonNull(subject);
         this.plan = Objects.requireNonNull(plan);
+        frame = nextFrame = Math.incrementExact(nextFrame);
         if (values.length < plan.slots().size()) {
             values = new Object[plan.slots().size()]; loaded = new boolean[values.length];
         }
     }
     public void clear() {
-        subject = null; plan = null;
+        subject = null; plan = null; frame = 0;
         Arrays.fill(values, null); Arrays.fill(loaded, false);
         Arrays.fill(builtinValues, null); Arrays.fill(builtinLoaded, false);
     }
     protected final S subject() { return subject; }
+    protected final long evaluationFrame() { return frame; }
     protected abstract Object read(RuleBindingPlan.Binding binding);
     protected void bindPlan(RuleBindingPlan plan) { }
     protected void checkAccess() { }
 
     public final boolean evaluate(EntityRule rule, S subject, RuleBindingPlan plan) {
-        reset(subject, plan);
-        try { return rule.test(this); }
-        finally { clear(); }
+        // Ordinary scans reuse arrays; only reentrant calls need another evaluation frame.
+        S previousSubject = this.subject;
+        RuleBindingPlan previousPlan = this.plan;
+        long previousFrame = frame;
+        Object[] previousValues = values, previousBuiltinValues = builtinValues;
+        boolean[] previousLoaded = loaded, previousBuiltinLoaded = builtinLoaded;
+        if (previousSubject != null) {
+            checkAccess();
+            values = new Object[0]; loaded = new boolean[0];
+            builtinValues = new Object[BUILTINS.length]; builtinLoaded = new boolean[BUILTINS.length];
+            this.subject = null; this.plan = null;
+        }
+        try {
+            reset(subject, plan);
+            return rule.test(this);
+        } finally {
+            clear();
+            if (previousSubject != null) {
+                this.subject = previousSubject; this.plan = previousPlan; frame = previousFrame;
+                values = previousValues; loaded = previousLoaded;
+                builtinValues = previousBuiltinValues; builtinLoaded = previousBuiltinLoaded;
+            }
+        }
     }
 
     @Override public final <T> T value(int slot, Class<T> type) {

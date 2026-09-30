@@ -9,6 +9,41 @@ import java.util.concurrent.TimeUnit;
 import static org.junit.Assert.*;
 
 public class LegacyRuleMigrationTest {
+    @Test public void existingNumericSlotSourceStillCompilesWithoutLayoutChanges() throws Exception {
+        RuleSource generated = source("tick, score = [score] -> tick >= 5 && score != null && score > 1",
+                RuleBindingPlan.defaults().withBinding("nbt", "score", Integer.class, true));
+        String code = "package xin.vanilla.banira.generated; public final class LegacyProbe implements "
+                + "xin.vanilla.aotake.api.rule.EntityRule { public boolean test("
+                + "xin.vanilla.aotake.api.rule.EntityRuleContext context) { return "
+                + "((Integer)context.value(0, Integer.class)) >= 5 && "
+                + "context.value(1, Integer.class) != null && ((Integer)context.value(1, Integer.class)) > 1; }}";
+        RuleSource legacy = new RuleSource(new ScriptSource("probe", "xin.vanilla.banira.generated.LegacyProbe",
+                "LegacyProbe.java", code), generated.bindings(), generated.sourceHash(), Collections.emptyList());
+        try (Fixture f = new Fixture(legacy)) {
+            Map<String,Object> values = new HashMap<>(); values.put("tick", 5); values.put("score", 2);
+            assertTrue(f.context.evaluate(f.rule, values, f.source.bindings()));
+            values.put("score", 1);
+            assertFalse(f.context.evaluate(f.rule, values, f.source.bindings()));
+        }
+    }
+
+    @Test public void generatedBindingsHaveNamesAndBuiltinGetters() throws Exception {
+        String text = "tick, class = [score], CLASS = [other] -> tick > 1 && class != null && CLASS != null && class < CLASS";
+        RuleBindingPlan bindings = RuleBindingPlan.defaults().withBinding("nbt", "score", Integer.class, true)
+                .withBinding("nbt", "other", Integer.class, true);
+        RuleSource generated = source(text, bindings);
+        String code = generated.script().getSource();
+        assertTrue(code.contains("context.tick()"));
+        assertFalse(code.matches("(?s).*context\\.value\\([0-9]+.*"));
+        assertTrue(code.contains("SLOT_class"));
+        assertTrue(code.contains("SLOT_CLASS"));
+        try (Fixture f = compile(text, bindings)) {
+            Map<String,Object> values = new HashMap<>(); values.put("tick", 5); values.put("score", 2); values.put("other", 3);
+            f.context.reset(values, f.source.bindings());
+            assertTrue(f.rule.test(f.context));
+            assertEquals(Integer.valueOf(2), f.context.value(1, Integer.class));
+        }
+    }
     static final String CREATE = "tick, clazz, itemClazz, createProcessing = [CreateData.Processing.Time] -> "
             + "tick >= 5 && clazz :> itemClazz && (createProcessing <= 0 || createProcessing == null)";
     static final String PROTECTION = "customName, hasOwner, createProcessing = [CreateData.Processing.Time] -> "

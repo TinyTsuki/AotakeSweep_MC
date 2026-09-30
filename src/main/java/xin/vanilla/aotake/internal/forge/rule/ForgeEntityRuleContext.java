@@ -6,6 +6,7 @@ import net.minecraft.entity.item.ItemEntity;
 import net.minecraft.entity.passive.TameableEntity;
 import net.minecraftforge.common.UsernameCache;
 import xin.vanilla.aotake.rule.*;
+import xin.vanilla.aotake.api.rule.*;
 import xin.vanilla.banira.common.util.*;
 import java.util.*;
 
@@ -14,8 +15,16 @@ public final class ForgeEntityRuleContext extends LazyRuleContext<Entity> {
     private final RuleBindingPlan preparedPlan;
     private final Map<RuleBindingPlan.Binding, ForgeRuleBindings.Reader> readers = new IdentityHashMap<>();
     private Thread owner;
+    private long viewsFrame;
+    private EntityAccess entityView;
+    private ServerAccess serverView;
+    private final NativeMembers members;
     public ForgeEntityRuleContext(RuleBindingPlan plan) {
+        this(plan, NativeMembers.EMPTY);
+    }
+    public ForgeEntityRuleContext(RuleBindingPlan plan, NativeMembers members) {
         preparedPlan = plan;
+        this.members = Objects.requireNonNull(members);
         for (RuleBindingPlan.Binding b : plan.slots()) {
             if (b.kind().equals("nbt")) readers.put(b, ForgeRuleBindings.nbt(b));
             else if (b.kind().equals("field") || b.kind().equals("synced")) {
@@ -28,6 +37,38 @@ public final class ForgeEntityRuleContext extends LazyRuleContext<Entity> {
                 } else readers.put(b, ForgeRuleBindings.field(b, Entity.class, getClass().getClassLoader()));
             }
         }
+    }
+    @Override public EntityAccess entity() {
+        prepareViews();
+        if (entityView == null) {
+            Runnable guard = frameGuard();
+            entityView = new ForgeEntityAccess(this::subject, guard) {
+                @Override public String resourceId() { guard.run(); return ForgeEntityRuleContext.this.resourceId(); }
+                @Override public int tick() { guard.run(); return ForgeEntityRuleContext.this.tick(); }
+                @Override public String customName() { guard.run(); return ForgeEntityRuleContext.this.customName(); }
+            };
+        }
+        return entityView;
+    }
+    @Override public ServerAccess server() {
+        prepareViews();
+        if (serverView == null) serverView = new ForgeServerAccess(() -> subject().getServer(), frameGuard());
+        return serverView;
+    }
+    @Override public NativeMembers members() { checkAccess(); return members; }
+    private void prepareViews() {
+        checkAccess();
+        if (viewsFrame != evaluationFrame()) {
+            viewsFrame = evaluationFrame();
+            entityView = null; serverView = null;
+        }
+    }
+    private Runnable frameGuard() {
+        long expected = evaluationFrame();
+        return () -> {
+            checkAccess();
+            if (evaluationFrame() != expected) throw new IllegalStateException("Object view belongs to another evaluation");
+        };
     }
     @Override protected void bindPlan(RuleBindingPlan plan) {
         if (plan != preparedPlan) throw new IllegalArgumentException("Context belongs to another binding plan");

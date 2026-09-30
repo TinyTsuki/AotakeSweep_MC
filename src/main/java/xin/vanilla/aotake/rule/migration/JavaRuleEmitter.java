@@ -34,6 +34,7 @@ public final class JavaRuleEmitter {
         String className = "xin.vanilla.banira.generated." + simpleName;
         String source = "package xin.vanilla.banira.generated;\n"
                 + "public final class " + simpleName + " implements xin.vanilla.aotake.api.rule.EntityRule {\n"
+                + emitter.slotDeclarations()
                 + "  public boolean test(xin.vanilla.aotake.api.rule.EntityRuleContext context) {\n"
                 + "    return " + expression + ";\n  }\n}\n";
         return new RuleSource(new ScriptSource(id, className, simpleName + ".java", source), plan, hash, emitter.adjustments);
@@ -66,11 +67,41 @@ public final class JavaRuleEmitter {
         if (literals.containsKey(n.text)) return new Value(quote(literals.get(n.text)), String.class, false);
         for (int i = 0; i < plan.slots().size(); i++) {
             RuleBindingPlan.Binding binding = plan.slots().get(i);
-            if (binding.name().equals(n.text)) return new Value("((" + binding.type().getCanonicalName()
-                    + ")context.value(" + i + ", " + binding.type().getCanonicalName() + ".class))",
-                    binding.type(), binding.nullable() && !nonnull.contains(n.text), true);
+            if (binding.name().equals(n.text)) {
+                String getter = builtinGetter(binding);
+                String value = getter == null ? "((" + binding.type().getCanonicalName()
+                        + ")context.value(" + slotName(i) + ", " + binding.type().getCanonicalName() + ".class))" : getter;
+                return new Value(value, binding.type(), binding.nullable() && !nonnull.contains(n.text), true);
+            }
         }
         throw new RuleDiagnostic(n.offset, "Undeclared variable: " + n.text);
+    }
+    private String slotName(int index) {
+        // Prefix and numeric suffix avoid Java keywords and normalization collisions without changing slots.
+        return "SLOT_" + plan.slots().get(index).name().replaceAll("[^A-Za-z0-9_]", "_") + "_" + index;
+    }
+    private String slotDeclarations() {
+        StringBuilder result = new StringBuilder();
+        for (int i = 0; i < plan.slots().size(); i++) {
+            RuleBindingPlan.Binding b = plan.slots().get(i);
+            if (builtinGetter(b) != null) continue;
+            // Quoted metadata avoids raw newlines or comment terminators from an external binding path.
+            result.append("  // ").append(b.kind()).append(' ').append(quote(b.payload()).replace("\\u", "\\ u"))
+                    .append("; ").append(b.type().getCanonicalName()).append("; nullable=").append(b.nullable()).append('\n');
+            result.append("  private static final int ").append(slotName(i)).append(" = ").append(i).append(";\n");
+        }
+        return result.toString();
+    }
+    private static String builtinGetter(RuleBindingPlan.Binding b) {
+        if (!b.kind().equals("builtin")) return null;
+        switch (b.payload()) {
+            case "resource": return "context.resourceId()";
+            case "tick": return "Integer.valueOf(context.tick())";
+            case "customName": return "context.customName()";
+            case "hasOwner": return "Boolean.valueOf(context.hasOwner())";
+            case "isItem": return "Boolean.valueOf(context.isItem())";
+            default: return null;
+        }
     }
     private Value binary(Node n, Set<String> nonnull) {
         Node left = n.args.get(0), right = n.args.get(1);

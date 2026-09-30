@@ -5,6 +5,26 @@ import java.util.*;
 import static org.junit.Assert.*;
 
 public class LazyRuleContextTest {
+    @Test public void nestedEvaluationRestoresOuterSubjectAndCachedValues() {
+        LegacyRuleMigrationTest.CountingContext context = new LegacyRuleMigrationTest.CountingContext();
+        RuleBindingPlan plan = LegacyRuleMigrationTest.source("tick -> tick > 0", RuleBindingPlan.defaults()).bindings();
+        Map<String,Object> outer = new HashMap<>(); outer.put("tick", 4);
+        assertTrue(context.evaluate(c -> {
+            assertEquals(4, c.tick());
+            assertTrue(context.evaluate(inner -> inner.tick() == 9, Collections.singletonMap("tick", 9), plan));
+            assertSame(outer, context.data());
+            outer.put("tick", 7);
+            assertEquals(4, c.tick());
+            assertThrows(IllegalStateException.class, () -> context.evaluate(inner -> {
+                assertEquals(12, inner.tick());
+                throw new IllegalStateException("inner failed");
+            }, Collections.singletonMap("tick", 12), plan));
+            assertSame(outer, context.data());
+            return c.tick() == 4;
+        }, outer, plan));
+        assertNull(context.data());
+        assertEquals(3, context.reads("tick"));
+    }
     @Test public void cachesNullsAndValuesPerEntityAndClearsReferences() {
         RuleSource source = LegacyRuleMigrationTest.source("v = [score] -> v == null || v > 0",
                 RuleBindingPlan.defaults().withBinding("nbt", "score", Integer.class, true));

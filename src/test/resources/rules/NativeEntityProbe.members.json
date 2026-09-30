@@ -1,0 +1,18 @@
+[
+  {
+    "id": "x",
+    "kind": "METHOD",
+    "owner": "net.minecraft.entity.Entity",
+    "name": "func_226277_ct_",
+    "descriptor": "()D",
+    "functionType": "xin.vanilla.banira.generated.NativeEntityProbe$ReadX"
+  },
+  {
+    "id": "tick",
+    "kind": "FIELD_GET",
+    "owner": "net.minecraft.entity.Entity",
+    "name": "field_70173_aa",
+    "descriptor": "I",
+    "functionType": "xin.vanilla.banira.generated.NativeEntityProbe$ReadTick"
+  }
+]

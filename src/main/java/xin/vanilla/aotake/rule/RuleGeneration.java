@@ -71,7 +71,10 @@ public final class RuleGeneration<S> {
         Objects.requireNonNull(subject);
         for (BoundRule<S> binding : rules.get(list)) {
             try {
-                if (binding.context.evaluate(binding.rule, subject, binding.plan)) return true;
+                boolean matched = binding.context.evaluate(binding.rule, subject, binding.plan);
+                // A reentrant rule may retire this generation and then swallow its exception.
+                requireUsable();
+                if (matched) return true;
             } catch (RuntimeException | Error failure) {
                 String message = "Rule " + binding.reference + " failed in generation " + id;
                 retire(message);
