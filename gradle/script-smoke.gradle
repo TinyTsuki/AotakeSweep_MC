@@ -1,0 +1,41 @@
+import java.util.concurrent.TimeUnit
+
+def smokeDirectory = layout.buildDirectory.dir('script-smoke').get().asFile
+def statusFile = new File(smokeDirectory, 'client.status')
+if (project.hasProperty('aotake.scriptSmoke')) {
+    configurations.runtimeClasspath.exclude(group: 'curse.maven')
+    minecraft.runs.client {
+        workingDirectory new File(smokeDirectory, 'client')
+        property 'aotake.scriptSmoke', 'true'
+        property 'aotake.scriptSmoke.status', statusFile.absolutePath
+        jvmArgs.removeAll { it.contains('HotswapAgent') || it.contains('AllowEnhancedClassRedefinition') }
+    }
+}
+tasks.register('scriptSmoke') {
+    group = 'verification'
+    description = 'Runs bounded rule compilation and native entity binding checks without cleanup'
+    doLast {
+        smokeDirectory.mkdirs()
+        statusFile.delete()
+        def command = [new File(System.getProperty('java.home'), 'bin/java.exe').absolutePath,
+                       '-classpath', file('gradle/wrapper/gradle-wrapper.jar').absolutePath,
+                       'org.gradle.wrapper.GradleWrapperMain', 'runClient', '--offline', '--console=plain',
+                       '-Paotake.scriptSmoke=true']
+        def process = new ProcessBuilder(command).directory(projectDir).redirectErrorStream(true)
+                .redirectOutput(new File(smokeDirectory, 'client.log')).start()
+        try {
+            if (!process.waitFor(180, TimeUnit.SECONDS)) throw new GradleException('Rule client smoke timed out')
+            def status = statusFile.isFile() ? statusFile.getText('UTF-8') : ''
+            if (process.exitValue() != 0 || !status.contains('FINISHED rule-client') || status.contains('FAIL')) {
+                throw new GradleException('Rule client smoke failed; see ' + new File(smokeDirectory, 'client.log'))
+            }
+            logger.lifecycle(status.trim())
+        } finally {
+            if (process.isAlive()) {
+                process.toHandle().descendants().forEach { it.destroyForcibly() }
+                process.destroyForcibly()
+                process.waitFor(10, TimeUnit.SECONDS)
+            }
+        }
+    }
+}
