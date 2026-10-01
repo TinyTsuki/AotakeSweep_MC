@@ -20,7 +20,7 @@ public final class SweepTask<S> {
     private Map<String, Object> configuration;
     private List<EntityAccess> selected = Collections.emptyList();
     private List<List<EntityAccess>> batches = Collections.emptyList();
-    private final IdentityHashMap<Object, DefaultSweepFilter.Entry<EntityAccess, Object>> defaultScans = new IdentityHashMap<>();
+    private SweepCandidates candidates;
     private SweepPhase phase = SweepPhase.CREATED;
     private SweepOutcome outcome;
     private Runnable completion = () -> {};
@@ -44,6 +44,7 @@ public final class SweepTask<S> {
         this.id = Objects.requireNonNull(id, "id"); this.request = Objects.requireNonNull(request, "request");
         this.backend = Objects.requireNonNull(backend, "backend"); this.policy = Objects.requireNonNull(policy, "policy");
         this.plan = Objects.requireNonNull(plan, "execution plan"); plan.requireType(policy);
+        candidates = new SweepCandidates(backend::identity);
         generationId = backend.generationId(); scope = request.scope();
         this.afterRelease = Objects.requireNonNull(afterRelease);
     }
@@ -88,49 +89,58 @@ public final class SweepTask<S> {
             checkpoint();
             phase = SweepPhase.COLLECTING;
             if (plan.custom(Hook.BEFORE_COLLECT)) requireContinue(step(Hook.BEFORE_COLLECT, c -> policy.beforeCollect(c, state)), "beforeCollect");
-            List<EntityAccess> candidates = new ArrayList<>(Objects.requireNonNull(plan.custom(Hook.COLLECT)
-                    ? step(Hook.COLLECT, c -> policy.collectEntities(c, state)) : collectDefault(), "candidates"));
+            List<EntityAccess> collected = Objects.requireNonNull(plan.custom(Hook.COLLECT)
+                    ? step(Hook.COLLECT, c -> policy.collectEntities(c, state)) : collectDefault(), "candidates");
             checkpoint();
-            if (plan.custom(Hook.AFTER_COLLECT)) step(Hook.AFTER_COLLECT, c -> { policy.afterCollect(c, state, candidates); return null; });
-            List<EntityAccess> admitted = normalize(candidates);
-            scanned = admitted.size();
+            if (plan.custom(Hook.AFTER_COLLECT)) {
+                List<EntityAccess> mutable = new ArrayList<>(collected);
+                step(Hook.AFTER_COLLECT, c -> { policy.afterCollect(c, state, mutable); return null; });
+                collected = mutable;
+            }
+            boolean canonical = request.candidates() == null && !plan.custom(Hook.COLLECT)
+                    && !plan.custom(Hook.AFTER_COLLECT) && backend.collectedCandidatesAreCanonical();
+            for (EntityAccess candidate : collected) if (candidate != null) {
+                EntityAccess entity = canonical ? candidate : backend.normalize(candidate, scope, this::checkEntityView);
+                if (entity != null) candidates.add(entity);
+            }
+            scanned = candidates.records().size();
             phase = SweepPhase.FILTERING;
-            if (plan.custom(Hook.BEFORE_FILTER)) requireContinue(step(Hook.BEFORE_FILTER, c -> policy.beforeFilter(c, state, Collections.unmodifiableList(admitted))), "beforeFilter");
-            List<EntityEvaluation> evaluations = new ArrayList<>(admitted.size());
+            if (plan.custom(Hook.BEFORE_FILTER)) requireContinue(step(Hook.BEFORE_FILTER, c -> policy.beforeFilter(c, state, candidates.entities())), "beforeFilter");
             boolean builtin = !plan.custom(Hook.BEFORE_ENTITY) && !plan.custom(Hook.EVALUATE) && !plan.custom(Hook.AFTER_ENTITY);
-            for (int i = 0; i < admitted.size(); i++) {
+            for (int i = 0; i < candidates.records().size(); i++) {
                 final int index = i;
-                EntityAccess entity = admitted.get(i);
+                SweepCandidates.Record record = candidates.records().get(i);
+                EntityAccess entity = record.entity;
                 if (builtin) {
-                    EntityEvaluation evaluated = EntityEvaluation.of(entity, EntityDisposition.DEFAULT);
-                    captureDefault(evaluated);
-                    evaluations.add(evaluated);
+                    captureDefault(record);
                     continue;
                 }
                 FlowControl control = plan.custom(Hook.BEFORE_ENTITY)
                         ? Objects.requireNonNull(step(Hook.BEFORE_ENTITY, c -> policy.beforeEntity(c.entity(entity, index), state)), "beforeEntity result") : FlowControl.CONTINUE;
                 if (control == FlowControl.CANCEL) throw new Cancelled("beforeEntity");
-                EntityEvaluation evaluated = control == FlowControl.SKIP ? EntityEvaluation.skipped(entity)
-                        : EntityEvaluation.of(entity, plan.custom(Hook.EVALUATE)
-                        ? step(Hook.EVALUATE, c -> policy.evaluateEntity(c.entity(entity, index), state)) : EntityDisposition.DEFAULT);
-                captureDefault(evaluated);
-                EntityEvaluation adjusted = plan.custom(Hook.AFTER_ENTITY)
-                        ? Objects.requireNonNull(step(Hook.AFTER_ENTITY, c -> policy.afterEntity(c.entity(entity, index), state, evaluated)), "afterEntity result") : evaluated;
-                if (backend.identity(adjusted.entity()) != backend.identity(entity)) throw new IllegalArgumentException("afterEntity changed entity identity");
-                if (evaluated.skipped() && !adjusted.skipped()) throw new IllegalArgumentException("Skipped entity cannot be selected");
-                if (adjusted.cancelled()) throw new Cancelled("afterEntity");
-                EntityEvaluation canonical = adjusted.skipped() ? EntityEvaluation.skipped(entity) : EntityEvaluation.of(entity, adjusted.disposition());
-                captureDefault(canonical);
-                if (canonical.skipped() || canonical.disposition() != EntityDisposition.DEFAULT) defaultScans.remove(backend.identity(entity));
-                evaluations.add(canonical);
+                record.update(control == FlowControl.SKIP, control == FlowControl.SKIP ? EntityDisposition.KEEP
+                        : plan.custom(Hook.EVALUATE) ? step(Hook.EVALUATE, c -> policy.evaluateEntity(c.entity(entity, index), state)) : EntityDisposition.DEFAULT);
+                captureDefault(record);
+                if (plan.custom(Hook.AFTER_ENTITY)) {
+                    EntityEvaluation evaluated = record.evaluation();
+                    EntityEvaluation adjusted = Objects.requireNonNull(step(Hook.AFTER_ENTITY,
+                            c -> policy.afterEntity(c.entity(entity, index), state, evaluated)), "afterEntity result");
+                    if (backend.identity(adjusted.entity()) != backend.identity(entity)) throw new IllegalArgumentException("afterEntity changed entity identity");
+                    if (evaluated.skipped() && !adjusted.skipped()) throw new IllegalArgumentException("Skipped entity cannot be selected");
+                    if (adjusted.cancelled()) throw new Cancelled("afterEntity");
+                    record.update(adjusted.skipped(), adjusted.disposition());
+                    captureDefault(record);
+                }
             }
-            List<EntityEvaluation> completed = Collections.unmodifiableList(evaluations);
-            List<EntityAccess> choice = new ArrayList<>(Objects.requireNonNull(plan.custom(Hook.FILTER)
-                    ? step(Hook.FILTER, c -> policy.finishFiltering(c, state, completed)) : filterDefault(completed), "selected"));
+            List<EntityAccess> choice;
+            if (plan.custom(Hook.FILTER)) {
+                List<EntityEvaluation> completed = candidates.evaluations();
+                choice = new ArrayList<>(Objects.requireNonNull(step(Hook.FILTER, c -> policy.finishFiltering(c, state, completed)), "selected"));
+                candidates.restrict(choice);
+            } else choice = candidates.filterDefault(request.ignoreFilter() || request.preFiltered(), entries -> backend.filter(request, entries));
             checkpoint();
-            validateSelection(choice, completed);
             if (plan.custom(Hook.AFTER_FILTER)) step(Hook.AFTER_FILTER, c -> { policy.afterFilter(c, state, choice); return null; });
-            selected = validateSelection(choice, completed);
+            selected = plan.custom(Hook.AFTER_FILTER) || plan.custom(Hook.FILTER) ? candidates.restrict(choice) : choice;
             selectedCount = selected.size();
             if (request.operation() == SweepOperation.SCAN_ONLY) { finish(SweepPhase.SUCCESS, "scan complete", null); return null; }
             phase = SweepPhase.READY;
@@ -139,12 +149,11 @@ public final class SweepTask<S> {
         finally { driving = false; }
     }
 
-    private void captureDefault(EntityEvaluation evaluation) {
-        if (evaluation.skipped() || evaluation.disposition() != EntityDisposition.DEFAULT || request.ignoreFilter() || request.preFiltered()) return;
-        Object identity = backend.identity(evaluation.entity());
-        if (!defaultScans.containsKey(identity)) {
+    private void captureDefault(SweepCandidates.Record record) {
+        if (record.skipped || record.disposition != EntityDisposition.DEFAULT || request.ignoreFilter() || request.preFiltered()) return;
+        if (record.scan == null) {
             checkpoint();
-            defaultScans.put(identity, Objects.requireNonNull(backend.evaluate(request, evaluation.entity()), "default evaluation"));
+            record.scan = Objects.requireNonNull(backend.evaluate(request, record.entity), "default evaluation");
             checkpoint();
         }
     }
@@ -158,11 +167,6 @@ public final class SweepTask<S> {
             if (entity != null && identities.add(Objects.requireNonNull(backend.identity(entity), "identity"))) result.add(entity);
         }
         return result;
-    }
-    private List<EntityAccess> validateSelection(List<EntityAccess> choice, List<EntityEvaluation> completed) {
-        IdentityHashMap<Object, EntityAccess> allowed = new IdentityHashMap<>();
-        for (EntityEvaluation e : completed) if (!e.skipped()) allowed.put(backend.identity(e.entity()), e.entity());
-        return restrict(choice, allowed);
     }
     private List<EntityAccess> restrict(List<EntityAccess> choice, IdentityHashMap<Object, EntityAccess> allowed) {
         List<EntityAccess> result = new ArrayList<>(choice.size());
@@ -282,7 +286,7 @@ public final class SweepTask<S> {
                     afterRelease = () -> {};
                     outcome = snapshot(stoppedAt, reason, failure);
                     closed = true;
-                    selected = Collections.emptyList(); batches = Collections.emptyList(); defaultScans.clear(); state = null; policy = null; plan = null; backend = null; request = null; configuration = null;
+                    selected = Collections.emptyList(); batches = Collections.emptyList(); candidates.clear(); candidates = null; state = null; policy = null; plan = null; backend = null; request = null; configuration = null;
                     Runnable done = completion; completion = () -> {};
                     finishing = false;
                     done.run();
@@ -315,7 +319,8 @@ public final class SweepTask<S> {
         List<DefaultSweepFilter.Entry<EntityAccess, Object>> scans = new ArrayList<>();
         for (EntityEvaluation e : evaluations) if (!e.skipped() && e.disposition() == EntityDisposition.DEFAULT) defaults.add(e.entity());
         if (!request.ignoreFilter() && !request.preFiltered()) for (EntityAccess e : defaults) {
-            scans.add(Objects.requireNonNull(defaultScans.get(backend.identity(e)), "missing default scan"));
+            SweepCandidates.Record record = candidates.get(e);
+            scans.add(Objects.requireNonNull(record == null ? null : record.scan, "missing default scan"));
         }
         List<EntityAccess> chosen = request.ignoreFilter() || request.preFiltered() ? defaults : backend.filter(request, scans);
         Set<Object> chosenIds = Collections.newSetFromMap(new IdentityHashMap<>());

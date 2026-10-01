@@ -13,6 +13,8 @@ public interface SweepBackend {
     NativeMembers members();
     ConfigEditSnapshot configuration();
     List<EntityAccess> collect(SweepRequest request, SweepScope scope, Runnable guard);
+    /** Engine-only guarantee for the immediate result of collect, before any custom callback. */
+    default boolean collectedCandidatesAreCanonical() { return false; }
     /** Canonicalize multipart entities, validate authorization and return a task-guarded view, or null. */
     EntityAccess normalize(EntityAccess entity, SweepScope scope, Runnable guard);
     Object identity(EntityAccess entity);

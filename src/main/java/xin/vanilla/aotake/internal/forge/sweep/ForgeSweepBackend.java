@@ -33,8 +33,7 @@ public final class ForgeSweepBackend implements SweepBackend {
     private final EntitySweeper sweeper;
     private final SweepResult result;
     private final ForgeSweepFilter filter;
-    private final IdentityHashMap<Entity,ServerWorld> worlds=new IdentityHashMap<>();
-    private final IdentityHashMap<Entity,ChunkKey> chunks=new IdentityHashMap<>();
+    private final IdentityHashMap<Entity,NativeCandidate> candidates=new IdentityHashMap<>();
     private ChunkSweepSelection<EntityAccess> chunkSelection;
     private EntitySweeper.RecyclingBatch recycling;
     private boolean touched;
@@ -61,6 +60,7 @@ public final class ForgeSweepBackend implements SweepBackend {
     public ServerAccess server(Runnable callbackGuard,Runnable entityGuard){ return new ForgeServerAccess(()->server,callbackGuard,entityGuard); }
     public NativeMembers members(){ return lease.members(); }
     public ConfigEditSnapshot configuration(){ return lease.configuration(); }
+    public boolean collectedCandidatesAreCanonical(){ return true; }
     public List<EntityAccess> collect(SweepRequest request,SweepScope scope,Runnable guard) {
         List<EntityAccess> entities=new ArrayList<>();
         if(request.operation()==SweepOperation.RECYCLE && request.trigger()!=SweepTrigger.CHUNK && noOnlinePlayer()) return entities;
@@ -70,14 +70,17 @@ public final class ForgeSweepBackend implements SweepBackend {
                     ? (Iterable<Entity>) world.getEntities()::iterator
                     : world.getEntitiesOfClass(Entity.class, target.bounds());
             for(Entity entity:candidates) {
-                EntityAccess accepted=normalize(new ForgeEntityAccess(entity,guard),scope,guard);
-                if(accepted!=null) entities.add(accepted);
+                NativeCandidate accepted=admit(entity,scope);
+                if(accepted!=null) entities.add(accepted.view(guard));
             }
         }
         return entities;
     }
     public EntityAccess normalize(EntityAccess view,SweepScope scope,Runnable guard) {
-        Entity entity=view.nativeEntity(Entity.class);
+        NativeCandidate candidate=admit(view.nativeEntity(Entity.class),scope);
+        return candidate==null?null:candidate.view(guard);
+    }
+    private NativeCandidate admit(Entity entity,SweepScope scope) {
         if(entity instanceof PartEntity) entity=((PartEntity<?>)entity).getParent();
         if(!AotakeUtils.prepareSweepCandidate(entity)) return null;
         ServerWorld world=(ServerWorld)entity.level;
@@ -85,13 +88,23 @@ public final class ForgeSweepBackend implements SweepBackend {
         String dimension=world.dimension().location().toString();
         if(!scope.contains(dimension,entity.blockPosition().getX()>>4,entity.blockPosition().getZ()>>4)
                 || !target.contains(dimension,entity.getBoundingBox(),entity instanceof PlayerEntity,entity instanceof ItemEntity)) return null;
-        ServerWorld original=worlds.putIfAbsent(entity,world);
-        if(original!=null && original!=world) return null;
-        if(request.trigger()==SweepTrigger.CHUNK) {
-            ChunkKey key=ChunkKey.of(entity), before=chunks.putIfAbsent(entity,key);
-            if(before!=null && !before.equals(key)) return null;
+        NativeCandidate existing=candidates.get(entity);
+        ChunkKey chunk=request.trigger()==SweepTrigger.CHUNK?ChunkKey.of(entity):null;
+        if(existing!=null) return existing.world==world && Objects.equals(existing.chunk,chunk)?existing:null;
+        NativeCandidate added=new NativeCandidate(entity,world,chunk);
+        candidates.put(entity,added);
+        return added;
+    }
+    private static final class NativeCandidate {
+        private final Entity entity;
+        private final ServerWorld world;
+        private final ChunkKey chunk;
+        private EntityAccess view;
+        NativeCandidate(Entity entity,ServerWorld world,ChunkKey chunk){ this.entity=entity; this.world=world; this.chunk=chunk; }
+        EntityAccess view(Runnable guard){
+            if(view==null) view=new ForgeEntityAccess(entity,guard);
+            return view;
         }
-        return new ForgeEntityAccess(entity,guard);
     }
     public Object identity(EntityAccess entity){ return entity.nativeEntity(Entity.class); }
     public DefaultSweepFilter.Entry<EntityAccess,Object> evaluate(SweepRequest request,EntityAccess view) {
@@ -117,7 +130,10 @@ public final class ForgeSweepBackend implements SweepBackend {
     public List<EntityAccess> preflight(SweepRequest request,SweepScope scope,List<EntityAccess> selected) {
         if(request.operation()==SweepOperation.RECYCLE) {
             List<Entity> entities=new ArrayList<>();
-            for(EntityAccess view:selected) if(normalize(view,scope,()->{})!=null) entities.add(view.nativeEntity(Entity.class));
+            for(EntityAccess view:selected) {
+                NativeCandidate candidate=admit(view.nativeEntity(Entity.class),scope);
+                if(candidate!=null) entities.add(candidate.entity);
+            }
             new CleanupRuleGate<>(generation,()->manager.isUsable(generation.id())).prepare(entities,e->e instanceof ItemEntity,!settings.entityCatch().catchItem().isEmpty());
         }
         return selected;
@@ -129,8 +145,9 @@ public final class ForgeSweepBackend implements SweepBackend {
         requireUsable(); touched=true; result.setTotalBatch(batch.total());
         List<Entity> entities=new ArrayList<>();
         for(EntityAccess view:batch.entities()) {
-            if(normalize(view,batch.task().scope(),()->{})==null) progress.skipped(1);
-            else entities.add(view.nativeEntity(Entity.class));
+            NativeCandidate candidate=admit(view.nativeEntity(Entity.class),batch.task().scope());
+            if(candidate==null) progress.skipped(1);
+            else entities.add(candidate.entity);
         }
         if(request.operation()==SweepOperation.RECYCLE) {
             if(recycling==null) recycling=sweeper.beginRecycling(result,generation,settings);
@@ -147,6 +164,6 @@ public final class ForgeSweepBackend implements SweepBackend {
         result.incrementBatch();
     }
     public void flush(){ if(touched && request.operation()==SweepOperation.RECYCLE) EntitySweeper.flushPendingStorage(); }
-    public void release(){ filter.clear(); worlds.clear(); chunks.clear(); chunkSelection=null; recycling=null; }
+    public void release(){ filter.clear(); candidates.clear(); chunkSelection=null; recycling=null; }
     public void fault(Throwable failure){ manager.failGeneration(generation.id(),failure); }
 }
