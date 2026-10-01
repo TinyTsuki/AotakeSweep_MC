@@ -7,7 +7,7 @@ import java.util.*;
 import static org.junit.Assert.*;
 
 public class DefaultSweepPolicyTest {
-    @Test public void builtinDoesNotAllocateUnusedPerEntityHookFrames() {
+    @Test public void builtinAndEmptySubclassDoNotAllocateUnusedPerEntityHookFrames() {
         java.lang.management.ThreadMXBean bean = java.lang.management.ManagementFactory.getThreadMXBean();
         org.junit.Assume.assumeTrue(bean instanceof com.sun.management.ThreadMXBean);
         com.sun.management.ThreadMXBean allocation = (com.sun.management.ThreadMXBean) bean;
@@ -20,7 +20,7 @@ public class DefaultSweepPolicyTest {
         long builtin = prepareAllocated(allocation, new DefaultSweepPolicy<>());
         long inherited = prepareAllocated(allocation, new DefaultSweepPolicy<Void>() {});
         assertTrue("Unused hook frames: builtin=" + builtin + ", inherited=" + inherited,
-                builtin + 1024L * 64 < inherited);
+                Math.abs(builtin - inherited) <= 4096);
     }
 
     private long prepareAllocated(com.sun.management.ThreadMXBean allocation, DefaultSweepPolicy<Void> policy) {

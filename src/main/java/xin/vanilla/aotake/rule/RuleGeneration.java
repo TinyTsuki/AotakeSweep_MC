@@ -102,6 +102,7 @@ public final class RuleGeneration<S> {
         public String policyId() { check(); return selection.policyId; }
         public ConfigEditSnapshot configuration() { check(); return configuration; }
         public NativeMembers members() { check(); return policies.members(selection.policyId); }
+        public xin.vanilla.aotake.sweep.SweepExecutionPlan executionPlan() { check(); return policies.executionPlan(selection.policyId); }
         public SweepPolicy<?> policy() {
             check();
             if (instance == null) {

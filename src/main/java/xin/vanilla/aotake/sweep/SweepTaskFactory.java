@@ -24,7 +24,7 @@ public final class SweepTaskFactory {
             backend = Objects.requireNonNull(backendFactory.apply(lease), "backend");
             if (backend.generationId() != lease.generationId() || !manager.isUsable(lease.generationId()))
                 throw new IllegalStateException("Sweep backend belongs to an unavailable generation");
-            SweepTask<?> created = new SweepTask<>(id, request, backend, policy, lease::close);
+            SweepTask<?> created = new SweepTask<>(id, request, backend, policy, lease.executionPlan(), lease::close);
             task.set(created);
             return created;
         } catch (RuntimeException | Error failure) {
