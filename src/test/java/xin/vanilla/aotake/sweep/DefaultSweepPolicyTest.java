@@ -7,6 +7,52 @@ import java.util.*;
 import static org.junit.Assert.*;
 
 public class DefaultSweepPolicyTest {
+    @Test public void builtinDoesNotAllocateUnusedPerEntityHookFrames() {
+        java.lang.management.ThreadMXBean bean = java.lang.management.ManagementFactory.getThreadMXBean();
+        org.junit.Assume.assumeTrue(bean instanceof com.sun.management.ThreadMXBean);
+        com.sun.management.ThreadMXBean allocation = (com.sun.management.ThreadMXBean) bean;
+        org.junit.Assume.assumeTrue(allocation.isThreadAllocatedMemorySupported());
+        allocation.setThreadAllocatedMemoryEnabled(true);
+        for (int i = 0; i < 8; i++) {
+            prepareAllocated(allocation, new DefaultSweepPolicy<>());
+            prepareAllocated(allocation, new DefaultSweepPolicy<Void>() {});
+        }
+        long builtin = prepareAllocated(allocation, new DefaultSweepPolicy<>());
+        long inherited = prepareAllocated(allocation, new DefaultSweepPolicy<Void>() {});
+        assertTrue("Unused hook frames: builtin=" + builtin + ", inherited=" + inherited,
+                builtin + 1024L * 64 < inherited);
+    }
+
+    private long prepareAllocated(com.sun.management.ThreadMXBean allocation, DefaultSweepPolicy<Void> policy) {
+        SweepFixture b = new SweepFixture();
+        for (int i = 0; i < 1024; i++) b.add("e" + i);
+        SweepTask<Void> task = new SweepTask<>(UUID.randomUUID(),
+                SweepRequest.builder(SweepTrigger.SCHEDULED, SweepOperation.SCAN_ONLY).build(), b, policy);
+        long thread = Thread.currentThread().getId(), before = allocation.getThreadAllocatedBytes(thread);
+        task.prepare();
+        long bytes = allocation.getThreadAllocatedBytes(thread) - before;
+        assertEquals(SweepPhase.SUCCESS, task.phase());
+        assertEquals(1024, task.outcome().selected());
+        return bytes;
+    }
+
+    @Test public void builtinStillCancelsImmediatelyWhenAnEntityRuleRetiresTheGeneration() {
+        SweepFixture b = new SweepFixture() {
+            int inspected;
+            public DefaultSweepFilter.Entry<EntityAccess, Object> evaluate(SweepRequest r, EntityAccess e) {
+                assertEquals("Must stop after the retiring rule", 1, ++inspected);
+                usable = false;
+                return super.evaluate(r, e);
+            }
+        };
+        b.add("a"); b.add("b");
+        SweepTask<Void> task = new SweepTask<>(UUID.randomUUID(),
+                SweepRequest.builder(SweepTrigger.SCHEDULED, SweepOperation.RECYCLE).build(), b, new DefaultSweepPolicy<>());
+        assertNull(task.prepare());
+        assertEquals(SweepPhase.CANCELLED, task.phase());
+        assertEquals(0, b.executed); assertEquals(0, b.filtered); assertEquals(1, b.released);
+    }
+
     @Test public void defaultAndInheritedPoliciesMatchBaselineTwoPassSelection() {
         Random random = new Random(41021);
         for (int scenario = 0; scenario < 100; scenario++) {

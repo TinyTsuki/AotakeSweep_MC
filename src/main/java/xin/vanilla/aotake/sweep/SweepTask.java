@@ -91,9 +91,18 @@ public final class SweepTask<S> {
             phase = SweepPhase.FILTERING;
             requireContinue(step(Hook.BEFORE_FILTER, c -> policy.beforeFilter(c, state, Collections.unmodifiableList(admitted))), "beforeFilter");
             List<EntityEvaluation> evaluations = new ArrayList<>(admitted.size());
+            boolean builtin = policy.getClass() == DefaultSweepPolicy.class;
             for (int i = 0; i < admitted.size(); i++) {
                 final int index = i;
                 EntityAccess entity = admitted.get(i);
+                // Only the exact built-in class has three guaranteed no-op entity hooks.
+                // Subclasses always retain the full lifecycle, including calls to super.
+                if (builtin) {
+                    EntityEvaluation evaluated = EntityEvaluation.of(entity, EntityDisposition.DEFAULT);
+                    captureDefault(evaluated);
+                    evaluations.add(evaluated);
+                    continue;
+                }
                 FlowControl control = Objects.requireNonNull(step(Hook.BEFORE_ENTITY, c -> policy.beforeEntity(c.entity(entity, index), state)), "beforeEntity result");
                 if (control == FlowControl.CANCEL) throw new Cancelled("beforeEntity");
                 EntityEvaluation evaluated = control == FlowControl.SKIP ? EntityEvaluation.skipped(entity)
