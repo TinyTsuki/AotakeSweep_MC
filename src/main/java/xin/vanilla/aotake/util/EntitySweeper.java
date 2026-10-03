@@ -93,21 +93,9 @@ public class EntitySweeper {
         return result;
     }
 
-    private static List<Entity> eligible(List<Entity> entities) {
-        List<Entity> eligible = new ArrayList<>();
-        Set<Entity> seenEntities = Collections.newSetFromMap(new IdentityHashMap<>());
-        for (Entity original : entities) {
-            Entity canonical = (original instanceof PartEntity) ? ((PartEntity<?>) original).getParent() : original;
-            if (seenEntities.add(canonical) && AotakeUtils.prepareSweepCandidate(canonical)) eligible.add(canonical);
-        }
-        return eligible;
-    }
-
-
-
     /** One recycling transaction state shared by every batch of a cleanup task. */
     public final class RecyclingBatch {
-        private final Map<Entity, Boolean> decisions = new IdentityHashMap<>();
+        private final RecyclingCandidates<Entity> decisions = new RecyclingCandidates<>();
         private final SweepBatchCommitter<Entity> executor;
         private RecyclingBatch(CleanupRuleGate<Entity> gate, SweepResult result, SweepContext context,
                                Predicate<Entity> commitEligibility) {
@@ -115,10 +103,12 @@ public class EntitySweeper {
             executor = new SweepBatchCommitter<>(new SweepBatchCommitter.Operations<Entity>() {
                 public void requireUsable() { gate.requireUsable(); }
                 public void prepare(List<Entity> entities) {
-                    decisions.clear();
-                    for (CleanupRuleGate.Decision<Entity> decision : gate.prepare(EntitySweeper.eligible(entities),
+                    List<Entity> eligible = decisions.gather(entities,
+                            entity -> entity instanceof PartEntity ? ((PartEntity<?>) entity).getParent() : entity,
+                            AotakeUtils::prepareSweepCandidate);
+                    for (CleanupRuleGate.Decision<Entity> decision : gate.prepare(eligible,
                             entity -> entity instanceof ItemEntity, !context.catchItems.isEmpty()))
-                        decisions.put(decision.subject(), decision.recycle());
+                        decisions.decide(decision.subject(), decision.recycle());
                 }
                 public void begin() {
                     init();
@@ -131,9 +121,9 @@ public class EntitySweeper {
                         }
                     }
                 }
-                public boolean eligible(Entity entity) { return decisions.containsKey(entity) && commitEligibility.test(entity); }
+                public boolean eligible(Entity entity) { return decisions.ready(entity) && commitEligibility.test(entity); }
                 public void commit(Entity entity, SweepBackend.Progress progress) {
-                    boolean recycle = decisions.get(entity);
+                    boolean recycle = decisions.recycle(entity);
                     result.add(processDrop(entity, result, context, recycle, progress));
                 }
                 public void flush() { try { flushPendingStorage(); } finally { decisions.clear(); } }
