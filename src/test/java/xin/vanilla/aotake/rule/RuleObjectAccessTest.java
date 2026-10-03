@@ -28,6 +28,26 @@ import java.util.concurrent.atomic.AtomicReference;
 import static org.junit.Assert.*;
 
 public class RuleObjectAccessTest {
+    @Test public void resourceMatchingUsesNativePartsAndExpiresWithTheEvaluation() {
+        RuleBindingPlan plan = RuleBindingPlan.defaults();
+        ForgeEntityRuleContext context = new ForgeEntityRuleContext(plan);
+        ItemEntity item = new ItemEntity(null, 0, 0, 0, new ItemStack(Items.APPLE));
+        assertTrue(context.evaluate(c -> {
+            assertTrue(c.matchesResource("minecraft", "item"));
+            assertTrue(c.matchesResource("*", "item"));
+            assertTrue(c.matchesResource("minecraft", "*"));
+            assertTrue(c.matchesResource("*", "*"));
+            assertFalse(c.matchesResource("other", "item"));
+            assertFalse(c.matchesResource("minecraft", "items"));
+            return true;
+        }, item, plan));
+        assertThrows(IllegalStateException.class, () -> context.matchesResource("*", "*"));
+        assertTrue(context.evaluateResource(c -> { throw new AssertionError("Native ID used a text evaluation frame"); },
+                item, plan, "minecraft", "item"));
+        assertFalse(context.evaluateResource(c -> { throw new AssertionError("Native ID used a text evaluation frame"); },
+                item, plan, "minecraft", "items"));
+        assertThrows(IllegalStateException.class, context::resourceId);
+    }
     @BeforeClass public static void bootstrap() {
         Bootstrap.bootStrap();
         ForgeBaniraRegistryService registry = new ForgeBaniraRegistryService();
@@ -154,16 +174,25 @@ public class RuleObjectAccessTest {
                             Class.forName(value.get("functionType").getAsString(), false, loader)));
                 }
             }
-            // JUnit has no FML mapping service; the real dev/SRG launches reuse both files unchanged.
+            // JUnit has no FML mapping service; the real dev/SRG launches reuse these files unchanged.
             NativeMembers members = ForgeNativeMembers.prepare(specs, loader, (kind, name) -> {
                 if (name.equals("func_226277_ct_")) return "getX";
                 if (name.equals("field_70173_aa")) return "tickCount";
+                if (name.equals("func_70107_b")) return "setPos";
                 throw new AssertionError("Unexpected member: " + name);
             });
             ItemEntity entity = new ItemEntity(null, 42, 64, -2, new ItemStack(Items.STONE));
             entity.tickCount = 19;
             RuleBindingPlan plan = RuleBindingPlan.defaults();
             assertTrue(new ForgeEntityRuleContext(plan, members).evaluate(rule, entity, plan));
+            System.setProperty("aotake.policySmoke.moveDuringRecycle", "true");
+            try {
+                ForgeEntityRuleContext context = new ForgeEntityRuleContext(plan, members);
+                assertFalse(context.evaluate(rule, entity, plan));
+                assertEquals(42D, entity.getX(), 0D);
+                assertFalse(context.evaluate(rule, entity, plan));
+                assertEquals(80D, entity.getX(), 0D);
+            } finally { System.clearProperty("aotake.policySmoke.moveDuringRecycle"); }
         }
     }
 

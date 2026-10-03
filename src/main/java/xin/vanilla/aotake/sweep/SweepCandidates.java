@@ -10,6 +10,7 @@ final class SweepCandidates {
     static final class Record {
         final EntityAccess entity;
         boolean skipped, chosen;
+        private boolean startAllowed, startEmitted;
         EntityDisposition disposition = EntityDisposition.DEFAULT;
         DefaultSweepFilter.Entry<EntityAccess,Object> scan;
         private EntityEvaluation snapshot;
@@ -25,10 +26,15 @@ final class SweepCandidates {
         }
     }
     private final Function<EntityAccess,Object> identity;
-    private final IdentityHashMap<Object,Record> index = new IdentityHashMap<>();
-    private final List<Record> ordered = new ArrayList<>();
+    private IdentityHashMap<Object,Record> index = new IdentityHashMap<>();
+    private final ArrayList<Record> ordered = new ArrayList<>();
     private long selection;
     SweepCandidates(Function<EntityAccess,Object> identity) { this.identity = identity; }
+    void reserve(int expected) {
+        if (expected < 0) throw new IllegalArgumentException("negative candidate count");
+        if (index.isEmpty() && expected > 32) index = new IdentityHashMap<>(expected);
+        ordered.ensureCapacity(expected);
+    }
     void add(EntityAccess entity) {
         Object key = Objects.requireNonNull(identity.apply(entity), "identity");
         if (!index.containsKey(key)) { Record r = new Record(entity); index.put(key, r); ordered.add(r); }
@@ -55,21 +61,37 @@ final class SweepCandidates {
         }
         return result;
     }
+    void authorizeStart(List<EntityAccess> selected) {
+        selected.forEach(entity -> {
+            Record r = get(entity);
+            if (r == null || r.skipped) throw new IllegalArgumentException("Selected entity was not evaluated or was skipped");
+            r.startAllowed = true;
+        });
+    }
+    EntityAccess consumeStart(EntityAccess entity) {
+        Record r = get(entity);
+        if (r == null || !r.startAllowed) throw new IllegalArgumentException("Selected entity was not evaluated or was skipped");
+        if (r.startEmitted) return null;
+        r.startEmitted = true;
+        return r.entity;
+    }
     List<EntityAccess> filterDefault(boolean bypass, Function<List<DefaultSweepFilter.Entry<EntityAccess,Object>>,List<EntityAccess>> filter) {
         List<DefaultSweepFilter.Entry<EntityAccess,Object>> scans = new ArrayList<>();
-        for (Record r : ordered) {
+        ordered.forEach(r -> {
             r.chosen = false;
             if (!r.skipped && r.disposition == EntityDisposition.DEFAULT && !bypass)
                 scans.add(Objects.requireNonNull(r.scan, "missing default scan"));
-        }
-        if (!bypass) for (EntityAccess entity : filter.apply(scans)) {
+        });
+        if (!bypass) filter.apply(scans).forEach(entity -> {
             Record r = get(entity);
             if (r == null) throw new IllegalArgumentException("Default filter selected unknown entity");
             r.chosen = true;
-        }
+        });
         List<EntityAccess> result = new ArrayList<>();
-        for (Record r : ordered) if (!r.skipped && (r.disposition == EntityDisposition.CLEAN
-                || r.disposition == EntityDisposition.DEFAULT && (bypass || r.chosen))) result.add(r.entity);
+        ordered.forEach(r -> {
+            if (!r.skipped && (r.disposition == EntityDisposition.CLEAN
+                    || r.disposition == EntityDisposition.DEFAULT && (bypass || r.chosen))) result.add(r.entity);
+        });
         return result;
     }
     void clear() { ordered.clear(); index.clear(); }

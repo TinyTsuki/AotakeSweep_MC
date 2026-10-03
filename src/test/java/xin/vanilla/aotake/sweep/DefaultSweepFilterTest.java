@@ -6,6 +6,21 @@ import java.util.concurrent.atomic.AtomicInteger;
 import static org.junit.Assert.*;
 
 public class DefaultSweepFilterTest {
+    @Test public void unreachableLimitsDoNotBuildChunkCounts() {
+        int[] hashes = {0};
+        Object chunk = new Object() {
+            @Override public int hashCode() { hashes[0]++; return 1; }
+        };
+        List<DefaultSweepFilter.Entry<String,Object>> entries = Arrays.asList(
+                new DefaultSweepFilter.Entry<>("safe", true, true, null, chunk),
+                new DefaultSweepFilter.Entry<>("other", false, false, "other", null),
+                new DefaultSweepFilter.Entry<>("junk", false, true, null, null));
+        assertEquals(Collections.singletonList("junk"), DefaultSweepFilter.selectEntries(entries, 3, 3));
+        assertEquals(0, hashes[0]);
+        assertEquals(Arrays.asList("safe", "junk"), DefaultSweepFilter.selectEntries(entries, 3, 0));
+        assertTrue(hashes[0] > 0);
+        assertEquals(Arrays.asList("other", "junk"), DefaultSweepFilter.selectEntries(entries, 0, 3));
+    }
     private DefaultSweepFilter.Entry<String, String> entry(String id, boolean safe, boolean junk, String type, String chunk) {
         return new DefaultSweepFilter.Entry<>(id, safe, junk, type, chunk);
     }

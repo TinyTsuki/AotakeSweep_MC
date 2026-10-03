@@ -24,18 +24,19 @@ public final class DefaultSweepFilter<E, K> {
     }
 
     public static <E, K> List<E> selectEntries(List<Entry<E, K>> scanned, int typeLimit, int safeLimit) {
+        boolean countTypes = typeLimit < scanned.size(), countSafe = safeLimit < scanned.size();
         Map<String, Integer> typeCounts = new HashMap<>();
         Map<K, Integer> safeCounts = new HashMap<>();
-        for (Entry<E, K> entry : scanned) {
-            if (!entry.junk) typeCounts.merge(entry.type, 1, Integer::sum);
-            if (entry.safe) safeCounts.merge(entry.chunk, 1, Integer::sum);
-        }
+        if (countTypes || countSafe) scanned.forEach(entry -> {
+            if (countTypes && !entry.junk) typeCounts.merge(entry.type, 1, Integer::sum);
+            if (countSafe && entry.safe) safeCounts.merge(entry.chunk, 1, Integer::sum);
+        });
         List<E> selected = new ArrayList<>();
-        for (Entry<E, K> entry : scanned) {
+        scanned.forEach(entry -> {
             if ((!entry.safe && entry.junk)
-                    || (!entry.junk && typeCounts.get(entry.type) > typeLimit)
-                    || (entry.safe && safeCounts.get(entry.chunk) > safeLimit)) selected.add(entry.entity);
-        }
+                    || (countTypes && !entry.junk && typeCounts.get(entry.type) > typeLimit)
+                    || (countSafe && entry.safe && safeCounts.get(entry.chunk) > safeLimit)) selected.add(entry.entity);
+        });
         return selected;
     }
 

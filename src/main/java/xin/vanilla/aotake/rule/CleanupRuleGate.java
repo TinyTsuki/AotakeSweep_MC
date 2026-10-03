@@ -32,6 +32,18 @@ public final class CleanupRuleGate<S> {
         return decisions;
     }
 
+    public void validate(List<S> subjects, Predicate<S> isItem, boolean captureEnabled) {
+        requireUsable();
+        boolean itemRules = generation.hasRules(RuleGeneration.RuleList.REDLIST);
+        boolean captureRules = captureEnabled && generation.hasRules(RuleGeneration.RuleList.CAPTURE);
+        if (itemRules || captureRules) for (S subject : subjects) {
+            if (isItem.test(subject)) {
+                if (itemRules) generation.matches(RuleGeneration.RuleList.REDLIST, subject);
+            } else if (captureRules) generation.matches(RuleGeneration.RuleList.CAPTURE, subject);
+        }
+        requireUsable();
+    }
+
     public static final class Decision<S> {
         private final S subject;
         private final boolean recycle;

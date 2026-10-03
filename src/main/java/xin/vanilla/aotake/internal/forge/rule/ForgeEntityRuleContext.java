@@ -5,6 +5,7 @@ import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.item.ItemEntity;
 import net.minecraft.entity.passive.TameableEntity;
 import net.minecraftforge.common.UsernameCache;
+import net.minecraft.util.ResourceLocation;
 import xin.vanilla.aotake.rule.*;
 import xin.vanilla.aotake.api.rule.*;
 import xin.vanilla.banira.common.util.*;
@@ -56,6 +57,20 @@ public final class ForgeEntityRuleContext extends LazyRuleContext<Entity> {
         return serverView;
     }
     @Override public NativeMembers members() { checkAccess(); return members; }
+    @Override public boolean matchesResource(String namespace, String path) {
+        checkAccess();
+        ResourceLocation id = EntityUtils.getEntityRegistry(subject());
+        if (id == null) return super.matchesResource(namespace, path);
+        return (namespace.equals("*") || namespace.equals(id.getNamespace()))
+                && (path.equals("*") || path.equals(id.getPath()));
+    }
+    @Override protected boolean evaluateResourceValue(EntityRule fallback, Entity subject, RuleBindingPlan plan,
+                                                      String namespace, String path) {
+        ResourceLocation id = EntityUtils.getEntityRegistry(subject);
+        if (id == null) return super.evaluateResourceValue(fallback, subject, plan, namespace, path);
+        return (namespace.equals("*") || namespace.equals(id.getNamespace()))
+                && (path.equals("*") || path.equals(id.getPath()));
+    }
     private void prepareViews() {
         checkAccess();
         if (viewsFrame != evaluationFrame()) {

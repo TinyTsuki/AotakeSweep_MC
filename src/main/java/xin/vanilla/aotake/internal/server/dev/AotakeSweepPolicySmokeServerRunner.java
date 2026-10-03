@@ -195,7 +195,29 @@ public final class AotakeSweepPolicySmokeServerRunner {
                 case 15:
                     if (!pending.isDone()) return;
                     pending.join(); pass("bad-native-member-rejected-before-activation");
-                    finish(); break;
+                    holder.set(RuleMigrationTransaction.LISTS.get(0), Collections.singletonList("minecraft:item"));
+                    holder.set(RuleMigrationTransaction.LISTS.get(2), Collections.singletonList("script:native_probe"));
+                    holder.save(); pending = AotakeRuleRuntime.reload(); state = 16; break;
+                case 16:
+                    if (!pending.isDone()) return;
+                    pending.join(); begin("normal", 1);
+                    System.setProperty("aotake.policySmoke.moveDuringRecycle", "true");
+                    AotakeSweepRuntime.submit(SweepTrigger.COMMAND, SweepOperation.RECYCLE,
+                            new ForgeSweepTarget("minecraft:overworld", new net.minecraft.util.math.AxisAlignedBB(0, 95, 0, 16, 110, 16), true),
+                            false, new ArrayList<>(spawned), false, new SweepResult(), AotakeSweep.getEntitySweeper(), null);
+                    state = 17; break;
+                case 17:
+                    if (!done()) return;
+                    check("COMMAND", "RECYCLE", "SUCCESS", 0);
+                    require(alive() == 1 && spawned.get(0).getX() == 80, "Batch rule moved entity outside authorized bounds before commit");
+                    pass("batch-rule-movement-revalidated-before-commit");
+                    System.clearProperty("aotake.policySmoke.moveDuringRecycle");
+                    holder.set(RuleMigrationTransaction.LISTS.get(0), Collections.singletonList("script:native_probe"));
+                    holder.set(RuleMigrationTransaction.LISTS.get(2), Collections.emptyList());
+                    holder.save(); pending = AotakeRuleRuntime.reload(); state = 18; break;
+                case 18:
+                    if (!pending.isDone()) return;
+                    pending.join(); finish(); break;
                 default: throw new IllegalStateException("Unknown policy smoke state " + state);
             }
         } catch (Throwable failure) { failure.printStackTrace(); status(side(), "FAIL state=" + state + " " + failure); finish(); }

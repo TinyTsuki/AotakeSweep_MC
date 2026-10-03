@@ -14,5 +14,13 @@
     "name": "field_70173_aa",
     "descriptor": "I",
     "functionType": "xin.vanilla.banira.generated.NativeEntityProbe$ReadTick"
+  },
+  {
+    "id": "position",
+    "kind": "METHOD",
+    "owner": "net.minecraft.entity.Entity",
+    "name": "func_70107_b",
+    "descriptor": "(DDD)V",
+    "functionType": "xin.vanilla.banira.generated.NativeEntityProbe$WritePosition"
   }
 ]

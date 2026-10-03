@@ -68,6 +68,15 @@ public abstract class LazyRuleContext<S> implements EntityRuleContext {
         }
     }
 
+    public final boolean evaluateResource(EntityRule fallback, S subject, RuleBindingPlan plan, String namespace, String path) {
+        bindPlan(plan);
+        return evaluateResourceValue(fallback, Objects.requireNonNull(subject), plan, namespace, path);
+    }
+
+    protected boolean evaluateResourceValue(EntityRule fallback, S subject, RuleBindingPlan plan, String namespace, String path) {
+        return evaluate(fallback, subject, plan);
+    }
+
     @Override public final <T> T value(int slot, Class<T> type) {
         checkAccess();
         if (plan == null) throw new IllegalStateException("Rule context is not bound to an entity");

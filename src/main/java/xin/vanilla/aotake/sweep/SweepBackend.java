@@ -2,7 +2,7 @@ package xin.vanilla.aotake.sweep;
 
 import xin.vanilla.aotake.api.rule.*;
 import xin.vanilla.aotake.api.sweep.*;
-import xin.vanilla.banira.common.config.ConfigEditSnapshot;
+import xin.vanilla.banira.common.config.ConfigReadSnapshot;
 import java.util.List;
 
 /** Engine-owned services. Policies never receive this execution or persistence interface. */
@@ -11,7 +11,7 @@ public interface SweepBackend {
     void requireUsable();
     ServerAccess server(Runnable callbackGuard, Runnable entityGuard);
     NativeMembers members();
-    ConfigEditSnapshot configuration();
+    ConfigReadSnapshot configuration();
     List<EntityAccess> collect(SweepRequest request, SweepScope scope, Runnable guard);
     /** Engine-only guarantee for the immediate result of collect, before any custom callback. */
     default boolean collectedCandidatesAreCanonical() { return false; }

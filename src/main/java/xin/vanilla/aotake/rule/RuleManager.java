@@ -91,7 +91,7 @@ public final class RuleManager<S> implements AutoCloseable {
 
     public RuleGeneration<S>.PolicyLease leasePolicy(Consumer<String> cancelled) {
         RuleGeneration<S> generation = acquire(RuleUse.SWEEP);
-        return generation.lease(holder.snapshotForEdit(holder.valuePaths()), cancelled);
+        return generation.lease(holder.snapshotForRead(holder.valuePaths()), cancelled);
     }
 
     public RuleGeneration<S> acquire(RuleUse use) {

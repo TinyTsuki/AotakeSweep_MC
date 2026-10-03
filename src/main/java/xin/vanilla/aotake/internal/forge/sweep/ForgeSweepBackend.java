@@ -17,7 +17,7 @@ import xin.vanilla.aotake.internal.forge.rule.*;
 import xin.vanilla.aotake.rule.*;
 import xin.vanilla.aotake.sweep.*;
 import xin.vanilla.aotake.util.*;
-import xin.vanilla.banira.common.config.ConfigEditSnapshot;
+import xin.vanilla.banira.common.config.ConfigReadSnapshot;
 import xin.vanilla.banira.common.util.CollectionUtils;
 import xin.vanilla.banira.common.util.EntityUtils;
 import java.util.*;
@@ -60,7 +60,7 @@ public final class ForgeSweepBackend implements SweepBackend {
     }
     public ServerAccess server(Runnable callbackGuard,Runnable entityGuard){ return new ForgeServerAccess(()->server,callbackGuard,entityGuard); }
     public NativeMembers members(){ return lease.members(); }
-    public ConfigEditSnapshot configuration(){ return lease.configuration(); }
+    public ConfigReadSnapshot configuration(){ return lease.configuration(); }
     public boolean collectedCandidatesAreCanonical(){ return true; }
     public List<EntityAccess> collect(SweepRequest request,SweepScope scope,Runnable guard) {
         List<EntityAccess> entities=new ArrayList<>();
@@ -138,12 +138,18 @@ public final class ForgeSweepBackend implements SweepBackend {
     }
     public List<EntityAccess> preflight(SweepRequest request,SweepScope scope,List<EntityAccess> selected) {
         if(request.operation()==SweepOperation.RECYCLE) {
+            requireUsable();
+            boolean captureEnabled=!settings.entityCatch().catchItem().isEmpty();
+            boolean itemRules=generation.hasRules(RuleGeneration.RuleList.REDLIST);
+            boolean captureRules=captureEnabled && generation.hasRules(RuleGeneration.RuleList.CAPTURE);
             List<Entity> entities=new ArrayList<>();
-            for(EntityAccess view:selected) {
-                NativeCandidate candidate=admit(view.nativeEntity(Entity.class),scope);
+            if(itemRules || captureRules) for(EntityAccess view:selected) {
+                Entity entity=view.nativeEntity(Entity.class);
+                if(entity instanceof ItemEntity ? !itemRules : !captureRules) continue;
+                NativeCandidate candidate=admit(entity,scope);
                 if(candidate!=null) entities.add(candidate.entity);
             }
-            new CleanupRuleGate<>(generation,()->manager.isUsable(generation.id())).prepare(entities,e->e instanceof ItemEntity,!settings.entityCatch().catchItem().isEmpty());
+            new CleanupRuleGate<>(generation,()->manager.isUsable(generation.id())).validate(entities,e->e instanceof ItemEntity,captureEnabled);
         }
         return selected;
     }
@@ -159,7 +165,10 @@ public final class ForgeSweepBackend implements SweepBackend {
             else entities.add(candidate.entity);
         }
         if(request.operation()==SweepOperation.RECYCLE) {
-            if(recycling==null) recycling=sweeper.beginRecycling(result,generation,settings);
+            if(recycling==null) {
+                SweepScope scope=batch.task().scope();
+                recycling=sweeper.beginRecycling(result,generation,settings,entity->admit(entity,scope)!=null);
+            }
             recycling.execute(entities,progress);
         } else if(request.operation()==SweepOperation.DELETE) {
             for(Entity entity:entities) {

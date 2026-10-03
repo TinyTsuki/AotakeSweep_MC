@@ -6,6 +6,15 @@ package xin.vanilla.aotake.api.rule;
  */
 public interface EntityRuleContext {
     String resourceId();
+    /** Matches literal registry parts or a whole-part wildcard. */
+    default boolean matchesResource(String namespace, String path) {
+        String resource = resourceId();
+        int separator = resource.indexOf(':');
+        if (separator < 1) throw new IllegalStateException("Invalid entity resource: " + resource);
+        return (namespace.equals("*") || separator == namespace.length() && resource.regionMatches(0, namespace, 0, separator))
+                && (path.equals("*") || resource.length() - separator - 1 == path.length()
+                && resource.regionMatches(separator + 1, path, 0, path.length()));
+    }
     int tick();
     String customName();
     boolean hasOwner();

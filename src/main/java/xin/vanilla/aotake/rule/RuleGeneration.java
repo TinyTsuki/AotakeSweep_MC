@@ -3,7 +3,7 @@ package xin.vanilla.aotake.rule;
 import xin.vanilla.aotake.api.rule.EntityRule;
 import xin.vanilla.aotake.api.rule.NativeMembers;
 import xin.vanilla.aotake.api.sweep.SweepPolicy;
-import xin.vanilla.banira.common.config.ConfigEditSnapshot;
+import xin.vanilla.banira.common.config.ConfigReadSnapshot;
 import xin.vanilla.banira.common.config.ConfigHolder;
 import xin.vanilla.aotake.enums.EnumListType;
 import xin.vanilla.aotake.util.EntityRulePolicy;
@@ -52,24 +52,20 @@ public final class RuleGeneration<S> {
                     if (binding == null) {
                         EntityRule rule;
                         RuleBindingPlan plan;
+                        String namespace = null, path = null;
                         if (reference.startsWith("script:")) {
                             String scriptId = reference.substring(7);
                             rule = Objects.requireNonNull(compiled.get(scriptId), "Compiled rule missing: " + scriptId);
                             plan = catalog.sources().get(scriptId).bindings();
                         } else {
                             int colon = reference.indexOf(':');
-                            String namespace = reference.substring(0, colon), path = reference.substring(colon + 1);
-                            rule = context -> {
-                                String resource = context.resourceId();
-                                int separator = resource.indexOf(':');
-                                if (separator < 1) throw new IllegalStateException("Invalid entity resource: " + resource);
-                                return (namespace.equals("*") || resource.regionMatches(0, namespace, 0, namespace.length()) && separator == namespace.length())
-                                        && (path.equals("*") || resource.substring(separator + 1).equals(path));
-                            };
+                            namespace = reference.substring(0, colon); path = reference.substring(colon + 1);
+                            String expectedNamespace = namespace, expectedPath = path;
+                            rule = context -> context.matchesResource(expectedNamespace, expectedPath);
                             plan = RuleBindingPlan.defaults();
                         }
                         NativeMembers members = reference.startsWith("script:") ? ruleMembers.getOrDefault(reference.substring(7), NativeMembers.EMPTY) : NativeMembers.EMPTY;
-                        binding = new BoundRule<>(reference, rule, plan, Objects.requireNonNull(contexts.apply(plan, members)));
+                        binding = new BoundRule<>(reference, rule, plan, Objects.requireNonNull(contexts.apply(plan, members)), namespace, path);
                         shared.put(reference, binding);
                     }
                     bindings.add(binding);
@@ -85,7 +81,7 @@ public final class RuleGeneration<S> {
 
     public long id() { return id; }
 
-    PolicyLease lease(ConfigEditSnapshot configuration, Consumer<String> cancel) {
+    PolicyLease lease(ConfigReadSnapshot configuration, Consumer<String> cancel) {
         requireUsable();
         if (policies == null) throw new IllegalStateException("Generation has no prepared policy catalog");
         PolicyLease lease = new PolicyLease(configuration, cancel); leases.add(lease); return lease;
@@ -93,17 +89,17 @@ public final class RuleGeneration<S> {
 
     /** The caller closes this lease only after task onFinish and persistence finalization. */
     public final class PolicyLease implements AutoCloseable {
-        private ConfigEditSnapshot configuration;
+        private ConfigReadSnapshot configuration;
         private Consumer<String> cancel;
         private SweepPolicy<?> instance;
         private boolean closed;
-        private PolicyLease(ConfigEditSnapshot configuration, Consumer<String> cancel) {
+        private PolicyLease(ConfigReadSnapshot configuration, Consumer<String> cancel) {
             this.configuration = Objects.requireNonNull(configuration); this.cancel = Objects.requireNonNull(cancel);
         }
         private void check() { checkOwner(); if (closed) throw new IllegalStateException("Policy lease closed"); }
         public long generationId() { check(); return id; }
         public String policyId() { check(); return selection.policyId; }
-        public ConfigEditSnapshot configuration() { check(); return configuration; }
+        public ConfigReadSnapshot configuration() { check(); return configuration; }
         public NativeMembers members() { check(); return policies.members(selection.policyId); }
         public xin.vanilla.aotake.sweep.SweepExecutionPlan executionPlan() { check(); return policies.executionPlan(selection.policyId); }
         public SweepPolicy<?> policy() {
@@ -131,13 +127,19 @@ public final class RuleGeneration<S> {
         }
     }
 
+    public boolean hasRules(RuleList list) {
+        requireUsable();
+        return !rules.get(Objects.requireNonNull(list)).isEmpty();
+    }
+
     public boolean matches(RuleList list, S subject) {
         requireUsable();
         Objects.requireNonNull(list);
         Objects.requireNonNull(subject);
         for (BoundRule<S> binding : rules.get(list)) {
             try {
-                boolean matched = binding.context.evaluate(binding.rule, subject, binding.plan);
+                boolean matched = binding.namespace == null ? binding.context.evaluate(binding.rule, subject, binding.plan)
+                        : binding.context.evaluateResource(binding.rule, subject, binding.plan, binding.namespace, binding.path);
                 // A reentrant rule may retire this generation and then swallow its exception.
                 requireUsable();
                 if (matched) return true;
@@ -213,8 +215,10 @@ public final class RuleGeneration<S> {
         final EntityRule rule;
         final RuleBindingPlan plan;
         final LazyRuleContext<S> context;
-        BoundRule(String reference, EntityRule rule, RuleBindingPlan plan, LazyRuleContext<S> context) {
+        final String namespace, path;
+        BoundRule(String reference, EntityRule rule, RuleBindingPlan plan, LazyRuleContext<S> context, String namespace, String path) {
             this.reference = reference; this.rule = rule; this.plan = plan; this.context = context;
+            this.namespace = namespace; this.path = path;
         }
     }
 

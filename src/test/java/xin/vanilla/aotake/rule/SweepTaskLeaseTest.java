@@ -5,7 +5,7 @@ import org.junit.rules.TemporaryFolder;
 import xin.vanilla.aotake.api.rule.*;
 import xin.vanilla.aotake.api.sweep.*;
 import xin.vanilla.aotake.sweep.*;
-import xin.vanilla.banira.common.config.ConfigEditSnapshot;
+import xin.vanilla.banira.common.config.ConfigReadSnapshot;
 import java.nio.file.Files;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
@@ -103,7 +103,7 @@ public class SweepTaskLeaseTest {
         public void requireUsable(){ if(!manager.isUsable(generationId())) throw new IllegalStateException("retired"); }
         public ServerAccess server(Runnable callbackGuard,Runnable entityGuard){ return null; }
         public NativeMembers members(){ return lease.members(); }
-        public ConfigEditSnapshot configuration(){ return lease.configuration(); }
+        public ConfigReadSnapshot configuration(){ return lease.configuration(); }
         public List<EntityAccess> collect(SweepRequest r,SweepScope s,Runnable g){ return Collections.emptyList(); }
         public EntityAccess normalize(EntityAccess e,SweepScope s,Runnable g){ return e; }
         public Object identity(EntityAccess e){ return e; }

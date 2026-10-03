@@ -8,6 +8,87 @@ import java.util.concurrent.atomic.AtomicReference;
 import static org.junit.Assert.*;
 
 public class SweepTaskTest {
+    @Test public void normalizationReusesOneLiveTaskGuard() {
+        Set<Runnable> guards = Collections.newSetFromMap(new IdentityHashMap<>());
+        SweepFixture backend = new SweepFixture() {
+            public List<EntityAccess> collect(SweepRequest request, SweepScope scope, Runnable guard) {
+                guards.add(guard); return super.collect(request, scope, guard);
+            }
+            public EntityAccess normalize(EntityAccess entity, SweepScope scope, Runnable guard) {
+                guards.add(guard); return super.normalize(entity, scope, guard);
+            }
+        };
+        for (int i = 0; i < 32; i++) backend.add("entity" + i);
+        SweepTask<Void> task = task(backend, new DefaultSweepPolicy<>());
+        PreparedSweep prepared = task.prepare();
+        assertNotNull(prepared); prepared.start();
+        assertEquals(1, guards.size());
+        task.cancel("test complete");
+    }
+    @Test public void builtinLoopFusesAdjacentChecksWithoutCachingAcrossRuleCalls() {
+        int[] checks = {0};
+        SweepFixture b = new SweepFixture() {
+            public void requireUsable() { checks[0]++; super.requireUsable(); }
+        };
+        for (int i = 0; i < 32; i++) b.add("entity" + i);
+        SweepTask<Void> task = task(b, new DefaultSweepPolicy<>());
+        assertNotNull(task.prepare());
+        assertTrue("Adjacent checkpoints in the engine-owned loop are redundant: " + checks[0], checks[0] <= 44);
+        task.cancel("test complete");
+    }
+
+    @Test public void builtinLoopStopsImmediatelyWhenAnEvaluationRetiresTheGeneration() {
+        int[] evaluated = {0};
+        SweepFixture b = new SweepFixture() {
+            public DefaultSweepFilter.Entry<EntityAccess, Object> evaluate(SweepRequest request, EntityAccess entity) {
+                if (++evaluated[0] == 2) usable = false;
+                return super.evaluate(request, entity);
+            }
+        };
+        b.add("a"); b.add("b"); b.add("c");
+        SweepTask<Void> task = task(b, new DefaultSweepPolicy<>());
+        assertNull(task.prepare());
+        assertEquals(SweepPhase.CANCELLED, task.phase());
+        assertEquals(2, evaluated[0]);
+        assertEquals(0, b.executed);
+    }
+
+    @Test public void startCanonicalizesAndAuthorizesEachReturnedIdentityOnce() {
+        int[] identities = {0};
+        SweepFixture b = new SweepFixture() {
+            public Object identity(EntityAccess e) { identities[0]++; return super.identity(e); }
+            public List<EntityAccess> preflight(SweepRequest request, SweepScope scope, List<EntityAccess> selected) {
+                return Arrays.asList(selected.get(0), selected.get(0), selected.get(0));
+            }
+        };
+        b.add("a");
+        SweepTask<Void> task = task(b, new DefaultSweepPolicy<>());
+        PreparedSweep prepared = task.prepare();
+        identities[0] = 0;
+        prepared.start();
+        assertEquals(4, identities[0]);
+        while (task.phase() == SweepPhase.RUNNING) task.runNextBatch();
+        assertEquals(SweepPhase.SUCCESS, task.phase());
+        assertEquals(1, task.outcome().processed());
+    }
+
+    @Test public void preflightCannotRestoreEvaluatedButUnselectedEntities() {
+        SweepFixture b = new SweepFixture() {
+            public List<EntityAccess> preflight(SweepRequest request, SweepScope scope, List<EntityAccess> selected) {
+                return new ArrayList<>(source);
+            }
+        };
+        b.add("a"); b.add("b");
+        SweepTask<Void> task = task(b, new DefaultSweepPolicy<Void>() {
+            public EntityDisposition evaluateEntity(SweepEntityContext c, Void s) {
+                return c.entity().resourceId().equals("b") ? EntityDisposition.KEEP : EntityDisposition.CLEAN;
+            }
+        });
+        run(task);
+        assertEquals(SweepPhase.FAILED, task.phase());
+        assertEquals(0, task.outcome().processed());
+    }
+
     @Test public void worldQueryCandidatesSurviveCollectionCallbacksButNotTaskEnd() {
         for (boolean addAfter : new boolean[]{false, true}) {
             SweepFixture b = new SweepFixture(); b.add("a"); b.add("b");

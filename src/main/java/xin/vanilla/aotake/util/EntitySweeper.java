@@ -51,6 +51,7 @@ import xin.vanilla.banira.common.enums.EnumMCColor;
 import xin.vanilla.banira.common.util.*;
 
 import java.util.*;
+import java.util.function.Predicate;
 
 @SuppressWarnings("resource")
 public class EntitySweeper {
@@ -108,7 +109,9 @@ public class EntitySweeper {
     public final class RecyclingBatch {
         private final Map<Entity, Boolean> decisions = new IdentityHashMap<>();
         private final SweepBatchCommitter<Entity> executor;
-        private RecyclingBatch(CleanupRuleGate<Entity> gate, SweepResult result, SweepContext context) {
+        private RecyclingBatch(CleanupRuleGate<Entity> gate, SweepResult result, SweepContext context,
+                               Predicate<Entity> commitEligibility) {
+            Objects.requireNonNull(commitEligibility, "commitEligibility");
             executor = new SweepBatchCommitter<>(new SweepBatchCommitter.Operations<Entity>() {
                 public void requireUsable() { gate.requireUsable(); }
                 public void prepare(List<Entity> entities) {
@@ -128,7 +131,7 @@ public class EntitySweeper {
                         }
                     }
                 }
-                public boolean eligible(Entity entity) { return decisions.containsKey(entity) && AotakeUtils.prepareSweepCandidate(entity); }
+                public boolean eligible(Entity entity) { return decisions.containsKey(entity) && commitEligibility.test(entity); }
                 public void commit(Entity entity, SweepBackend.Progress progress) {
                     boolean recycle = decisions.get(entity);
                     result.add(processDrop(entity, result, context, recycle, progress));
@@ -140,8 +143,13 @@ public class EntitySweeper {
     }
 
     public RecyclingBatch beginRecycling(SweepResult result, RuleGeneration<Entity> generation, CommonConfig.BaseCategory settings) {
+        return beginRecycling(result, generation, settings, AotakeUtils::prepareSweepCandidate);
+    }
+
+    public RecyclingBatch beginRecycling(SweepResult result, RuleGeneration<Entity> generation, CommonConfig.BaseCategory settings,
+                                         Predicate<Entity> commitEligibility) {
         return new RecyclingBatch(new CleanupRuleGate<>(generation, () -> AotakeRuleRuntime.isUsable(generation.id())),
-                result, new SweepContext(settings));
+                result, new SweepContext(settings), commitEligibility);
     }
 
     public static void flushPendingStorage() {
@@ -345,7 +353,7 @@ public class EntitySweeper {
         for (Inventory inv : this.inventoryList) {
             if (remaining.isEmpty()) break;
 
-            while (!remaining.isEmpty() && inv.canAddItem(remaining)) {
+            while (!remaining.isEmpty()) {
                 int before = remaining.getCount();
                 remaining = inv.addItem(remaining);
                 if (remaining.getCount() >= before) break;

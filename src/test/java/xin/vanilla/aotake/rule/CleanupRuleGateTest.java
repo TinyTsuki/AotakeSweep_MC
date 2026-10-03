@@ -10,6 +10,35 @@ import static xin.vanilla.aotake.rule.RuleManagerTest.entity;
 public class CleanupRuleGateTest {
     @Rule public TemporaryFolder temporary = new TemporaryFolder();
 
+    @Test public void validationWithoutRulesDoesNotReadAnySubject() throws Exception {
+        try (RuleManagerTest.Fixture f = new RuleManagerTest.Fixture(temporary.newFolder().toPath(), true)) {
+            f.holder.set(RuleMigrationTransaction.LISTS.get(2), Collections.emptyList());
+            f.holder.set(RuleMigrationTransaction.LISTS.get(3), Collections.emptyList());
+            f.holder.save();
+            f.await(f.manager.reload());
+            RuleGeneration<Map<String,Object>> rules = f.manager.acquire(RuleManager.RuleUse.RECYCLE);
+            CleanupRuleGate<Map<String,Object>> gate = new CleanupRuleGate<>(rules, () -> f.manager.isUsable(rules.id()));
+            int[] reads = {0};
+            gate.validate(Collections.singletonList(entity("test:item", 8)), subject -> { reads[0]++; return true; }, true);
+            assertEquals(0, reads[0]);
+            f.await(f.manager.reload());
+            assertThrows(RuleExecutionException.class, () -> gate.validate(Collections.emptyList(), subject -> true, false));
+        }
+    }
+
+    @Test public void validationStillRejectsTheLastFailingRuleBeforeMutation() throws Exception {
+        try (RuleManagerTest.Fixture f = new RuleManagerTest.Fixture(temporary.newFolder().toPath(), true)) {
+            f.await(f.manager.reload());
+            f.replaceSource(f.source().replace("return ", "if(context.tick()<0) throw new IllegalStateException(\"fail\"); return "));
+            f.await(f.manager.reload());
+            RuleGeneration<Map<String,Object>> rules = f.manager.acquire(RuleManager.RuleUse.RECYCLE);
+            CleanupRuleGate<Map<String,Object>> gate = new CleanupRuleGate<>(rules, () -> f.manager.isUsable(rules.id()));
+            assertThrows(RuleExecutionException.class, () -> gate.validate(
+                    Arrays.asList(entity("test:item", 0), entity("test:item", -1)), subject -> true, true));
+            assertFalse(f.manager.isUsable(rules.id()));
+        }
+    }
+
     @Test public void lastEntityRuleFailurePreventsAnyCleanupSideEffect() throws Exception {
         try (RuleManagerTest.Fixture f = new RuleManagerTest.Fixture(temporary.newFolder().toPath(), true)) {
             f.await(f.manager.reload());
