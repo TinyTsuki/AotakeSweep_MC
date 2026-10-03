@@ -73,6 +73,27 @@ public abstract class LazyRuleContext<S> implements EntityRuleContext {
         return evaluateResourceValue(fallback, Objects.requireNonNull(subject), plan, namespace, path);
     }
 
+    /** Opt in only for keys compatible across contexts during a pure resource-rule run. */
+    protected Class<?> resourceMatchKeyType() { return null; }
+
+    final Object resourceMatchKey(S subject, RuleBindingPlan plan) {
+        bindPlan(plan);
+        return readResourceMatchKey(Objects.requireNonNull(subject));
+    }
+
+    final boolean evaluateResource(EntityRule fallback, S subject, RuleBindingPlan plan,
+                                   String namespace, String path, Object key) {
+        bindPlan(plan);
+        return evaluateResourceValue(fallback, Objects.requireNonNull(subject), plan, namespace, path, key);
+    }
+
+    protected Object readResourceMatchKey(S subject) { return null; }
+
+    protected boolean evaluateResourceValue(EntityRule fallback, S subject, RuleBindingPlan plan,
+                                            String namespace, String path, Object key) {
+        return evaluateResourceValue(fallback, subject, plan, namespace, path);
+    }
+
     protected boolean evaluateResourceValue(EntityRule fallback, S subject, RuleBindingPlan plan, String namespace, String path) {
         return evaluate(fallback, subject, plan);
     }

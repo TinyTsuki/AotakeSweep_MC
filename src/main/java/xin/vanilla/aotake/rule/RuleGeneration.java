@@ -136,11 +136,32 @@ public final class RuleGeneration<S> {
         requireUsable();
         Objects.requireNonNull(list);
         Objects.requireNonNull(subject);
-        for (BoundRule<S> binding : rules.get(list)) {
+        List<BoundRule<S>> bindings = rules.get(list);
+        Object resourceKey = null;
+        Class<?> keyContext = null;
+        boolean keyPrepared = false;
+        for (int index = 0; index < bindings.size(); index++) {
+            BoundRule<S> binding = bindings.get(index);
             boolean matched;
             try {
-                matched = binding.namespace == null ? binding.context.evaluate(binding.rule, subject, binding.plan)
-                        : binding.context.evaluateResource(binding.rule, subject, binding.plan, binding.namespace, binding.path);
+                if (binding.namespace == null) {
+                    resourceKey = null; keyContext = null; keyPrepared = false;
+                    matched = binding.context.evaluate(binding.rule, subject, binding.plan);
+                } else if (binding.resourceKeyType == null) {
+                    resourceKey = null; keyContext = null; keyPrepared = false;
+                    matched = binding.context.evaluateResource(binding.rule, subject, binding.plan, binding.namespace, binding.path);
+                } else {
+                    Class<?> type = binding.resourceKeyType;
+                    if (keyContext != type) { resourceKey = null; keyPrepared = false; keyContext = type; }
+                    if (!keyPrepared && index + 1 < bindings.size() && bindings.get(index + 1).resourceKeyType == type) {
+                        resourceKey = binding.context.resourceMatchKey(subject, binding.plan);
+                        keyPrepared = true;
+                    }
+                    matched = keyPrepared
+                            ? binding.context.evaluateResource(binding.rule, subject, binding.plan, binding.namespace, binding.path, resourceKey)
+                            : binding.context.evaluateResource(binding.rule, subject, binding.plan, binding.namespace, binding.path);
+                    if (resourceKey == null) keyPrepared = false;
+                }
             } catch (RuntimeException | Error failure) {
                 String message = "Rule " + binding.reference + " failed in generation " + id;
                 retire(message);
@@ -217,9 +238,11 @@ public final class RuleGeneration<S> {
         final RuleBindingPlan plan;
         final LazyRuleContext<S> context;
         final String namespace, path;
+        final Class<?> resourceKeyType;
         BoundRule(String reference, EntityRule rule, RuleBindingPlan plan, LazyRuleContext<S> context, String namespace, String path) {
             this.reference = reference; this.rule = rule; this.plan = plan; this.context = context;
             this.namespace = namespace; this.path = path;
+            this.resourceKeyType = namespace == null ? null : context.resourceMatchKeyType();
         }
     }
 

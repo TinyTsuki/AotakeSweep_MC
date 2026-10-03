@@ -71,6 +71,20 @@ public final class ForgeEntityRuleContext extends LazyRuleContext<Entity> {
         return (namespace.equals("*") || namespace.equals(id.getNamespace()))
                 && (path.equals("*") || path.equals(id.getPath()));
     }
+
+    @Override protected Class<?> resourceMatchKeyType() { return ResourceLocation.class; }
+
+    @Override protected Object readResourceMatchKey(Entity subject) {
+        return EntityUtils.getEntityRegistry(subject);
+    }
+
+    @Override protected boolean evaluateResourceValue(EntityRule fallback, Entity subject, RuleBindingPlan plan,
+                                                      String namespace, String path, Object key) {
+        if (key == null) return super.evaluateResourceValue(fallback, subject, plan, namespace, path);
+        ResourceLocation id = (ResourceLocation) key;
+        return (namespace.equals("*") || namespace.equals(id.getNamespace()))
+                && (path.equals("*") || path.equals(id.getPath()));
+    }
     private void prepareViews() {
         checkAccess();
         if (viewsFrame != evaluationFrame()) {
