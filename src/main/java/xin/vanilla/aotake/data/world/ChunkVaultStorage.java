@@ -25,12 +25,7 @@ import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Iterator;
-import java.util.LinkedHashMap;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ThreadLocalRandom;
 
@@ -162,8 +157,11 @@ public final class ChunkVaultStorage {
             LOGGER.warn("Skip chunk vault write (path not ready): {}", vaultId);
             return;
         }
-        try { appendItemsToFile(dir.resolve(vaultId + ".nbt"), stacks); }
-        catch (IOException failure) { LOGGER.error("Failed to append chunk vault {}", vaultId, failure); }
+        try {
+            appendItemsToFile(dir.resolve(vaultId + ".nbt"), stacks);
+        } catch (IOException failure) {
+            LOGGER.error("Failed to append chunk vault {}", vaultId, failure);
+        }
     }
 
     private static void appendItemsToFile(Path file, List<ItemStack> stacks) throws IOException {
@@ -187,7 +185,9 @@ public final class ChunkVaultStorage {
             try {
                 CompressedStreamTools.writeCompressed(root, temporary.toFile());
                 Files.move(temporary, file, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
-            } finally { Files.deleteIfExists(temporary); }
+            } finally {
+                Files.deleteIfExists(temporary);
+            }
         }
     }
 

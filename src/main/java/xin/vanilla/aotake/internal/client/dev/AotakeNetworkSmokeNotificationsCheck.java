@@ -1,8 +1,8 @@
 package xin.vanilla.aotake.internal.client.dev;
 
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.NewChatGui;
 import net.minecraft.client.gui.ChatLine;
+import net.minecraft.client.gui.NewChatGui;
 import net.minecraft.util.text.ITextComponent;
 import net.minecraftforge.fml.common.ObfuscationReflectionHelper;
 import xin.vanilla.aotake.AotakeSweep;
@@ -25,7 +25,9 @@ import xin.vanilla.banira.common.enums.EnumPosition;
 
 import java.util.List;
 
-/** Checks real received messages separately from client factory palette checks. */
+/**
+ * Checks real received messages separately from client factory palette checks.
+ */
 final class AotakeNetworkSmokeNotificationsCheck {
     private final long startedAt = System.currentTimeMillis();
     private boolean verified;
@@ -96,10 +98,25 @@ final class AotakeNetworkSmokeNotificationsCheck {
                     int text = expected.color().argb();
                     if (mode == EnumNotificationTypeDisplayMode.OVERLAY) {
                         switch (style) {
-                            case SUCCESS: bg = theme.notificationSuccessBg(); border = theme.notificationSuccessBorder(); text = theme.notificationSuccessText(); break;
-                            case WARNING: bg = theme.notificationWarningBg(); border = theme.notificationWarningBorder(); text = theme.notificationWarningText(); break;
-                            case ERROR: bg = theme.notificationErrorBg(); border = theme.notificationErrorBorder(); text = theme.notificationErrorText(); break;
-                            default: bg = theme.notificationNormalBg(); border = theme.notificationNormalBorder(); text = theme.notificationNormalText();
+                            case SUCCESS:
+                                bg = theme.notificationSuccessBg();
+                                border = theme.notificationSuccessBorder();
+                                text = theme.notificationSuccessText();
+                                break;
+                            case WARNING:
+                                bg = theme.notificationWarningBg();
+                                border = theme.notificationWarningBorder();
+                                text = theme.notificationWarningText();
+                                break;
+                            case ERROR:
+                                bg = theme.notificationErrorBg();
+                                border = theme.notificationErrorBorder();
+                                text = theme.notificationErrorText();
+                                break;
+                            default:
+                                bg = theme.notificationNormalBg();
+                                border = theme.notificationNormalBorder();
+                                text = theme.notificationNormalText();
                         }
                     }
                     require(result.component().color().argb() == text, "factory foreground " + type + "/" + mode + "/" + style);
@@ -107,7 +124,9 @@ final class AotakeNetworkSmokeNotificationsCheck {
                     require(result.component().getChildren().get(0).color().argb() == AotakeNetworkSmokeNotifications.EXPLICIT_COLOR, "factory semantic color " + type);
                 }
             }
-        } finally { setting.displayMode(previous); }
+        } finally {
+            setting.displayMode(previous);
+        }
     }
 
     private static void require(boolean condition, String reason) {

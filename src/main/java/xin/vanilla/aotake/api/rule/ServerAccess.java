@@ -5,7 +5,10 @@ import java.util.Optional;
 
 public interface ServerAccess {
     long tick();
+
     List<EntityAccess> players();
+
     Optional<WorldAccess> world(String dimensionId);
+
     <T> T nativeServer(Class<T> type);
 }

@@ -1,18 +1,28 @@
 package xin.vanilla.aotake.sweep;
 
-import xin.vanilla.aotake.api.sweep.*;
-import xin.vanilla.aotake.rule.*;
-import java.util.*;
-import java.util.function.Function;
-import java.util.concurrent.atomic.AtomicReference;
+import xin.vanilla.aotake.api.sweep.SweepPolicy;
+import xin.vanilla.aotake.api.sweep.SweepRequest;
+import xin.vanilla.aotake.rule.RuleGeneration;
+import xin.vanilla.aotake.rule.RuleManager;
 
-/** Binds one task instance to one execution generation until all finalization has finished. */
+import java.util.Objects;
+import java.util.UUID;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Function;
+
+/**
+ * Binds one task instance to one execution generation until all finalization has finished.
+ */
 public final class SweepTaskFactory {
-    private SweepTaskFactory() { }
+    private SweepTaskFactory() {
+    }
 
     public static <E> SweepTask<?> create(UUID id, SweepRequest request, RuleManager<E> manager,
-                                         Function<RuleGeneration<E>.PolicyLease, SweepBackend> backendFactory) {
-        Objects.requireNonNull(id); Objects.requireNonNull(request); Objects.requireNonNull(manager); Objects.requireNonNull(backendFactory);
+                                          Function<RuleGeneration<E>.PolicyLease, SweepBackend> backendFactory) {
+        Objects.requireNonNull(id);
+        Objects.requireNonNull(request);
+        Objects.requireNonNull(manager);
+        Objects.requireNonNull(backendFactory);
         AtomicReference<SweepTask<?>> task = new AtomicReference<>();
         RuleGeneration<E>.PolicyLease lease = manager.leasePolicy(reason -> {
             SweepTask<?> current = task.get();
@@ -30,13 +40,16 @@ public final class SweepTaskFactory {
         } catch (RuntimeException | Error failure) {
             try {
                 if (backend != null) {
-                    try { backend.release(); }
-                    catch (RuntimeException | Error releaseFailure) {
+                    try {
+                        backend.release();
+                    } catch (RuntimeException | Error releaseFailure) {
                         SweepTask.rethrowFatal(releaseFailure);
                         if (releaseFailure != failure) failure.addSuppressed(releaseFailure);
                     }
                 }
-            } finally { lease.close(); }
+            } finally {
+                lease.close();
+            }
             throw failure;
         }
     }

@@ -1,6 +1,8 @@
 package xin.vanilla.aotake.rule;
 
-/** A failed rule is unavailable, never a successful non-match. */
+/**
+ * A failed rule is unavailable, never a successful non-match.
+ */
 public final class RuleExecutionException extends IllegalStateException {
     private final long generationId;
     private final boolean unavailable;
@@ -19,8 +21,13 @@ public final class RuleExecutionException extends IllegalStateException {
         this.unavailable = unavailable;
     }
 
-    public long generationId() { return generationId; }
-    public boolean isUnavailable() { return unavailable; }
+    public long generationId() {
+        return generationId;
+    }
+
+    public boolean isUnavailable() {
+        return unavailable;
+    }
 
     public static RuleExecutionException unavailable(long generationId, String reason) {
         return new RuleExecutionException(generationId, reason, null, true);

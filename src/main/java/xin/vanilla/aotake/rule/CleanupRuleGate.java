@@ -1,10 +1,14 @@
 package xin.vanilla.aotake.rule;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Objects;
 import java.util.function.BooleanSupplier;
 import java.util.function.Predicate;
 
-/** Complete the fallible rule phase before any inventory or entity mutation. */
+/**
+ * Complete the fallible rule phase before any inventory or entity mutation.
+ */
 public final class CleanupRuleGate<S> {
     private final RuleGeneration<S> generation;
     private final BooleanSupplier usable;
@@ -16,7 +20,8 @@ public final class CleanupRuleGate<S> {
 
     public void requireUsable() {
         generation.requireUsable();
-        if (!usable.getAsBoolean()) throw RuleExecutionException.unavailable(generation.id(), "Cleanup rules changed before commit");
+        if (!usable.getAsBoolean())
+            throw RuleExecutionException.unavailable(generation.id(), "Cleanup rules changed before commit");
     }
 
     public List<Decision<S>> prepare(List<S> subjects, Predicate<S> isItem, boolean captureEnabled) {
@@ -47,8 +52,18 @@ public final class CleanupRuleGate<S> {
     public static final class Decision<S> {
         private final S subject;
         private final boolean recycle;
-        private Decision(S subject, boolean recycle) { this.subject = subject; this.recycle = recycle; }
-        public S subject() { return subject; }
-        public boolean recycle() { return recycle; }
+
+        private Decision(S subject, boolean recycle) {
+            this.subject = subject;
+            this.recycle = recycle;
+        }
+
+        public S subject() {
+            return subject;
+        }
+
+        public boolean recycle() {
+            return recycle;
+        }
     }
 }

@@ -1,16 +1,5 @@
 package xin.vanilla.aotake.util;
 
-import xin.vanilla.aotake.sweep.SweepConfiguration;
-import xin.vanilla.aotake.internal.server.AotakeSweepRuntime;
-import xin.vanilla.aotake.internal.forge.sweep.ForgeSweepFilter;
-import xin.vanilla.aotake.internal.forge.sweep.ForgeSweepTarget;
-import xin.vanilla.aotake.api.sweep.SweepOperation;
-import xin.vanilla.aotake.api.sweep.SweepTrigger;
-import xin.vanilla.aotake.internal.server.AotakeRuleRuntime;
-import xin.vanilla.aotake.rule.RuleGeneration;
-import xin.vanilla.aotake.rule.RuleManager;
-import xin.vanilla.aotake.rule.RuleExecutionException;
-
 import lombok.NonNull;
 import net.minecraft.block.BlockState;
 import net.minecraft.command.CommandSource;
@@ -45,6 +34,8 @@ import org.apache.logging.log4j.Logger;
 import xin.vanilla.aotake.AotakeComponent;
 import xin.vanilla.aotake.AotakeLang;
 import xin.vanilla.aotake.AotakeSweep;
+import xin.vanilla.aotake.api.sweep.SweepOperation;
+import xin.vanilla.aotake.api.sweep.SweepTrigger;
 import xin.vanilla.aotake.config.CommonConfig;
 import xin.vanilla.aotake.config.WarningConfig;
 import xin.vanilla.aotake.data.SweepResult;
@@ -52,8 +43,16 @@ import xin.vanilla.aotake.data.player.PlayerSweepData;
 import xin.vanilla.aotake.data.world.WorldTrashData;
 import xin.vanilla.aotake.enums.EnumCommandType;
 import xin.vanilla.aotake.event.EventHandlerProxy;
+import xin.vanilla.aotake.internal.forge.sweep.ForgeSweepFilter;
+import xin.vanilla.aotake.internal.forge.sweep.ForgeSweepTarget;
+import xin.vanilla.aotake.internal.server.AotakeRuleRuntime;
+import xin.vanilla.aotake.internal.server.AotakeSweepRuntime;
 import xin.vanilla.aotake.network.packet.DustbinPageSyncToClient;
 import xin.vanilla.aotake.notification.AotakeNotificationTypes;
+import xin.vanilla.aotake.rule.RuleExecutionException;
+import xin.vanilla.aotake.rule.RuleGeneration;
+import xin.vanilla.aotake.rule.RuleManager;
+import xin.vanilla.aotake.sweep.SweepConfiguration;
 import xin.vanilla.banira.api.BaniraServer;
 import xin.vanilla.banira.common.data.Component;
 import xin.vanilla.banira.common.data.WorldCoordinate;
@@ -275,7 +274,6 @@ public class AotakeUtils {
     // region 扫地
 
 
-
     public static List<Entity> getAllEntities() {
         List<Entity> entities = new ArrayList<>();
         MinecraftServer server = BaniraServer.currentAs(MinecraftServer.class);
@@ -308,7 +306,6 @@ public class AotakeUtils {
     }
 
 
-
     public static List<Entity> getAllEntitiesByFilter(@Nullable List<Entity> entities, boolean chuck) {
         return getAllEntitiesByFilter(entities, chuck,
                 AotakeRuleRuntime.acquire(chuck ? RuleManager.RuleUse.CHUNK : RuleManager.RuleUse.SWEEP));
@@ -316,7 +313,8 @@ public class AotakeUtils {
 
     public static List<Entity> getAllEntitiesByFilter(@Nullable List<Entity> entities, boolean chuck, RuleGeneration<Entity> generation) {
         generation.requireUsable();
-        if (!AotakeRuleRuntime.isUsable(generation.id())) throw new RuleExecutionException(generation.id(), "Stale entity scan");
+        if (!AotakeRuleRuntime.isUsable(generation.id()))
+            throw new RuleExecutionException(generation.id(), "Stale entity scan");
         xin.vanilla.banira.common.config.ConfigHolder holder = xin.vanilla.banira.common.config.BaniraConfig.holder(CommonConfig.class);
         CommonConfig.BaseCategory settings = SweepConfiguration.base(holder.snapshotForEdit(holder.valuePaths()));
         return new ForgeSweepFilter(settings, generation, chuck)
@@ -327,8 +325,14 @@ public class AotakeUtils {
         submitSweep(null, false, false, null, SweepTrigger.SCHEDULED);
     }
 
-    public static void sweep(List<Entity> entities, boolean filtered) { sweep(entities, filtered, false); }
-    public static void sweep(List<Entity> entities, boolean filtered, boolean chunkOverloadVault) { sweep(entities, filtered, chunkOverloadVault, null); }
+    public static void sweep(List<Entity> entities, boolean filtered) {
+        sweep(entities, filtered, false);
+    }
+
+    public static void sweep(List<Entity> entities, boolean filtered, boolean chunkOverloadVault) {
+        sweep(entities, filtered, chunkOverloadVault, null);
+    }
+
     public static void sweep(List<Entity> entities, boolean filtered, boolean chunkOverloadVault, RuleGeneration<Entity> expected) {
         submitSweep(entities, filtered, chunkOverloadVault, expected, SweepTrigger.COMMAND);
     }
@@ -340,7 +344,9 @@ public class AotakeUtils {
             AotakeSweepRuntime.submit(trigger, SweepOperation.RECYCLE,
                     ForgeSweepTarget.all(), false, entities, filtered,
                     new SweepResult().setChunkOverloadVault(chunkOverloadVault), AotakeSweep.getEntitySweeper(), expected);
-        } catch (RuntimeException failure) { reportSweepFailure(failure); }
+        } catch (RuntimeException failure) {
+            reportSweepFailure(failure);
+        }
     }
 
     public static void reportSweepFailure(Exception e) {

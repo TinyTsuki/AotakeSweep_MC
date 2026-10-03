@@ -3,7 +3,9 @@ package xin.vanilla.aotake.sweep;
 import java.util.*;
 import java.util.function.Function;
 
-/** Shared two-stage selection for ordinary queries and the default sweep policy. */
+/**
+ * Shared two-stage selection for ordinary queries and the default sweep policy.
+ */
 public final class DefaultSweepFilter<E, K> {
     private final int typeLimit, safeLimit;
     private final Function<E, Entry<E, K>> inspect;
@@ -45,9 +47,13 @@ public final class DefaultSweepFilter<E, K> {
         private final boolean safe, junk;
         private final String type;
         private final K chunk;
+
         public Entry(E entity, boolean safe, boolean junk, String type, K chunk) {
             this.entity = Objects.requireNonNull(entity);
-            this.safe = safe; this.junk = junk; this.type = type; this.chunk = chunk;
+            this.safe = safe;
+            this.junk = junk;
+            this.type = type;
+            this.chunk = chunk;
         }
     }
 }

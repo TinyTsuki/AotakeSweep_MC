@@ -4,16 +4,20 @@ import xin.vanilla.aotake.rule.migration.JavaRuleEmitter;
 import xin.vanilla.aotake.rule.migration.LegacyRuleParser;
 import xin.vanilla.aotake.rule.migration.RuleAst;
 import xin.vanilla.aotake.rule.migration.RuleTypeResolver;
+
 import java.io.IOException;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
-/** Installs editable defaults once; existing sources remain administrator-owned. */
+/**
+ * Installs editable defaults once; existing sources remain administrator-owned.
+ */
 public final class BuiltinRules {
     public static final String CLEANUP = "builtin_cleanup";
     public static final String PROTECTION = "builtin_protection";
 
-    private BuiltinRules() { }
+    private BuiltinRules() {
+    }
 
     static void install(RuleFileStore store) throws IOException {
         RuleCatalog existing = store.loadCatalog();
@@ -24,7 +28,8 @@ public final class BuiltinRules {
                 + " -> customName != null || hasOwner || createProcessing > 0");
         if (additions.isEmpty()) return;
         RuleCatalog catalog = RuleCatalog.extend(existing, additions);
-        for (Map.Entry<String, byte[]> file : catalog.files().entrySet()) store.writeNew(file.getKey(), file.getValue());
+        for (Map.Entry<String, byte[]> file : catalog.files().entrySet())
+            store.writeNew(file.getKey(), file.getValue());
         store.replace(RuleFileStore.MANIFEST, existing.originalManifest(), catalog.manifestBytes());
     }
 

@@ -1,7 +1,5 @@
 package xin.vanilla.aotake.internal.client.dev;
 
-import xin.vanilla.banira.api.BaniraConfigs;
-
 import com.mojang.blaze3d.matrix.MatrixStack;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screen.Screen;
@@ -19,6 +17,7 @@ import xin.vanilla.aotake.enums.EnumDustbinClientUiStyle;
 import xin.vanilla.aotake.internal.dev.AotakeNetworkSmokeStatus;
 import xin.vanilla.aotake.screen.DustbinRender;
 import xin.vanilla.aotake.screen.PlayerConfigScreen;
+import xin.vanilla.banira.api.BaniraConfigs;
 import xin.vanilla.banira.client.gui.BaniraScreen;
 import xin.vanilla.banira.client.gui.ConfigEditorScreen;
 import xin.vanilla.banira.client.gui.widget.CollapsiblePanelWidget;
@@ -30,7 +29,9 @@ import java.lang.management.ThreadMXBean;
 import java.util.List;
 import java.util.function.BooleanSupplier;
 
-/** Dev-only wrappers retain the real chest mixins, sidebar events and Banira editor renderers. */
+/**
+ * Dev-only wrappers retain the real chest mixins, sidebar events and Banira editor renderers.
+ */
 public final class AotakeNetworkSmokeScreens {
     private final BooleanSupplier sampling;
     private final Metrics vanilla;
@@ -252,7 +253,8 @@ public final class AotakeNetworkSmokeScreens {
             boolean visible = widget.bounds().width() > 0 && widget.bounds().height() > 0
                     && x > 0 && x < screen.width && y > 40 && y < screen.height - 40;
             for (IWidget parent = widget.parent(); visible && parent != null; parent = parent.parent()) {
-                if (parent instanceof CollapsiblePanelWidget && !((CollapsiblePanelWidget) parent).expanded()) visible = false;
+                if (parent instanceof CollapsiblePanelWidget && !((CollapsiblePanelWidget) parent).expanded())
+                    visible = false;
                 if (!parent.visible() || parent.bounds() == null || x < parent.absoluteX() || y < parent.absoluteY()
                         || x >= parent.absoluteX() + parent.bounds().width()
                         || y >= parent.absoluteY() + parent.bounds().height()) visible = false;

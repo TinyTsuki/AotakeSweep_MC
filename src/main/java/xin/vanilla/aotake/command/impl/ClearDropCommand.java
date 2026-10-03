@@ -1,9 +1,5 @@
 package xin.vanilla.aotake.command.impl;
 
-import xin.vanilla.aotake.internal.server.AotakeSweepRuntime;
-import xin.vanilla.aotake.internal.forge.sweep.ForgeSweepTarget;
-import xin.vanilla.aotake.api.sweep.SweepOperation;
-import xin.vanilla.aotake.api.sweep.SweepTrigger;
 import com.mojang.brigadier.Command;
 import com.mojang.brigadier.arguments.BoolArgumentType;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
@@ -16,10 +12,14 @@ import net.minecraft.world.server.ServerWorld;
 import xin.vanilla.aotake.AotakeComponent;
 import xin.vanilla.aotake.AotakeLang;
 import xin.vanilla.aotake.AotakeSweep;
+import xin.vanilla.aotake.api.sweep.SweepOperation;
+import xin.vanilla.aotake.api.sweep.SweepTrigger;
 import xin.vanilla.aotake.config.CommonConfig;
 import xin.vanilla.aotake.data.SweepResult;
 import xin.vanilla.aotake.data.player.PlayerSweepData;
 import xin.vanilla.aotake.enums.EnumCommandType;
+import xin.vanilla.aotake.internal.forge.sweep.ForgeSweepTarget;
+import xin.vanilla.aotake.internal.server.AotakeSweepRuntime;
 import xin.vanilla.aotake.util.AotakeUtils;
 import xin.vanilla.banira.common.data.Component;
 import xin.vanilla.banira.common.util.CommandUtils;

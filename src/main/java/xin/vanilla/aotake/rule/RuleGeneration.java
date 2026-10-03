@@ -3,45 +3,47 @@ package xin.vanilla.aotake.rule;
 import xin.vanilla.aotake.api.rule.EntityRule;
 import xin.vanilla.aotake.api.rule.NativeMembers;
 import xin.vanilla.aotake.api.sweep.SweepPolicy;
-import xin.vanilla.banira.common.config.ConfigReadSnapshot;
-import xin.vanilla.banira.common.config.ConfigHolder;
 import xin.vanilla.aotake.enums.EnumListType;
 import xin.vanilla.aotake.util.EntityRulePolicy;
+import xin.vanilla.banira.common.config.ConfigHolder;
+import xin.vanilla.banira.common.config.ConfigReadSnapshot;
 
 import java.util.*;
-import java.util.function.Function;
-import java.util.function.Consumer;
 import java.util.function.BiFunction;
 import java.util.function.BooleanSupplier;
+import java.util.function.Consumer;
+import java.util.function.Function;
 
-/** Lists, modes and executable rules share one owner-thread lifetime. */
+/**
+ * Lists, modes and executable rules share one owner-thread lifetime.
+ */
 public final class RuleGeneration<S> {
-    public enum RuleList { SWEEP, CHUNK, REDLIST, CAPTURE }
+    public enum RuleList {SWEEP, CHUNK, REDLIST, CAPTURE}
 
     private final long id;
     private final Thread owner;
     private final Selection selection;
     private ConfigHolder selectionHolder;
     private BooleanSupplier selectionMatch;
-    private final Map<RuleList,List<BoundRule<S>>> rules = new EnumMap<>(RuleList.class);
+    private final Map<RuleList, List<BoundRule<S>>> rules = new EnumMap<>(RuleList.class);
     private String unavailable;
     private SweepPolicyCatalog.Prepared policies;
     private final Set<PolicyLease> leases = Collections.newSetFromMap(new IdentityHashMap<>());
 
-    RuleGeneration(long id, Selection selection, RuleCatalog catalog, Map<String,EntityRule> compiled,
-                   Function<RuleBindingPlan,LazyRuleContext<S>> contexts) {
+    RuleGeneration(long id, Selection selection, RuleCatalog catalog, Map<String, EntityRule> compiled,
+                   Function<RuleBindingPlan, LazyRuleContext<S>> contexts) {
         this(id, selection, catalog, compiled, (plan, members) -> contexts.apply(plan), null, Collections.emptyMap());
     }
 
-    RuleGeneration(long id, Selection selection, RuleCatalog catalog, Map<String,EntityRule> compiled,
-                   BiFunction<RuleBindingPlan,NativeMembers,LazyRuleContext<S>> contexts, SweepPolicyCatalog.Prepared policies,
-                   Map<String,NativeMembers> ruleMembers) {
+    RuleGeneration(long id, Selection selection, RuleCatalog catalog, Map<String, EntityRule> compiled,
+                   BiFunction<RuleBindingPlan, NativeMembers, LazyRuleContext<S>> contexts, SweepPolicyCatalog.Prepared policies,
+                   Map<String, NativeMembers> ruleMembers) {
         this.id = id;
         this.owner = Thread.currentThread();
         this.selection = selection;
         this.policies = policies;
         if (policies != null) policies.requireId(selection.policyId);
-        Map<String,BoundRule<S>> shared = new HashMap<>();
+        Map<String, BoundRule<S>> shared = new HashMap<>();
         try {
             for (RuleList list : RuleList.values()) {
                 List<String> references = selection.lists.get(list.ordinal());
@@ -59,7 +61,8 @@ public final class RuleGeneration<S> {
                             plan = catalog.sources().get(scriptId).bindings();
                         } else {
                             int colon = reference.indexOf(':');
-                            namespace = reference.substring(0, colon); path = reference.substring(colon + 1);
+                            namespace = reference.substring(0, colon);
+                            path = reference.substring(colon + 1);
                             String expectedNamespace = namespace, expectedPath = path;
                             rule = context -> context.matchesResource(expectedNamespace, expectedPath);
                             plan = RuleBindingPlan.defaults();
@@ -79,29 +82,62 @@ public final class RuleGeneration<S> {
         }
     }
 
-    public long id() { return id; }
+    public long id() {
+        return id;
+    }
 
     PolicyLease lease(ConfigReadSnapshot configuration, Consumer<String> cancel) {
         requireUsable();
         if (policies == null) throw new IllegalStateException("Generation has no prepared policy catalog");
-        PolicyLease lease = new PolicyLease(configuration, cancel); leases.add(lease); return lease;
+        PolicyLease lease = new PolicyLease(configuration, cancel);
+        leases.add(lease);
+        return lease;
     }
 
-    /** The caller closes this lease only after task onFinish and persistence finalization. */
+    /**
+     * The caller closes this lease only after task onFinish and persistence finalization.
+     */
     public final class PolicyLease implements AutoCloseable {
         private ConfigReadSnapshot configuration;
         private Consumer<String> cancel;
         private SweepPolicy<?> instance;
         private boolean closed;
+
         private PolicyLease(ConfigReadSnapshot configuration, Consumer<String> cancel) {
-            this.configuration = Objects.requireNonNull(configuration); this.cancel = Objects.requireNonNull(cancel);
+            this.configuration = Objects.requireNonNull(configuration);
+            this.cancel = Objects.requireNonNull(cancel);
         }
-        private void check() { checkOwner(); if (closed) throw new IllegalStateException("Policy lease closed"); }
-        public long generationId() { check(); return id; }
-        public String policyId() { check(); return selection.policyId; }
-        public ConfigReadSnapshot configuration() { check(); return configuration; }
-        public NativeMembers members() { check(); return policies.members(selection.policyId); }
-        public xin.vanilla.aotake.sweep.SweepExecutionPlan executionPlan() { check(); return policies.executionPlan(selection.policyId); }
+
+        private void check() {
+            checkOwner();
+            if (closed) throw new IllegalStateException("Policy lease closed");
+        }
+
+        public long generationId() {
+            check();
+            return id;
+        }
+
+        public String policyId() {
+            check();
+            return selection.policyId;
+        }
+
+        public ConfigReadSnapshot configuration() {
+            check();
+            return configuration;
+        }
+
+        public NativeMembers members() {
+            check();
+            return policies.members(selection.policyId);
+        }
+
+        public xin.vanilla.aotake.sweep.SweepExecutionPlan executionPlan() {
+            check();
+            return policies.executionPlan(selection.policyId);
+        }
+
         public SweepPolicy<?> policy() {
             check();
             if (instance == null) {
@@ -111,19 +147,28 @@ public final class RuleGeneration<S> {
                     check();
                     requireUsable();
                     instance = created;
-                }
-                catch (RuntimeException | Error failure) {
-                    try { retire("Policy construction failed: " + failure.getMessage()); }
-                    finally { close(); }
+                } catch (RuntimeException | Error failure) {
+                    try {
+                        retire("Policy construction failed: " + failure.getMessage());
+                    } finally {
+                        close();
+                    }
                     throw failure;
                 }
             }
             return instance;
         }
-        @Override public void close() {
-            checkOwner(); if (closed) return;
-            closed = true; instance = null; configuration = null; cancel = null;
-            leases.remove(this); releaseRetired();
+
+        @Override
+        public void close() {
+            checkOwner();
+            if (closed) return;
+            closed = true;
+            instance = null;
+            configuration = null;
+            cancel = null;
+            leases.remove(this);
+            releaseRetired();
         }
     }
 
@@ -145,14 +190,22 @@ public final class RuleGeneration<S> {
             boolean matched;
             try {
                 if (binding.namespace == null) {
-                    resourceKey = null; keyContext = null; keyPrepared = false;
+                    resourceKey = null;
+                    keyContext = null;
+                    keyPrepared = false;
                     matched = binding.context.evaluate(binding.rule, subject, binding.plan);
                 } else if (binding.resourceKeyType == null) {
-                    resourceKey = null; keyContext = null; keyPrepared = false;
+                    resourceKey = null;
+                    keyContext = null;
+                    keyPrepared = false;
                     matched = binding.context.evaluateResource(binding.rule, subject, binding.plan, binding.namespace, binding.path);
                 } else {
                     Class<?> type = binding.resourceKeyType;
-                    if (keyContext != type) { resourceKey = null; keyPrepared = false; keyContext = type; }
+                    if (keyContext != type) {
+                        resourceKey = null;
+                        keyPrepared = false;
+                        keyContext = type;
+                    }
                     if (!keyPrepared && index + 1 < bindings.size() && bindings.get(index + 1).resourceKeyType == type) {
                         resourceKey = binding.context.resourceMatchKey(subject, binding.plan);
                         keyPrepared = true;
@@ -189,14 +242,22 @@ public final class RuleGeneration<S> {
         if (unavailable != null) throw RuleExecutionException.unavailable(id, unavailable);
     }
 
-    boolean isUsable() { checkOwner(); return unavailable == null; }
-    boolean hasSelection(Selection expected) { return selection.equals(expected); }
+    boolean isUsable() {
+        checkOwner();
+        return unavailable == null;
+    }
+
+    boolean hasSelection(Selection expected) {
+        return selection.equals(expected);
+    }
+
     void bindSelection(ConfigHolder holder) {
         checkOwner();
         if (selectionMatch != null) throw new IllegalStateException("Selection already bound");
         selectionMatch = selection.prepareMatch(holder);
         selectionHolder = holder;
     }
+
     boolean hasSelection(ConfigHolder holder) {
         checkOwner();
         return unavailable == null && selectionHolder == holder && selectionMatch != null && selectionMatch.getAsBoolean();
@@ -208,8 +269,9 @@ public final class RuleGeneration<S> {
         unavailable = reason;
         for (PolicyLease lease : new ArrayList<>(leases)) {
             if (lease.closed) continue;
-            try { lease.cancel.accept(reason); }
-            catch (RuntimeException | Error error) {
+            try {
+                lease.cancel.accept(reason);
+            } catch (RuntimeException | Error error) {
                 lease.close();
                 if (error instanceof VirtualMachineError) throw (VirtualMachineError) error;
                 if (error instanceof ThreadDeath) throw (ThreadDeath) error;
@@ -229,7 +291,8 @@ public final class RuleGeneration<S> {
     }
 
     private void checkOwner() {
-        if (Thread.currentThread() != owner) throw new IllegalStateException("Entity rules must run on their owner thread");
+        if (Thread.currentThread() != owner)
+            throw new IllegalStateException("Entity rules must run on their owner thread");
     }
 
     private static final class BoundRule<S> {
@@ -239,9 +302,14 @@ public final class RuleGeneration<S> {
         final LazyRuleContext<S> context;
         final String namespace, path;
         final Class<?> resourceKeyType;
+
         BoundRule(String reference, EntityRule rule, RuleBindingPlan plan, LazyRuleContext<S> context, String namespace, String path) {
-            this.reference = reference; this.rule = rule; this.plan = plan; this.context = context;
-            this.namespace = namespace; this.path = path;
+            this.reference = reference;
+            this.rule = rule;
+            this.plan = plan;
+            this.context = context;
+            this.namespace = namespace;
+            this.path = path;
             this.resourceKeyType = namespace == null ? null : context.resourceMatchKeyType();
         }
     }
@@ -251,7 +319,7 @@ public final class RuleGeneration<S> {
         final List<EnumListType> modes;
         final String policyId;
 
-        Selection(Map<String,Object> values) {
+        Selection(Map<String, Object> values) {
             Object policy = values.getOrDefault(SweepPolicyCatalog.CONFIG_PATH, SweepPolicyCatalog.DEFAULT_ID);
             if (!(policy instanceof String)) throw new IllegalArgumentException("Expected sweep policy ID");
             policyId = (String) policy;
@@ -283,11 +351,16 @@ public final class RuleGeneration<S> {
             return holder.prepareStoredMatch(expected, true);
         }
 
-        @Override public boolean equals(Object other) {
+        @Override
+        public boolean equals(Object other) {
             if (!(other instanceof Selection)) return false;
             Selection that = (Selection) other;
             return lists.equals(that.lists) && modes.equals(that.modes) && policyId.equals(that.policyId);
         }
-        @Override public int hashCode() { return Objects.hash(lists, modes, policyId); }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(lists, modes, policyId);
+        }
     }
 }

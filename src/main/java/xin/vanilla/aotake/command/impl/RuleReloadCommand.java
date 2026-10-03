@@ -13,7 +13,8 @@ import xin.vanilla.banira.common.util.CommandUtils;
 import xin.vanilla.banira.common.util.MessageUtils;
 
 public final class RuleReloadCommand {
-    private RuleReloadCommand() { }
+    private RuleReloadCommand() {
+    }
 
     public static LiteralArgumentBuilder<CommandSource> register() {
         return Commands.literal("rules")

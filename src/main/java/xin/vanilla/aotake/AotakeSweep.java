@@ -1,6 +1,5 @@
 package xin.vanilla.aotake;
 
-import xin.vanilla.aotake.internal.server.AotakeSweepRuntime;
 import lombok.Getter;
 import lombok.Setter;
 import net.minecraft.entity.player.ServerPlayerEntity;
@@ -15,11 +14,12 @@ import xin.vanilla.aotake.command.AotakeCommand;
 import xin.vanilla.aotake.config.ClientConfig;
 import xin.vanilla.aotake.config.CommonConfig;
 import xin.vanilla.aotake.internal.forge.event.ForgeAotakeGameEventAdapter;
+import xin.vanilla.aotake.internal.server.AotakeRuleRuntime;
+import xin.vanilla.aotake.internal.server.AotakeSweepRuntime;
 import xin.vanilla.aotake.internal.server.dev.AotakeNetworkSmokeServerRunner;
 import xin.vanilla.aotake.network.NetworkInit;
 import xin.vanilla.aotake.network.packet.SweepDataSyncToClient;
 import xin.vanilla.aotake.notification.AotakeNotificationTypes;
-import xin.vanilla.aotake.internal.server.AotakeRuleRuntime;
 import xin.vanilla.aotake.util.EntitySweeper;
 import xin.vanilla.banira.api.BaniraConfigs;
 import xin.vanilla.banira.api.BaniraServer;
@@ -113,11 +113,15 @@ public class AotakeSweep {
         BaniraEventBus.Server.onStopping(event -> {
             net.minecraft.server.MinecraftServer server = event.serverAs(net.minecraft.server.MinecraftServer.class);
             try {
-                try { AotakeSweepRuntime.stop(); }
-                finally { if (server != null) server.getAllLevels().forEach(EntitySweeper::flushPendingRemovals); }
+                try {
+                    AotakeSweepRuntime.stop();
+                } finally {
+                    if (server != null) server.getAllLevels().forEach(EntitySweeper::flushPendingRemovals);
+                }
             } finally {
-                try { entitySweeper.clear(); }
-                finally {
+                try {
+                    entitySweeper.clear();
+                } finally {
                     xin.vanilla.aotake.event.EventHandlerProxy.resetCleanupState();
                     AotakeRuleRuntime.stop();
                 }

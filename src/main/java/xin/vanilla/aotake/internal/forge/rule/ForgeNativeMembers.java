@@ -2,13 +2,22 @@ package xin.vanilla.aotake.internal.forge.rule;
 
 import cpw.mods.modlauncher.api.INameMappingService;
 import net.minecraftforge.fml.common.ObfuscationReflectionHelper;
-import xin.vanilla.aotake.api.rule.*;
-import java.lang.invoke.*;
-import java.lang.reflect.*;
+import xin.vanilla.aotake.api.rule.NativeMemberSpec;
+import xin.vanilla.aotake.api.rule.NativeMembers;
+
+import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodHandleProxies;
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.MethodType;
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
 import java.util.*;
 import java.util.function.BiFunction;
 
-/** Resolves SRG names and exact descriptors once, before a generation is activated. */
+/**
+ * Resolves SRG names and exact descriptors once, before a generation is activated.
+ */
 public final class ForgeNativeMembers implements NativeMembers {
     private final Map<String, Object> functions;
     private final Map<String, Class<?>> types;
@@ -24,7 +33,7 @@ public final class ForgeNativeMembers implements NativeMembers {
     }
 
     public static NativeMembers prepare(List<NativeMemberSpec> specs, ClassLoader loader,
-                                       BiFunction<NativeMemberSpec.Kind, String, String> remap) {
+                                        BiFunction<NativeMemberSpec.Kind, String, String> remap) {
         Map<String, Object> functions = new LinkedHashMap<>();
         Map<String, Class<?>> types = new HashMap<>();
         for (NativeMemberSpec spec : specs) {
@@ -36,7 +45,8 @@ public final class ForgeNativeMembers implements NativeMembers {
                 if (spec.kind() == NativeMemberSpec.Kind.FIELD_GET) {
                     Class<?> fieldType = MethodType.fromMethodDescriptorString("()" + spec.descriptor(), loader).returnType();
                     Field field = owner.getDeclaredField(name);
-                    if (field.getType() != fieldType) throw new IllegalArgumentException("Field descriptor disagrees with declared type");
+                    if (field.getType() != fieldType)
+                        throw new IllegalArgumentException("Field descriptor disagrees with declared type");
                     field.setAccessible(true);
                     handle = MethodHandles.lookup().unreflectGetter(field);
                 } else {
@@ -48,7 +58,8 @@ public final class ForgeNativeMembers implements NativeMembers {
                             found = method;
                         }
                     }
-                    if (found == null) throw new NoSuchMethodException(owner.getName() + "." + name + spec.descriptor());
+                    if (found == null)
+                        throw new NoSuchMethodException(owner.getName() + "." + name + spec.descriptor());
                     found.setAccessible(true);
                     handle = MethodHandles.lookup().unreflect(found);
                 }
@@ -72,12 +83,16 @@ public final class ForgeNativeMembers implements NativeMembers {
         }
         Method found = null;
         for (Method method : type.getMethods()) {
-            if (!Modifier.isAbstract(method.getModifiers()) || method.isDefault() || Modifier.isStatic(method.getModifiers())) continue;
-            try { Object.class.getMethod(method.getName(), method.getParameterTypes()); continue; }
-            catch (NoSuchMethodException ignored) { }
+            if (!Modifier.isAbstract(method.getModifiers()) || method.isDefault() || Modifier.isStatic(method.getModifiers()))
+                continue;
+            try {
+                Object.class.getMethod(method.getName(), method.getParameterTypes());
+                continue;
+            } catch (NoSuchMethodException ignored) {
+            }
             if (found != null && (!found.getName().equals(method.getName())
                     || !MethodType.methodType(found.getReturnType(), found.getParameterTypes()).equals(
-                            MethodType.methodType(method.getReturnType(), method.getParameterTypes())))) {
+                    MethodType.methodType(method.getReturnType(), method.getParameterTypes())))) {
                 throw new IllegalArgumentException("Function type must have one abstract method");
             }
             found = method;
@@ -86,7 +101,8 @@ public final class ForgeNativeMembers implements NativeMembers {
         return found;
     }
 
-    @Override public <F> F require(String id, Class<F> functionType) {
+    @Override
+    public <F> F require(String id, Class<F> functionType) {
         if (types.get(id) != functionType || !functions.containsKey(id)) {
             throw new IllegalArgumentException("Missing member or incorrect function type: " + id);
         }

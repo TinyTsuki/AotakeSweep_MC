@@ -344,7 +344,9 @@ public final class AotakeNetworkSmokeClientRunner {
         }
     }
 
-    /** Spark 1.9 client plugin, Render thread only, native legacy protobuf export. */
+    /**
+     * Spark 1.9 client plugin, Render thread only, native legacy protobuf export.
+     */
     private static final class ReflectiveClientSparkProfile {
         private final Object sampler;
         private final Future<?> future;
@@ -428,7 +430,8 @@ public final class AotakeNetworkSmokeClientRunner {
                 if ("getUniqueId".equals(name)) return null;
                 if ("hasPermission".equals(name)) return true;
                 if ("sendMessage".equals(name)) return null;
-                if ("toData".equals(name)) return data.getConstructor(String.class, UUID.class).newInstance("Aotake client UI smoke", null);
+                if ("toData".equals(name))
+                    return data.getConstructor(String.class, UUID.class).newInstance("Aotake client UI smoke", null);
                 if ("toString".equals(name)) return "Aotake client UI smoke";
                 if ("hashCode".equals(name)) return System.identityHashCode(proxy);
                 if ("equals".equals(name)) return proxy == args[0];
@@ -448,7 +451,8 @@ public final class AotakeNetworkSmokeClientRunner {
 
         private static Class<?> base(Object plugin) {
             Class<?> type = plugin.getClass();
-            while (type != null && !type.getName().equals("me.lucko.spark.forge.plugin.ForgeSparkPlugin")) type = type.getSuperclass();
+            while (type != null && !type.getName().equals("me.lucko.spark.forge.plugin.ForgeSparkPlugin"))
+                type = type.getSuperclass();
             if (type == null) throw new IllegalStateException("Spark base plugin was not found");
             return type;
         }

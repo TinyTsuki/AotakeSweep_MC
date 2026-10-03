@@ -11,7 +11,6 @@ import xin.vanilla.aotake.command.AotakeCommand;
 import xin.vanilla.aotake.config.CommonConfig;
 import xin.vanilla.aotake.data.world.ChunkVaultSession;
 import xin.vanilla.aotake.event.EventHandlerProxy;
-import xin.vanilla.aotake.util.AotakeUtils;
 import xin.vanilla.banira.api.BaniraServer;
 import xin.vanilla.banira.common.config.BaniraConfig;
 import xin.vanilla.banira.common.config.ConfigHolder;

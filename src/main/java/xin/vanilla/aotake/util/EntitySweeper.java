@@ -1,9 +1,5 @@
 package xin.vanilla.aotake.util;
 
-import xin.vanilla.aotake.internal.server.AotakeSweepRuntime;
-import xin.vanilla.aotake.internal.forge.sweep.ForgeSweepTarget;
-import xin.vanilla.aotake.api.sweep.SweepOperation;
-import xin.vanilla.aotake.api.sweep.SweepTrigger;
 import lombok.NonNull;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.item.ItemEntity;
@@ -24,6 +20,8 @@ import org.apache.logging.log4j.Logger;
 import xin.vanilla.aotake.AotakeComponent;
 import xin.vanilla.aotake.AotakeLang;
 import xin.vanilla.aotake.AotakeSweep;
+import xin.vanilla.aotake.api.sweep.SweepOperation;
+import xin.vanilla.aotake.api.sweep.SweepTrigger;
 import xin.vanilla.aotake.config.CommonConfig;
 import xin.vanilla.aotake.data.ConcurrentShuffleList;
 import xin.vanilla.aotake.data.DropStatistics;
@@ -35,14 +33,16 @@ import xin.vanilla.aotake.enums.EnumCommandType;
 import xin.vanilla.aotake.enums.EnumDustbinMode;
 import xin.vanilla.aotake.enums.EnumOverflowMode;
 import xin.vanilla.aotake.enums.EnumSelfCleanMode;
+import xin.vanilla.aotake.internal.forge.sweep.ForgeSweepTarget;
 import xin.vanilla.aotake.internal.platform.EntityRemovalBridge;
 import xin.vanilla.aotake.internal.server.AotakeRuleRuntime;
+import xin.vanilla.aotake.internal.server.AotakeSweepRuntime;
+import xin.vanilla.aotake.notification.AotakeNotificationTypes;
 import xin.vanilla.aotake.rule.CleanupRuleGate;
 import xin.vanilla.aotake.rule.RuleGeneration;
 import xin.vanilla.aotake.rule.RuleManager;
 import xin.vanilla.aotake.sweep.SweepBackend;
 import xin.vanilla.aotake.sweep.SweepBatchCommitter;
-import xin.vanilla.aotake.notification.AotakeNotificationTypes;
 import xin.vanilla.banira.api.BaniraServer;
 import xin.vanilla.banira.common.data.Component;
 import xin.vanilla.banira.common.data.KeyValue;
@@ -62,7 +62,6 @@ public class EntitySweeper {
 
     private List<Inventory> inventoryList;
     private ConcurrentShuffleList<KeyValue<WorldCoordinate, ItemStack>> dropList;
-
 
 
     private void init() {
@@ -93,15 +92,21 @@ public class EntitySweeper {
         return result;
     }
 
-    /** One recycling transaction state shared by every batch of a cleanup task. */
+    /**
+     * One recycling transaction state shared by every batch of a cleanup task.
+     */
     public final class RecyclingBatch {
         private final RecyclingCandidates<Entity> decisions = new RecyclingCandidates<>();
         private final SweepBatchCommitter<Entity> executor;
+
         private RecyclingBatch(CleanupRuleGate<Entity> gate, SweepResult result, SweepContext context,
                                Predicate<Entity> commitEligibility) {
             Objects.requireNonNull(commitEligibility, "commitEligibility");
             executor = new SweepBatchCommitter<>(new SweepBatchCommitter.Operations<Entity>() {
-                public void requireUsable() { gate.requireUsable(); }
+                public void requireUsable() {
+                    gate.requireUsable();
+                }
+
                 public void prepare(List<Entity> entities) {
                     List<Entity> eligible = decisions.gather(entities,
                             entity -> entity instanceof PartEntity ? ((PartEntity<?>) entity).getParent() : entity,
@@ -110,6 +115,7 @@ public class EntitySweeper {
                             entity -> entity instanceof ItemEntity, !context.catchItems.isEmpty()))
                         decisions.decide(decision.subject(), decision.recycle());
                 }
+
                 public void begin() {
                     init();
                     if (!context.selfCleanModes.contains(EnumSelfCleanMode.SWEEP_CLEAR)) return;
@@ -117,19 +123,34 @@ public class EntitySweeper {
                     if (context.dustbinMode != EnumDustbinMode.VIRTUAL) {
                         for (WorldCoordinate position : context.blockPositions) {
                             IItemHandler handler = AotakeUtils.getBlockItemHandler(position);
-                            if (handler != null) for (int slot = 0; slot < handler.getSlots(); slot++) handler.extractItem(slot, handler.getSlotLimit(slot), false);
+                            if (handler != null) for (int slot = 0; slot < handler.getSlots(); slot++)
+                                handler.extractItem(slot, handler.getSlotLimit(slot), false);
                         }
                     }
                 }
-                public boolean eligible(Entity entity) { return decisions.ready(entity) && commitEligibility.test(entity); }
+
+                public boolean eligible(Entity entity) {
+                    return decisions.ready(entity) && commitEligibility.test(entity);
+                }
+
                 public void commit(Entity entity, SweepBackend.Progress progress) {
                     boolean recycle = decisions.recycle(entity);
                     result.add(processDrop(entity, result, context, recycle, progress));
                 }
-                public void flush() { try { flushPendingStorage(); } finally { decisions.clear(); } }
+
+                public void flush() {
+                    try {
+                        flushPendingStorage();
+                    } finally {
+                        decisions.clear();
+                    }
+                }
             });
         }
-        public void execute(List<Entity> entities, SweepBackend.Progress progress) { executor.execute(entities, progress); }
+
+        public void execute(List<Entity> entities, SweepBackend.Progress progress) {
+            executor.execute(entities, progress);
+        }
     }
 
     public RecyclingBatch beginRecycling(SweepResult result, RuleGeneration<Entity> generation, CommonConfig.BaseCategory settings) {
@@ -143,8 +164,11 @@ public class EntitySweeper {
     }
 
     public static void flushPendingStorage() {
-        try { ChunkVaultStorage.flushPending(); }
-        finally { WorldTrashData.get().setDirty(); }
+        try {
+            ChunkVaultStorage.flushPending();
+        } finally {
+            WorldTrashData.get().setDirty();
+        }
     }
 
     public void notifyResult(SweepResult result, CommonConfig.BaseCategory settings) {
@@ -453,7 +477,9 @@ public class EntitySweeper {
         return removals.schedule(dimensionKey, canonical, keepData);
     }
 
-    public static boolean isPendingRemoval(Entity entity) { return removals.contains(entity); }
+    public static boolean isPendingRemoval(Entity entity) {
+        return removals.contains(entity);
+    }
 
     public static void flushPendingRemovals(ServerWorld world) {
         removals.flush(world.dimension(), (entity, keepData) -> {

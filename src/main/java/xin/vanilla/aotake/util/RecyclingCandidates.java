@@ -1,12 +1,17 @@
 package xin.vanilla.aotake.util;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.IdentityHashMap;
+import java.util.List;
 import java.util.function.Function;
 import java.util.function.Predicate;
 
-/** Batch-owned identity index; unprepared identities cannot be committed. */
+/**
+ * Batch-owned identity index; unprepared identities cannot be committed.
+ */
 final class RecyclingCandidates<E> {
-    private enum State { SEEN, REJECTED, DISCARD, RECYCLE }
+    private enum State {SEEN, REJECTED, DISCARD, RECYCLE}
+
     private final IdentityHashMap<E, State> decisions = new IdentityHashMap<>();
 
     List<E> gather(List<E> subjects, Function<E, E> canonical, Predicate<E> eligible) {
@@ -29,15 +34,20 @@ final class RecyclingCandidates<E> {
         if (decisions.get(entity) != State.SEEN) throw new IllegalArgumentException("Unprepared recycling identity");
         decisions.put(entity, recycle ? State.RECYCLE : State.DISCARD);
     }
+
     boolean ready(E entity) {
         State state = decisions.get(entity);
         return state == State.RECYCLE || state == State.DISCARD;
     }
+
     boolean recycle(E entity) {
         State state = decisions.get(entity);
         if (state == State.RECYCLE) return true;
         if (state == State.DISCARD) return false;
         throw new IllegalStateException("Recycling identity has no decision");
     }
-    void clear() { decisions.clear(); }
+
+    void clear() {
+        decisions.clear();
+    }
 }

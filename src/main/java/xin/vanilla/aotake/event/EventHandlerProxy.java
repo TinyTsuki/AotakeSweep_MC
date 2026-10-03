@@ -1,6 +1,5 @@
 package xin.vanilla.aotake.event;
 
-import xin.vanilla.aotake.internal.server.AotakeSweepRuntime;
 import lombok.Getter;
 import lombok.Setter;
 import net.minecraft.entity.Entity;
@@ -39,6 +38,7 @@ import xin.vanilla.aotake.data.world.WorldTrashData;
 import xin.vanilla.aotake.enums.EnumChunkCheckMode;
 import xin.vanilla.aotake.enums.EnumCommandType;
 import xin.vanilla.aotake.enums.EnumSelfCleanMode;
+import xin.vanilla.aotake.internal.server.AotakeSweepRuntime;
 import xin.vanilla.aotake.network.packet.GhostCameraToClient;
 import xin.vanilla.aotake.network.packet.SweepDataSyncToClient;
 import xin.vanilla.aotake.notification.AotakeNotificationTypes;
@@ -52,7 +52,10 @@ import xin.vanilla.banira.common.data.WorldCoordinate;
 import xin.vanilla.banira.common.enums.*;
 import xin.vanilla.banira.common.util.*;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -78,6 +81,7 @@ public class EventHandlerProxy {
     public static void resetCleanupState() {
         lastChunkCheckTime = 0;
     }
+
     private static final Map<String, Long> lastCatchTick = new ConcurrentHashMap<>();
     private static final Map<String, Long> lastUseEntityTick = new ConcurrentHashMap<>();
     private static final Map<String, Long> suppressUseItemTick = new ConcurrentHashMap<>();
@@ -190,8 +194,11 @@ public class EventHandlerProxy {
                 && !AotakeSweepRuntime.chunkPending()
                 && CommonConfig.get().base().chunk().chunkCheckInterval() <= now - lastChunkCheckTime) {
             lastChunkCheckTime = now;
-            try { AotakeSweepRuntime.submitChunk(); }
-            catch (RuntimeException failure) { CLEANUP_ERRORS.log(LOGGER, "Chunk entity check", failure); }
+            try {
+                AotakeSweepRuntime.submitChunk();
+            } catch (RuntimeException failure) {
+                CLEANUP_ERRORS.log(LOGGER, "Chunk entity check", failure);
+            }
         }
 
         // 区块暂存箱过期清理

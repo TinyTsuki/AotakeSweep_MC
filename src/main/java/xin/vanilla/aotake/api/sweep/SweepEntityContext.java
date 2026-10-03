@@ -4,6 +4,8 @@ import xin.vanilla.aotake.api.rule.EntityAccess;
 
 public interface SweepEntityContext {
     SweepContext task();
+
     EntityAccess entity();
+
     int index();
 }

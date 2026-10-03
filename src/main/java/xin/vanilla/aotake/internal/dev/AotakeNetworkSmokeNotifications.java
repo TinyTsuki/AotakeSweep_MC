@@ -7,8 +7,8 @@ import net.minecraft.util.text.event.HoverEvent;
 import net.minecraftforge.fml.ModList;
 import xin.vanilla.aotake.AotakeComponent;
 import xin.vanilla.aotake.enums.EnumCommandType;
-import xin.vanilla.aotake.util.AotakeUtils;
 import xin.vanilla.aotake.notification.AotakeNotificationTypes;
+import xin.vanilla.aotake.util.AotakeUtils;
 import xin.vanilla.banira.BaniraCodex;
 import xin.vanilla.banira.common.data.Component;
 import xin.vanilla.banira.common.notification.NotificationBudget;
@@ -19,12 +19,15 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.MessageDigest;
 
-/** Bounded typed messages for the dedicated network smoke, not gameplay notifications. */
+/**
+ * Bounded typed messages for the dedicated network smoke, not gameplay notifications.
+ */
 public final class AotakeNetworkSmokeNotifications {
     public static final int EXPLICIT_COLOR = 0xFFFFAA00;
     private static boolean sent;
 
-    private AotakeNetworkSmokeNotifications() { }
+    private AotakeNetworkSmokeNotifications() {
+    }
 
     public static String token(String type, String phase) {
         return "notification-route:" + phase + ":" + type + ": ";
@@ -67,9 +70,12 @@ public final class AotakeNetworkSmokeNotifications {
                 if (!owner.equals(source)) throw new IllegalStateException("Banira class source mismatch: " + source);
                 byte[] bytes = Files.readAllBytes(path);
                 StringBuilder hash = new StringBuilder();
-                for (byte b : MessageDigest.getInstance("SHA-256").digest(bytes)) hash.append(String.format("%02x", b & 255));
+                for (byte b : MessageDigest.getInstance("SHA-256").digest(bytes))
+                    hash.append(String.format("%02x", b & 255));
                 AotakeNetworkSmokeStatus.append("RUNTIME " + type.getName() + " sha256=" + hash + " size=" + bytes.length + " path=" + path + " source=" + source);
             }
-        } catch (Exception error) { throw new IllegalStateException("Cannot fingerprint loaded Banira", error); }
+        } catch (Exception error) {
+            throw new IllegalStateException("Cannot fingerprint loaded Banira", error);
+        }
     }
 }

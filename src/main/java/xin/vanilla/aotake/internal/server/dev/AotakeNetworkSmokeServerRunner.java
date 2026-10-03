@@ -3,10 +3,9 @@ package xin.vanilla.aotake.internal.server.dev;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityType;
 import net.minecraft.entity.Pose;
-import net.minecraft.entity.passive.CowEntity;
 import net.minecraft.entity.item.ItemEntity;
+import net.minecraft.entity.passive.CowEntity;
 import net.minecraft.entity.player.ServerPlayerEntity;
-import xin.vanilla.aotake.internal.dev.AotakeNetworkSmokeNotifications;
 import net.minecraft.inventory.Inventory;
 import net.minecraft.item.ItemStack;
 import net.minecraft.item.Items;
@@ -18,7 +17,6 @@ import net.minecraft.world.server.ServerWorld;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.event.entity.player.PlayerInteractEvent;
-import xin.vanilla.aotake.AotakeSweep;
 import xin.vanilla.aotake.config.CommonConfig;
 import xin.vanilla.aotake.config.CommonConfigView;
 import xin.vanilla.aotake.data.player.PlayerSweepData;
@@ -26,18 +24,19 @@ import xin.vanilla.aotake.data.world.WorldTrashData;
 import xin.vanilla.aotake.enums.EnumChunkCheckMode;
 import xin.vanilla.aotake.enums.EnumListType;
 import xin.vanilla.aotake.event.EventHandlerProxy;
+import xin.vanilla.aotake.internal.dev.AotakeNetworkSmokeNotifications;
 import xin.vanilla.aotake.internal.dev.AotakeNetworkSmokeStatus;
 import xin.vanilla.aotake.util.AotakeUtils;
 import xin.vanilla.banira.api.BaniraServer;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
-import java.util.List;
-import java.util.ArrayList;
-import java.util.Collections;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
@@ -519,7 +518,9 @@ public final class AotakeNetworkSmokeServerRunner {
         COMPLETE
     }
 
-    /** Spark 1.9 does not expose a stable cross-loader report API. */
+    /**
+     * Spark 1.9 does not expose a stable cross-loader report API.
+     */
     @SuppressWarnings({"rawtypes", "unchecked"})
     private static final class ReflectiveSparkProfile {
         private final Object sampler;
@@ -604,7 +605,8 @@ public final class AotakeNetworkSmokeServerRunner {
             } catch (InterruptedException error) {
                 Thread.currentThread().interrupt();
                 throw new IllegalStateException("Interrupted writing Spark report", error);
-            } catch (ReflectiveOperationException | java.io.IOException | java.util.concurrent.ExecutionException error) {
+            } catch (ReflectiveOperationException | java.io.IOException |
+                     java.util.concurrent.ExecutionException error) {
                 throw new IllegalStateException("Unable to write Spark report", error);
             }
         }

@@ -10,29 +10,39 @@ import xin.vanilla.aotake.config.CommonConfig;
 import xin.vanilla.aotake.internal.forge.rule.ForgeEntityRuleContext;
 import xin.vanilla.aotake.internal.forge.rule.ForgeNativeMembers;
 import xin.vanilla.aotake.rule.*;
-import xin.vanilla.banira.api.script.*;
+import xin.vanilla.banira.api.script.BaniraScripts;
+import xin.vanilla.banira.api.script.ScriptFactory;
+import xin.vanilla.banira.api.script.ScriptLimits;
+import xin.vanilla.banira.api.script.ScriptSession;
 import xin.vanilla.banira.common.config.BaniraConfig;
 
 import java.util.concurrent.*;
 
-/** Only a running server owns executable rules; client config snapshots never enter here. */
+/**
+ * Only a running server owns executable rules; client config snapshots never enter here.
+ */
 public final class AotakeRuleRuntime {
     private static RuleManager<Entity> manager;
     private static ExecutorService worker;
     private static volatile MinecraftServer owner;
 
-    private AotakeRuleRuntime() { }
+    private AotakeRuleRuntime() {
+    }
 
     public static void start(MinecraftServer server) {
         if (server == null) return;
         if (owner != null) throw new IllegalStateException("Rule server is already running");
         owner = server;
         worker = Executors.newSingleThreadExecutor(task -> {
-            Thread thread = new Thread(task, "aotake-local-rules"); thread.setDaemon(true); return thread;
+            Thread thread = new Thread(task, "aotake-local-rules");
+            thread.setDaemon(true);
+            return thread;
         });
         Executor executor = task -> {
             if (owner != server) throw new RejectedExecutionException("Rule server stopped");
-            server.execute(() -> { if (owner == server) task.run(); });
+            server.execute(() -> {
+                if (owner == server) task.run();
+            });
         };
         ScriptSession<EntityRule> scripts = BaniraScripts.open(AotakeSweep.MODID, EntityRule.class,
                 RuleSource.CONTRACT_VERSION, ScriptLimits.defaults(), executor);
@@ -42,19 +52,22 @@ public final class AotakeRuleRuntime {
             manager = new RuleManager<>(RuleFileStore.local(), BaniraConfig.holder(CommonConfig.class), scripts,
                     worker, executor, ForgeEntityRuleContext::new, policies, ForgeNativeMembers::prepare);
         } catch (RuntimeException | Error failure) {
-            scripts.close(); policies.close();
+            scripts.close();
+            policies.close();
             stop();
             throw failure;
         }
         reload().whenComplete((id, failure) -> {
-            if (failure != null) LogManager.getLogger().error("Aotake rules unavailable; cleanup remains blocked", failure);
+            if (failure != null)
+                LogManager.getLogger().error("Aotake rules unavailable; cleanup remains blocked", failure);
         });
     }
 
     public static CompletableFuture<Long> reload() {
         if (manager == null) {
             CompletableFuture<Long> failed = new CompletableFuture<>();
-            failed.completeExceptionally(new RuleExecutionException(-1, "Rule server is not running")); return failed;
+            failed.completeExceptionally(new RuleExecutionException(-1, "Rule server is not running"));
+            return failed;
         }
         return manager.reload();
     }
@@ -64,16 +77,19 @@ public final class AotakeRuleRuntime {
         return manager.acquire(use);
     }
 
-    public static boolean isUsable(long id) { return manager != null && manager.isUsable(id); }
+    public static boolean isUsable(long id) {
+        return manager != null && manager.isUsable(id);
+    }
 
     static RuleManager<Entity> manager() {
-        if(manager==null) throw new RuleExecutionException(-1,"Rule server is not running");
+        if (manager == null) throw new RuleExecutionException(-1, "Rule server is not running");
         return manager;
     }
 
     public static void stop() {
         if (manager != null) manager.close();
-        manager = null; owner = null;
+        manager = null;
+        owner = null;
         if (worker != null) worker.shutdownNow();
         worker = null;
     }

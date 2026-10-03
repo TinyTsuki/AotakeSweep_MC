@@ -5,10 +5,15 @@ import com.google.gson.JsonObject;
 import xin.vanilla.aotake.config.CommonConfig;
 import xin.vanilla.banira.common.config.ConfigReadSnapshot;
 
-/** Task-local data, decoded once from the lease; never rebinds the live generated view. */
+/**
+ * Task-local data, decoded once from the lease; never rebinds the live generated view.
+ */
 public final class SweepConfiguration {
     private static final Gson JSON = new Gson();
-    private SweepConfiguration() { }
+
+    private SweepConfiguration() {
+    }
+
     public static CommonConfig.BaseCategory base(ConfigReadSnapshot snapshot) {
         JsonObject root = new JsonObject();
         snapshot.getValues().forEach((path, value) -> {
@@ -19,7 +24,10 @@ public final class SweepConfiguration {
             while ((end = path.indexOf('.', start)) >= 0) {
                 String key = path.substring(start, end);
                 JsonObject child = target.getAsJsonObject(key);
-                if (child == null) { child = new JsonObject(); target.add(key, child); }
+                if (child == null) {
+                    child = new JsonObject();
+                    target.add(key, child);
+                }
                 target = child;
                 start = end + 1;
             }

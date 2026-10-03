@@ -1,7 +1,5 @@
 package xin.vanilla.aotake.internal.client.dev;
 
-import xin.vanilla.banira.api.BaniraConfigs;
-
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.tree.CommandNode;
 import net.minecraft.client.Minecraft;
@@ -27,6 +25,7 @@ import xin.vanilla.aotake.internal.common.BrigadierCommandTree;
 import xin.vanilla.aotake.network.packet.OpenDustbinToServer;
 import xin.vanilla.aotake.screen.PlayerConfigScreen;
 import xin.vanilla.aotake.util.AotakeUtils;
+import xin.vanilla.banira.api.BaniraConfigs;
 import xin.vanilla.banira.client.gui.ConfigEditorScreen;
 import xin.vanilla.banira.common.util.EnvironmentUtils;
 import xin.vanilla.banira.common.util.PacketUtils;

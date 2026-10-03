@@ -2,12 +2,7 @@ package xin.vanilla.aotake.internal.dev;
 
 import com.electronwill.nightconfig.core.CommentedConfig;
 import com.electronwill.nightconfig.toml.TomlParser;
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
-import com.google.gson.JsonArray;
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
-import com.google.gson.JsonPrimitive;
+import com.google.gson.*;
 import xin.vanilla.aotake.config.ClientConfig;
 import xin.vanilla.aotake.config.CommonConfig;
 import xin.vanilla.banira.api.BaniraDataPaths;
@@ -24,11 +19,14 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
 
-/** Read-only config comparison; only the separate dev checkpoint is written. */
+/**
+ * Read-only config comparison; only the separate dev checkpoint is written.
+ */
 public final class AotakeNetworkSmokeConfigs {
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
 
-    private AotakeNetworkSmokeConfigs() { }
+    private AotakeNetworkSmokeConfigs() {
+    }
 
     public static void verify(boolean client) {
         if (!AotakeNetworkSmokeStatus.enabled()) throw new IllegalStateException("Smoke disabled");

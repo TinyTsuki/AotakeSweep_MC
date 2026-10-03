@@ -1,11 +1,14 @@
 package xin.vanilla.aotake.sweep;
 
 import xin.vanilla.aotake.api.sweep.*;
+
 import java.lang.reflect.Method;
 import java.util.List;
 import java.util.Objects;
 
-/** Prepared once per policy type and retained only by its execution generation. */
+/**
+ * Prepared once per policy type and retained only by its execution generation.
+ */
 public final class SweepExecutionPlan {
     public enum Hook {
         STATE("createState", SweepContext.class),
@@ -25,11 +28,21 @@ public final class SweepExecutionPlan {
 
         private final String method;
         private final Class<?>[] parameters;
-        Hook(String method, Class<?>... parameters) { this.method = method; this.parameters = parameters; }
+
+        Hook(String method, Class<?>... parameters) {
+            this.method = method;
+            this.parameters = parameters;
+        }
     }
+
     private final Class<? extends SweepPolicy> type;
     private final int custom;
-    private SweepExecutionPlan(Class<? extends SweepPolicy> type, int custom) { this.type = type; this.custom = custom; }
+
+    private SweepExecutionPlan(Class<? extends SweepPolicy> type, int custom) {
+        this.type = type;
+        this.custom = custom;
+    }
+
     public static SweepExecutionPlan resolve(Class<? extends SweepPolicy> type) {
         Objects.requireNonNull(type, "policy type");
         int custom = 0;
@@ -38,10 +51,16 @@ public final class SweepExecutionPlan {
                 Method method = type.getMethod(hook.method, hook.parameters);
                 if (method.getDeclaringClass() != DefaultSweepPolicy.class) custom |= 1 << hook.ordinal();
             }
-        } catch (NoSuchMethodException failure) { throw new IllegalArgumentException("Incomplete policy type", failure); }
+        } catch (NoSuchMethodException failure) {
+            throw new IllegalArgumentException("Incomplete policy type", failure);
+        }
         return new SweepExecutionPlan(type, custom);
     }
-    public boolean custom(Hook hook) { return (custom & (1 << hook.ordinal())) != 0; }
+
+    public boolean custom(Hook hook) {
+        return (custom & (1 << hook.ordinal())) != 0;
+    }
+
     public void requireType(SweepPolicy<?> policy) {
         if (policy.getClass() != type) throw new IllegalArgumentException("Policy execution plan type mismatch");
     }
