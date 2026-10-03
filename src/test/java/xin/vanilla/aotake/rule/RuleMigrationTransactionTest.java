@@ -163,14 +163,57 @@ public class RuleMigrationTransactionTest {
         }
     }
 
-    @Test public void invalidExistingManifestAndMissingFilesNeverTriggerRegeneration() throws Exception {
+    @Test public void committedMissingFilesRecoverFromVerifiedSnapshotWithoutChangingConfig() throws Exception {
         try (Fixture f = new Fixture(temporary.newFolder().toPath())) {
-            f.transaction.commit(f.prepare());
-            String id = f.store.loadCatalog().sources().keySet().iterator().next();
-            Path source = f.store.root().resolve("rules/sources/" + id + ".java"); Files.delete(source);
+            RuleMigrationTransaction.PreparedMigration prepared = f.prepare(); f.transaction.commit(prepared);
             byte[] config = Files.readAllBytes(f.config);
-            assertThrows(Exception.class, f::prepare); assertFalse(Files.exists(source));
+            byte[] manifest = f.store.read(RuleFileStore.MANIFEST, RuleFileStore.MAX_METADATA_BYTES);
+            for (String path : prepared.catalog().files().keySet()) Files.delete(f.store.root().resolve(path));
+            assertEquals(RuleMigrationTransaction.RecoveryState.READY, f.transaction.recover().state());
+            for (Map.Entry<String,byte[]> file : prepared.catalog().files().entrySet())
+                assertArrayEquals(file.getValue(), f.store.read(file.getKey(), RuleFileStore.MAX_SOURCE_BYTES));
             assertArrayEquals(config, Files.readAllBytes(f.config));
+            assertArrayEquals(manifest, f.store.read(RuleFileStore.MANIFEST, RuleFileStore.MAX_METADATA_BYTES));
+            assertEquals(ConfigCommitResult.UNCHANGED, f.transaction.commit(f.prepare()));
+        }
+    }
+
+    @Test public void missingSourceRecoveryPreservesAnEditedBinding() throws Exception {
+        try (Fixture f = new Fixture(temporary.newFolder().toPath())) {
+            RuleMigrationTransaction.PreparedMigration prepared = f.prepare(); f.transaction.commit(prepared);
+            String id = prepared.catalog().sources().keySet().iterator().next();
+            byte[] binding = f.store.read(RuleCatalog.bindingPath(id), RuleFileStore.MAX_SOURCE_BYTES);
+            byte[] edited = (new String(binding, StandardCharsets.UTF_8) + "\n ").getBytes(StandardCharsets.UTF_8);
+            Files.write(f.store.root().resolve(RuleCatalog.bindingPath(id)), edited);
+            Files.delete(f.store.root().resolve(RuleCatalog.sourcePath(id)));
+            assertEquals(RuleMigrationTransaction.RecoveryState.READY, f.transaction.recover().state());
+            assertArrayEquals(edited, f.store.read(RuleCatalog.bindingPath(id), RuleFileStore.MAX_SOURCE_BYTES));
+        }
+    }
+
+    @Test public void corruptRecoverySnapshotCannotPartiallyRestoreMissingRules() throws Exception {
+        try (Fixture f = new Fixture(temporary.newFolder().toPath())) {
+            RuleMigrationTransaction.PreparedMigration prepared = f.prepare(); f.transaction.commit(prepared);
+            String id = prepared.catalog().sources().keySet().iterator().next();
+            for (String path : prepared.catalog().files().keySet()) Files.delete(f.store.root().resolve(path));
+            Files.write(f.store.root().resolve("rules/.staging/" + prepared.id() + "/" + RuleCatalog.bindingPath(id)), new byte[]{1});
+            assertEquals(RuleMigrationTransaction.RecoveryState.BLOCKED, f.transaction.recover().state());
+            for (String path : prepared.catalog().files().keySet()) assertFalse(Files.exists(f.store.root().resolve(path)));
+        }
+    }
+
+    @Test public void changedManifestDoesNotRestoreDeletedRulesFromAnOlderSnapshot() throws Exception {
+        try (Fixture f = new Fixture(temporary.newFolder().toPath())) {
+            RuleMigrationTransaction.PreparedMigration prepared = f.prepare(); f.transaction.commit(prepared);
+            String id = prepared.catalog().sources().keySet().iterator().next();
+            Files.delete(f.store.root().resolve(RuleCatalog.sourcePath(id)));
+            Path manifest = f.store.root().resolve(RuleFileStore.MANIFEST);
+            byte[] edited = (new String(Files.readAllBytes(manifest), StandardCharsets.UTF_8) + "\n ").getBytes(StandardCharsets.UTF_8);
+            Files.write(manifest, edited);
+            assertEquals(RuleMigrationTransaction.RecoveryState.NOT_NEEDED, f.transaction.recover().state());
+            assertThrows(Exception.class, f::prepare);
+            assertFalse(Files.exists(f.store.root().resolve(RuleCatalog.sourcePath(id))));
+            assertArrayEquals(edited, Files.readAllBytes(manifest));
         }
     }
 

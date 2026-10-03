@@ -311,7 +311,6 @@ tasks.named('assemble').configure {
 
 apply from: 'gradle/network-smoke.gradle'
 apply from: 'gradle/spark-profile-report.gradle'
-apply from: 'gradle/script-smoke.gradle'
 apply from: 'gradle/rule-network-smoke.gradle'
 
 afterEvaluate {

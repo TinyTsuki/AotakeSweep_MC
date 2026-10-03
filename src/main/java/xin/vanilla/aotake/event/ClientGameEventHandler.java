@@ -42,7 +42,6 @@ public final class ClientGameEventHandler {
         }
         AotakeUiSmokeRunner.tick(Minecraft.getInstance());
         AotakeNetworkSmokeClientRunner.tick(Minecraft.getInstance());
-        xin.vanilla.aotake.internal.client.dev.AotakeRuleSmokeClientRunner.tick(Minecraft.getInstance());
         xin.vanilla.aotake.internal.client.dev.AotakeRuleNetworkSmokeClientRunner.tick(Minecraft.getInstance());
         xin.vanilla.aotake.internal.client.dev.AotakeSweepPolicySmokeClientRunner.tick(Minecraft.getInstance());
         if (Minecraft.getInstance().screen == null) {

@@ -292,11 +292,14 @@ public final class AotakeSweepPolicySmokeServerRunner {
 
     private static void installFixtures() throws IOException {
         Path files = RuleFileStore.local().root();
-        JsonObject manifest = new JsonObject(); manifest.addProperty("schemaVersion", 1); manifest.addProperty("contractVersion", "1");
+        Path manifestFile = files.resolve("rules/manifest.json");
+        JsonObject manifest = Files.exists(manifestFile) ? new JsonParser().parse(read(manifestFile)).getAsJsonObject() : new JsonObject();
+        manifest.addProperty("schemaVersion", 1); manifest.addProperty("contractVersion", "1");
         JsonObject rule = new JsonObject(); rule.addProperty("className", "xin.vanilla.banira.generated.NativeEntityProbe");
         rule.addProperty("sourceHash", String.join("", Collections.nCopies(64, "0")));
         rule.add("nativeMembers", new JsonParser().parse(read(root().resolve("fixtures/NativeEntityProbe.members.json"))));
-        JsonObject rules = new JsonObject(); rules.add("native_probe", rule); manifest.add("rules", rules);
+        JsonObject rules = manifest.has("rules") ? manifest.getAsJsonObject("rules") : new JsonObject();
+        rules.add("native_probe", rule); manifest.add("rules", rules);
         write(files.resolve("rules/manifest.json"), manifest.toString());
         write(files.resolve("rules/bindings/native_probe.json"), "{\"schemaVersion\":1,\"contractVersion\":\"1\",\"slots\":[]}");
         copyFixture("NativeEntityProbe.java", files.resolve("rules/sources/native_probe.java"));

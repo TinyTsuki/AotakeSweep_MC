@@ -50,6 +50,7 @@ public final class RuleMigrationTransaction {
         try {
             RecoveryResult recovery = recover();
             if (recovery.state == RecoveryState.BLOCKED) throw new IOException(recovery.diagnostic);
+            if (recovery.state == RecoveryState.READY) org.apache.logging.log4j.LogManager.getLogger().warn(recovery.diagnostic);
             if (installBuiltins) BuiltinRules.install(store);
             if (!snapshot.getValues().keySet().equals(PATHS)) throw new IllegalArgumentException("Snapshot must include four lists and their modes");
             if (snapshot.getSourceBytes().length > RuleFileStore.MAX_CONFIG_BYTES) throw new IOException("Config backup exceeds size limit");
@@ -172,6 +173,7 @@ public final class RuleMigrationTransaction {
             byte[] bytes = store.optional(RuleFileStore.JOURNAL, RuleFileStore.MAX_METADATA_BYTES);
             if (bytes == null) return new RecoveryResult(RecoveryState.NOT_NEEDED, "");
             JsonObject journal = RuleFileStore.object(bytes); RuleFileStore.requireVersion(journal);
+            if ("COMMITTED".equals(journal.get("state").getAsString())) return restoreMissingCommittedFiles(journal);
             if (terminal(journal)) return new RecoveryResult(RecoveryState.NOT_NEEDED, "");
             if (!"PREPARED".equals(journal.get("state").getAsString())) throw new IOException("Unknown migration state");
             String id = transactionId(journal);
@@ -196,6 +198,32 @@ public final class RuleMigrationTransaction {
             finish(journal, original ? "ABORTED" : "COMMITTED");
             return new RecoveryResult(RecoveryState.READY, original ? "Original config retained; prepare again" : "Committed references recovered; compile before activation");
         } catch (Exception error) { return new RecoveryResult(RecoveryState.BLOCKED, error.getMessage()); }
+    }
+    private RecoveryResult restoreMissingCommittedFiles(JsonObject journal) throws IOException {
+        byte[] manifest = store.optional(RuleFileStore.MANIFEST, RuleFileStore.MAX_METADATA_BYTES);
+        if (manifest == null || !RuleFileStore.hash(manifest).equals(journal.get("newManifest").getAsString()))
+            return new RecoveryResult(RecoveryState.NOT_NEEDED, "");
+        JsonObject files = journal.getAsJsonObject("files");
+        if (files == null || files.size() > RuleFileStore.MAX_SCRIPTS * 2) throw new IOException("Invalid committed file count");
+        String id = transactionId(journal);
+        Map<String,byte[]> missing = new LinkedHashMap<>();
+        for (Map.Entry<String,JsonElement> entry : files.entrySet()) {
+            requireArtifactPath(entry.getKey());
+            if (store.optional(entry.getKey(), RuleFileStore.MAX_SOURCE_BYTES) != null) continue;
+            byte[] snapshot = store.read(stage(id, entry.getKey()), RuleFileStore.MAX_SOURCE_BYTES);
+            if (!RuleFileStore.hash(snapshot).equals(entry.getValue().getAsString()))
+                throw new IOException("Recovery snapshot changed: " + entry.getKey());
+            missing.put(entry.getKey(), snapshot);
+        }
+        if (missing.isEmpty()) return new RecoveryResult(RecoveryState.NOT_NEEDED, "");
+        byte[] stagedManifest = store.read(stage(id, RuleFileStore.MANIFEST), RuleFileStore.MAX_METADATA_BYTES);
+        if (!Arrays.equals(manifest, stagedManifest)) throw new IOException("Recovery manifest changed");
+        // Validate every missing artifact before creating any file; never replace administrator edits.
+        if (!Arrays.equals(manifest, store.optional(RuleFileStore.MANIFEST, RuleFileStore.MAX_METADATA_BYTES)))
+            throw new IOException("Rule manifest changed during recovery");
+        for (Map.Entry<String,byte[]> file : missing.entrySet()) store.writeNew(file.getKey(), file.getValue());
+        return new RecoveryResult(RecoveryState.READY, "Recovered " + missing.size()
+                + " missing rule files from verified migration snapshots; compile before activation");
     }
     private void verifyStaged(JsonObject journal) throws IOException {
         String id = transactionId(journal); JsonObject files = journal.getAsJsonObject("files");
