@@ -70,10 +70,10 @@ public final class ForgeSweepBackend implements SweepBackend {
             Iterable<Entity> candidates = target.bounds() == null
                     ? (Iterable<Entity>) world.getEntities()::iterator
                     : world.getEntitiesOfClass(Entity.class, target.bounds());
-            for(Entity entity:candidates) {
+            candidates.forEach(entity -> {
                 NativeCandidate accepted=admit(entity,scope);
                 if(accepted!=null) entities.add(accepted.view(guard));
-            }
+            });
         }
         return entities;
     }

@@ -26,7 +26,7 @@ public final class ForgeSweepFilter {
     }
     public <E> DefaultSweepFilter.Entry<E,Object> inspect(E view,Entity entity) {
         if(!AotakeUtils.prepareSweepCandidate(entity)) return null;
-        boolean safe=here.matches(entity.level,entity.blockPosition()) || below.matches(entity.level,entity.blockPosition().below()) || above.matches(entity.level,entity.blockPosition().above());
+        boolean safe=isSafe(entity);
         boolean junk=generation.shouldClean(chunk,entity);
         return new DefaultSweepFilter.Entry<>(view,safe,junk,junk?null:EntityUtils.getEntityRegistryString(entity),safe?ChunkKey.of(entity):null);
     }
@@ -34,15 +34,22 @@ public final class ForgeSweepFilter {
         return new DefaultSweepFilter<Entity,Object>(settings.sweep().entityListLimit(),settings.safe().safeBlocksEntityLimit(),e->inspect(e,e)).select(candidates);
     }
     public void clear(){ cache.clear(); }
+    boolean isSafe(Entity entity) {
+        return here.matches(entity.level,entity.blockPosition())
+                || below.enabled && below.matches(entity.level,entity.blockPosition().below())
+                || above.enabled && above.matches(entity.level,entity.blockPosition().above());
+    }
     private final class SafeBlocks {
         private final Set<String> names;
         private final Set<BlockState> states=new HashSet<>();
+        private final boolean enabled;
         SafeBlocks(List<String> entries) {
             names=new HashSet<>(entries);
             for(String entry:entries) { BlockState state=BlockUtils.deserializeBlockState(entry); if(state!=null) states.add(state); }
+            enabled=!names.isEmpty() || !states.isEmpty();
         }
         boolean matches(World world,BlockPos pos) {
-            if(names.isEmpty() && states.isEmpty()) return false;
+            if(!enabled) return false;
             BlockState state=cache.computeIfAbsent(world,ignored->new HashMap<>()).computeIfAbsent(pos,world::getBlockState);
             return states.contains(state) || names.contains(BlockUtils.getBlockRegistryString(state));
         }
