@@ -2,6 +2,7 @@ package xin.vanilla.aotake.sweep;
 
 import xin.vanilla.aotake.api.rule.*;
 import xin.vanilla.aotake.api.sweep.*;
+import xin.vanilla.aotake.rule.RuleExecutionException;
 import java.util.*;
 import java.util.function.Function;
 import xin.vanilla.aotake.sweep.SweepExecutionPlan.Hook;
@@ -133,8 +134,7 @@ public final class SweepTask<S> {
         if (record.skipped || record.disposition != EntityDisposition.DEFAULT || request.ignoreFilter() || request.preFiltered()) return;
         if (record.scan == null) {
             checkpoint();
-            record.scan = Objects.requireNonNull(backend.evaluate(request, record.entity), "default evaluation");
-            checkpoint();
+            evaluateDefault(record);
         }
     }
 
@@ -145,9 +145,10 @@ public final class SweepTask<S> {
     }
 
     private void evaluateDefault(SweepCandidates.Record record) {
-        record.scan = Objects.requireNonNull(backend.evaluate(request, record.entity), "default evaluation");
+        record.scan = backend.evaluate(request, record.entity);
         // No callback runs between this check and the next evaluation in this engine-owned loop.
         checkpoint();
+        if (record.scan == null) record.update(true, EntityDisposition.KEEP);
     }
 
     private void evaluateCandidate(int index) {
@@ -234,8 +235,11 @@ public final class SweepTask<S> {
                     checkpoint();
                     if (progress.snapshot(false, null).remaining() != 0) throw new IllegalStateException("Batch left unaccounted entities");
                 }
-            } catch (Cancelled error) { cancel = true; cancellationReason = error.getMessage(); }
-            catch (RuntimeException | Error error) { rethrowFatal(error); failure = error; }
+            } catch (RuntimeException | Error error) {
+                rethrowFatal(error);
+                if (isCancellation(error)) { cancel = true; cancellationReason = cancellationMessage(error); }
+                else failure = error;
+            }
             BatchResult result = progress.snapshot(cancel, failure == null ? null : message(failure));
             processed += result.processed(); skipped += result.skipped(); failed += result.failed();
             committed = Math.addExact(committed, result.committed()); pendingRemoval = Math.addExact(pendingRemoval, result.pendingRemoval());
@@ -261,8 +265,16 @@ public final class SweepTask<S> {
     }
     private void terminate(Throwable failure) {
         rethrowFatal(failure);
-        if (failure instanceof Cancelled) finish(SweepPhase.CANCELLED, message(failure), null);
+        if (isCancellation(failure)) finish(SweepPhase.CANCELLED, cancellationMessage(failure), null);
         else finish(SweepPhase.FAILED, "execution failed", failure);
+    }
+    private boolean isCancellation(Throwable failure) {
+        return failure instanceof Cancelled || failure instanceof RuleExecutionException
+                && ((RuleExecutionException) failure).generationId() == generationId
+                && ((RuleExecutionException) failure).isUnavailable();
+    }
+    private String cancellationMessage(Throwable failure) {
+        return cancellationReason != null ? cancellationReason : message(failure);
     }
     private void finish(SweepPhase status, String reason, Throwable failure) {
         if (closed || finishing) return;

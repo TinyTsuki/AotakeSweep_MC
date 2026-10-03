@@ -22,9 +22,16 @@ public final class SmokeSweepPolicy extends DefaultSweepPolicy<Object> {
     public StageControl beforeFilter(SweepContext c, Object s, List<EntityAccess> candidates) {
         PolicyAudit state = (PolicyAudit) s; state.event(c, "beforeFilter");
         if (!candidates.isEmpty()) state.retained = (EntityAccess) candidates.get(0);
+        if (state.mode.equals("removeBeforeFilter") && !candidates.isEmpty())
+            xin.vanilla.aotake.internal.server.dev.AotakeSweepPolicySmokeServerRunner.removeForSmoke(((EntityAccess) candidates.get(0)).nativeEntity(Object.class));
         return super.beforeFilter(c, s, candidates);
     }
-    public FlowControl beforeEntity(SweepEntityContext c, Object s) { ((PolicyAudit) s).event(c.task(), "beforeEntity"); return FlowControl.CONTINUE; }
+    public FlowControl beforeEntity(SweepEntityContext c, Object s) {
+        PolicyAudit state = (PolicyAudit) s; state.event(c.task(), "beforeEntity");
+        if (state.mode.equals("removeBeforeEntity") && c.index() == 0)
+            xin.vanilla.aotake.internal.server.dev.AotakeSweepPolicySmokeServerRunner.removeForSmoke(c.entity().nativeEntity(Object.class));
+        return FlowControl.CONTINUE;
+    }
     public EntityDisposition evaluateEntity(SweepEntityContext c, Object s) {
         PolicyAudit state = (PolicyAudit) s; state.event(c.task(), "evaluate"); state.evaluated++;
         return "minecraft:diamond".equals(c.entity().itemResourceId()) ? EntityDisposition.KEEP : super.evaluateEntity(c, s);

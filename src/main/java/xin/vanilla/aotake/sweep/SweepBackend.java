@@ -18,7 +18,7 @@ public interface SweepBackend {
     /** Canonicalize multipart entities, validate authorization and return a task-guarded view, or null. */
     EntityAccess normalize(EntityAccess entity, SweepScope scope, Runnable guard);
     Object identity(EntityAccess entity);
-    /** Capture default safety/list data during this entity's evaluation, before afterEntity. */
+    /** Capture default safety/list data before afterEntity; null skips a candidate that became invalid. */
     DefaultSweepFilter.Entry<EntityAccess, Object> evaluate(SweepRequest request, EntityAccess entity);
     /** Only final DEFAULT decisions are included, with their captured scan data. */
     List<EntityAccess> filter(SweepRequest request, List<DefaultSweepFilter.Entry<EntityAccess, Object>> entries);

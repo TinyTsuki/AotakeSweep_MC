@@ -137,12 +137,10 @@ public final class RuleGeneration<S> {
         Objects.requireNonNull(list);
         Objects.requireNonNull(subject);
         for (BoundRule<S> binding : rules.get(list)) {
+            boolean matched;
             try {
-                boolean matched = binding.namespace == null ? binding.context.evaluate(binding.rule, subject, binding.plan)
+                matched = binding.namespace == null ? binding.context.evaluate(binding.rule, subject, binding.plan)
                         : binding.context.evaluateResource(binding.rule, subject, binding.plan, binding.namespace, binding.path);
-                // A reentrant rule may retire this generation and then swallow its exception.
-                requireUsable();
-                if (matched) return true;
             } catch (RuntimeException | Error failure) {
                 String message = "Rule " + binding.reference + " failed in generation " + id;
                 retire(message);
@@ -150,6 +148,9 @@ public final class RuleGeneration<S> {
                 if (failure instanceof ThreadDeath) throw (ThreadDeath) failure;
                 throw new RuleExecutionException(id, message, failure);
             }
+            // Successful rules may retire the generation; do not wrap that checkpoint as a rule failure.
+            requireUsable();
+            if (matched) return true;
         }
         return false;
     }
@@ -164,7 +165,7 @@ public final class RuleGeneration<S> {
 
     public void requireUsable() {
         checkOwner();
-        if (unavailable != null) throw new RuleExecutionException(id, unavailable);
+        if (unavailable != null) throw RuleExecutionException.unavailable(id, unavailable);
     }
 
     boolean isUsable() { checkOwner(); return unavailable == null; }

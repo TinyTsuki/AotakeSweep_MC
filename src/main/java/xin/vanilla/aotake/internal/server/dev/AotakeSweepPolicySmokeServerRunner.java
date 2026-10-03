@@ -217,10 +217,77 @@ public final class AotakeSweepPolicySmokeServerRunner {
                     holder.save(); pending = AotakeRuleRuntime.reload(); state = 18; break;
                 case 18:
                     if (!pending.isDone()) return;
+                    healthy = pending.join(); begin("removeBeforeFilter", 2);
+                    AotakeUtils.sweep(new ArrayList<>(spawned), false); state = 19; break;
+                case 19:
+                    if (!done()) return;
+                    check("COMMAND", "RECYCLE", "SUCCESS", 1);
+                    require(AotakeRuleRuntime.isUsable(healthy), "Removed candidate faulted healthy generation");
+                    pass("before-filter-removal-skips-invalid-candidate");
+                    begin("removeBeforeEntity", 2); AotakeUtils.sweep(new ArrayList<>(spawned), false); state = 20; break;
+                case 20:
+                    if (!done()) return;
+                    check("COMMAND", "RECYCLE", "SUCCESS", 1);
+                    require(AotakeRuleRuntime.isUsable(healthy), "Entity hook removal faulted healthy generation");
+                    pass("before-entity-removal-skips-invalid-candidate");
+                    holder.set(RuleMigrationTransaction.LISTS.get(0), Collections.singletonList("minecraft:item"));
+                    holder.set(RuleMigrationTransaction.LISTS.get(2), Collections.singletonList("script:native_probe"));
+                    holder.save(); pending = AotakeRuleRuntime.reload(); state = 21; break;
+                case 21:
+                    if (!pending.isDone()) return;
+                    healthy = pending.join(); begin("normal", 2);
+                    System.setProperty("aotake.policySmoke.retireAt", "preflight");
+                    AotakeUtils.sweep(new ArrayList<>(spawned), false); state = 22; break;
+                case 22:
+                    if (!done()) return;
+                    check("COMMAND", "RECYCLE", "CANCELLED", 0);
+                    require(alive() == 2 && last().get("failure").isJsonNull(), "Preflight retirement was a failure or removed entities");
+                    pass("preflight-rule-retirement-is-cancellation");
+                    System.clearProperty("aotake.policySmoke.retireAt");
+                    holder.set(RuleMigrationTransaction.MODES.get(0), "BLACK"); holder.save();
+                    pending = AotakeRuleRuntime.reload(); state = 23; break;
+                case 23:
+                    if (!pending.isDone()) return;
+                    healthy = pending.join(); begin("normal", 2);
+                    System.setProperty("aotake.policySmoke.retireAt", "batch");
+                    AotakeUtils.sweep(new ArrayList<>(spawned), false); state = 24; break;
+                case 24:
+                    if (!done()) return;
+                    check("COMMAND", "RECYCLE", "CANCELLED", 0);
+                    require(alive() == 2 && last().get("failure").isJsonNull(), "Batch retirement was a failure or removed entities");
+                    require("RUNNING".equals(last().get("stoppedAt").getAsString()), "Batch retirement occurred before batch execution");
+                    pass("batch-rule-retirement-is-cancellation");
+                    System.clearProperty("aotake.policySmoke.retireAt");
+                    holder.set(RuleMigrationTransaction.MODES.get(0), "BLACK"); holder.save();
+                    pending = AotakeRuleRuntime.reload(); state = 25; break;
+                case 25:
+                    if (!pending.isDone()) return;
+                    healthy = pending.join(); begin("normal", 2);
+                    System.setProperty("aotake.policySmoke.retireAt", "failure");
+                    AotakeUtils.sweep(new ArrayList<>(spawned), false); state = 26; break;
+                case 26:
+                    if (!done()) return;
+                    check("COMMAND", "RECYCLE", "FAILED", 0);
+                    require(alive() == 2 && last().get("failure").getAsString().contains("failed in generation"), "Actual rule failure was swallowed as cancellation");
+                    pass("actual-rule-error-after-retirement-remains-failure");
+                    System.clearProperty("aotake.policySmoke.retireAt");
+                    holder.set(RuleMigrationTransaction.MODES.get(0), "BLACK");
+                    holder.set(RuleMigrationTransaction.LISTS.get(0), Collections.singletonList("script:native_probe"));
+                    holder.set(RuleMigrationTransaction.LISTS.get(2), Collections.emptyList());
+                    holder.save(); pending = AotakeRuleRuntime.reload(); state = 27; break;
+                case 27:
+                    if (!pending.isDone()) return;
                     pending.join(); finish(); break;
                 default: throw new IllegalStateException("Unknown policy smoke state " + state);
             }
         } catch (Throwable failure) { failure.printStackTrace(); status(side(), "FAIL state=" + state + " " + failure); finish(); }
+    }
+
+    public static void removeForSmoke(Object entity) { ((Entity) entity).remove(); }
+    public static void retireForSmoke() {
+        holder.set(RuleMigrationTransaction.MODES.get(0), "WHITE");
+        require(!AotakeRuleRuntime.isUsable(healthy), "Rule selection did not retire current task");
+        if ("failure".equals(System.getProperty("aotake.policySmoke.retireAt"))) throw new IllegalArgumentException("actual smoke rule failure");
     }
 
     private static void installFixtures() throws IOException {

@@ -9,9 +9,18 @@ public final class NativeEntityProbe implements EntityRule {
     public interface ReadTick { int get(Entity entity); }
     public interface WritePosition { void set(Entity entity, double x, double y, double z); }
     private final java.util.Map<Entity, Integer> visits = new java.util.IdentityHashMap<Entity, Integer>();
+    private int retirementVisits;
+    private String retirementMode;
 
     public boolean test(EntityRuleContext context) {
         Entity entity = (Entity) context.nativeEntity(Entity.class);
+        String retireAt = System.getProperty("aotake.policySmoke.retireAt");
+        if (!java.util.Objects.equals(retireAt, retirementMode)) {
+            retirementMode = retireAt;
+            retirementVisits = 0;
+        }
+        if (retireAt != null && ++retirementVisits == (retireAt.equals("batch") ? 3 : 1))
+            xin.vanilla.aotake.internal.server.dev.AotakeSweepPolicySmokeServerRunner.retireForSmoke();
         if (Boolean.getBoolean("aotake.policySmoke.moveDuringRecycle")) {
             Integer previous = (Integer) visits.get(entity);
             int count = previous == null ? 1 : previous.intValue() + 1;

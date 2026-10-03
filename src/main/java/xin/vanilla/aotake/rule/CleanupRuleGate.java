@@ -16,7 +16,7 @@ public final class CleanupRuleGate<S> {
 
     public void requireUsable() {
         generation.requireUsable();
-        if (!usable.getAsBoolean()) throw new RuleExecutionException(generation.id(), "Cleanup rules changed before commit");
+        if (!usable.getAsBoolean()) throw RuleExecutionException.unavailable(generation.id(), "Cleanup rules changed before commit");
     }
 
     public List<Decision<S>> prepare(List<S> subjects, Predicate<S> isItem, boolean captureEnabled) {
