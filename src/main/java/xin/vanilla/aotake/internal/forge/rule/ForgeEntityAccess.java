@@ -11,7 +11,7 @@ import java.util.function.Supplier;
 public class ForgeEntityAccess implements EntityAccess {
     private final Supplier<Entity> source;
     private final Runnable guard;
-    private final WorldAccess world;
+    private WorldAccess world;
 
     /** A stable view for a task-owned candidate, with the task's lifetime guard. */
     public ForgeEntityAccess(Entity entity, Runnable guard) { this(() -> entity, guard); }
@@ -19,7 +19,6 @@ public class ForgeEntityAccess implements EntityAccess {
     /** A borrowed evaluation cursor; callers must not retain it outside the callback. */
     public ForgeEntityAccess(Supplier<Entity> source, Runnable guard) {
         this.source = Objects.requireNonNull(source); this.guard = Objects.requireNonNull(guard);
-        this.world = new ForgeWorldAccess(() -> current().level, guard);
     }
     private Entity current() { guard.run(); return Objects.requireNonNull(source.get(), "entity"); }
     @Override public UUID uuid() { return current().getUUID(); }
@@ -27,7 +26,11 @@ public class ForgeEntityAccess implements EntityAccess {
     @Override public double x() { return current().getX(); }
     @Override public double y() { return current().getY(); }
     @Override public double z() { return current().getZ(); }
-    @Override public WorldAccess world() { current(); return world; }
+    @Override public WorldAccess world() {
+        current();
+        if (world == null) world = new ForgeWorldAccess(() -> current().level, guard);
+        return world;
+    }
     @Override public String name() { return current().getName().getString(); }
     @Override public String customName() {
         Entity entity = current();

@@ -34,6 +34,7 @@ public final class ForgeSweepBackend implements SweepBackend {
     private final SweepResult result;
     private final ForgeSweepFilter filter;
     private final IdentityHashMap<Entity,NativeCandidate> candidates=new IdentityHashMap<>();
+    private final IdentityHashMap<ServerWorld,String> dimensions=new IdentityHashMap<>();
     private ChunkSweepSelection<EntityAccess> chunkSelection;
     private EntitySweeper.RecyclingBatch recycling;
     private boolean touched;
@@ -65,7 +66,7 @@ public final class ForgeSweepBackend implements SweepBackend {
         List<EntityAccess> entities=new ArrayList<>();
         if(request.operation()==SweepOperation.RECYCLE && request.trigger()!=SweepTrigger.CHUNK && noOnlinePlayer()) return entities;
         for(ServerWorld world:server.getAllLevels()) {
-            if(scope.dimension()!=null && !scope.dimension().equals(world.dimension().location().toString())) continue;
+            if(scope.dimension()!=null && !scope.dimension().equals(dimensionId(world))) continue;
             Iterable<Entity> candidates = target.bounds() == null
                     ? (Iterable<Entity>) world.getEntities()::iterator
                     : world.getEntitiesOfClass(Entity.class, target.bounds());
@@ -85,7 +86,7 @@ public final class ForgeSweepBackend implements SweepBackend {
         if(!AotakeUtils.prepareSweepCandidate(entity)) return null;
         ServerWorld world=(ServerWorld)entity.level;
         if(world.getServer()!=server || world.getEntity(entity.getId())!=entity) return null;
-        String dimension=world.dimension().location().toString();
+        String dimension=dimensionId(world);
         if(!scope.contains(dimension,entity.blockPosition().getX()>>4,entity.blockPosition().getZ()>>4)
                 || !target.contains(dimension,entity.getBoundingBox(),entity instanceof PlayerEntity,entity instanceof ItemEntity)) return null;
         NativeCandidate existing=candidates.get(entity);
@@ -94,6 +95,14 @@ public final class ForgeSweepBackend implements SweepBackend {
         NativeCandidate added=new NativeCandidate(entity,world,chunk);
         candidates.put(entity,added);
         return added;
+    }
+    private String dimensionId(ServerWorld world) {
+        String id=dimensions.get(world);
+        if(id==null) {
+            id=world.dimension().location().toString();
+            dimensions.put(world,id);
+        }
+        return id;
     }
     private static final class NativeCandidate {
         private final Entity entity;
@@ -164,6 +173,6 @@ public final class ForgeSweepBackend implements SweepBackend {
         result.incrementBatch();
     }
     public void flush(){ if(touched && request.operation()==SweepOperation.RECYCLE) EntitySweeper.flushPendingStorage(); }
-    public void release(){ filter.clear(); candidates.clear(); chunkSelection=null; recycling=null; }
+    public void release(){ filter.clear(); candidates.clear(); dimensions.clear(); chunkSelection=null; recycling=null; }
     public void fault(Throwable failure){ manager.failGeneration(generation.id(),failure); }
 }

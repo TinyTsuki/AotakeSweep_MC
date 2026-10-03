@@ -3,6 +3,7 @@ package xin.vanilla.aotake.rule;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockState;
 import net.minecraft.entity.Entity;
+import net.minecraft.entity.item.ItemEntity;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.fluid.Fluid;
 import net.minecraft.item.crafting.RecipeManager;
@@ -20,13 +21,61 @@ import net.minecraft.world.storage.MapData;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import xin.vanilla.aotake.api.rule.WorldAccess;
+import xin.vanilla.aotake.internal.forge.rule.ForgeEntityAccess;
 import xin.vanilla.aotake.internal.forge.rule.ForgeWorldAccess;
 import java.lang.reflect.Field;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 import static org.junit.Assert.*;
 
 public class RuleWorldAccessTest {
     @BeforeClass public static void bootstrap() { Bootstrap.bootStrap(); }
+
+    @Test public void nativeOnlyAccessDefersWorldViewAndChecksGuardBeforeCreation() throws Exception {
+        ItemEntity entity = new ItemEntity(null, 0, 0, 0);
+        AtomicBoolean active = new AtomicBoolean(true);
+        ForgeEntityAccess access = new ForgeEntityAccess(entity, () -> {
+            if (!active.get()) throw new IllegalStateException("Inactive view");
+        });
+        Field world = ForgeEntityAccess.class.getDeclaredField("world");
+        world.setAccessible(true);
+        assertSame(entity, access.nativeEntity(Entity.class));
+        assertNull("Native-only access must not allocate a world view", world.get(access));
+        active.set(false);
+        assertThrows(IllegalStateException.class, access::world);
+        assertNull(world.get(access));
+        active.set(true);
+        WorldAccess view = access.world();
+        assertSame(view, access.world());
+        assertSame(view, world.get(access));
+        active.set(false);
+        assertThrows(IllegalStateException.class, access::world);
+        assertThrows(IllegalStateException.class, () -> view.nativeWorld(World.class));
+    }
+
+    @Test public void cachedWorldViewFollowsLiveEntityAndBorrowedCursor() throws Exception {
+        ItemEntity first = new ItemEntity(null, 0, 0, 0);
+        ItemEntity second = new ItemEntity(null, 0, 0, 0);
+        World before = new UnloadedWorld(), after = new UnloadedWorld();
+        first.level = before;
+        second.level = after;
+        AtomicReference<Entity> current = new AtomicReference<>(first);
+        AtomicBoolean active = new AtomicBoolean(true);
+        ForgeEntityAccess access = new ForgeEntityAccess(current::get, () -> {
+            if (!active.get()) throw new IllegalStateException("Inactive cursor");
+        });
+        WorldAccess world = access.world();
+        assertSame(before, world.nativeWorld(World.class));
+        first.level = after;
+        assertSame(after, world.nativeWorld(World.class));
+        first.level = before;
+        current.set(second);
+        assertSame(world, access.world());
+        assertSame(after, world.nativeWorld(World.class));
+        active.set(false);
+        assertThrows(IllegalStateException.class, () -> world.nativeWorld(World.class));
+    }
 
     @Test public void unloadedBlocksAndEntityQueriesNeverRequestChunkCreation() throws Exception {
         UnloadedWorld world = new UnloadedWorld();
