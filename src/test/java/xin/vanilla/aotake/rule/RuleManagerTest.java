@@ -369,6 +369,20 @@ public class RuleManagerTest {
     }
 
     private Fixture fixture() throws Exception { return fixture(true); }
+    @Test public void preparedSelectionStillCancelsImmediatelyAfterUnsavedNativeListEdit() throws Exception {
+        try (Fixture f = fixture()) {
+            long id = f.await(f.manager.reload());
+            List<String> cancellations = new ArrayList<>();
+            try (RuleGeneration<Map<String, Object>>.PolicyLease lease = f.manager.leasePolicy(cancellations::add)) {
+                for (int i = 0; i < 100; i++) assertTrue(f.manager.isUsable(id));
+                f.config.editNativeRule(RuleMigrationTransaction.LISTS.get(0), 0, "minecraft:arrow");
+                assertFalse(f.manager.isUsable(id));
+                assertEquals(1, cancellations.size());
+                assertFalse(f.manager.isUsable(id));
+                assertEquals(1, cancellations.size());
+            }
+        }
+    }
     private Fixture fixture(boolean start) throws Exception { return new Fixture(temporary.newFolder().toPath(), start); }
     static Map<String,Object> entity(String resource, int tick) {
         Map<String,Object> value = new HashMap<>(); value.put("resource", resource); value.put("tick", tick); return value;

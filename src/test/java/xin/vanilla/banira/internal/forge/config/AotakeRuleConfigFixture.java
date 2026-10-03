@@ -10,10 +10,11 @@ import java.util.*;
 /** Test-only access to the real backend without widening Banira's production API. */
 public final class AotakeRuleConfigFixture implements AutoCloseable {
     public final ConfigHolder holder;
+    private final Map<String, ForgeConfigSpec.ConfigValue<?>> values;
     private final CommentedFileConfig file;
     public AotakeRuleConfigFixture(Path config) {
         ForgeConfigSpec.Builder builder = new ForgeConfigSpec.Builder();
-        Map<String, ForgeConfigSpec.ConfigValue<?>> values = new LinkedHashMap<>();
+        values = new LinkedHashMap<>();
         for (String path : RuleMigrationTransaction.LISTS) values.put(path, builder.defineList(path,
                 Arrays.asList("minecraft:arrow", "tick -> tick >= 5", "minecraft:*"), value -> value instanceof String));
         for (String path : RuleMigrationTransaction.MODES) values.put(path, builder.define(path, "WHITE"));
@@ -22,6 +23,10 @@ public final class AotakeRuleConfigFixture implements AutoCloseable {
         ForgeConfigSpec spec = builder.build(); ForgeConfigBackend backend = new ForgeConfigBackend(spec, values);
         holder = ConfigHolder.create("test", "test-common", ConfigScope.COMMON, backend, Collections.emptyList(), Collections.emptyMap(), Collections.emptyMap());
         backend.setHolder(holder); file = backend.wrap(CommentedFileConfig.of(config)); file.load(); spec.setConfig(file); holder.acceptInitialExternalLoad(); file.save();
+    }
+    @SuppressWarnings("unchecked")
+    public void editNativeRule(String path, int index, String rule) {
+        ((List<String>) values.get(path).get()).set(index, rule);
     }
     @Override public void close() { file.close(); }
 }

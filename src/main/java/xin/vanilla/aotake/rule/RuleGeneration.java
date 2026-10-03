@@ -12,6 +12,7 @@ import java.util.*;
 import java.util.function.Function;
 import java.util.function.Consumer;
 import java.util.function.BiFunction;
+import java.util.function.BooleanSupplier;
 
 /** Lists, modes and executable rules share one owner-thread lifetime. */
 public final class RuleGeneration<S> {
@@ -20,6 +21,8 @@ public final class RuleGeneration<S> {
     private final long id;
     private final Thread owner;
     private final Selection selection;
+    private ConfigHolder selectionHolder;
+    private BooleanSupplier selectionMatch;
     private final Map<RuleList,List<BoundRule<S>>> rules = new EnumMap<>(RuleList.class);
     private String unavailable;
     private SweepPolicyCatalog.Prepared policies;
@@ -164,7 +167,16 @@ public final class RuleGeneration<S> {
 
     boolean isUsable() { checkOwner(); return unavailable == null; }
     boolean hasSelection(Selection expected) { return selection.equals(expected); }
-    boolean hasSelection(ConfigHolder holder) { return selection.matches(holder); }
+    void bindSelection(ConfigHolder holder) {
+        checkOwner();
+        if (selectionMatch != null) throw new IllegalStateException("Selection already bound");
+        selectionMatch = selection.prepareMatch(holder);
+        selectionHolder = holder;
+    }
+    boolean hasSelection(ConfigHolder holder) {
+        checkOwner();
+        return unavailable == null && selectionHolder == holder && selectionMatch != null && selectionMatch.getAsBoolean();
+    }
 
     void retire(String reason) {
         checkOwner();
@@ -188,6 +200,8 @@ public final class RuleGeneration<S> {
         for (List<BoundRule<S>> list : rules.values()) for (BoundRule<S> binding : list) binding.context.clear();
         rules.clear();
         policies = null;
+        selectionMatch = null;
+        selectionHolder = null;
     }
 
     private void checkOwner() {
@@ -233,20 +247,12 @@ public final class RuleGeneration<S> {
             this.modes = Collections.unmodifiableList(modes);
         }
 
-        boolean matches(ConfigHolder holder) {
-            // Keep checking live edits at every boundary without rebuilding the immutable snapshot.
-            synchronized (holder) {
-                if (!holder.matchesStoredValue(SweepPolicyCatalog.CONFIG_PATH, policyId)) return false;
-                for (int i = 0; i < lists.size(); i++) {
-                    if (!holder.matchesStoredValue(RuleMigrationTransaction.LISTS.get(i), lists.get(i))) return false;
-                }
-                for (int i = 0; i < modes.size(); i++) {
-                    String path = RuleMigrationTransaction.MODES.get(i);
-                    if (!holder.matchesStoredValue(path, modes.get(i))
-                            && !holder.matchesStoredValue(path, modes.get(i).name())) return false;
-                }
-                return true;
-            }
+        BooleanSupplier prepareMatch(ConfigHolder holder) {
+            Map<String, Object> expected = new LinkedHashMap<>();
+            expected.put(SweepPolicyCatalog.CONFIG_PATH, policyId);
+            for (int i = 0; i < lists.size(); i++) expected.put(RuleMigrationTransaction.LISTS.get(i), lists.get(i));
+            for (int i = 0; i < modes.size(); i++) expected.put(RuleMigrationTransaction.MODES.get(i), modes.get(i));
+            return holder.prepareStoredMatch(expected, true);
         }
 
         @Override public boolean equals(Object other) {

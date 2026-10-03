@@ -168,6 +168,7 @@ public final class RuleManager<S> implements AutoCloseable {
             try { commit = migration.commit(candidate); }
             finally { committing.remove(); }
             if (commit == ConfigCommitResult.CONFLICT) throw new IllegalStateException("Configuration changed during rule preparation");
+            replacement.bindSelection(holder);
             if (!replacement.hasSelection(selection())) throw new IllegalStateException("Rule selection changed before publication");
             policies.verifyFiles();
             // Save listeners may request another reload (or stop the world) inside commit.
