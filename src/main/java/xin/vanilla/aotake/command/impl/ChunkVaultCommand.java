@@ -40,7 +40,7 @@ public final class ChunkVaultCommand {
         if (!AotakeServerRuntime.isRunning()) {
             return builder.buildFuture();
         }
-        for (String id : ChunkVaultStorage.listVaultIds(AotakeServerRuntime.currentServer())) {
+        for (String id : ChunkVaultStorage.listVaultIds(AotakeServerRuntime.requireServer())) {
             if (StringUtils.isNullOrEmptyEx(id)) continue;
             builder.suggest(id);
         }

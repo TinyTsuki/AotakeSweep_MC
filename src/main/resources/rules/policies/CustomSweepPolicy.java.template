@@ -1,0 +1,7 @@
+package xin.vanilla.banira.generated.policies;
+
+import xin.vanilla.aotake.api.sweep.DefaultSweepPolicy;
+
+// Use Object for hook state parameters and createState's return type; cast inside hooks.
+public class CustomSweepPolicy extends DefaultSweepPolicy<Object> {
+}
