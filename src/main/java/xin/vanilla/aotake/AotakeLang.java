@@ -16,7 +16,7 @@ public final class AotakeLang extends Translator {
     public static final AotakeLang INSTANCE = new AotakeLang();
 
     private AotakeLang() {
-        super(AotakeSweep.class);
+        super(AotakeSweep.MODID, AotakeSweep.class);
         registerInCache();
     }
 

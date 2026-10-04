@@ -40,6 +40,10 @@ public class FabricSweepIntegrationContractTest {
         assertFalse(text.contains("RemovalReason.KILLED"));
     }
 
+    @Test public void localizationUsesExplicitModIdForTheSeparateFabricEntrypoint() throws Exception {
+        assertTrue(source("AotakeLang.java").contains("super(AotakeSweep.MODID, AotakeSweep.class)"));
+    }
+
     @Test public void reloadCommandAndLoadedOnlyQueriesAreWired() throws Exception {
         assertTrue(source("command/impl/ConfigCommand.java").contains("RuleReloadCommand.register()"));
         String world = source("internal/fabric/rule/FabricWorldAccess.java");
