@@ -1,4 +1,7 @@
 {
+  "word.aotake_sweep.rules_reload_success": "Local cleanup rules reloaded",
+  "word.aotake_sweep.rules_reload_failure": "Could not load local cleanup rules; check the server log",
+  "word.aotake_sweep.sweep_policy_description": "Cleanup policy ID\nUse builtin:default or a locally prepared policy ID\nRun config rules reload after editing local sources",
   "key.aotake_sweep.categories": "Aotake Sweep",
   "key.aotake_sweep.open_dustbin": "Open Dustbin",
   "key.aotake_sweep.open_dustbin_next": "Dustbin Next Page",
