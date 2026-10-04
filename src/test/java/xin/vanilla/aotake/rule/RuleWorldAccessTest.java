@@ -1,0 +1,144 @@
+package xin.vanilla.aotake.rule;
+
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.item.ItemEntity;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.level.material.Fluid;
+import net.minecraft.world.item.crafting.RecipeManager;
+import net.minecraft.util.profiling.InactiveProfiler;
+import net.minecraft.world.scores.Scoreboard;
+import net.minecraft.tags.TagContainer;
+import net.minecraft.core.Direction;
+import net.minecraft.sounds.SoundEvent;
+import net.minecraft.sounds.SoundSource;
+import net.minecraft.core.BlockPos;
+import net.minecraft.server.Bootstrap;
+import net.minecraft.world.level.*;
+import net.minecraft.world.level.dimension.DimensionType;
+import net.minecraft.world.level.biome.Biome;
+import net.minecraft.world.level.chunk.*;
+import net.minecraft.world.level.lighting.LevelLightEngine;
+import net.minecraft.world.level.saveddata.maps.MapItemSavedData;
+import org.junit.BeforeClass;
+import org.junit.Test;
+import xin.vanilla.aotake.api.rule.WorldAccess;
+import xin.vanilla.aotake.internal.fabric.rule.FabricEntityAccess;
+import xin.vanilla.aotake.internal.fabric.rule.FabricWorldAccess;
+import java.lang.reflect.Field;
+import java.util.*;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
+import static org.junit.Assert.*;
+
+public class RuleWorldAccessTest {
+    @BeforeClass public static void bootstrap() { Bootstrap.bootStrap(); }
+
+    @Test public void nativeOnlyAccessDefersWorldViewAndChecksGuardBeforeCreation() throws Exception {
+        ItemEntity entity = new ItemEntity(null, 0, 0, 0);
+        AtomicBoolean active = new AtomicBoolean(true);
+        FabricEntityAccess access = new FabricEntityAccess(entity, () -> {
+            if (!active.get()) throw new IllegalStateException("Inactive view");
+        });
+        Field world = FabricEntityAccess.class.getDeclaredField("world");
+        world.setAccessible(true);
+        assertSame(entity, access.nativeEntity(Entity.class));
+        assertNull("Native-only access must not allocate a world view", world.get(access));
+        active.set(false);
+        assertThrows(IllegalStateException.class, access::world);
+        assertNull(world.get(access));
+        active.set(true);
+        WorldAccess view = access.world();
+        assertSame(view, access.world());
+        assertSame(view, world.get(access));
+        active.set(false);
+        assertThrows(IllegalStateException.class, access::world);
+        assertThrows(IllegalStateException.class, () -> view.nativeWorld(Level.class));
+    }
+
+    @Test public void cachedWorldViewFollowsLiveEntityAndBorrowedCursor() throws Exception {
+        ItemEntity first = new ItemEntity(null, 0, 0, 0);
+        ItemEntity second = new ItemEntity(null, 0, 0, 0);
+        Level before = new UnloadedWorld(), after = new UnloadedWorld();
+        first.level = before;
+        second.level = after;
+        AtomicReference<Entity> current = new AtomicReference<>(first);
+        AtomicBoolean active = new AtomicBoolean(true);
+        FabricEntityAccess access = new FabricEntityAccess(current::get, () -> {
+            if (!active.get()) throw new IllegalStateException("Inactive cursor");
+        });
+        WorldAccess world = access.world();
+        assertSame(before, world.nativeWorld(Level.class));
+        first.level = after;
+        assertSame(after, world.nativeWorld(Level.class));
+        first.level = before;
+        current.set(second);
+        assertSame(world, access.world());
+        assertSame(after, world.nativeWorld(Level.class));
+        active.set(false);
+        assertThrows(IllegalStateException.class, () -> world.nativeWorld(Level.class));
+    }
+
+    @Test public void unloadedBlocksAndEntityQueriesNeverRequestChunkCreation() throws Exception {
+        UnloadedWorld world = new UnloadedWorld();
+        WorldAccess access = new FabricWorldAccess(() -> world, () -> { });
+        assertSame(world, access.nativeWorld(Level.class));
+        assertEquals("minecraft:overworld", access.dimensionId());
+        assertFalse(access.block(320, 64, 320).isPresent());
+        assertTrue(access.entities(320, 0, 320, 336, 256, 336).isEmpty());
+        assertTrue(world.chunks.requests > 0);
+        int requests = world.chunks.requests;
+        assertFalse(access.block(320, -1, 320).isPresent());
+        assertEquals(requests, world.chunks.requests);
+        assertThrows(UnsupportedOperationException.class, () -> access.players().clear());
+    }
+
+    @Test public void invalidAndOverflowingBoundsAreRejectedBeforeQueryingTheWorld() {
+        WorldAccess access = new FabricWorldAccess(() -> { throw new AssertionError("Level queried"); }, () -> { });
+        assertThrows(IllegalArgumentException.class, () -> access.entities(Double.NaN, 0, 0, 1, 1, 1));
+        assertThrows(IllegalArgumentException.class, () -> access.entities(1, 0, 0, 0, 1, 1));
+        assertThrows(IllegalArgumentException.class, () -> access.entities(0, 0, 0, Double.MAX_VALUE, 1, 1));
+    }
+
+    private static final class UnloadedChunks extends ChunkSource {
+        int requests;
+        @Override public ChunkAccess getChunk(int x, int z, ChunkStatus status, boolean create) {
+            assertFalse("Rule query attempted to load a chunk", create);
+            requests++;
+            return null;
+        }
+        @Override public String gatherStats() { return "empty"; }
+        @Override public LevelLightEngine getLightEngine() { throw new UnsupportedOperationException(); }
+        @Override public BlockGetter getLevel() { throw new UnsupportedOperationException(); }
+    }
+
+    private static final class UnloadedWorld extends Level {
+        final UnloadedChunks chunks = new UnloadedChunks();
+        UnloadedWorld() throws Exception { super(null, Level.OVERWORLD, overworldType(), () -> InactiveProfiler.INSTANCE, false, false, 0); }
+        private static DimensionType overworldType() throws Exception {
+            Field field = DimensionType.class.getDeclaredField("DEFAULT_OVERWORLD");
+            field.setAccessible(true);
+            return (DimensionType) field.get(null);
+        }
+        @Override public ChunkSource getChunkSource() { return chunks; }
+        @Override public List<? extends Player> players() { return Collections.emptyList(); }
+        @Override public void sendBlockUpdated(BlockPos p, BlockState a, BlockState b, int flags) { throw new UnsupportedOperationException(); }
+        @Override public void playSound(Player p, double x, double y, double z, SoundEvent e, SoundSource c, float v, float pitch) { throw new UnsupportedOperationException(); }
+        @Override public void playSound(Player p, Entity entity, SoundEvent e, SoundSource c, float v, float pitch) { throw new UnsupportedOperationException(); }
+        @Override public Entity getEntity(int id) { return null; }
+        @Override public MapItemSavedData getMapData(String id) { throw new UnsupportedOperationException(); }
+        @Override public void setMapData(MapItemSavedData data) { throw new UnsupportedOperationException(); }
+        @Override public int getFreeMapId() { throw new UnsupportedOperationException(); }
+        @Override public void destroyBlockProgress(int id, BlockPos pos, int progress) { throw new UnsupportedOperationException(); }
+        @Override public Scoreboard getScoreboard() { throw new UnsupportedOperationException(); }
+        @Override public RecipeManager getRecipeManager() { throw new UnsupportedOperationException(); }
+        @Override public TagContainer getTagManager() { throw new UnsupportedOperationException(); }
+        @Override public TickList<Block> getBlockTicks() { throw new UnsupportedOperationException(); }
+        @Override public TickList<Fluid> getLiquidTicks() { throw new UnsupportedOperationException(); }
+        @Override public void levelEvent(Player player, int id, BlockPos pos, int data) { throw new UnsupportedOperationException(); }
+        @Override public Biome getUncachedNoiseBiome(int x, int y, int z) { throw new UnsupportedOperationException(); }
+        @Override public net.minecraft.core.RegistryAccess registryAccess() { throw new UnsupportedOperationException(); }
+        @Override public float getShade(Direction direction, boolean shade) { throw new UnsupportedOperationException(); }
+    }
+}
