@@ -12,6 +12,7 @@ import xin.vanilla.aotake.command.AotakeCommand;
 import xin.vanilla.aotake.config.CommonConfig;
 import xin.vanilla.aotake.data.world.ChunkVaultSession;
 import xin.vanilla.aotake.event.EventHandlerProxy;
+import xin.vanilla.aotake.internal.server.AotakeRuleRuntime;
 import xin.vanilla.aotake.util.AotakeUtils;
 import xin.vanilla.banira.api.BaniraConfigs;
 import xin.vanilla.banira.api.BaniraServer;
@@ -57,7 +58,7 @@ public final class ForgeAotakeGameEventAdapter {
             ModConfig config = event.getConfig();
             BaniraConfigHandle common = BaniraConfigs.handle(CommonConfig.class);
             if (common != null && config.getFileName().contains(common.getConfigName()) && BaniraServer.isRunning()) {
-                AotakeUtils.clearEntityFilterCaches();
+                AotakeRuleRuntime.reload();
             }
         } catch (Exception ignored) {
             // 配置事件可能早于服务端状态建立，此时无需刷新运行时缓存。

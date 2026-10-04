@@ -42,7 +42,7 @@ import xin.vanilla.aotake.network.packet.GhostCameraToClient;
 import xin.vanilla.aotake.network.packet.SweepDataSyncToClient;
 import xin.vanilla.aotake.notification.AotakeNotificationTypes;
 import xin.vanilla.aotake.util.AotakeUtils;
-import xin.vanilla.aotake.util.ChunkCleanupPolicy;
+import xin.vanilla.aotake.internal.server.AotakeSweepRuntime;
 import xin.vanilla.aotake.util.EntitySweeper;
 import xin.vanilla.aotake.util.RateLimitedErrorLogger;
 import xin.vanilla.banira.api.BaniraServer;
@@ -54,7 +54,6 @@ import xin.vanilla.banira.common.util.*;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -75,7 +74,9 @@ public class EventHandlerProxy {
      * 与 {@code countdown/1000} 一致；仅在 warnKey 变化时发倒计时通知与 SweepTimeSync，避免同一秒内每 tick 重复发送约 20 次。
      */
     private static String lastCountdownWarningDispatchKey = null;
-    private static final AtomicBoolean chunkSweepLock = new AtomicBoolean(false);
+    public static void resetCleanupState() {
+        lastChunkCheckTime = 0;
+    }
     private static final Map<String, Long> lastCatchTick = new ConcurrentHashMap<>();
     private static final Map<String, Long> lastUseEntityTick = new ConcurrentHashMap<>();
     private static final Map<String, Long> suppressUseItemTick = new ConcurrentHashMap<>();
@@ -91,9 +92,11 @@ public class EventHandlerProxy {
     }
 
     public static void onServerTick(TickEvent.ServerTickEvent event) {
-        if (event.phase != TickEvent.Phase.END || AotakeSweep.isDisable()) return;
+        if (event.phase != TickEvent.Phase.END) return;
         MinecraftServer server = BaniraServer.currentAs(MinecraftServer.class);
         if (server == null || !server.isRunning()) return;
+        AotakeSweepRuntime.tick();
+        if (AotakeSweep.isDisable()) return;
         ChunkVaultGrants.bootstrapWhenServerReady(server);
 
         long now = System.currentTimeMillis();
@@ -143,7 +146,7 @@ public class EventHandlerProxy {
             nextSweepTime = now + sweepInterval;
             lastCountdownWarningDispatchKey = null;
             LOGGER.debug("Scheduled sweep will start");
-            BaniraScheduler.schedule(server, 1, AotakeUtils::sweep);
+            AotakeUtils.sweep();
             // 给已安装mod玩家同步扫地倒计时
             for (ServerPlayer player : server.getPlayerList().getPlayers()) {
                 if (PlayerUtils.isRemoteClientModInstalled(player, AotakeSweep.MODID)) {
@@ -183,131 +186,13 @@ public class EventHandlerProxy {
 
         // 检查区块实体数量
         if (CommonConfig.get().base().chunk().chunkCheckInterval() > 0
-                && !chunkSweepLock.get()
-                && CommonConfig.get().base().chunk().chunkCheckInterval() <= now - lastChunkCheckTime
-        ) {
-            chunkSweepLock.set(true);
+                && !AotakeSweepRuntime.chunkPending()
+                && CommonConfig.get().base().chunk().chunkCheckInterval() <= now - lastChunkCheckTime) {
             lastChunkCheckTime = now;
             try {
-                long start = System.currentTimeMillis();
-                boolean advanced = CommonConfig.get().base().chunk().chunkCheckMode() != EnumChunkCheckMode.DEFAULT;
-                Map<ChunkKey, List<Entity>> chunkEntities = new HashMap<>();
-                for (Entity entity : AotakeUtils.getAllEntitiesByFilter(null, true)) {
-                    String dimension = entity.level != null
-                            ? entity.level.dimension().location().toString()
-                            : "unknown";
-                    int chunkX = entity.blockPosition().getX() >> 4;
-                    int chunkZ = entity.blockPosition().getZ() >> 4;
-                    String entityType = advanced ? EntityUtils.getEntityRegistryString(entity) : null;
-                    ChunkKey key = new ChunkKey(dimension, chunkX, chunkZ, entityType);
-                    chunkEntities.computeIfAbsent(key, k -> new ArrayList<>()).add(entity);
-                }
-                int limit = CommonConfig.get().base().chunk().chunkCheckLimit();
-                List<Map.Entry<ChunkKey, List<Entity>>> overcrowdedChunks = new ArrayList<>();
-                for (Map.Entry<ChunkKey, List<Entity>> entry : chunkEntities.entrySet()) {
-                    if (entry.getValue().size() > limit) {
-                        overcrowdedChunks.add(entry);
-                    }
-                }
-                long end = System.currentTimeMillis();
-
-                if (!overcrowdedChunks.isEmpty()) {
-                    LOGGER.debug("Chunk check started at {}", start);
-                    LOGGER.debug("Chunk check finished at {}", end);
-                    LOGGER.debug("Chunk check info:\n{}", overcrowdedChunks.stream()
-                            .map(entry -> String.format("%s, Entities: %s"
-                                    , formatChunkKey(entry.getKey(), advanced)
-                                    , entry.getValue().size()))
-                            .collect(Collectors.joining("\n")));
-
-                    if (CommonConfig.get().base().chunk().chunkCheckNotice()) {
-                        Map.Entry<ChunkKey, List<Entity>> entityEntryList = overcrowdedChunks.get(0);
-                        Entity entity = entityEntryList.getValue().get(0);
-                        WorldCoordinate entityCoordinate = new WorldCoordinate(entity);
-                        for (ServerPlayer player : server.getPlayerList().getPlayers()) {
-                            String language = Translator.getServerPlayerLanguage(player);
-
-                            Component message = AotakeComponent.get().trans(EnumI18nType.FORMAT,
-                                    CommonConfig.get().base().chunk().chunkCheckOnlyNotice()
-                                            ? "chunk_check_msg_no"
-                                            : "chunk_check_msg_yes"
-                                    , AotakeComponent.get().literal(entityCoordinate.chunkXZString())
-                                            .hoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT
-                                                    , AotakeComponent.get().literal(entityCoordinate.dimensionId()).toVanilla())
-                                            )
-                            );
-                            if (player.hasPermissions(1)
-                                    && PlayerSweepData.getData(player).isShowSweepResult()
-                            ) {
-                                MessageUtils.sendNotification(player, message
-                                                .hoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT
-                                                        , AotakeComponent.get().trans(EnumI18nType.WORD, "chunk_check_msg_hover")
-                                                        .toVanilla(language))
-                                                )
-                                                .clickEvent(new ClickEvent(ClickEvent.Action.SUGGEST_COMMAND
-                                                        , AotakeUtils.genTeleportCommand(entityCoordinate))
-                                                )
-                                                .append(AotakeComponent.get().literal("[+]")
-                                                        .color(EnumMCColor.GREEN.getColor())
-                                                        .hoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT
-                                                                , AotakeComponent.get().trans(EnumI18nType.WORD, "click_to_copy_detail")
-                                                                .toVanilla(language))
-                                                        )
-                                                        .clickEvent(new ClickEvent(ClickEvent.Action.COPY_TO_CLIPBOARD
-                                                                , overcrowdedChunks.stream()
-                                                                .map(entry -> String.format("%s, Entities: %s"
-                                                                        , formatChunkKey(entry.getKey(), advanced)
-                                                                        , entry.getValue().size()))
-                                                                .collect(Collectors.joining("\n")))
-                                                        )
-                                                )
-                                                .append(AotakeComponent.get().literal("[x]")
-                                                        .color(EnumMCColor.RED.getColor())
-                                                        .hoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT
-                                                                , AotakeComponent.get().trans(EnumI18nType.WORD, "not_show_button")
-                                                                .toVanilla(language))
-                                                        )
-                                                        .clickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND
-                                                                , "/" + AotakeUtils.getCommandPrefix() + " config player showSweepResult change")
-                                                        )
-                                                )
-                                        , AotakeNotificationTypes.CHUNK_CHECK_INTERACTIVE);
-                            } else {
-                                MessageUtils.sendNotification(player, message, EnumPosition.TOP_CENTER, EnumMoveType.AUTO, 5000L, EnumNotificationStyle.NORMAL, EnumNotificationVanillaFallback.ACTION_BAR, AotakeNotificationTypes.CHUNK_CHECK_COMPACT);
-                            }
-                        }
-                    }
-
-                    // 列表中移出的实体会被保留，目标数量始终以配置阈值为基准。
-                    overcrowdedChunks.forEach(entry -> {
-                        List<Entity> entities = entry.getValue();
-                        if (entities.isEmpty()) return;
-                        CommonConfigView.BaseView.ChunkView chunk = CommonConfig.get().base().chunk();
-                        int retained = ChunkCleanupPolicy.retainedCount(
-                                entities.size(), chunk.chunkCheckLimit(), chunk.chunkCheckRetain());
-                        entities.subList(0, retained).clear();
-                    });
-
-                    BaniraScheduler.schedule(server, 25, () -> {
-                        try {
-                            LOGGER.debug("Chunk sweep started at {}", System.currentTimeMillis());
-                            List<Entity> entities = overcrowdedChunks.stream()
-                                    .flatMap(entry -> entry.getValue().stream())
-                                    .collect(Collectors.toList());
-                            AotakeUtils.sweep(entities, true, true);
-                        } catch (Exception e) {
-                            CLEANUP_ERRORS.log(LOGGER, "Chunk entity sweep", e);
-                        } finally {
-                            LOGGER.debug("Chunk sweep finished");
-                            chunkSweepLock.set(false);
-                        }
-                    });
-                } else {
-                    chunkSweepLock.set(false);
-                }
-            } catch (Exception e) {
-                chunkSweepLock.set(false);
-                CLEANUP_ERRORS.log(LOGGER, "Chunk entity check", e);
+                AotakeSweepRuntime.submitChunk();
+            } catch (RuntimeException failure) {
+                CLEANUP_ERRORS.log(LOGGER, "LevelChunk entity check", failure);
             }
         }
 
@@ -328,6 +213,72 @@ public class EventHandlerProxy {
     public static void onWorldTick(TickEvent.WorldTickEvent event) {
         if (event.phase == TickEvent.Phase.START && !event.world.isClientSide()) {
             EntitySweeper.flushPendingRemovals((ServerLevel) event.world);
+        }
+    }
+
+    public static void notifyChunkCheck(MinecraftServer server, Map<ChunkKey, List<Entity>> groups, CommonConfig.ChunkSection settings) {
+        if (groups.isEmpty()) return;
+        boolean advanced = settings.chunkCheckMode() != EnumChunkCheckMode.DEFAULT;
+        List<Map.Entry<ChunkKey, List<Entity>>> overcrowdedChunks = new ArrayList<>(groups.entrySet());
+        LOGGER.debug("Chunk check info:\n{}", overcrowdedChunks.stream()
+                .map(entry -> formatChunkKey(entry.getKey(), advanced) + ", Entities: " + entry.getValue().size())
+                .collect(Collectors.joining("\n")));
+        if (settings.chunkCheckNotice()) {
+            Map.Entry<ChunkKey, List<Entity>> entityEntryList = overcrowdedChunks.get(0);
+            Entity entity = entityEntryList.getValue().get(0);
+            WorldCoordinate entityCoordinate = new WorldCoordinate(entity);
+            for (ServerPlayer player : server.getPlayerList().getPlayers()) {
+                String language = Translator.getServerPlayerLanguage(player);
+
+                Component message = AotakeComponent.get().trans(EnumI18nType.FORMAT,
+                        settings.chunkCheckOnlyNotice()
+                                ? "chunk_check_msg_no"
+                                : "chunk_check_msg_yes"
+                        , AotakeComponent.get().literal(entityCoordinate.chunkXZString())
+                                .hoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT
+                                        , AotakeComponent.get().literal(entityCoordinate.dimensionId()).toVanilla())
+                                )
+                );
+                if (player.hasPermissions(1)
+                        && PlayerSweepData.getData(player).isShowSweepResult()
+                ) {
+                    MessageUtils.sendNotification(player, message
+                                    .hoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT
+                                            , AotakeComponent.get().trans(EnumI18nType.WORD, "chunk_check_msg_hover")
+                                            .toVanilla(language))
+                                    )
+                                    .clickEvent(new ClickEvent(ClickEvent.Action.SUGGEST_COMMAND
+                                            , AotakeUtils.genTeleportCommand(entityCoordinate))
+                                    )
+                                    .append(AotakeComponent.get().literal("[+]")
+                                            .color(EnumMCColor.GREEN.getColor())
+                                            .hoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT
+                                                    , AotakeComponent.get().trans(EnumI18nType.WORD, "click_to_copy_detail")
+                                                    .toVanilla(language))
+                                            )
+                                            .clickEvent(new ClickEvent(ClickEvent.Action.COPY_TO_CLIPBOARD
+                                                    , overcrowdedChunks.stream()
+                                                    .map(entry -> String.format("%s, Entities: %s"
+                                                            , formatChunkKey(entry.getKey(), advanced)
+                                                            , entry.getValue().size()))
+                                                    .collect(Collectors.joining("\n")))
+                                            )
+                                    )
+                                    .append(AotakeComponent.get().literal("[x]")
+                                            .color(EnumMCColor.RED.getColor())
+                                            .hoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT
+                                                    , AotakeComponent.get().trans(EnumI18nType.WORD, "not_show_button")
+                                                    .toVanilla(language))
+                                            )
+                                            .clickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND
+                                                    , "/" + AotakeUtils.getCommandPrefix() + " config player showSweepResult change")
+                                            )
+                                    )
+                            , AotakeNotificationTypes.CHUNK_CHECK_INTERACTIVE);
+                } else {
+                    MessageUtils.sendNotification(player, message, EnumPosition.TOP_CENTER, EnumMoveType.AUTO, 5000L, EnumNotificationStyle.NORMAL, EnumNotificationVanillaFallback.ACTION_BAR, AotakeNotificationTypes.CHUNK_CHECK_COMPACT);
+                }
+            }
         }
     }
 
