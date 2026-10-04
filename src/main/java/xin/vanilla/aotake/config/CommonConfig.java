@@ -133,6 +133,9 @@ public class CommonConfig implements ConfigData {
     @Setter
     @Accessors(chain = true, fluent = true)
     public static class SweepSection {
+        @ConfigEntry.Gui.Tooltip(translationKey = "word.aotake_sweep.sweep_policy_description")
+        private String sweepPolicyId = "builtin:default";
+
         @ConfigEntry.Gui.Tooltip(zh_cn = "服务器无玩家时是否仍执行自动扫地", en_us = "Run auto-sweep when no players are online.")
         private boolean sweepWhenNoPlayer = false;
 
@@ -150,7 +153,8 @@ public class CommonConfig implements ConfigData {
         @ConfigEntry.BoundedLong(max = 7L * 24 * 60 * 60 * 1000)
         private long sweepInterval = 10L * 60 * 1000;
 
-        @ConfigEntry.Gui.Tooltip(zh_cn = "实体过滤规则/ID 列表（与 entityListMode 配合）", en_us = "Entity filter rules / ids (used with entityListMode).")
+        @ConfigEntry.Gui.Tooltip(zh_cn = "实体过滤名单（与 entityListMode 配合）\n填写实体 ID 或已加载的 script:规则ID",
+                en_us = "Entity filter list (used with entityListMode)\nUse entity IDs or locally loaded script:rule_id references")
         private List<String> entityList = defaultEntityList();
 
         @ConfigEntry.Gui.Tooltip(zh_cn = "名单模式：BLACK 仅清列表内；WHITE 清列表外", en_us = "List mode: BLACK clean listed only; WHITE clean unlisted.")
@@ -160,7 +164,8 @@ public class CommonConfig implements ConfigData {
         @ConfigEntry.BoundedDiscrete(min = 1)
         private int entityListLimit = 250;
 
-        @ConfigEntry.Gui.Tooltip(zh_cn = "红名单：仅清理、不回收的实体规则/ID", en_us = "Redlist: entities to clean without recycling.")
+        @ConfigEntry.Gui.Tooltip(zh_cn = "红名单：仅清理、不回收\n填写实体 ID 或已加载的 script:规则ID",
+                en_us = "Redlist: clean without recycling\nUse entity IDs or locally loaded script:rule_id references")
         private List<String> entityRedlist = new ArrayList<>();
     }
 
@@ -206,8 +211,8 @@ public class CommonConfig implements ConfigData {
         @ConfigEntry.Gui.Tooltip(zh_cn = "DEFAULT：总实体超阈值；ADVANCED：单类型超阈值", en_us = "DEFAULT: total count; ADVANCED: per-type count.")
         private EnumChunkCheckMode chunkCheckMode = EnumChunkCheckMode.ADVANCED;
 
-        @ConfigEntry.Gui.Tooltip(zh_cn = "区块检测用的实体规则/名单\nresource/entityResource 为实体类型\nitemResource 为掉落物 ID",
-                en_us = "Chunk-check entity rules/list\nresource/entityResource is the entity type; itemResource is the dropped-item ID")
+        @ConfigEntry.Gui.Tooltip(zh_cn = "区块检测名单\n填写实体 ID 或已加载的 script:规则ID",
+                en_us = "Chunk-check entity list\nUse entity IDs or locally loaded script:rule_id references")
         private List<String> chunkCheckEntityList = defaultChunkCheckEntityList();
 
         @ConfigEntry.Gui.Tooltip(zh_cn = "WHITE：命中规则的实体受保护\nBLACK：仅清理命中规则的实体",
@@ -236,7 +241,8 @@ public class CommonConfig implements ConfigData {
     @Setter
     @Accessors(chain = true, fluent = true)
     public static class EntityCatchSection {
-        @ConfigEntry.Gui.Tooltip(zh_cn = "允许在清理时被「捕获」的实体规则/ID", en_us = "Entities that may be caught during cleanup.")
+        @ConfigEntry.Gui.Tooltip(zh_cn = "清理时允许捕获的实体\n填写实体 ID 或已加载的 script:规则ID",
+                en_us = "Entities eligible for capture during cleanup\nUse entity IDs or locally loaded script:rule_id references")
         private List<String> catchEntity = new ArrayList<>();
 
         @ConfigEntry.Gui.Tooltip(zh_cn = "允许玩家用物品交互捕获实体", en_us = "Allow players to catch entities using items.")
@@ -401,17 +407,13 @@ public class CommonConfig implements ConfigData {
         l.add(Registry.ENTITY_TYPE.getKey(EntityType.ARROW).toString());
         l.add(Registry.ENTITY_TYPE.getKey(EntityType.SPECTRAL_ARROW).toString());
         l.add(Registry.ENTITY_TYPE.getKey(EntityType.EXPERIENCE_ORB).toString());
-        l.add("tick, clazz, itemClazz, createProcessing = [CreateData.Processing.Time]"
-                + " -> "
-                + "tick >= 5 && clazz :> itemClazz && (createProcessing <= 0 || createProcessing == null)");
+        l.add("script:" + xin.vanilla.aotake.rule.BuiltinRules.CLEANUP);
         return l;
     }
 
     private static List<String> defaultChunkCheckEntityList() {
         List<String> l = new ArrayList<>();
-        l.add("customName, hasOwner, createProcessing = [CreateData.Processing.Time]"
-                + " -> "
-                + "customName != null || hasOwner || createProcessing > 0");
+        l.add("script:" + xin.vanilla.aotake.rule.BuiltinRules.PROTECTION);
         return l;
     }
 
@@ -493,7 +495,7 @@ public class CommonConfig implements ConfigData {
                 .sweepWarningVoice("")
                 .sweepWarningVoiceVolume(33)
                 .sweepInterval(10L * 60 * 1000)
-                .entityList(defaultEntityListReset())
+                .entityList(defaultEntityList())
                 .entityListMode(EnumListType.WHITE)
                 .entityListLimit(250)
                 .entityRedlist(new ArrayList<>());
@@ -562,14 +564,4 @@ public class CommonConfig implements ConfigData {
                 .permissionChunkVault(2);
     }
 
-    private static List<String> defaultEntityListReset() {
-        List<String> l = new ArrayList<>();
-        l.add(Registry.ENTITY_TYPE.getKey(EntityType.ARROW).toString());
-        l.add(Registry.ENTITY_TYPE.getKey(EntityType.SPECTRAL_ARROW).toString());
-        l.add(Registry.ENTITY_TYPE.getKey(EntityType.EXPERIENCE_ORB).toString());
-        l.add("tick, clazz, itemClazz, createProcessing = CreateData.Processing.Time"
-                + " -> "
-                + "tick >= 5 && clazz :> itemClazz && (createProcessing <= 0 || createProcessing == null)");
-        return l;
-    }
 }

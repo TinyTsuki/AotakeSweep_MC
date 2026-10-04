@@ -1,5 +1,8 @@
 package xin.vanilla.aotake.internal.fabric.rule;
 
+import net.fabricmc.loader.api.FabricLoader;
+import net.fabricmc.loader.api.MappingResolver;
+
 import net.minecraft.world.entity.Entity;
 import net.minecraft.nbt.*;
 import net.minecraft.network.syncher.EntityDataAccessor;
@@ -7,7 +10,9 @@ import xin.vanilla.aotake.rule.RuleBindingPlan;
 import xin.vanilla.aotake.rule.RuleDiagnostic;
 
 import java.lang.reflect.*;
+import java.lang.invoke.MethodType;
 import java.util.*;
+import java.util.function.Supplier;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
@@ -25,6 +30,16 @@ public final class FabricRuleBindings {
     }
 
     public static Reader field(RuleBindingPlan.Binding binding, Class<?> root, ClassLoader loader) {
+        return field(binding, root, loader, () -> FabricLoader.getInstance().getMappingResolver());
+    }
+
+    public static Reader field(RuleBindingPlan.Binding binding, Class<?> root, ClassLoader loader,
+                               MappingResolver mappings) {
+        return field(binding, root, loader, () -> mappings);
+    }
+
+    private static Reader field(RuleBindingPlan.Binding binding, Class<?> root, ClassLoader loader,
+                                Supplier<MappingResolver> mappings) {
         String path = binding.payload();
         Class<?> declared = root;
         int prefix = -1;
@@ -35,6 +50,18 @@ public final class FabricRuleBindings {
                 prefix = i;
                 break;
             } catch (ClassNotFoundException ignored) {
+                String name = path.substring(0, i);
+                if (name.startsWith("net.minecraft.class_")) {
+                    try {
+                        declared = Class.forName(mappings.get().mapClassName("intermediary", name), false, loader);
+                        prefix = i;
+                        break;
+                    } catch (ClassNotFoundException missing) {
+                        // Continue looking for a class prefix before the field-path segments.
+                    } catch (LinkageError error) {
+                        throw diagnostic(binding, "Cannot load declaring class: " + error);
+                    }
+                }
             } catch (LinkageError error) {
                 throw diagnostic(binding, "Cannot load declaring class: " + error);
             }
@@ -81,7 +108,7 @@ public final class FabricRuleBindings {
                 current = argument(current, 1, binding);
                 readers.add(value -> ((Map<?, ?>) value).get(mapKey));
             } else {
-                Field field = find(raw, segment, binding);
+                Field field = find(raw, segment, binding, mappings);
                 if (binding.kind().equals("synced") && i == 0) {
                     if (!Modifier.isStatic(field.getModifiers()) || !EntityDataAccessor.class.isAssignableFrom(field.getType()))
                         throw diagnostic(binding, "Synced field must be a static EntityDataAccessor");
@@ -201,18 +228,43 @@ public final class FabricRuleBindings {
         return result;
     }
 
-    private static Field find(Class<?> root, String name, RuleBindingPlan.Binding binding) {
+    private static Field find(Class<?> root, String name, RuleBindingPlan.Binding binding,
+                              Supplier<MappingResolver> mappings) {
         for (Class<?> type = root; type != null; type = type.getSuperclass()) {
             try {
                 Field field = type.getDeclaredField(name);
                 field.setAccessible(true);
                 return field;
             } catch (NoSuchFieldException ignored) {
+                if (name.startsWith("field_")) {
+                    MappingResolver resolver = mappings.get();
+                    String owner = resolver.unmapClassName("intermediary", type.getName());
+                    for (Field candidate : type.getDeclaredFields()) {
+                        String descriptor = intermediaryDescriptor(candidate.getType(), resolver);
+                        if (candidate.getName().equals(resolver.mapFieldName("intermediary", owner, name, descriptor))) {
+                            try {
+                                candidate.setAccessible(true);
+                                return candidate;
+                            } catch (RuntimeException inaccessible) {
+                                throw diagnostic(binding, "Cannot access field " + name);
+                            }
+                        }
+                    }
+                }
             } catch (RuntimeException error) {
                 throw diagnostic(binding, "Cannot access field " + name);
             }
         }
         throw diagnostic(binding, "Missing field " + root.getName() + ":" + name);
+    }
+
+    private static String intermediaryDescriptor(Class<?> type, MappingResolver mappings) {
+        String descriptor = MethodType.methodType(type).toMethodDescriptorString().substring(2);
+        int start = descriptor.indexOf('L');
+        if (start < 0) return descriptor;
+        String name = descriptor.substring(start + 1, descriptor.length() - 1).replace('/', '.');
+        return descriptor.substring(0, start + 1)
+                + mappings.unmapClassName("intermediary", name).replace('.', '/') + ";";
     }
 
     private static Type argument(Type type, int index, RuleBindingPlan.Binding binding) {

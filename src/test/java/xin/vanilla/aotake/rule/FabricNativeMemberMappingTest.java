@@ -4,6 +4,7 @@ import net.fabricmc.loader.api.MappingResolver;
 import org.junit.Test;
 import xin.vanilla.aotake.api.rule.*;
 import xin.vanilla.aotake.internal.fabric.rule.FabricNativeMembers;
+import xin.vanilla.aotake.internal.fabric.rule.FabricRuleBindings;
 
 import java.lang.reflect.Proxy;
 import java.util.*;
@@ -17,6 +18,34 @@ public class FabricNativeMemberMappingTest {
     }
     public interface Read { Subject get(Subject subject); }
     public interface Pick { Subject get(Subject subject, Subject[] candidates, int index); }
+
+    @Test public void fieldPathsMapDeclaringClassesAndNestedObjectDescriptorsInTheColdPath() {
+        MappingResolver mappings = (MappingResolver) Proxy.newProxyInstance(MappingResolver.class.getClassLoader(),
+                new Class<?>[]{MappingResolver.class}, (proxy, method, args) -> {
+                    assertEquals("intermediary", args[0]);
+                    if (method.getName().equals("mapClassName"))
+                        return args[1].equals("net.minecraft.class_1") ? Subject.class.getName() : args[1];
+                    if (method.getName().equals("unmapClassName"))
+                        return args[1].equals(Subject.class.getName()) ? "net.minecraft.class_1" : args[1];
+                    if (method.getName().equals("mapFieldName")) {
+                        assertEquals("net.minecraft.class_1", args[1]);
+                        assertEquals("field_1", args[2]);
+                        assertEquals("Lnet/minecraft/class_1;", args[3]);
+                        return "other";
+                    }
+                    throw new AssertionError(method.getName());
+                });
+        RuleBindingPlan.Binding binding = new RuleBindingPlan.Binding("other", "field",
+                "net.minecraft.class_1:field_1", Subject.class, true, 0);
+        FabricRuleBindings.Reader reader = FabricRuleBindings.field(binding, Object.class,
+                getClass().getClassLoader(), mappings);
+        Subject first = new Subject(), second = new Subject();
+        first.other = second;
+        assertSame(second, reader.read(first));
+        assertNull(reader.read(new Object()));
+        first.other = null;
+        assertNull(reader.read(first));
+    }
 
     @Test public void mapsDeclaringClassMemberAndArrayDescriptorsBeforeBinding() {
         List<String> requests = new ArrayList<>();

@@ -12,7 +12,8 @@ import xin.vanilla.aotake.event.EventHandlerProxy;
 import xin.vanilla.aotake.network.NetworkInit;
 import xin.vanilla.aotake.network.packet.SweepDataSyncToClient;
 import xin.vanilla.aotake.notification.AotakeNotificationTypes;
-import xin.vanilla.aotake.util.EntityFilter;
+import xin.vanilla.aotake.internal.server.AotakeRuleRuntime;
+import xin.vanilla.aotake.internal.server.AotakeSweepRuntime;
 import xin.vanilla.aotake.util.EntitySweeper;
 import xin.vanilla.banira.api.BaniraConfigs;
 import xin.vanilla.banira.api.event.BaniraEvents;
@@ -82,8 +83,6 @@ public class AotakeSweep {
 
     @Getter
     private static final EntitySweeper entitySweeper = new EntitySweeper();
-    @Getter
-    private static final EntityFilter entityFilter = new EntityFilter();
     private static final AtomicBoolean bootstrapped = new AtomicBoolean(false);
 
     /**
@@ -104,7 +103,29 @@ public class AotakeSweep {
         NetworkInit.registerPackets();
         AotakeNotificationTypes.registerAllOnServer();
 
-        BaniraEvents.Server.onStarting(event -> entitySweeper.clear());
+        BaniraEvents.Server.onStarting(event -> {
+            entitySweeper.clear();
+            EventHandlerProxy.resetCleanupState();
+            AotakeRuleRuntime.start(event.serverAs(net.minecraft.server.MinecraftServer.class));
+            AotakeSweepRuntime.start(event.serverAs(net.minecraft.server.MinecraftServer.class));
+        });
+        BaniraEvents.Server.onStopping(event -> {
+            try {
+                try {
+                    AotakeSweepRuntime.stop();
+                } finally {
+                    event.serverAs(net.minecraft.server.MinecraftServer.class).getAllLevels()
+                            .forEach(EntitySweeper::flushPendingRemovals);
+                }
+            } finally {
+                try {
+                    entitySweeper.clear();
+                } finally {
+                    EventHandlerProxy.resetCleanupState();
+                    AotakeRuleRuntime.stop();
+                }
+            }
+        });
         BaniraEvents.Server.onTick(event -> EventHandlerProxy.onServerTick(event.serverAs(net.minecraft.server.MinecraftServer.class)));
         BaniraEvents.Player.onLoggedIn(event -> EventHandlerProxy.onPlayerLoggedIn(event.playerAs(ServerPlayer.class)));
         BaniraEvents.Player.onLoggedOut(event -> EventHandlerProxy.onPlayerLoggedOut(event.playerAs(ServerPlayer.class)));

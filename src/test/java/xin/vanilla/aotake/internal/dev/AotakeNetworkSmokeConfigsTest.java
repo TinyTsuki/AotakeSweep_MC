@@ -70,8 +70,8 @@ public class AotakeNetworkSmokeConfigsTest {
         holder.set("base.sweep.entityList", rules);
         holder.save();
         byte[] before = Files.readAllBytes(file);
-        assertEquals(74, AotakeNetworkSmokeConfigs.verify(holder, directory, "phase-one").size());
-        assertEquals(74, AotakeNetworkSmokeConfigs.verify(holder, directory, "phase-two").size());
+        assertEquals(75, AotakeNetworkSmokeConfigs.verify(holder, directory, "phase-one").size());
+        assertEquals(75, AotakeNetworkSmokeConfigs.verify(holder, directory, "phase-two").size());
         assertArrayEquals(before, Files.readAllBytes(file));
         assertEquals(rules, holder.get("base.sweep.entityList"));
     }
