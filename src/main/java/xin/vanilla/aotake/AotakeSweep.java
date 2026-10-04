@@ -18,7 +18,8 @@ import xin.vanilla.aotake.internal.server.dev.AotakeNetworkSmokeServerRunner;
 import xin.vanilla.aotake.network.NetworkInit;
 import xin.vanilla.aotake.network.packet.SweepDataSyncToClient;
 import xin.vanilla.aotake.notification.AotakeNotificationTypes;
-import xin.vanilla.aotake.util.EntityFilter;
+import xin.vanilla.aotake.internal.server.AotakeRuleRuntime;
+import xin.vanilla.aotake.internal.server.AotakeSweepRuntime;
 import xin.vanilla.aotake.util.EntitySweeper;
 import xin.vanilla.banira.api.BaniraConfigs;
 import xin.vanilla.banira.api.BaniraModPresence;
@@ -88,8 +89,6 @@ public class AotakeSweep {
 
     @Getter
     private static final EntitySweeper entitySweeper = new EntitySweeper();
-    @Getter
-    private static final EntityFilter entityFilter = new EntityFilter();
 
     public AotakeSweep(FMLJavaModLoadingContext context) {
         // Forge 配置必须在 CONFIG 加载阶段前注册；Banira 依赖会先完成平台安装。
@@ -105,7 +104,30 @@ public class AotakeSweep {
         NetworkInit.registerPackets();
         context.getModEventBus().addListener(this::onCommonSetup);
 
-        BaniraEventBus.Server.onStarting(server -> entitySweeper.clear());
+        BaniraEventBus.Server.onStarting(event -> {
+            net.minecraft.server.MinecraftServer server = event.serverAs(net.minecraft.server.MinecraftServer.class);
+            entitySweeper.clear();
+            xin.vanilla.aotake.event.EventHandlerProxy.resetCleanupState();
+            AotakeRuleRuntime.start(server);
+            AotakeSweepRuntime.start(server);
+        });
+        BaniraEventBus.Server.onStopping(event -> {
+            net.minecraft.server.MinecraftServer server = event.serverAs(net.minecraft.server.MinecraftServer.class);
+            try {
+                try {
+                    AotakeSweepRuntime.stop();
+                } finally {
+                    if (server != null) server.getAllLevels().forEach(EntitySweeper::flushPendingRemovals);
+                }
+            } finally {
+                try {
+                    entitySweeper.clear();
+                } finally {
+                    xin.vanilla.aotake.event.EventHandlerProxy.resetCleanupState();
+                    AotakeRuleRuntime.stop();
+                }
+            }
+        });
         ForgeAotakeGameEventAdapter.register(context.getModEventBus());
         AotakeNetworkSmokeServerRunner.register();
 
