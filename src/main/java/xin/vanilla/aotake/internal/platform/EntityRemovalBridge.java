@@ -11,8 +11,8 @@ public final class EntityRemovalBridge {
     }
 
     public static void discard(ServerLevel world, Entity entity, boolean keepData) {
-        // Flush only after entity ticking; detach tracking before marking the entity removed.
-        world.despawn(entity);
+        // Native detachment clears scores and teams only after the entity is marked removed.
         entity.remove();
+        world.despawn(entity);
     }
 }

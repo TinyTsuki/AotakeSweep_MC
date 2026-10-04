@@ -490,7 +490,7 @@ public class EntitySweeper {
 
     public static void flushPendingRemovals(ServerLevel world) {
         removals.flush(world.dimension(), (entity, keepData) -> {
-            if (!entity.isAlive()) return true;
+            if (!entity.isAlive() && world.getEntity(entity.getId()) != entity) return true;
             try {
                 EntityRemovalBridge.discard(world, entity, keepData);
                 return !entity.isAlive();
