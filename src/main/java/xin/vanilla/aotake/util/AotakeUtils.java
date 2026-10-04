@@ -35,6 +35,16 @@ import org.apache.logging.log4j.Logger;
 import xin.vanilla.aotake.AotakeComponent;
 import xin.vanilla.aotake.AotakeLang;
 import xin.vanilla.aotake.AotakeSweep;
+import xin.vanilla.aotake.api.sweep.SweepOperation;
+import xin.vanilla.aotake.api.sweep.SweepTrigger;
+import xin.vanilla.aotake.internal.forge.sweep.ForgeSweepFilter;
+import xin.vanilla.aotake.internal.forge.sweep.ForgeSweepTarget;
+import xin.vanilla.aotake.internal.server.AotakeRuleRuntime;
+import xin.vanilla.aotake.internal.server.AotakeSweepRuntime;
+import xin.vanilla.aotake.rule.RuleExecutionException;
+import xin.vanilla.aotake.rule.RuleGeneration;
+import xin.vanilla.aotake.rule.RuleManager;
+import xin.vanilla.aotake.sweep.SweepConfiguration;
 import xin.vanilla.aotake.config.CommonConfig;
 import xin.vanilla.aotake.config.CommonConfigView;
 import xin.vanilla.aotake.config.WarningConfig;
@@ -222,70 +232,6 @@ public class AotakeUtils {
 
     // region 扫地
 
-    private static Set<BlockState> SAFE_BLOCKS_STATE;
-    private static Set<String> SAFE_BLOCKS;
-    private static Set<BlockState> SAFE_BLOCKS_BELOW_STATE;
-    private static Set<String> SAFE_BLOCKS_BELOW;
-    private static Set<BlockState> SAFE_BLOCKS_ABOVE_STATE;
-    private static Set<String> SAFE_BLOCKS_ABOVE;
-
-    private static void initSafeBlocks() {
-        if (SAFE_BLOCKS_STATE == null) {
-            SAFE_BLOCKS_STATE = new HashSet<>(CommonConfig.get().base().safe().safeBlocks().stream()
-                    .map(BlockUtils::deserializeBlockState)
-                    .filter(Objects::nonNull)
-                    .distinct()
-                    .toList());
-        }
-        if (SAFE_BLOCKS == null) {
-            SAFE_BLOCKS = new HashSet<>(CommonConfig.get().base().safe().safeBlocks().stream()
-                    .filter(Objects::nonNull)
-                    .map(s -> (String) s)
-                    .distinct()
-                    .toList());
-        }
-        if (SAFE_BLOCKS_BELOW_STATE == null) {
-            SAFE_BLOCKS_BELOW_STATE = new HashSet<>(CommonConfig.get().base().safe().safeBlocksBelow().stream()
-                    .map(BlockUtils::deserializeBlockState)
-                    .filter(Objects::nonNull)
-                    .distinct()
-                    .toList());
-        }
-        if (SAFE_BLOCKS_BELOW == null) {
-            SAFE_BLOCKS_BELOW = new HashSet<>(CommonConfig.get().base().safe().safeBlocksBelow().stream()
-                    .filter(Objects::nonNull)
-                    .map(s -> (String) s)
-                    .distinct()
-                    .toList());
-        }
-        if (SAFE_BLOCKS_ABOVE_STATE == null) {
-            SAFE_BLOCKS_ABOVE_STATE = new HashSet<>(CommonConfig.get().base().safe().safeBlocksAbove().stream()
-                    .map(BlockUtils::deserializeBlockState)
-                    .filter(Objects::nonNull)
-                    .distinct()
-                    .toList());
-        }
-        if (SAFE_BLOCKS_ABOVE == null) {
-            SAFE_BLOCKS_ABOVE = new HashSet<>(CommonConfig.get().base().safe().safeBlocksAbove().stream()
-                    .filter(Objects::nonNull)
-                    .map(s -> (String) s)
-                    .distinct()
-                    .toList());
-        }
-    }
-
-    /**
-     * 配置重载后清理派生集合，避免继续使用旧安全方块规则。
-     */
-    public static void clearEntityFilterCaches() {
-        SAFE_BLOCKS_STATE = null;
-        SAFE_BLOCKS = null;
-        SAFE_BLOCKS_BELOW_STATE = null;
-        SAFE_BLOCKS_BELOW = null;
-        SAFE_BLOCKS_ABOVE_STATE = null;
-        SAFE_BLOCKS_ABOVE = null;
-        AotakeSweep.getEntityFilter().clear();
-    }
 
     public static List<Entity> getAllEntities() {
         List<Entity> entities = new ArrayList<>();
@@ -302,272 +248,104 @@ public class AotakeUtils {
     }
 
     /**
-     * 在扫描和延迟批处理前统一剔除失效实体，并静默回收空物品实体。
+     * 扫描只剔除失效实体，不安排移除或写入垃圾箱。
      */
     public static boolean prepareSweepCandidate(Entity entity) {
         if (entity == null || entity instanceof Player || !entity.isAlive()
                 || !(entity.level instanceof ServerLevel)) {
             return false;
         }
-        if (entity instanceof ItemEntity itemEntity && itemEntity.getItem().isEmpty()) {
-            EntitySweeper.scheduleRemoveEntity(entity, false);
-            return false;
-        }
-        return true;
+        return !EntitySweeper.isPendingRemoval(entity)
+                && (!(entity instanceof ItemEntity) || !((ItemEntity) entity).getItem().isEmpty());
     }
 
     public static boolean isJunkEntity(Entity entity, boolean chuck) {
-        CommonConfigView.BaseView base = CommonConfig.get().base();
-        List<String> rules = chuck ? base.chunk().chunkCheckEntityList() : base.sweep().entityList();
-        EnumListType mode = chuck ? base.chunk().chunkCheckEntityListMode() : base.sweep().entityListMode();
-        return isJunkEntity(entity, CollectionUtils.isNullOrEmpty(rules), mode,
-                AotakeSweep.getEntityFilter().compile(rules));
+        RuleGeneration<Entity> generation = AotakeRuleRuntime.acquire(chuck ? RuleManager.RuleUse.CHUNK : RuleManager.RuleUse.SWEEP);
+        return prepareSweepCandidate(entity) && generation.shouldClean(chuck, entity);
     }
 
-    private static boolean isJunkEntity(Entity entity, boolean emptyRules, EnumListType mode,
-                                        EntityFilter.Matcher matcher) {
-        if (entity == null || entity instanceof Player) {
-            return false;
-        }
-        if (emptyRules) {
-            return EntityRulePolicy.shouldClean(true, mode, false);
-        }
-        boolean matched = matcher.matches(entity);
-        return EntityRulePolicy.shouldClean(false, mode, matched);
-    }
-
-    public static boolean isSafeEntity(Map<Level, Map<BlockPos, BlockState>> blockStateCache, Entity entity) {
-        Level level = entity.level;
-        BlockPos position = entity.blockPosition();
-
-        boolean stateFlag = false;
-        if (!SAFE_BLOCKS.isEmpty() || !SAFE_BLOCKS_STATE.isEmpty()) {
-            BlockState state = cachedBlockState(blockStateCache, level, position);
-            stateFlag = SAFE_BLOCKS.contains(BlockUtils.getBlockRegistryString(state))
-                    || SAFE_BLOCKS_STATE.contains(state);
-        }
-
-        boolean belowFlag = false;
-        if (!SAFE_BLOCKS_BELOW.isEmpty() || !SAFE_BLOCKS_BELOW_STATE.isEmpty()) {
-            BlockState below = cachedBlockState(blockStateCache, level, position.below());
-            belowFlag = SAFE_BLOCKS_BELOW.contains(BlockUtils.getBlockRegistryString(below))
-                    || SAFE_BLOCKS_BELOW_STATE.contains(below);
-        }
-
-        boolean aboveFlag = false;
-        if (!SAFE_BLOCKS_ABOVE.isEmpty() || !SAFE_BLOCKS_ABOVE_STATE.isEmpty()) {
-            BlockState above = cachedBlockState(blockStateCache, level, position.above());
-            aboveFlag = SAFE_BLOCKS_ABOVE.contains(BlockUtils.getBlockRegistryString(above))
-                    || SAFE_BLOCKS_ABOVE_STATE.contains(above);
-        }
-
-        return stateFlag || belowFlag || aboveFlag;
-    }
-
-    private static BlockState cachedBlockState(Map<Level, Map<BlockPos, BlockState>> cache,
-                                               Level level, BlockPos position) {
-        return cache.computeIfAbsent(level, ignored -> new HashMap<>())
-                .computeIfAbsent(position, level::getBlockState);
-    }
 
     public static List<Entity> getAllEntitiesByFilter(@Nullable List<Entity> entities, boolean chuck) {
-        if (CollectionUtils.isNullOrEmpty(entities)) {
-            entities = getAllEntities();
-        }
-        initSafeBlocks();
-
-        Map<Level, Map<BlockPos, BlockState>> blockStateCache = new IdentityHashMap<>();
-        CommonConfigView.BaseView base = CommonConfig.get().base();
-        List<String> rules = chuck ? base.chunk().chunkCheckEntityList() : base.sweep().entityList();
-        EnumListType listMode = chuck ? base.chunk().chunkCheckEntityListMode() : base.sweep().entityListMode();
-        boolean emptyRules = CollectionUtils.isNullOrEmpty(rules);
-        EntityFilter.Matcher matcher = AotakeSweep.getEntityFilter().compile(rules);
-
-        boolean hasSafeRules = !SAFE_BLOCKS.isEmpty()
-                || !SAFE_BLOCKS_STATE.isEmpty()
-                || !SAFE_BLOCKS_BELOW.isEmpty()
-                || !SAFE_BLOCKS_BELOW_STATE.isEmpty()
-                || !SAFE_BLOCKS_ABOVE.isEmpty()
-                || !SAFE_BLOCKS_ABOVE_STATE.isEmpty();
-
-        List<EntityScanEntry> scanned = new ArrayList<>(entities.size());
-        Map<String, Integer> nonJunkTypeCounts = new HashMap<>();
-        Map<ChunkKey, Integer> safeChunkCounts = new HashMap<>();
-
-        for (Entity entity : entities) {
-            if (!prepareSweepCandidate(entity)) continue;
-
-            boolean safe = hasSafeRules && isSafeEntity(blockStateCache, entity);
-            ChunkKey chunkKey = null;
-            if (safe) {
-                chunkKey = ChunkKey.of(entity);
-                safeChunkCounts.merge(chunkKey, 1, Integer::sum);
-            }
-
-            boolean junk = isJunkEntity(entity, emptyRules, listMode, matcher);
-            String type = null;
-            if (!junk) {
-                type = EntityUtils.getEntityRegistryString(entity);
-                nonJunkTypeCounts.merge(type, 1, Integer::sum);
-            }
-            scanned.add(new EntityScanEntry(entity, safe, junk, type, chunkKey));
-        }
-
-        int typeLimit = base.sweep().entityListLimit();
-        Set<String> exceededTypes = new HashSet<>();
-        for (Map.Entry<String, Integer> entry : nonJunkTypeCounts.entrySet()) {
-            if (entry.getValue() > typeLimit) {
-                exceededTypes.add(entry.getKey());
-            }
-        }
-
-        int safeLimit = base.safe().safeBlocksEntityLimit();
-        Set<ChunkKey> exceededChunks = new HashSet<>();
-        for (Map.Entry<ChunkKey, Integer> entry : safeChunkCounts.entrySet()) {
-            if (entry.getValue() > safeLimit) {
-                exceededChunks.add(entry.getKey());
-            }
-        }
-
-        List<Entity> entityList = new ArrayList<>();
-        for (EntityScanEntry entry : scanned) {
-            boolean exceededType = !entry.junk && exceededTypes.contains(entry.type);
-            boolean exceededSafe = entry.safe && exceededChunks.contains(entry.chunkKey);
-            if ((!entry.safe && entry.junk) || exceededType || exceededSafe) {
-                entityList.add(entry.entity);
-            }
-        }
-        return entityList;
+        return getAllEntitiesByFilter(entities, chuck,
+                AotakeRuleRuntime.acquire(chuck ? RuleManager.RuleUse.CHUNK : RuleManager.RuleUse.SWEEP));
     }
 
-    private static final class EntityScanEntry {
-        private final Entity entity;
-        private final boolean safe;
-        private final boolean junk;
-        private final String type;
-        private final ChunkKey chunkKey;
-
-        private EntityScanEntry(Entity entity, boolean safe, boolean junk,
-                                String type, ChunkKey chunkKey) {
-            this.entity = entity;
-            this.safe = safe;
-            this.junk = junk;
-            this.type = type;
-            this.chunkKey = chunkKey;
-        }
+    public static List<Entity> getAllEntitiesByFilter(@Nullable List<Entity> entities, boolean chuck, RuleGeneration<Entity> generation) {
+        generation.requireUsable();
+        if (!AotakeRuleRuntime.isUsable(generation.id()))
+            throw new RuleExecutionException(generation.id(), "Stale entity scan");
+        xin.vanilla.banira.common.config.ConfigHolder holder = xin.vanilla.banira.api.BaniraConfigs.holder(CommonConfig.class);
+        CommonConfig.BaseCategory settings = SweepConfiguration.base(holder.snapshotForEdit(holder.valuePaths()));
+        return new ForgeSweepFilter(settings, generation, chuck)
+                .select(entities == null ? EntityUtils.getAllEntities() : entities);
     }
 
     public static void sweep() {
-        List<Entity> entities = getAllEntities();
-        AotakeUtils.sweep(entities, false);
+        submitSweep(null, false, false, null, SweepTrigger.SCHEDULED);
     }
 
-    /**
-     * 执行清理
-     *
-     * @param entities 实体列表
-     * @param filtered 实体列表是否已过滤
-     */
     public static void sweep(List<Entity> entities, boolean filtered) {
         sweep(entities, filtered, false);
     }
 
-    /**
-     * @param chunkOverloadVault 为 true 时，回收物品写入区块暂存目录（若配置启用），而非全局垃圾箱。
-     */
     public static void sweep(List<Entity> entities, boolean filtered, boolean chunkOverloadVault) {
-        MinecraftServer server = BaniraServer.currentAs(MinecraftServer.class);
-        // 服务器已关闭
-        if (!BaniraServer.isRunning() || server == null) return;
+        sweep(entities, filtered, chunkOverloadVault, null);
+    }
 
-        List<ServerPlayer> players = server.getPlayerList().getPlayers();
+    public static void sweep(List<Entity> entities, boolean filtered, boolean chunkOverloadVault, RuleGeneration<Entity> expected) {
+        submitSweep(entities, filtered, chunkOverloadVault, expected, SweepTrigger.COMMAND);
+    }
 
+    private static void submitSweep(List<Entity> entities, boolean filtered, boolean chunkOverloadVault, RuleGeneration<Entity> expected,
+                                    SweepTrigger trigger) {
+        if (!BaniraServer.isRunning()) return;
         try {
-            // 若服务器没有玩家
-            if (CollectionUtils.isNullOrEmpty(players) && !CommonConfig.get().base().sweep().sweepWhenNoPlayer()) {
-                LOGGER.debug("No player online, sweep canceled");
-                return;
-            }
+            AotakeSweepRuntime.submit(trigger, SweepOperation.RECYCLE,
+                    ForgeSweepTarget.all(), false, entities, filtered,
+                    new SweepResult().setChunkOverloadVault(chunkOverloadVault), AotakeSweep.getEntitySweeper(), expected);
+        } catch (RuntimeException failure) {
+            reportSweepFailure(failure);
+        }
+    }
 
-            List<Entity> list = filtered ? entities : getAllEntitiesByFilter(entities, false);
-
-            // if (CollectionUtils.isNotNullOrEmpty(list)) {
-            // 清空旧的物品
-            if (CommonConfig.get().base().dustbin().selfCleanMode().contains(EnumSelfCleanMode.SWEEP_CLEAR)) {
-                switch (CommonConfig.get().base().dustbin().dustbinBlockMode()) {
-                    case VIRTUAL: {
-                        clearVirtualDustbin();
-                    }
-                    break;
-                    case BLOCK: {
-                        clearDustbinBlock();
-                    }
-                    break;
-                    default: {
-                        clearVirtualDustbin();
-                        clearDustbinBlock();
-                    }
-                }
+    public static void reportSweepFailure(Exception e) {
+        SWEEP_ERRORS.log(LOGGER, "Entity sweep", e);
+        MinecraftServer server = BaniraServer.currentAs(MinecraftServer.class);
+        if (server == null) return;
+        for (ServerPlayer p : server.getPlayerList().getPlayers()) {
+            String language = AotakeLang.getPlayerLanguage(p);
+            Component msg = getWarningMessage("error", language, null);
+            PlayerSweepData playerData = PlayerSweepData.getData(p);
+            if (playerData.isShowSweepResult()) {
+                MessageUtils.sendNotification(p, AotakeComponent.get().empty()
+                                .append(msg)
+                                .append(AotakeComponent.get().literal("[x]")
+                                        .color(EnumMCColor.RED.getColor())
+                                        .hoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT
+                                                , AotakeComponent.get().transAuto("not_show_button")
+                                                .toVanilla(language))
+                                        )
+                                        .clickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND
+                                                , "/" + AotakeUtils.getCommandPrefix() + " config player showSweepResult change")
+                                        )
+                                )
+                        , AotakeNotificationTypes.SWEEP_RESULT_INTERACTIVE);
             }
-            SweepResult sweepResult = new SweepResult().setChunkOverloadVault(chunkOverloadVault);
-            if (chunkOverloadVault && CommonConfig.get().base().chunk().chunkVaultEnabled()) {
-                sweepResult.setChunkVaultTimePrefix(ChunkVaultStorage.vaultTimePrefix());
-                sweepResult.setChunkVaultRunId(ChunkVaultStorage.newVaultRunId());
-            }
-            AotakeSweep.getEntitySweeper().addDrops(list, sweepResult);
-            // }
-
-        } catch (Exception e) {
-            SWEEP_ERRORS.log(LOGGER, "Entity sweep", e);
-            for (ServerPlayer p : players) {
-                String language = AotakeLang.getPlayerLanguage(p);
-                Component msg = getWarningMessage("error", language, null);
-                PlayerSweepData playerData = PlayerSweepData.getData(p);
-                if (playerData.isShowSweepResult()) {
-                    MessageUtils.sendNotification(p, AotakeComponent.get().empty()
-                                    .append(msg)
-                                    .append(AotakeComponent.get().literal("[x]")
-                                            .color(EnumMCColor.RED.getColor())
-                                            .hoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT
-                                                    , AotakeComponent.get().transAuto("not_show_button")
-                                                    .toVanilla(language))
-                                            )
-                                            .clickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND
-                                                    , "/" + AotakeUtils.getCommandPrefix() + " config player showSweepResult change")
-                                            )
-                                    )
-                            , AotakeNotificationTypes.SWEEP_RESULT_INTERACTIVE);
-                }
-                if (playerData.isEnableWarningVoice()) {
-                    String voice = getWarningVoice("error");
-                    float volume = CommonConfig.get().base().sweep().sweepWarningVoiceVolume() / 100f;
-                    if (StringUtils.isNotNullOrEmpty(voice)) {
-                        CommandUtils.executeCommandNoOutput(p, String.format("playsound %s voice @s ~ ~ ~ %s", voice, volume));
-                    }
+            if (playerData.isEnableWarningVoice()) {
+                String voice = getWarningVoice("error");
+                float volume = CommonConfig.get().base().sweep().sweepWarningVoiceVolume() / 100f;
+                if (StringUtils.isNotNullOrEmpty(voice)) {
+                    CommandUtils.executeCommandNoOutput(p, String.format("playsound %s voice @s ~ ~ ~ %s", voice, volume));
                 }
             }
         }
     }
 
-    private static void clearVirtualDustbin() {
+    public static void clearVirtualDustbin() {
         WorldTrashData.get().getDropList().clear();
         List<SimpleContainer> inventories = WorldTrashData.get().getInventoryList();
         if (CollectionUtils.isNotNullOrEmpty(inventories)) inventories.forEach(SimpleContainer::clearContent);
         WorldTrashData.get().setDirty();
-    }
-
-    private static void clearDustbinBlock() {
-        for (String pos : CommonConfig.get().base().dustbin().dustbinBlockPositions()) {
-            WorldCoordinate coordinate = WorldCoordinate.fromString(pos);
-            if (coordinate != null) {
-                IItemHandler handler = getBlockItemHandler(coordinate);
-                if (handler != null) {
-                    for (int i = 0; i < handler.getSlots(); i++) {
-                        handler.extractItem(i, handler.getSlotLimit(i), false);
-                    }
-                }
-            }
-        }
     }
 
     /**
