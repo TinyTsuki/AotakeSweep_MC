@@ -173,7 +173,7 @@ public class DustbinCommand {
                             ? context.getSource().getPlayerOrException().getDisplayName().getString()
                             : "server"
             );
-            AotakeServerRuntime.currentServer()
+            AotakeServerRuntime.requireServer()
                     .getPlayerList()
                     .getPlayers()
                     .forEach(p -> MessageUtils.sendNotification(p, message, AotakeNotificationTypes.DUSTBIN));
@@ -249,7 +249,7 @@ public class DustbinCommand {
                             ? context.getSource().getPlayerOrException().getDisplayName().getString()
                             : "server"
             );
-            AotakeServerRuntime.currentServer()
+            AotakeServerRuntime.requireServer()
                     .getPlayerList()
                     .getPlayers()
                     .forEach(p -> MessageUtils.sendNotification(p, message, AotakeNotificationTypes.DUSTBIN));

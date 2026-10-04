@@ -9,16 +9,16 @@ import xin.vanilla.aotake.command.AotakeCommand;
 import xin.vanilla.aotake.config.ClientConfig;
 import xin.vanilla.aotake.config.CommonConfig;
 import xin.vanilla.aotake.event.EventHandlerProxy;
-import xin.vanilla.aotake.internal.server.dev.AotakeNetworkSmokeServerRunner;
 import xin.vanilla.aotake.network.NetworkInit;
 import xin.vanilla.aotake.network.packet.SweepDataSyncToClient;
 import xin.vanilla.aotake.notification.AotakeNotificationTypes;
-import xin.vanilla.aotake.util.EntityFilter;
+import xin.vanilla.aotake.internal.server.AotakeRuleRuntime;
+import xin.vanilla.aotake.internal.server.AotakeSweepRuntime;
 import xin.vanilla.aotake.util.EntitySweeper;
 import xin.vanilla.banira.api.BaniraConfigs;
-import xin.vanilla.banira.api.BaniraModPresence;
+import xin.vanilla.banira.api.event.BaniraEvents;
 import xin.vanilla.banira.common.data.KeyValue;
-import xin.vanilla.banira.common.util.BaniraEventBus;
+import xin.vanilla.banira.api.BaniraModPresence;
 import xin.vanilla.banira.common.util.CommandUtils;
 import xin.vanilla.banira.common.util.PacketUtils;
 
@@ -82,8 +82,6 @@ public class AotakeSweep {
 
     @Getter
     private static final EntitySweeper entitySweeper = new EntitySweeper();
-    @Getter
-    private static final EntityFilter entityFilter = new EntityFilter();
     private static final AtomicBoolean bootstrapped = new AtomicBoolean(false);
 
     /**
@@ -104,11 +102,32 @@ public class AotakeSweep {
         NetworkInit.registerPackets();
         AotakeNotificationTypes.registerAllOnServer();
 
-        BaniraEventBus.Server.onStarting(event -> entitySweeper.clear());
-        BaniraEventBus.Server.onTick(event -> EventHandlerProxy.onServerTick(event.serverAs(net.minecraft.server.MinecraftServer.class)));
-        BaniraEventBus.PlayerEvents.onLoggedIn(event -> EventHandlerProxy.onPlayerLoggedIn(event.playerAs(ServerPlayer.class)));
-        BaniraEventBus.PlayerEvents.onLoggedOut(event -> EventHandlerProxy.onPlayerLoggedOut(event.playerAs(ServerPlayer.class)));
-        AotakeNetworkSmokeServerRunner.register();
+        BaniraEvents.Server.onStarting(event -> {
+            entitySweeper.clear();
+            EventHandlerProxy.resetCleanupState();
+            AotakeRuleRuntime.start(event.serverAs(net.minecraft.server.MinecraftServer.class));
+            AotakeSweepRuntime.start(event.serverAs(net.minecraft.server.MinecraftServer.class));
+        });
+        BaniraEvents.Server.onStopping(event -> {
+            try {
+                try {
+                    AotakeSweepRuntime.stop();
+                } finally {
+                    event.serverAs(net.minecraft.server.MinecraftServer.class).getAllLevels()
+                            .forEach(EntitySweeper::flushPendingRemovals);
+                }
+            } finally {
+                try {
+                    entitySweeper.clear();
+                } finally {
+                    EventHandlerProxy.resetCleanupState();
+                    AotakeRuleRuntime.stop();
+                }
+            }
+        });
+        BaniraEvents.Server.onTick(event -> EventHandlerProxy.onServerTick(event.serverAs(net.minecraft.server.MinecraftServer.class)));
+        BaniraEvents.Player.onLoggedIn(event -> EventHandlerProxy.onPlayerLoggedIn(event.playerAs(ServerPlayer.class)));
+        BaniraEvents.Player.onLoggedOut(event -> EventHandlerProxy.onPlayerLoggedOut(event.playerAs(ServerPlayer.class)));
 
         BaniraModPresence.register(MODID, player -> {
             if (!(player instanceof ServerPlayer)) return;

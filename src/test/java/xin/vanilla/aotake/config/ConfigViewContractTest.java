@@ -18,8 +18,7 @@ public class ConfigViewContractTest {
 
     @org.junit.BeforeClass
     public static void initializeRegistryDefaults() {
-        net.minecraft.SharedConstants.tryDetectVersion();
-        net.minecraft.server.Bootstrap.bootStrap();
+        net.minecraft.SharedConstants.tryDetectVersion(); net.minecraft.server.Bootstrap.bootStrap();
     }
 
     @Test

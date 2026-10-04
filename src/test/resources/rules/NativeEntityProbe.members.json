@@ -1,0 +1,26 @@
+[
+  {
+    "id": "x",
+    "kind": "METHOD",
+    "owner": "net.minecraft.class_1297",
+    "name": "method_23317",
+    "descriptor": "()D",
+    "functionType": "xin.vanilla.banira.generated.NativeEntityProbe$ReadX"
+  },
+  {
+    "id": "tick",
+    "kind": "FIELD_GET",
+    "owner": "net.minecraft.class_1297",
+    "name": "field_6012",
+    "descriptor": "I",
+    "functionType": "xin.vanilla.banira.generated.NativeEntityProbe$ReadTick"
+  },
+  {
+    "id": "position",
+    "kind": "METHOD",
+    "owner": "net.minecraft.class_1297",
+    "name": "method_5814",
+    "descriptor": "(DDD)V",
+    "functionType": "xin.vanilla.banira.generated.NativeEntityProbe$WritePosition"
+  }
+]
