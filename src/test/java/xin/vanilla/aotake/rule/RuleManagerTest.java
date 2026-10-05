@@ -18,6 +18,85 @@ import static org.junit.Assert.*;
 public class RuleManagerTest {
     @Rule public TemporaryFolder temporary = new TemporaryFolder();
 
+    @Test public void initialPublicationGateWaitsForOwnerAndDoesNotWeakenLaterInvalidation() throws Exception {
+        try (Fixture f = fixture(false)) {
+            Queue<Runnable> workers = new ArrayDeque<>();
+            f.start(workers::add);
+            assertFalse(f.manager.hasCompletedInitialLoad());
+            CompletableFuture<Long> load = f.manager.reload();
+            assertFalse(f.manager.hasCompletedInitialLoad());
+            for (RuleManager.RuleUse use : RuleManager.RuleUse.values())
+                assertThrows(RuleExecutionException.class, () -> f.manager.acquire(use));
+            Runnable prepare = workers.remove();
+            prepare.run();
+            assertFalse(f.manager.hasCompletedInitialLoad());
+            long id = f.await(load);
+            assertTrue(f.manager.hasCompletedInitialLoad());
+            f.holder.set(RuleMigrationTransaction.MODES.get(0), "BLACK");
+            assertTrue(f.manager.hasCompletedInitialLoad());
+            assertFalse(f.manager.isUsable(id));
+            assertThrows(RuleExecutionException.class, () -> f.manager.acquire(RuleManager.RuleUse.SWEEP));
+        }
+    }
+
+    @Test public void initialFailureKeepsGateClosedUntilExplicitSuccessfulReload() throws Exception {
+        try (Fixture f = fixture()) {
+            BuiltinRules.install(f.store);
+            Path source = f.store.root().resolve(RuleCatalog.sourcePath(BuiltinRules.CLEANUP));
+            byte[] original = Files.readAllBytes(source);
+            Files.delete(source);
+            assertThrows(ExecutionException.class, () -> f.await(f.manager.reload()));
+            assertFalse(f.manager.hasCompletedInitialLoad());
+            for (RuleManager.RuleUse use : RuleManager.RuleUse.values())
+                assertThrows(RuleExecutionException.class, () -> f.manager.acquire(use));
+            Files.write(source, original);
+            f.await(f.manager.reload());
+            assertTrue(f.manager.hasCompletedInitialLoad());
+        }
+    }
+
+    @Test public void stoppedManagerNeverOpensGateForLatePreparation() throws Exception {
+        try (Fixture f = fixture(false)) {
+            Queue<Runnable> workers = new ArrayDeque<>();
+            f.start(workers::add);
+            CompletableFuture<Long> load = f.manager.reload();
+            Runnable prepare = workers.remove();
+            f.manager.close();
+            prepare.run();
+            f.drain();
+            assertFalse(f.manager.hasCompletedInitialLoad());
+            assertThrows(CancellationException.class, () -> f.await(load));
+        }
+    }
+
+    @Test public void latePreviousServerPreparationCannotOpenReplacementGate() throws Exception {
+        try (Fixture previous = fixture(false); Fixture replacement = fixture(false)) {
+            Queue<Runnable> oldWorkers = new ArrayDeque<>();
+            Queue<Runnable> newWorkers = new ArrayDeque<>();
+            previous.start(oldWorkers::add);
+            CompletableFuture<Long> oldLoad = previous.manager.reload();
+            oldWorkers.remove().run();
+            long timeout = System.nanoTime() + TimeUnit.SECONDS.toNanos(15);
+            Runnable late;
+            while ((late = previous.owner.poll()) == null && System.nanoTime() < timeout) Thread.sleep(1);
+            assertNotNull("Previous server completion was not queued", late);
+            previous.manager.close();
+            replacement.start(newWorkers::add);
+            CompletableFuture<Long> newLoad = replacement.manager.reload();
+            late.run();
+            previous.drain();
+            replacement.drain();
+            assertFalse(previous.manager.hasCompletedInitialLoad());
+            assertFalse(replacement.manager.hasCompletedInitialLoad());
+            assertThrows(CancellationException.class, () -> previous.await(oldLoad));
+            assertFalse(newLoad.isDone());
+            newWorkers.remove().run();
+            replacement.await(newLoad);
+            assertTrue(replacement.manager.hasCompletedInitialLoad());
+            assertFalse(previous.manager.hasCompletedInitialLoad());
+        }
+    }
+
     @Test public void legacyDefaultsMigrateAlongsideInstalledBuiltinsWithoutClassCollisions() throws Exception {
         try (Fixture f = fixture(false)) {
             f.holder.set(RuleMigrationTransaction.LISTS.get(0), Collections.singletonList(LegacyRuleMigrationTest.CREATE));
