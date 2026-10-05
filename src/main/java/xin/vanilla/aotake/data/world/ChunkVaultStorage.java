@@ -1,10 +1,11 @@
 package xin.vanilla.aotake.data.world;
 
-import net.minecraft.core.HolderLookup;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.core.HolderLookup;
+import net.minecraft.nbt.Tag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.server.MinecraftServer;
-import net.minecraft.world.item.ItemStack;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import xin.vanilla.aotake.AotakeSweep;
@@ -19,15 +20,13 @@ import javax.annotation.Nullable;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ThreadLocalRandom;
 
@@ -39,7 +38,7 @@ public final class ChunkVaultStorage {
     private static final DateTimeFormatter HOUR_BUCKET = DateTimeFormatter.ofPattern("yyyy-MM-dd_HH");
 
     private static final Map<String, Object> FILE_LOCKS = new ConcurrentHashMap<>();
-    private static final Map<String, List<ItemStack>> PENDING = new ConcurrentHashMap<>();
+    private static final Map<Path, List<Tag>> PENDING = new LinkedHashMap<>();
 
     private ChunkVaultStorage() {
     }
@@ -120,25 +119,36 @@ public final class ChunkVaultStorage {
     }
 
     /**
-     * 将实体对应分组的回收物加入待写入队列（在批次全部结束后 {@link #flushPending(MinecraftServer)}）。
+     * 回收物绑定来源世界目录，每个批次结束或取消时写入。
      *
      * @param batchContext 非空且含 {@link SweepResult#getChunkVaultRunId()} 时，按「本轮清理」分文件；否则沿用仅时间桶+区块的旧 vault 名（兼容）。
      */
     public static void queueRecycledItem(net.minecraft.world.entity.Entity sourceEntity, ItemStack stack, @Nullable SweepResult batchContext) {
         if (stack == null || stack.isEmpty()) return;
-        if (!CommonConfig.get().base().chunk().chunkVaultEnabled()) return;
-        if (BaniraServer.currentAs(MinecraftServer.class) == null) return;
         ChunkKey key = chunkKeyFromEntity(sourceEntity);
         String vaultId = resolveVaultId(key, batchContext);
-        PENDING.computeIfAbsent(vaultId, k -> Collections.synchronizedList(new ArrayList<>())).add(stack.copy());
+        queueRecycledItem(getVaultDir(), vaultId, stack, sourceEntity.registryAccess());
+    }
+
+    static synchronized void queueRecycledItem(Path directory, String vaultId, ItemStack stack, HolderLookup.Provider provider) {
+        Path file = directory.toAbsolutePath().normalize().resolve(vaultId + ".nbt");
+        PENDING.computeIfAbsent(file, ignored -> new ArrayList<>()).add(stack.save(provider));
     }
 
     public static void flushPending(@Nullable MinecraftServer server) {
-        if (server == null || PENDING.isEmpty()) return;
-        for (String vaultId : new ArrayList<>(PENDING.keySet())) {
-            List<ItemStack> batch = PENDING.remove(vaultId);
-            if (batch == null || batch.isEmpty()) continue;
-            appendItemsToFile(server, vaultId, batch);
+        flushPending();
+    }
+
+    public static synchronized void flushPending() {
+        Iterator<Map.Entry<Path, List<Tag>>> entries = PENDING.entrySet().iterator();
+        while (entries.hasNext()) {
+            Map.Entry<Path, List<Tag>> entry = entries.next();
+            try {
+                appendItemsToFile(entry.getKey(), entry.getValue());
+                entries.remove();
+            } catch (IOException failure) {
+                LOGGER.error("Chunk vault write failed; retaining output at {}", entry.getKey(), failure);
+            }
         }
     }
 
@@ -148,30 +158,36 @@ public final class ChunkVaultStorage {
             LOGGER.warn("Skip chunk vault write (path not ready): {}", vaultId);
             return;
         }
-        Path file = dir.resolve(vaultId + ".nbt");
+        try {
+            List<Tag> saved = new ArrayList<>();
+            for (ItemStack stack : stacks) if (!stack.isEmpty()) saved.add(stack.save(server.registryAccess()));
+            appendItemsToFile(dir.resolve(vaultId + ".nbt"), saved);
+        } catch (IOException failure) {
+            LOGGER.error("Failed to append chunk vault {}", vaultId, failure);
+        }
+    }
+
+    private static void appendItemsToFile(Path file, List<Tag> stacks) throws IOException {
+        String name = file.getFileName().toString();
+        String vaultId = name.substring(0, name.length() - 4);
         synchronized (lockFor(vaultId)) {
+            Files.createDirectories(file.getParent());
+            CompoundTag root = Files.exists(file)
+                    ? NBTUtils.readCompressed(file.toFile())
+                    : new CompoundTag();
+            root.putString("VaultId", vaultId);
+            root.putLong("UpdatedAt", System.currentTimeMillis());
+            if (!root.contains("CreatedAt")) root.putLong("CreatedAt", System.currentTimeMillis());
+            if (!root.contains("Kind")) root.putString("Kind", "chunk_overload");
+            ListTag list = root.getList("Items", 10);
+            for (Tag saved : stacks) list.add(saved);
+            root.put("Items", list);
+            Path temporary = Files.createTempFile(file.getParent(), ".vault-", ".tmp");
             try {
-                Files.createDirectories(dir);
-                CompoundTag root = Files.exists(file)
-                        ? NBTUtils.readCompressed(file.toFile())
-                        : new CompoundTag();
-                root.putString("VaultId", vaultId);
-                root.putLong("UpdatedAt", System.currentTimeMillis());
-                if (!root.contains("CreatedAt")) {
-                    root.putLong("CreatedAt", System.currentTimeMillis());
-                }
-                if (!root.contains("Kind")) {
-                    root.putString("Kind", "chunk_overload");
-                }
-                ListTag list = root.getList("Items", 10);
-                for (ItemStack s : stacks) {
-                    if (s.isEmpty()) continue;
-                    list.add(s.save(server.registryAccess()));
-                }
-                root.put("Items", list);
-                NBTUtils.writeCompressed(root, file.toFile());
-            } catch (Exception e) {
-                LOGGER.warn("Failed to write chunk vault {}: {}", vaultId, e.getMessage());
+                NBTUtils.writeCompressed(root, temporary.toFile());
+                Files.move(temporary, file, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
+            } finally {
+                Files.deleteIfExists(temporary);
             }
         }
     }

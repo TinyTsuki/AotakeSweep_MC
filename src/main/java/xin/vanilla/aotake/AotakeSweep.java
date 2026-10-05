@@ -18,7 +18,8 @@ import xin.vanilla.aotake.internal.neoforge.event.NeoForgeAotakeGameEventAdapter
 import xin.vanilla.aotake.network.NetworkInit;
 import xin.vanilla.aotake.network.packet.SweepDataSyncToClient;
 import xin.vanilla.aotake.notification.AotakeNotificationTypes;
-import xin.vanilla.aotake.util.EntityFilter;
+import xin.vanilla.aotake.internal.server.AotakeRuleRuntime;
+import xin.vanilla.aotake.internal.server.AotakeSweepRuntime;
 import xin.vanilla.aotake.util.EntitySweeper;
 import xin.vanilla.banira.api.BaniraConfigs;
 import xin.vanilla.banira.api.BaniraModPresence;
@@ -88,8 +89,6 @@ public class AotakeSweep {
 
     @Getter
     private static final EntitySweeper entitySweeper = new EntitySweeper();
-    @Getter
-    private static final EntityFilter entityFilter = new EntityFilter();
 
     public AotakeSweep(IEventBus modEventBus, ModContainer modContainer) {
         // NeoForge 与 Forge 都要求配置在加载配置文件前完成注册。
@@ -105,7 +104,30 @@ public class AotakeSweep {
         NetworkInit.registerPackets();
         modEventBus.addListener(this::onCommonSetup);
 
-        BaniraEventBus.Server.onStarting(server -> entitySweeper.clear());
+        BaniraEventBus.Server.onStarting(event -> {
+            net.minecraft.server.MinecraftServer server = event.serverAs(net.minecraft.server.MinecraftServer.class);
+            entitySweeper.clear();
+            xin.vanilla.aotake.event.EventHandlerProxy.resetCleanupState();
+            AotakeRuleRuntime.start(server);
+            AotakeSweepRuntime.start(server);
+        });
+        BaniraEventBus.Server.onStopping(event -> {
+            net.minecraft.server.MinecraftServer server = event.serverAs(net.minecraft.server.MinecraftServer.class);
+            try {
+                try {
+                    AotakeSweepRuntime.stop();
+                } finally {
+                    if (server != null) server.getAllLevels().forEach(EntitySweeper::flushPendingRemovals);
+                }
+            } finally {
+                try {
+                    entitySweeper.clear();
+                } finally {
+                    xin.vanilla.aotake.event.EventHandlerProxy.resetCleanupState();
+                    AotakeRuleRuntime.stop();
+                }
+            }
+        });
         NeoForgeAotakeGameEventAdapter.register(modEventBus);
         xin.vanilla.aotake.internal.server.dev.AotakeNetworkSmokeServerRunner.register(modEventBus);
 
