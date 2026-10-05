@@ -39,6 +39,7 @@ public final class RuleManager<S> implements AutoCloseable {
     private volatile RuleCatalog approved;
     private volatile boolean closed;
     private RuleGeneration<S> active;
+    private boolean initialPublicationComplete;
     private CompletableFuture<Long> pending;
     private boolean publishing, reloadAfterPublication;
     private long sequence;
@@ -125,6 +126,11 @@ public final class RuleManager<S> implements AutoCloseable {
         checkOwner();
         if (!closed) refreshSelection();
         return !closed && active != null && active.id() == generationId && active.isUsable();
+    }
+
+    public boolean hasCompletedInitialLoad() {
+        checkOwner();
+        return !closed && initialPublicationComplete;
     }
 
     public CompletableFuture<Long> reload() {
@@ -220,7 +226,10 @@ public final class RuleManager<S> implements AutoCloseable {
             return;
         }
         pending = null;
-        if (rejected == null && active != null && active.isUsable()) result.complete(active.id());
+        if (rejected == null && active != null && active.isUsable()) {
+            initialPublicationComplete = true;
+            result.complete(active.id());
+        }
         else {
             if (rejected == null) rejected = new RuleExecutionException(-1, "Rule selection changed after publication");
             unavailable = "Rule reload failed: " + rejected.getMessage();
