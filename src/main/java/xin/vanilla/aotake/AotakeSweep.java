@@ -132,7 +132,8 @@ public class AotakeSweep {
         xin.vanilla.aotake.internal.server.dev.AotakeSweepPolicySmokeServerRunner.register();
         ForgeAotakeGameEventAdapter.register();
 
-        DistExecutor.safeRunWhenOn(Dist.CLIENT,
+        // Development referent validation resolves the supplier before checking the physical side.
+        DistExecutor.unsafeRunWhenOn(Dist.CLIENT,
                 () -> xin.vanilla.aotake.client.AotakeClientBootstrap::init);
     }
 
