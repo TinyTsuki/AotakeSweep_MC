@@ -757,7 +757,7 @@ public class AotakeUtils {
 
     public static CompoundTag getAotakeTag(@NonNull ItemStack item) {
         if (!hasAotakeTag(item)) {
-            CompoundTag tag = new CompoundTag();
+            CompoundTag tag = item.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag();
             CompoundTag aotake = new CompoundTag();
             tag.put(AotakeSweep.MODID, aotake);
             item.set(DataComponents.CUSTOM_DATA, CustomData.of(tag));
