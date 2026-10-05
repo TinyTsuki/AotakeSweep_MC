@@ -725,7 +725,7 @@ public class AotakeUtils {
 
     public static CompoundTag getAotakeTag(@NonNull ItemStack item) {
         if (!hasAotakeTag(item)) {
-            CompoundTag tag = new CompoundTag();
+            CompoundTag tag = item.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag();
             CompoundTag aotake = new CompoundTag();
             tag.put(AotakeSweep.MODID, aotake);
             item.set(DataComponents.CUSTOM_DATA, CustomData.of(tag));
@@ -737,12 +737,7 @@ public class AotakeUtils {
     }
 
     public static void setAotakeTag(@NonNull ItemStack item, CompoundTag aotakeTag) {
-        CompoundTag tag;
-        if (!hasAotakeTag(item)) {
-            tag = new CompoundTag();
-        } else {
-            tag = item.getComponents().getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag();
-        }
+        CompoundTag tag = item.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag();
         tag.put(AotakeSweep.MODID, aotakeTag);
         item.set(DataComponents.CUSTOM_DATA, CustomData.of(tag));
     }
