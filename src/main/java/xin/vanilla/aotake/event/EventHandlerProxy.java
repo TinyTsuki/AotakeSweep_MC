@@ -47,6 +47,7 @@ import xin.vanilla.aotake.network.packet.SweepDataSyncToClient;
 import xin.vanilla.aotake.notification.AotakeNotificationTypes;
 import xin.vanilla.aotake.util.AotakeUtils;
 import xin.vanilla.aotake.internal.server.AotakeSweepRuntime;
+import xin.vanilla.aotake.internal.server.AotakeRuleRuntime;
 import xin.vanilla.aotake.util.EntitySweeper;
 import xin.vanilla.aotake.util.RateLimitedErrorLogger;
 import xin.vanilla.banira.api.BaniraServer;
@@ -79,7 +80,22 @@ public class EventHandlerProxy {
      */
     private static String lastCountdownWarningDispatchKey = null;
     public static void resetCleanupState() {
+        nextSweepTime = 0;
         lastChunkCheckTime = 0;
+        lastCountdownWarningDispatchKey = null;
+    }
+
+    static boolean beginScheduledSweep(long now, long interval, boolean ready) {
+        if (!ready || interval <= 0 || nextSweepTime > now) return false;
+        nextSweepTime = now + interval;
+        lastCountdownWarningDispatchKey = null;
+        return true;
+    }
+
+    static boolean beginChunkCheck(long now, long interval, boolean ready, boolean pending) {
+        if (!ready || pending || interval <= 0 || interval > now - lastChunkCheckTime) return false;
+        lastChunkCheckTime = now;
+        return true;
     }
     private static final Map<String, Long> lastCatchTick = new ConcurrentHashMap<>();
     private static final Map<String, Long> lastUseEntityTick = new ConcurrentHashMap<>();
@@ -107,10 +123,11 @@ public class EventHandlerProxy {
         long now = System.currentTimeMillis();
         long countdown = nextSweepTime - now;
         long sweepInterval = CommonConfig.get().base().sweep().sweepInterval();
+        boolean automaticReady = AotakeRuleRuntime.hasCompletedInitialLoad();
 
         // 扫地前提示（warnKey 每秒才变一次，但服务端约 20 tick/s；仅在 key 变化时派发，避免连续重复发包/通知）
         String warnKey = String.valueOf(countdown / 1000);
-        if (AotakeUtils.hasWarning(warnKey)) {
+        if (automaticReady && AotakeUtils.hasWarning(warnKey)) {
             if (!Objects.equals(lastCountdownWarningDispatchKey, warnKey)) {
                 lastCountdownWarningDispatchKey = warnKey;
                 for (ServerPlayer player : server
@@ -130,7 +147,7 @@ public class EventHandlerProxy {
             lastCountdownWarningDispatchKey = null;
         }
         // 扫地前提示音效
-        if (AotakeUtils.hasWarningVoice(warnKey) && lastVoiceTime + 1010 < now) {
+        if (automaticReady && AotakeUtils.hasWarningVoice(warnKey) && lastVoiceTime + 1010 < now) {
             lastVoiceTime = now;
             for (ServerPlayer player : server
                     .getPlayerList()
@@ -147,9 +164,7 @@ public class EventHandlerProxy {
         }
 
         // 扫地
-        if (countdown <= 0 && sweepInterval > 0) {
-            nextSweepTime = now + sweepInterval;
-            lastCountdownWarningDispatchKey = null;
+        if (beginScheduledSweep(now, sweepInterval, automaticReady)) {
             LOGGER.debug("Scheduled sweep will start");
             AotakeUtils.sweep();
             // 给已安装mod玩家同步扫地倒计时
@@ -190,10 +205,8 @@ public class EventHandlerProxy {
         }
 
         // 检查区块实体数量
-        if (CommonConfig.get().base().chunk().chunkCheckInterval() > 0
-                && !AotakeSweepRuntime.chunkPending()
-                && CommonConfig.get().base().chunk().chunkCheckInterval() <= now - lastChunkCheckTime) {
-            lastChunkCheckTime = now;
+        if (beginChunkCheck(now, CommonConfig.get().base().chunk().chunkCheckInterval(),
+                automaticReady, AotakeSweepRuntime.chunkPending())) {
             try {
                 AotakeSweepRuntime.submitChunk();
             } catch (RuntimeException failure) {

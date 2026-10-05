@@ -81,6 +81,10 @@ public final class AotakeRuleRuntime {
         return manager != null && manager.isUsable(id);
     }
 
+    public static boolean hasCompletedInitialLoad() {
+        return manager != null && manager.hasCompletedInitialLoad();
+    }
+
     static RuleManager<Entity> manager() {
         if (manager == null) throw new RuleExecutionException(-1, "Rule server is not running");
         return manager;
