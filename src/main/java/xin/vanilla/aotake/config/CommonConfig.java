@@ -1,6 +1,5 @@
 package xin.vanilla.aotake.config;
 
-import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.experimental.Accessors;
@@ -30,26 +29,18 @@ public class CommonConfig implements ConfigData {
 
     // region 配置结构
 
-    @Getter(AccessLevel.NONE)
-    @Setter(AccessLevel.NONE)
     @ConfigEntry.Gui.CollapsibleObject
     @ConfigEntry.Gui.Tooltip(zh_cn = "基础设置", en_us = "Base Settings")
     private BaseCategory base = new BaseCategory();
 
-    @Getter(AccessLevel.NONE)
-    @Setter(AccessLevel.NONE)
     @ConfigEntry.Gui.CollapsibleObject
     @ConfigEntry.Gui.Tooltip(zh_cn = "自定义指令，请勿添加前缀'/'", en_us = "Custom Command Settings, don't add prefix '/'")
     private CommandCategory command = new CommandCategory();
 
-    @Getter(AccessLevel.NONE)
-    @Setter(AccessLevel.NONE)
     @ConfigEntry.Gui.CollapsibleObject
     @ConfigEntry.Gui.Tooltip(zh_cn = "无前缀简短指令开关", en_us = "Concise (no-prefix) command toggles")
     private ConciseCategory concise = new ConciseCategory();
 
-    @Getter(AccessLevel.NONE)
-    @Setter(AccessLevel.NONE)
     @ConfigEntry.Gui.CollapsibleObject
     @ConfigEntry.Gui.Tooltip(zh_cn = "各指令所需权限等级", en_us = "Permission levels for commands")
     private PermissionCategory permission = new PermissionCategory();

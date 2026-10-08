@@ -1,6 +1,5 @@
 package xin.vanilla.aotake.config;
 
-import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.experimental.Accessors;
@@ -25,14 +24,10 @@ import java.util.List;
         generateView = true, viewUnbound = Config.UnboundAccess.DEFAULTS)
 public class ClientConfig implements ConfigData {
 
-    @Getter(AccessLevel.NONE)
-    @Setter(AccessLevel.NONE)
     @ConfigEntry.Gui.CollapsibleObject
     @ConfigEntry.Gui.Tooltip(zh_cn = "进度条与竹叶/竹竿/文字显示", en_us = "Progress bar (bamboo leaf / pole / text)")
     private ProgressBarCategory progressBar = new ProgressBarCategory();
 
-    @Getter(AccessLevel.NONE)
-    @Setter(AccessLevel.NONE)
     @ConfigEntry.Gui.CollapsibleObject
     @ConfigEntry.Gui.Tooltip(zh_cn = "垃圾箱界面", en_us = "Dustbin screen")
     private DustbinCategory dustbin = new DustbinCategory();
