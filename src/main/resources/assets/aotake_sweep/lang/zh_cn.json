@@ -1,4 +1,6 @@
 {
+  "word.aotake_sweep.minimap_cleanup_countdown": "清理倒计时",
+  "format.aotake_sweep.minimap_cleanup_countdown": "清理倒计时：%s",
   "word.aotake_sweep.rules_reload_success": "本地清理规则已重新加载",
   "word.aotake_sweep.rules_reload_failure": "本地清理规则加载失败，请检查服务端日志",
   "key.aotake_sweep.categories": "竹叶清",

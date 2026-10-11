@@ -7,6 +7,9 @@ import xin.vanilla.aotake.config.CommonConfig;
 import xin.vanilla.aotake.data.player.PlayerSweepData;
 import xin.vanilla.aotake.event.EventHandlerProxy;
 import xin.vanilla.aotake.network.NetworkPacket;
+import xin.vanilla.aotake.network.SweepScheduleSync;
+import xin.vanilla.aotake.client.minimap.AotakeMinimapCountdown;
+import xin.vanilla.aotake.internal.server.AotakeRuleRuntime;
 import xin.vanilla.banira.common.network.BaniraNetworkContext;
 import xin.vanilla.banira.common.network.BaniraPacketBuffer;
 
@@ -34,8 +37,9 @@ public class SweepDataSyncToClient implements NetworkPacket {
 
     public SweepDataSyncToClient(ServerPlayerEntity player) {
         this.currentTime = System.currentTimeMillis();
-        this.nextSweepTime = EventHandlerProxy.getNextSweepTime();
         this.sweepInterval = CommonConfig.get().base().sweep().sweepInterval();
+        this.nextSweepTime = SweepScheduleSync.effectiveNextSweep(EventHandlerProxy.getNextSweepTime(),
+                sweepInterval, AotakeSweep.isDisable(), AotakeRuleRuntime.hasCompletedInitialLoad());
         PlayerSweepData data = PlayerSweepData.getData(player);
         this.showSweepResult = data.isShowSweepResult();
         this.enableWarningVoice = data.isEnableWarningVoice();
@@ -58,7 +62,11 @@ public class SweepDataSyncToClient implements NetworkPacket {
     }
 
     public static void handle(SweepDataSyncToClient packet, BaniraNetworkContext ctx) {
-        ctx.enqueueWork(() -> {
+        if (!ctx.isClientSide()) {
+            ctx.markHandled();
+            return;
+        }
+        AotakeMinimapCountdown.accept(ctx, packet.getCurrentTime(), packet.getNextSweepTime(), packet.getSweepInterval(), () -> {
             AotakeSweep.getClientServerTime().key(System.currentTimeMillis()).value(packet.getCurrentTime());
             AotakeSweep.getSweepTime().key(packet.getSweepInterval()).value(packet.getNextSweepTime());
             AotakeSweep.setClientCachedPlayerSweepPrefs(packet.isShowSweepResult(), packet.isEnableWarningVoice());
