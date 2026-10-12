@@ -172,5 +172,7 @@
   "word.aotake_sweep.enum_source_type_predefined": "使用内置预定义变量源",
   "word.aotake_sweep.rules_reload_success": "本地清理规则已重新加载",
   "word.aotake_sweep.rules_reload_failure": "本地清理规则加载失败，请检查服务端日志",
-  "word.aotake_sweep.sweep_policy_description": "清理流程策略 ID\n使用 builtin:default 或已在本机准备成功的策略 ID\n修改本地源码后执行 config rules reload"
+  "word.aotake_sweep.sweep_policy_description": "清理流程策略 ID\n使用 builtin:default 或已在本机准备成功的策略 ID\n修改本地源码后执行 config rules reload",
+  "word.aotake_sweep.minimap_cleanup_countdown": "清理倒计时",
+  "format.aotake_sweep.minimap_cleanup_countdown": "清理倒计时：%s"
 }

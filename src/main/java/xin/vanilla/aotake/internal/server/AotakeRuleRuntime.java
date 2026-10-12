@@ -60,6 +60,8 @@ public final class AotakeRuleRuntime {
         reload().whenComplete((id, failure) -> {
             if (failure != null)
                 LogManager.getLogger().error("Aotake rules unavailable; cleanup remains blocked", failure);
+            else
+                xin.vanilla.aotake.network.SweepScheduleSync.broadcast(server);
         });
     }
 

@@ -5,6 +5,7 @@ import lombok.Setter;
 import lombok.experimental.Accessors;
 import xin.vanilla.aotake.AotakeSweep;
 import xin.vanilla.aotake.enums.EnumDustbinClientUiStyle;
+import xin.vanilla.aotake.enums.EnumAotakeMinimapHost;
 import xin.vanilla.aotake.enums.EnumProgressBarTextAlignH;
 import xin.vanilla.aotake.enums.EnumProgressBarTextAlignV;
 import xin.vanilla.aotake.enums.EnumProgressBarType;
@@ -31,6 +32,21 @@ public class ClientConfig implements ConfigData {
     @ConfigEntry.Gui.CollapsibleObject
     @ConfigEntry.Gui.Tooltip(zh_cn = "垃圾箱界面", en_us = "Dustbin screen")
     private DustbinCategory dustbin = new DustbinCategory();
+
+    @ConfigEntry.Gui.CollapsibleObject
+    @ConfigEntry.Gui.Tooltip(zh_cn = "小地图清理倒计时", en_us = "Minimap cleanup countdown")
+    private MinimapCountdownCategory minimapCountdown = new MinimapCountdownCategory();
+
+    @Getter
+    @Setter
+    @Accessors(chain = true, fluent = true)
+    public static class MinimapCountdownCategory {
+        @ConfigEntry.Gui.Tooltip(zh_cn = "在小地图信息区显示清理倒计时", en_us = "Show the cleanup countdown in the minimap information area")
+        private boolean enabled = true;
+
+        @ConfigEntry.Gui.Tooltip(zh_cn = "倒计时显示的小地图", en_us = "Minimap for the cleanup countdown")
+        private EnumAotakeMinimapHost host = EnumAotakeMinimapHost.AUTO;
+    }
 
     public ClientConfig() {
     }
