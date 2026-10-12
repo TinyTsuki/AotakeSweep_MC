@@ -15,7 +15,6 @@ import xin.vanilla.aotake.config.CommonConfig;
 import xin.vanilla.aotake.data.player.PlayerSweepData;
 import xin.vanilla.aotake.enums.EnumCommandType;
 import xin.vanilla.aotake.event.EventHandlerProxy;
-import xin.vanilla.aotake.network.packet.SweepDataSyncToClient;
 import xin.vanilla.aotake.notification.AotakeNotificationTypes;
 import xin.vanilla.aotake.util.AotakeUtils;
 import xin.vanilla.banira.api.BaniraServer;
@@ -45,11 +44,7 @@ public class DelayCommand {
                     nextSweepTime = current.getTime() + CommonConfig.get().base().sweep().sweepInterval();
                 EventHandlerProxy.setNextSweepTime(nextSweepTime);
             }
-            // 给已声明客户端 mod 且尚未完成数据同步的玩家同步扫地倒计时与玩家偏好
-            for (ServerPlayerEntity player : BaniraServer.require(MinecraftServer.class).getPlayerList().getPlayers()) {
-                if (PlayerUtils.isPlayerDataSynced(player, AotakeSweep.MODID)) continue;
-                PacketUtils.sendPacketToPlayer(new SweepDataSyncToClient(player), player);
-            }
+            xin.vanilla.aotake.network.SweepScheduleSync.broadcast(BaniraServer.require(MinecraftServer.class));
             long seconds = (EventHandlerProxy.getNextSweepTime() - current.getTime()) / 1000;
             Component message = AotakeComponent.get().transAuto("next_sweep_time_set"
                     , context.getSource().getEntity() instanceof ServerPlayerEntity
