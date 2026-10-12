@@ -1,10 +1,12 @@
 {
+  "format.aotake_sweep.minimap_cleanup_countdown": "清理倒计时：%s",
   "key.aotake_sweep.categories": "竹叶清",
   "key.aotake_sweep.open_dustbin": "打开垃圾箱",
   "key.aotake_sweep.open_dustbin_next": "垃圾箱下一页",
   "key.aotake_sweep.open_dustbin_pre": "垃圾箱上一页",
   "key.aotake_sweep.progress": "显示进度条",
   "itemGroup.aotake_sweep": "竹叶清",
+  "word.aotake_sweep.minimap_cleanup_countdown": "清理倒计时",
   "word.aotake_sweep.mod_name": "竹叶清",
   "word.aotake_sweep.notification_type_sweep_countdown": "自动清理开始前的倒计时",
   "word.aotake_sweep.notification_type_sweep_result_interactive": "带可点击操作的详细清理结果",

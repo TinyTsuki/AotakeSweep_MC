@@ -29,7 +29,7 @@ public final class ClientModEventHandler {
     /**
      * 切换进度条显示按键
      */
-    // 避免与原版 TAB 玩家列表同时触发，默认使用未被原版占用的功能键。
+
     public static BaniraKeyHandle PROGRESS_KEY = BaniraInput.registerKey(AotakeSweep.MODID, "progress", GLFW.GLFW_KEY_TAB);
 
     private ClientModEventHandler() {

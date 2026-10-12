@@ -1,10 +1,12 @@
 {
+  "format.aotake_sweep.minimap_cleanup_countdown": "Cleanup: %s",
   "key.aotake_sweep.categories": "Aotake Sweep",
   "key.aotake_sweep.open_dustbin": "Open Dustbin",
   "key.aotake_sweep.open_dustbin_next": "Dustbin Next Page",
   "key.aotake_sweep.open_dustbin_pre": "Dustbin Previous Page",
   "key.aotake_sweep.progress": "Show progress bar",
   "itemGroup.aotake_sweep": "Aotake Sweep",
+  "word.aotake_sweep.minimap_cleanup_countdown": "Cleanup countdown",
   "word.aotake_sweep.mod_name": "Aotake Sweep",
   "word.aotake_sweep.notification_type_sweep_countdown": "Countdown before an automatic sweep",
   "word.aotake_sweep.notification_type_sweep_result_interactive": "Detailed sweep results with clickable actions",

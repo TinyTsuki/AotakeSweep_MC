@@ -12,6 +12,30 @@
       "permissionKey": null,
       "keyChords": false
     },
+    "minimapCountdown.enabled": {
+      "type": "BOOLEAN",
+      "default": true,
+      "min": null,
+      "max": null,
+      "precision": 2,
+      "enum": null,
+      "permission": "INHERIT",
+      "permissionLevel": null,
+      "permissionKey": null,
+      "keyChords": false
+    },
+    "minimapCountdown.host": {
+      "type": "ENUM",
+      "default": "AUTO",
+      "min": null,
+      "max": null,
+      "precision": 2,
+      "enum": "xin.vanilla.aotake.enums.EnumAotakeMinimapHost",
+      "permission": "INHERIT",
+      "permissionLevel": null,
+      "permissionKey": null,
+      "keyChords": false
+    },
     "progressBar.leaf.hideExperienceBarLeaf": {
       "type": "BOOLEAN",
       "default": false,
@@ -321,6 +345,8 @@
   },
   "unbound": {
     "dustbin.dustbinUiStyle": "TEXTURED",
+    "minimapCountdown.enabled": true,
+    "minimapCountdown.host": "AUTO",
     "progressBar.leaf.hideExperienceBarLeaf": false,
     "progressBar.leaf.progressBarLeafAngle": 0.0,
     "progressBar.leaf.progressBarLeafBase": "TOP_LEFT",
@@ -355,6 +381,8 @@
   },
   "defaults": {
     "dustbin.dustbinUiStyle": "TEXTURED",
+    "minimapCountdown.enabled": true,
+    "minimapCountdown.host": "AUTO",
     "progressBar.leaf.hideExperienceBarLeaf": false,
     "progressBar.leaf.progressBarLeafAngle": 0.0,
     "progressBar.leaf.progressBarLeafBase": "TOP_LEFT",
@@ -389,6 +417,8 @@
   },
   "changed": {
     "dustbin.dustbinUiStyle": "BANIRA_THEME",
+    "minimapCountdown.enabled": false,
+    "minimapCountdown.host": "XAERO",
     "progressBar.leaf.hideExperienceBarLeaf": true,
     "progressBar.leaf.progressBarLeafAngle": 0.125,
     "progressBar.leaf.progressBarLeafBase": "TOP_RIGHT",
