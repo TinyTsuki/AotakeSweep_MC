@@ -174,5 +174,7 @@
   "word.aotake_sweep.enum_source_type_accessor_key": "Value from synced entity field.",
   "word.aotake_sweep.enum_source_type_literal": "Fixed string literal.",
   "word.aotake_sweep.enum_source_type_nbt_path": "Value from entity NBT path.",
-  "word.aotake_sweep.enum_source_type_predefined": "Built-in variable source."
+  "word.aotake_sweep.enum_source_type_predefined": "Built-in variable source.",
+  "format.aotake_sweep.minimap_cleanup_countdown": "Cleanup: %s",
+  "word.aotake_sweep.minimap_cleanup_countdown": "Cleanup countdown"
 }

@@ -175,5 +175,7 @@
   "word.aotake_sweep.enum_source_type_accessor_key": "实体数据同步字段取值",
   "word.aotake_sweep.enum_source_type_literal": "固定字符串字面量取值",
   "word.aotake_sweep.enum_source_type_nbt_path": "从实体NBT路径读取取值",
-  "word.aotake_sweep.enum_source_type_predefined": "使用内置预定义变量源"
+  "word.aotake_sweep.enum_source_type_predefined": "使用内置预定义变量源",
+  "format.aotake_sweep.minimap_cleanup_countdown": "清理倒计时：%s",
+  "word.aotake_sweep.minimap_cleanup_countdown": "清理倒计时"
 }
