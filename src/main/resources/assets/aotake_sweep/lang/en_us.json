@@ -172,5 +172,7 @@
   "word.aotake_sweep.enum_source_type_predefined": "Built-in variable source.",
   "word.aotake_sweep.rules_reload_success": "Local cleanup rules reloaded",
   "word.aotake_sweep.rules_reload_failure": "Could not load local cleanup rules; check the server log",
-  "word.aotake_sweep.sweep_policy_description": "Cleanup policy ID\nUse builtin:default or a locally prepared policy ID\nRun config rules reload after editing local sources"
+  "word.aotake_sweep.sweep_policy_description": "Cleanup policy ID\nUse builtin:default or a locally prepared policy ID\nRun config rules reload after editing local sources",
+  "format.aotake_sweep.minimap_cleanup_countdown": "Cleanup: %s",
+  "word.aotake_sweep.minimap_cleanup_countdown": "Cleanup countdown"
 }
