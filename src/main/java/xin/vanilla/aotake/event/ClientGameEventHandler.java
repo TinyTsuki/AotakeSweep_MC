@@ -30,6 +30,9 @@ public final class ClientGameEventHandler {
     }
 
     public static void register() {
+        xin.vanilla.aotake.client.minimap.AotakeMinimapCountdown.register();
+        BaniraClientEvents.Player.onClientLoggedIn(player -> xin.vanilla.aotake.client.minimap.AotakeMinimapCountdown.beginConnection());
+        BaniraClientEvents.Player.onClientLoggedOut(player -> xin.vanilla.aotake.client.minimap.AotakeMinimapCountdown.reset());
         BaniraClientEvents.Player.onClientLoggedOut(player -> LOGGER.debug("Client: Player logged out."));
         MinecraftForge.EVENT_BUS.addListener((TickEvent.ClientTickEvent event) -> ClientGameEventHandler.onClientTick(event));
         MinecraftForge.EVENT_BUS.addListener((ScreenEvent event) -> DustbinRender.handleGuiScreen(event));
