@@ -1,7 +1,6 @@
 package xin.vanilla.aotake;
 
 import lombok.Getter;
-import lombok.Setter;
 import net.minecraft.server.level.ServerPlayer;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -17,6 +16,7 @@ import xin.vanilla.aotake.internal.server.AotakeSweepRuntime;
 import xin.vanilla.aotake.util.EntitySweeper;
 import xin.vanilla.banira.api.BaniraConfigs;
 import xin.vanilla.banira.api.event.BaniraEvents;
+
 import xin.vanilla.banira.common.data.KeyValue;
 import xin.vanilla.banira.api.BaniraModPresence;
 import xin.vanilla.banira.common.util.CommandUtils;
@@ -77,8 +77,14 @@ public class AotakeSweep {
     public static final Random RANDOM = new Random();
 
     @Getter
-    @Setter
-    private static boolean disable = false;
+    private static volatile boolean disable = false;
+
+    public static void setDisable(boolean value) {
+        if (disable == value) return;
+        disable = value;
+        xin.vanilla.aotake.network.SweepScheduleSync.broadcast(
+                xin.vanilla.aotake.internal.common.AotakeServerRuntime.currentServer());
+    }
 
     @Getter
     private static final EntitySweeper entitySweeper = new EntitySweeper();
@@ -92,6 +98,10 @@ public class AotakeSweep {
         BaniraConfigs.register(CommonConfig.class, MODID);
         BaniraConfigs.register(ClientConfig.class, MODID);
         BaniraConfigs.onSaved(CommonConfig.class, changedPaths -> {
+            if (changedPaths.stream().anyMatch(path -> path.equals("base.sweep.sweepInterval"))) {
+                xin.vanilla.aotake.network.SweepScheduleSync.broadcast(
+                        xin.vanilla.aotake.internal.common.AotakeServerRuntime.currentServer());
+            }
             boolean commandChanged = changedPaths.stream()
                     .anyMatch(path -> path.startsWith("command.") || path.startsWith("concise."));
             if (commandChanged) {
