@@ -20,7 +20,6 @@
   "word.aotake_sweep.notification_type_admin_broadcast": "清理、缓存和模组设置等管理广播",
   "word.aotake_sweep.notification_type_player_preference": "玩家清理结果与提示音偏好",
   "word.aotake_sweep.notification_type_help": "多页指令帮助与点击操作",
-
   "word.aotake_sweep.cache_clear": "清空缓存区的垃圾",
   "word.aotake_sweep.cache_clear_detail": "清空缓存区的垃圾",
   "word.aotake_sweep.cache_drop": "以掉落物的形式清空缓存区的垃圾",
@@ -79,7 +78,6 @@
   "word.aotake_sweep.title": "竹叶清",
   "word.aotake_sweep.virtual_op": "给某个玩家添加使用某个指令的权限",
   "word.aotake_sweep.virtual_op_detail": "给某个玩家添加使用某个指令的权限\n参数列表：\n <操作> <玩家> [<指令类型列表>]",
-
   "format.aotake_sweep.allow_catch_entity": "是否允许玩家使用物品捕获实体被设置为：%s",
   "format.aotake_sweep.cache_cleared": "§e垃圾缓存区被『%s§e』清空了",
   "format.aotake_sweep.cache_dropped": "§e垃圾缓存区被『%s§e』倒掉了",
@@ -114,7 +112,6 @@
   "format.aotake_sweep.sweep_interval": "服务器扫地间隔被设置为：%s毫秒",
   "format.aotake_sweep.sweep_when_no_player": "服务器没人时是否启用自动打扫被设置为：%s",
   "format.aotake_sweep.warning_voice": "播放提示语音被设置为：%s，\n使用 '%s' 修改状态",
-
   "word.aotake_sweep.enum_chunk_check_mode_advanced": "进阶区块实体检测，按实体类型单独计数",
   "word.aotake_sweep.enum_chunk_check_mode_default": "默认的区块实体过多检测模式",
   "word.aotake_sweep.enum_command_type_cache_clear": "清空缓存区",
@@ -175,5 +172,7 @@
   "word.aotake_sweep.enum_source_type_accessor_key": "实体数据同步字段取值",
   "word.aotake_sweep.enum_source_type_literal": "固定字符串字面量取值",
   "word.aotake_sweep.enum_source_type_nbt_path": "从实体NBT路径读取取值",
-  "word.aotake_sweep.enum_source_type_predefined": "使用内置预定义变量源"
+  "word.aotake_sweep.enum_source_type_predefined": "使用内置预定义变量源",
+  "format.aotake_sweep.minimap_cleanup_countdown": "清理倒计时：%s",
+  "word.aotake_sweep.minimap_cleanup_countdown": "清理倒计时"
 }
