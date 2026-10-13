@@ -29,6 +29,11 @@ public final class ClientGameEventHandler {
     }
 
     public static void register() {
+        xin.vanilla.aotake.client.minimap.AotakeMinimapCountdown.register();
+        xin.vanilla.banira.api.client.event.BaniraClientEvents.Player.onClientLoggedIn(
+                player -> xin.vanilla.aotake.client.minimap.AotakeMinimapCountdown.beginConnection());
+        xin.vanilla.banira.api.client.event.BaniraClientEvents.Player.onClientLoggedOut(
+                player -> xin.vanilla.aotake.client.minimap.AotakeMinimapCountdown.reset());
         BaniraClientEvents.Player.onClientLoggedOut(player -> LOGGER.debug("Client: Player logged out."));
         BaniraClientEvents.Client.onClientTick(event -> onClientTick());
         AotakeNetworkSmokeClientRunner.register();
@@ -59,12 +64,20 @@ public final class ClientGameEventHandler {
         ProgressRender.render(graphics.pose(), showProgress);
     }
 
-    /**
-     * 按住进度键时由 Aotake 接管原版经验区，普通状态仍保留原版绘制。
-     */
+    static boolean hidesExperience(boolean held, java.util.List<xin.vanilla.aotake.enums.EnumProgressBarType> normal,
+                                   boolean leaf, boolean pole, boolean text) {
+        return held || normal.contains(xin.vanilla.aotake.enums.EnumProgressBarType.LEAF) && leaf
+                || normal.contains(xin.vanilla.aotake.enums.EnumProgressBarType.POLE) && pole
+                || normal.contains(xin.vanilla.aotake.enums.EnumProgressBarType.TEXT) && text;
+    }
+
     private static void interceptExperience(BaniraHudRenderEvent event) {
         Minecraft minecraft = Minecraft.getInstance();
-        if (showProgress && minecraft.player != null && minecraft.screen == null && !minecraft.options.hideGui) {
+        if (minecraft.player == null || minecraft.screen != null || minecraft.options.hideGui) return;
+        xin.vanilla.aotake.config.ClientConfigView.ProgressBarView progress = ClientConfig.get().progressBar();
+        if (hidesExperience(showProgress, progress.progressBarDisplayNormal(),
+                progress.leaf().hideExperienceBarLeaf(), progress.pole().hideExperienceBarPole(),
+                progress.text().hideExperienceBarText())) {
             event.cancel();
         }
     }

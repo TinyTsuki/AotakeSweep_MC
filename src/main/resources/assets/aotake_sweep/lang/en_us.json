@@ -78,7 +78,6 @@
   "word.aotake_sweep.title": "Aotake",
   "word.aotake_sweep.virtual_op": "Grant a specified player permission to use certain commands.",
   "word.aotake_sweep.virtual_op_detail": "Grant a specified player permission to use certain commands.\nParameters:\n <operation> <player> [<command type list>]",
-
   "format.aotake_sweep.allow_catch_entity": "Allow players to catch entities with items is set to: %s.",
   "format.aotake_sweep.cache_cleared": "§eCache area has been cleared by '%s§e'.",
   "format.aotake_sweep.cache_dropped": "§eCache area has been dropped by '%s§e'.",
@@ -113,7 +112,6 @@
   "format.aotake_sweep.chunk_vault_list_header": "§eChunk overload stash §7page %s/%s §8 - §f%s §eentries",
   "format.aotake_sweep.chunk_vault_no_access": "§cCannot open this stash: §f%s",
   "format.aotake_sweep.chunk_vault_not_found": "§cNo stash matching: §f%s",
-
   "word.aotake_sweep.enum_chunk_check_mode_advanced": "Chunk excess check: count entities per type.",
   "word.aotake_sweep.enum_chunk_check_mode_default": "Default chunk excess check mode.",
   "word.aotake_sweep.enum_command_type_cache_clear": "Clear the cache area.",
@@ -174,5 +172,7 @@
   "word.aotake_sweep.enum_source_type_accessor_key": "Value from synced entity field.",
   "word.aotake_sweep.enum_source_type_literal": "Fixed string literal.",
   "word.aotake_sweep.enum_source_type_nbt_path": "Value from entity NBT path.",
-  "word.aotake_sweep.enum_source_type_predefined": "Built-in variable source."
+  "word.aotake_sweep.enum_source_type_predefined": "Built-in variable source.",
+  "format.aotake_sweep.minimap_cleanup_countdown": "Cleanup: %s",
+  "word.aotake_sweep.minimap_cleanup_countdown": "Cleanup countdown"
 }
