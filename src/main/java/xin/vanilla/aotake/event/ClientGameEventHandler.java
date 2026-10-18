@@ -25,14 +25,20 @@ public final class ClientGameEventHandler {
 
     private static long lastTime = 0;
     private static boolean showProgress = false;
+    private static final xin.vanilla.aotake.client.ui.SweepProgressUiBinding.KeyState PROGRESS_STATE =
+            new xin.vanilla.aotake.client.ui.SweepProgressUiBinding.KeyState();
 
     private ClientGameEventHandler() {
     }
 
     public static void register() {
         xin.vanilla.aotake.client.minimap.AotakeMinimapCountdown.register();
+        BaniraClientEvents.ModLifecycle.onClientSetup(event -> ProgressRender.register());
         BaniraClientEvents.Player.onClientLoggedIn(player -> xin.vanilla.aotake.client.minimap.AotakeMinimapCountdown.beginConnection());
         BaniraClientEvents.Player.onClientLoggedOut(player -> xin.vanilla.aotake.client.minimap.AotakeMinimapCountdown.reset());
+        BaniraClientEvents.Player.onClientLoggedOut(player -> {
+            PROGRESS_STATE.reset(); showProgress = false; ProgressRender.reset();
+        });
         BaniraClientEvents.Player.onClientLoggedOut(player -> LOGGER.debug("Client: Player logged out."));
         MinecraftForge.EVENT_BUS.addListener((TickEvent.ClientTickEvent event) -> ClientGameEventHandler.onClientTick(event));
         MinecraftForge.EVENT_BUS.addListener((ScreenEvent event) -> DustbinRender.handleGuiScreen(event));
@@ -46,18 +52,12 @@ public final class ClientGameEventHandler {
         }
         AotakeUiSmokeRunner.tick(Minecraft.getInstance());
         AotakeNetworkSmokeClientRunner.tick(Minecraft.getInstance());
+        showProgress = PROGRESS_STATE.tick(ClientModEventHandler.PROGRESS_KEY.isDown(), Minecraft.getInstance().screen != null,
+                ClientConfig.get().progressBar().progressBarKeyApplyMode());
         if (Minecraft.getInstance().screen == null) {
             if (ClientModEventHandler.DUSTBIN_KEY.isDown() && System.currentTimeMillis() - lastTime > 100) {
                 lastTime = System.currentTimeMillis();
                 PacketUtils.sendPacketToServer(new OpenDustbinToServer(0));
-            }
-            if (ClientConfig.get().progressBar().progressBarKeyApplyMode()) {
-                if (ClientModEventHandler.PROGRESS_KEY.isDown() && System.currentTimeMillis() - lastTime > 100) {
-                    lastTime = System.currentTimeMillis();
-                    showProgress = !showProgress;
-                }
-            } else {
-                showProgress = ClientModEventHandler.PROGRESS_KEY.isDown();
             }
         }
     }
