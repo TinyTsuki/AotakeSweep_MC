@@ -535,6 +535,7 @@ public class EventHandlerProxy {
      */
     public static void onPlayerLoggedOut(ServerPlayer player) {
         if (player == null) return;
+        ChunkVaultSession.onPlayerDisconnected(player);
         PlayerUtils.removeRemoteClientDataStatus(player);
         ghostStates.remove(player.getStringUUID());
     }
