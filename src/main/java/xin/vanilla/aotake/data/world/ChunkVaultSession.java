@@ -119,6 +119,15 @@ public final class ChunkVaultSession {
         persist(player, holder);
     }
 
+    public static void onPlayerDisconnected(ServerPlayerEntity player) {
+        if (player == null) return;
+        String uuid = PlayerUtils.getPlayerUUIDString(player);
+        Holder holder = OPEN.remove(uuid);
+        AotakeSweep.getPlayerChunkVaultId().remove(uuid);
+        AotakeSweep.getPlayerChunkVaultPage().remove(uuid);
+        if (holder != null) persist(player, holder);
+    }
+
     public static void checkAccess(ServerPlayerEntity player) {
         String uuid = PlayerUtils.getPlayerUUIDString(player);
         Holder holder = OPEN.get(uuid);
