@@ -34,6 +34,7 @@ import xin.vanilla.aotake.data.ChunkKey;
 import xin.vanilla.aotake.data.ConcurrentShuffleList;
 import xin.vanilla.aotake.data.player.PlayerSweepData;
 import xin.vanilla.aotake.data.world.ChunkVaultGrants;
+import xin.vanilla.aotake.data.world.ChunkVaultSession;
 import xin.vanilla.aotake.data.world.ChunkVaultStorage;
 import xin.vanilla.aotake.data.world.WorldTrashData;
 import xin.vanilla.aotake.enums.EnumChunkCheckMode;
@@ -109,6 +110,7 @@ public class EventHandlerProxy {
 
     public static void onServerTick(MinecraftServer server) {
         if (server == null || !server.isRunning()) return;
+        ChunkVaultSession.checkAccess(server);
         AotakeSweepRuntime.tick();
         if (AotakeSweep.isDisable()) return;
         ChunkVaultGrants.bootstrapWhenServerReady(server);
