@@ -607,6 +607,7 @@ public class EventHandlerProxy {
     public static void onPlayerLoggedOut(PlayerEvent.PlayerLoggedOutEvent event) {
         // 玩家退出服务器时移除mod安装状态
         if (event.getPlayer() instanceof ServerPlayer) {
+            ChunkVaultSession.onPlayerDisconnected((ServerPlayer) event.getPlayer());
             PlayerUtils.removeRemoteClientDataStatus((ServerPlayer) event.getPlayer());
             ghostStates.remove(event.getEntity().getStringUUID());
         } else {
