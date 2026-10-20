@@ -112,10 +112,10 @@ public class EventHandlerProxy {
         if (event.phase != TickEvent.Phase.END) return;
         MinecraftServer server = BaniraServer.currentAs(MinecraftServer.class);
         if (server == null || !server.isRunning()) return;
+        ChunkVaultSession.checkAccess(server);
         AotakeSweepRuntime.tick();
         if (AotakeSweep.isDisable()) return;
         ChunkVaultGrants.bootstrapWhenServerReady(server);
-        ChunkVaultSession.checkAccess(server);
 
         long now = System.currentTimeMillis();
         long countdown = nextSweepTime - now;

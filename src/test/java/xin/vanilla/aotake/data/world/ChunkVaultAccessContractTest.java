@@ -67,4 +67,18 @@ public class ChunkVaultAccessContractTest {
     @Test public void revocationsKeepTheirExistingPersistence() throws Exception {
         assertTrue(calls(method("data/world/ChunkVaultGrants", "revoke"), "data/world/ChunkVaultGrants", "save"));
     }
+
+    @Test public void disabledCleanupCannotSkipLiveAuthorityChecks() throws Exception {
+        boolean checked = false, disabledGate = false;
+        for (AbstractInsnNode instruction : method("event/EventHandlerProxy", "onServerTick").instructions) {
+            if (!(instruction instanceof MethodInsnNode)) continue;
+            MethodInsnNode call = (MethodInsnNode) instruction;
+            if (call.owner.equals(ROOT + "data/world/ChunkVaultSession") && call.name.equals("checkAccess")) checked = true;
+            if (call.owner.equals(ROOT + "AotakeSweep") && call.name.equals("isDisable")) {
+                disabledGate = true;
+                assertTrue("Disabled cleanup must not skip live vault authority", checked);
+            }
+        }
+        assertTrue(disabledGate && checked);
+    }
 }
