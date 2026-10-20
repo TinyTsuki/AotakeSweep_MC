@@ -98,7 +98,9 @@ public final class AotakeUiPages {
 
     public static boolean owns(Screen candidate) { return candidate == screen && owned; }
     public static boolean click(Screen candidate, double x, double y, int button) {
-        return owns(candidate) && session != null && session.click(x, y, button);
+        if (candidate != screen || session == null) return false;
+        return owns(candidate) ? session.click(x, y, button)
+                : session.captureNativePress(x, y, button, DustbinRender.nativeToolbarRegions(candidate));
     }
     public static boolean release(Screen candidate, int button) {
         return candidate == screen && session != null && session.release(button);

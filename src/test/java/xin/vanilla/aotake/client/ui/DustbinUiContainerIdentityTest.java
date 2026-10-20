@@ -108,4 +108,56 @@ public class DustbinUiContainerIdentityTest {
         assertArrayEquals(slots, menu.slots.toArray());
         assertEquals(19, menu.containerId);
     }
+
+    private boolean nativePress(DustbinUiSession session, double x, double y, int button,
+                                Collection<ScreenCoordinate> regions) throws Exception {
+        java.lang.reflect.Method method;
+        try { method = DustbinUiSession.class.getMethod("captureNativePress", double.class, double.class,
+                int.class, Collection.class); }
+        catch (NoSuchMethodException missing) { throw new AssertionError("Native toolbar must capture carried-stack gestures", missing); }
+        return (Boolean) method.invoke(session, x, y, button, regions);
+    }
+
+    @Test public void nativeToolbarCapturesCarriedPressAndReleaseWithoutAuiView() throws Exception {
+        ChestMenu menu = menu(); ItemStack carried = new ItemStack(Items.DIAMOND, 3); menu.setCarried(carried);
+        DustbinUiSession session = new DustbinUiSession(menu, false, () -> true, action -> fail("Carried native action"));
+        var bounds = List.of(new ScreenCoordinate(7, 20, 20, 20));
+        for (int button : new int[]{0, 1, 2}) {
+            assertTrue(nativePress(session, 8, 21, button, bounds));
+            session.detach(UiDetachReason.SWITCH);
+            assertTrue(session.release(button)); assertFalse(session.release(button));
+            assertSame(carried, menu.getCarried());
+        }
+    }
+
+    @Test public void nativeCaptureLeavesInventoryEmptyHandAndExpiredOwnersUntouched() throws Exception {
+        ChestMenu menu = menu(); AtomicBoolean owner = new AtomicBoolean(true);
+        DustbinUiSession session = new DustbinUiSession(menu, false, owner::get, action -> fail());
+        var bounds = List.of(new ScreenCoordinate(7, 20, 20, 20));
+        assertFalse(nativePress(session, 8, 21, 0, bounds));
+        menu.setCarried(new ItemStack(Items.APPLE, 7));
+        assertFalse(nativePress(session, 50, 21, 0, bounds));
+        assertFalse(nativePress(session, 27, 21, 0, bounds));
+        assertFalse(nativePress(session, Double.NaN, 21, 0, bounds));
+        assertFalse(nativePress(session, 8, 21, 3, bounds));
+        assertFalse(nativePress(session, 8, 21, 0, List.of(new ScreenCoordinate(7, 20, Double.NaN, 20))));
+        owner.set(false); assertFalse(nativePress(session, 8, 21, 0, bounds));
+        owner.set(true); session.close(UiCloseReason.USER_CLOSE);
+        assertFalse(nativePress(session, 8, 21, 0, bounds)); assertFalse(session.release(0));
+    }
+
+    @Test public void realScreenInputRoutesNativeCarriedGesturesBeforeVanillaHandling() throws Exception {
+        org.objectweb.asm.tree.ClassNode node = new org.objectweb.asm.tree.ClassNode();
+        try (var input = getClass().getClassLoader().getResourceAsStream("xin/vanilla/aotake/client/ui/AotakeUiPages.class")) {
+            assertNotNull(input); new org.objectweb.asm.ClassReader(input).accept(node, 0);
+        }
+        int nativeCapture = 0, actualBounds = 0;
+        for (var method : node.methods) if (method.name.equals("click")) for (var instruction : method.instructions) {
+            if (instruction instanceof org.objectweb.asm.tree.MethodInsnNode call) {
+                if (call.name.equals("captureNativePress")) nativeCapture++;
+                if (call.name.equals("nativeToolbarRegions")) actualBounds++;
+            }
+        }
+        assertEquals(1, nativeCapture); assertEquals(1, actualBounds);
+    }
 }

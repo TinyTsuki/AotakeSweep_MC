@@ -112,6 +112,23 @@ public final class DustbinUiSession implements UiPageSession {
         return true;
     }
 
+    public boolean captureNativePress(double x, double y, int button, Collection<ScreenCoordinate> regions) {
+        if (button < 0 || button > 2 || !matches(menu) || menu.getCarried().isEmpty()
+                || !Double.isFinite(x) || !Double.isFinite(y) || regions == null || regions.size() > 6) return false;
+        for (ScreenCoordinate bounds : regions) {
+            if (bounds == null || !Double.isFinite(bounds.x()) || !Double.isFinite(bounds.y())
+                    || !Double.isFinite(bounds.width()) || !Double.isFinite(bounds.height())
+                    || Math.abs(bounds.x()) > 16384 || Math.abs(bounds.y()) > 16384
+                    || bounds.width() <= 0 || bounds.height() <= 0 || bounds.width() > 16384 || bounds.height() > 16384) continue;
+            if (x >= bounds.x() && x < bounds.x() + bounds.width()
+                    && y >= bounds.y() && y < bounds.y() + bounds.height()) {
+                capturedButtons |= 1 << button;
+                return true;
+            }
+        }
+        return false;
+    }
+
     public boolean release(int button) {
         if (button < 0 || button > 2 || (capturedButtons & (1 << button)) == 0) return false;
         capturedButtons &= ~(1 << button);

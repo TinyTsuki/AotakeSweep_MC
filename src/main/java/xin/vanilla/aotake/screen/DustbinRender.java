@@ -28,6 +28,7 @@ import xin.vanilla.aotake.util.AotakeUtils;
 import xin.vanilla.aotake.util.DustbinPageNavigation;
 import xin.vanilla.banira.client.data.BaniraColorConfig;
 import xin.vanilla.banira.client.data.FontDrawArgs;
+import xin.vanilla.banira.client.data.ScreenCoordinate;
 import xin.vanilla.banira.client.gui.component.Text;
 import xin.vanilla.banira.client.gui.widget.ButtonWidget;
 import xin.vanilla.banira.client.gui.widget.TooltipWidget;
@@ -43,6 +44,8 @@ import xin.vanilla.banira.common.util.StringUtils;
 
 import javax.annotation.Nullable;
 import java.util.function.Consumer;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * 垃圾箱 {@link ContainerScreen} 的侧栏控件绘制与快捷键处理
@@ -583,6 +586,35 @@ public final class DustbinRender {
                 }
             }
         }
+    }
+
+    public static List<ScreenCoordinate> nativeToolbarRegions(Screen screen) {
+        if (!isOurSpecialChestScreen(screen, Minecraft.getInstance())) return List.of();
+        List<ScreenCoordinate> regions = new ArrayList<>();
+        EnumDustbinClientUiStyle style = ClientConfig.get().dustbin().dustbinUiStyle();
+        if (style == EnumDustbinClientUiStyle.VANILLA) {
+            for (Button button : nativeToolbar) if (button.visible)
+                regions.add(new ScreenCoordinate(button.getX(), button.getY(), button.getWidth(), button.getHeight()));
+            return regions;
+        }
+        ContainerScreenAccessor accessor = (ContainerScreenAccessor) screen;
+        int x = DustbinGuiLayoutCache.valid
+                ? DustbinGuiLayoutCache.leftPos + DustbinGuiConfig.getButtonXOffset() : accessor.aotake$getLeftPos();
+        int y = DustbinGuiLayoutCache.valid
+                ? DustbinGuiLayoutCache.topPos + DustbinGuiConfig.getButtonYOffset() : accessor.aotake$getTopPos();
+        boolean themed = style == EnumDustbinClientUiStyle.BANIRA_THEME;
+        if (themed) { x -= BANIRA_TOOLBAR_CONTAINER_GAP; y += BANIRA_TOOLBAR_RAIL_PADDING; }
+        boolean chunk = isChunkVaultTitle(screen.getTitle().getString());
+        LocalPlayer player = Minecraft.getInstance().player;
+        int clearButtons = (!chunk && AotakeUtils.hasCommandPermission(player, EnumCommandType.CACHE_CLEAR) ? 1 : 0)
+                + (!chunk && AotakeUtils.hasCommandPermission(player, EnumCommandType.DUSTBIN_CLEAR) ? 2 : 0);
+        for (int i = 0; i < clearButtons; i++) { regions.add(new ScreenCoordinate(x - 17, y, 16, 16)); y += 17; }
+        if (themed && clearButtons > 0) y += BANIRA_TOOLBAR_GROUP_GAP;
+        regions.add(new ScreenCoordinate(x - 17, y, 16, 16)); y += 17;
+        if (themed) y += BANIRA_TOOLBAR_GROUP_GAP;
+        regions.add(new ScreenCoordinate(x - 17, y, 16, 16)); y += 17;
+        regions.add(new ScreenCoordinate(x - 17, y, 16, 16));
+        return regions;
     }
 
     private static boolean isRectHit(double mouseX, double mouseY, int x, int y, int width, int height) {
