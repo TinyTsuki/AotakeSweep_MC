@@ -77,8 +77,7 @@ public final class ChunkVaultCommand {
     }
 
     private static boolean canOpen(ServerPlayer player, String vaultId) {
-        return AotakeUtils.hasCommandPermission(player, EnumCommandType.CHUNK_VAULT)
-                || ChunkVaultGrants.isGranted(player, vaultId);
+        return ChunkVaultGrants.canOpen(player, vaultId);
     }
 
     private static int list(CommandContext<CommandSourceStack> context, int page) throws CommandSyntaxException {

@@ -42,7 +42,7 @@ public final class ChunkVaultSession {
 
     public static void open(ServerPlayer player, String vaultId, int page1Based) {
         MinecraftServer server = player.getServer();
-        if (server == null) return;
+        if (server == null || !ChunkVaultGrants.canOpen(player, vaultId)) return;
         if (!ChunkVaultStorage.vaultExists(vaultId)) {
             return;
         }
@@ -75,6 +75,10 @@ public final class ChunkVaultSession {
                 if (next < 1) return;
                 open(player, vaultId, next);
             }
+            return;
+        }
+        if (!ChunkVaultGrants.canOpen(player, holder.vaultId)) {
+            checkAccess(player);
             return;
         }
         if (offset == 0) {
@@ -110,6 +114,26 @@ public final class ChunkVaultSession {
         OPEN.remove(uuid);
         AotakeSweep.getPlayerChunkVaultId().remove(uuid);
         AotakeSweep.getPlayerChunkVaultPage().remove(uuid);
+        persist(player, holder);
+    }
+
+    public static void checkAccess(ServerPlayer player) {
+        String uuid = PlayerUtils.getPlayerUUIDString(player);
+        Holder holder = OPEN.get(uuid);
+        if (holder == null || ChunkVaultGrants.canOpen(player, holder.vaultId)) return;
+        if (!OPEN.remove(uuid, holder)) return;
+        AotakeSweep.getPlayerChunkVaultId().remove(uuid);
+        AotakeSweep.getPlayerChunkVaultPage().remove(uuid);
+        persist(player, holder);
+        if (player.containerMenu == holder.menu) player.closeContainer();
+    }
+
+    public static void checkAccess(MinecraftServer server) {
+        if (OPEN.isEmpty()) return;
+        for (ServerPlayer player : server.getPlayerList().getPlayers()) checkAccess(player);
+    }
+
+    private static void persist(ServerPlayer player, Holder holder) {
         MinecraftServer server = player.getServer();
         if (server == null) return;
         try {
@@ -124,6 +148,10 @@ public final class ChunkVaultSession {
         if (!player.isAlive()) return;
         Holder holder = OPEN.get(uuid);
         if (holder == null) return;
+        if (!ChunkVaultGrants.canOpen(player, holder.vaultId)) {
+            checkAccess(player);
+            return;
+        }
         int total = Math.max(1, holder.pages.size());
         int page = Math.min(Math.max(holder.currentPage, 1), total);
         holder.currentPage = page;
@@ -196,6 +224,7 @@ public final class ChunkVaultSession {
         List<SimpleContainer> pages;
         int currentPage;
         boolean skipPersistOnNextClose;
+        ChestMenu menu;
 
         Holder(String vaultId, List<SimpleContainer> pages, int currentPage1Based) {
             this.vaultId = vaultId;
@@ -221,7 +250,8 @@ public final class ChunkVaultSession {
                 @Nullable
                 @Override
                 public AbstractContainerMenu createMenu(int id, @Nonnull Inventory playerInventory, @Nonnull Player p) {
-                    return ChestMenu.sixRows(id, playerInventory, inv);
+                    menu = ChestMenu.sixRows(id, playerInventory, inv);
+                    return menu;
                 }
             };
         }
