@@ -8,6 +8,8 @@ import net.minecraft.server.MinecraftServer;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import xin.vanilla.aotake.AotakeSweep;
+import xin.vanilla.aotake.enums.EnumCommandType;
+import xin.vanilla.aotake.util.AotakeUtils;
 import xin.vanilla.banira.api.BaniraDataPaths;
 import xin.vanilla.banira.api.BaniraServer;
 import xin.vanilla.banira.common.util.JsonUtils;
@@ -78,6 +80,11 @@ public final class ChunkVaultGrants {
         return set.contains(PlayerUtils.getPlayerUUIDString(player));
     }
 
+    public static boolean canOpen(ServerPlayerEntity player, String vaultId) {
+        return AotakeUtils.hasCommandPermission(player, EnumCommandType.CHUNK_VAULT)
+                || isGranted(player, vaultId);
+    }
+
     public static void grant(MinecraftServer server, String vaultId, ServerPlayerEntity target) {
         bootstrapWhenServerReady(server);
         String uuid = PlayerUtils.getPlayerUUIDString(target);
@@ -93,6 +100,7 @@ public final class ChunkVaultGrants {
             set.remove(uuid);
         }
         save(server);
+        ChunkVaultSession.checkAccess(target);
     }
 
     public static void load(MinecraftServer server) {
