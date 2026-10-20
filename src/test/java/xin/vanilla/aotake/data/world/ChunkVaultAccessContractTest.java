@@ -81,4 +81,19 @@ public class ChunkVaultAccessContractTest {
         }
         assertTrue(disabledGate && checked);
     }
+
+    @Test public void logoutPersistsAndClearsOnlyThePlayerSession() throws Exception {
+        assertTrue("Logout must finalize the player's vault session", calls(method("event/EventHandlerProxy", "onPlayerLoggedOut"),
+                "data/world/ChunkVaultSession", "onPlayerDisconnected"));
+        MethodNode cleanup = method("data/world/ChunkVaultSession", "onPlayerDisconnected");
+        assertTrue(calls(cleanup, "data/world/ChunkVaultSession", "persist"));
+        assertTrue(calls(cleanup, "AotakeSweep", "getPlayerChunkVaultId"));
+        assertTrue(calls(cleanup, "AotakeSweep", "getPlayerChunkVaultPage"));
+        for (AbstractInsnNode instruction : cleanup.instructions) {
+            if (!(instruction instanceof MethodInsnNode)) continue;
+            MethodInsnNode call = (MethodInsnNode) instruction;
+            assertFalse("Logout must preserve grants", call.owner.equals(ROOT + "data/world/ChunkVaultGrants"));
+            assertFalse("Logout must not send container-close packets", call.name.equals("closeContainer"));
+        }
+    }
 }
