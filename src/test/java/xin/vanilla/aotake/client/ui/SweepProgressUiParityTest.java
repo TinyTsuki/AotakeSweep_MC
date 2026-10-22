@@ -80,5 +80,6 @@ public class SweepProgressUiParityTest {
         assertTrue(template.contains("aui-mouse-events\" content=\"none"));
         assertTrue(template.contains("pointer-events:none")); assertFalse(template.contains("<script")); assertTrue(template.length() < 1024);
         assertTrue(new SweepProgressUiBinding().spec().manual());
+        assertTrue(new SweepProgressUiBinding().spec().shared());
     }
 }
