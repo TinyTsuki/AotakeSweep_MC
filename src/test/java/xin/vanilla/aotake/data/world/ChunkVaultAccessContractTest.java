@@ -16,7 +16,8 @@ public class ChunkVaultAccessContractTest {
             assertNotNull(input);
             new ClassReader(input).accept(node, 0);
         }
-        return node.methods.stream().filter(m -> m.name.equals(name)).findFirst().orElseThrow();
+        return node.methods.stream().filter(m -> m.name.equals(name)).findFirst()
+                .orElseThrow(() -> new AssertionError("Missing method: " + name));
     }
 
     private boolean calls(MethodNode method, String owner, String name) {
