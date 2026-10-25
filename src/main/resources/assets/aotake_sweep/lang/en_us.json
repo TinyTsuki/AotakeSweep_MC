@@ -48,6 +48,7 @@
   "word.aotake_sweep.dustbin_clear_detail": "Clear Dustbin.\nParameters:\n [<page>]",
   "word.aotake_sweep.dustbin_drop": "Drop Dustbin Items",
   "word.aotake_sweep.dustbin_drop_detail": "Drop Dustbin Items.\nParameters:\n [<page>]",
+  "word.aotake_sweep.dustbin": "Dustbin",
   "word.aotake_sweep.dustbin_open": "Open Dustbin",
   "word.aotake_sweep.dustbin_open_detail": "Open Dustbin.\nParameters:\n [<page>] [<players>]",
   "word.aotake_sweep.dustbin_page_empty": "§cThe dustbin feature is not enabled on the server.",

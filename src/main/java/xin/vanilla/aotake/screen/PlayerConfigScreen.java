@@ -42,7 +42,6 @@ public class PlayerConfigScreen extends xin.vanilla.banira.client.gui.PlayerConf
     private static final double VALUE_AREA_MIN_WIDTH = 56;
 
     private final AotakePlayerUiSession preferences;
-    private UiPageSpec page;
 
     public PlayerConfigScreen(@Nullable Screen parent, boolean showSweepResult, boolean enableWarningVoice) {
         this(new Args().parentScreen(parent).showSweepResult(showSweepResult)
@@ -62,9 +61,7 @@ public class PlayerConfigScreen extends xin.vanilla.banira.client.gui.PlayerConf
     @Override protected PlayerConfigUiSession playerUiSession() { return preferences.shared(); }
 
     @Override public UiPageSpec uiPage() {
-        if (page == null) page = new UiPageSpec(uiSurfaceId(), "aotake_sweep/player.html", preferences.shared(),
-                previous -> this, this::getEffectiveTheme);
-        return page;
+        return preferences.shared().spec(this, uiSurfaceId());
     }
 
     @Data

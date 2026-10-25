@@ -38,7 +38,7 @@ public final class AotakeUiPages {
         screen = chest;
         session = new DustbinUiSession(chest.getMenu(), chunk,
                 () -> mc.screen == chest && mc.player != null && mc.player.containerMenu == chest.getMenu(),
-                action -> DustbinRender.performUiAction(chunk, action));
+                action -> DustbinRender.performUiAction(chunk, action), chest::onClose);
     }
 
     public static boolean renderBackground(ContainerScreen chest, GuiGraphics graphics) {
@@ -62,13 +62,12 @@ public final class AotakeUiPages {
                         () -> mc.screen == chest && mc.player != null && mc.player.containerMenu == chest.getMenu());
                 if (layer != null) {
                     session.bind(layer.view());
-                    layer.view().text("title", AotakeComponent.get().literal(chest.getTitle().getString()));
+                    layer.view().text("title", AotakeComponent.get().transClientAuto(chunk ? "chunk_vault" : "dustbin"));
                     layer.view().text("inventory_label", AotakeComponent.get().literal(net.minecraft.network.chat.Component.translatable("container.inventory").getString()));
-                    String[] symbols = {"x", "x", "-", "\u21bb", "\u25b2", "\u25bc"};
                     String[] keys = {"clear_cache", "clear_all_dustbin", "clear_cur_dustbin", "refresh_page", "previous_page", "next_page"};
                     int i = 0;
                     for (DustbinUiSession.Action action : DustbinUiSession.Action.values()) {
-                        session.label(action, AotakeComponent.get().literal(symbols[i]), AotakeComponent.get().transClientAuto(keys[i]));
+                        session.label(action, AotakeComponent.get().empty(), AotakeComponent.get().transClientAuto(keys[i]));
                         i++;
                     }
                 }
@@ -122,6 +121,9 @@ public final class AotakeUiPages {
         if (action != null) {
             graphics.renderTooltip(Minecraft.getInstance().font,
                     AotakeComponent.get().transClientAuto(tooltipKey(action)).toVanilla(), mouseX, mouseY);
+        } else if (session.hitClose(mouseX, mouseY)) {
+            graphics.renderTooltip(Minecraft.getInstance().font,
+                    xin.vanilla.banira.BaniraComponent.get().transClientAuto("config_editor_close").toVanilla(), mouseX, mouseY);
         } else if (layer != null) {
             ScreenCoordinate title = layer.view().bounds("title");
             if (title != null && mouseX >= title.x() && mouseX < title.x() + title.width()

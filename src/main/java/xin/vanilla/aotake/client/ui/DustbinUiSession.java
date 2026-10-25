@@ -19,9 +19,12 @@ public final class DustbinUiSession implements UiPageSession {
     private final boolean chunkVault;
     private final BooleanSupplier current;
     private final Consumer<Action> actions;
+    private final Runnable closeScreen;
     private final List<AutoCloseable> bindings = new ArrayList<>();
     private UiView view;
     private boolean closed, clearCache, clearDustbin;
+    private boolean closeRequested;
+    private int iconStates = -1;
     private int page = -1, pages = -1;
     private int capturedButtons;
     private Layout layout;
@@ -30,10 +33,16 @@ public final class DustbinUiSession implements UiPageSession {
 
     public DustbinUiSession(AbstractContainerMenu menu, boolean chunkVault,
                             BooleanSupplier current, Consumer<Action> actions) {
+        this(menu, chunkVault, current, actions, () -> { });
+    }
+
+    public DustbinUiSession(AbstractContainerMenu menu, boolean chunkVault,
+                            BooleanSupplier current, Consumer<Action> actions, Runnable closeScreen) {
         this.menu = Objects.requireNonNull(menu);
         this.chunkVault = chunkVault;
         this.current = Objects.requireNonNull(current);
         this.actions = Objects.requireNonNull(actions);
+        this.closeScreen = Objects.requireNonNull(closeScreen);
         slots = new ArrayList<>(menu.slots);
         coordinates = new int[slots.size() * 2];
         for (int i = 0; i < slots.size(); i++) {
@@ -56,11 +65,25 @@ public final class DustbinUiSession implements UiPageSession {
         this.pages = pages;
         this.clearCache = !chunkVault && clearCache;
         this.clearDustbin = !chunkVault && clearDustbin;
-        if (view != null) for (Action action : Action.values()) view.enabled(id(action), allowed(action));
+        if (view != null) {
+            view.text("page_label", xin.vanilla.aotake.AotakeComponent.get().literal(
+                    (page > 0 ? String.valueOf(page) : "-") + "/" + (pages > 0 ? String.valueOf(pages) : "-")));
+            int nextIcons = 0;
+            for (Action action : Action.values()) {
+                boolean enabled = allowed(action);
+                view.enabled(id(action), enabled);
+                if (enabled) nextIcons |= 1 << action.ordinal();
+            }
+            if (nextIcons != iconStates) {
+                iconStates = nextIcons;
+                for (Action action : Action.values()) view.gameElement(id(action) + "_icon",
+                        icon(id(action) + ((nextIcons & 1 << action.ordinal()) == 0 ? "_disabled" : "")));
+            }
+        }
     }
 
     public boolean allowed(Action action) {
-        if (!matches(menu) || !menu.getCarried().isEmpty()) return false;
+        if (closeRequested || !matches(menu) || !menu.getCarried().isEmpty()) return false;
         switch (action) {
             case CLEAR_CACHE: return clearCache;
             case CLEAR_ALL: case CLEAR_PAGE: return clearDustbin;
@@ -79,12 +102,16 @@ public final class DustbinUiSession implements UiPageSession {
     public static String id(Action action) { return action.name().toLowerCase(Locale.ROOT); }
 
     public Map<String, ScreenCoordinate> regions(int left, int top, int width, int height) {
-        if (!matches(menu) || width < 1 || height < 1) return Collections.emptyMap();
+        if (!matches(menu) || slots.size() != 90 || width < 96 || height < 1) return Collections.emptyMap();
         Layout next = new Layout(left, top, width, height, clearCache, clearDustbin);
         if (next.equals(layout)) return cachedRegions;
         Map<String, ScreenCoordinate> result = new LinkedHashMap<>();
         result.put("panel", new ScreenCoordinate(left, top, width, height));
-        result.put("title", new ScreenCoordinate(left + 8, top + 5, width - 16, 11));
+        result.put("brand", new ScreenCoordinate(left + 7, top + 3, 11, 11));
+        result.put("title", new ScreenCoordinate(left + 22, top + 4, width - 76, 11));
+        result.put("page_label", new ScreenCoordinate(left + width - 51, top + 4, 30, 11));
+        result.put("close", new ScreenCoordinate(left + width - 18, top + 1, 15, 15));
+        result.put("close_icon", new ScreenCoordinate(left + width - 14, top + 5, 7, 7));
         result.put("inventory_label", new ScreenCoordinate(left + 8, top + height - 95, width - 16, 11));
         for (int i = 0; i < slots.size(); i++) {
             Slot slot = slots.get(i);
@@ -96,6 +123,7 @@ public final class DustbinUiSession implements UiPageSession {
             if (action == Action.CLEAR_CACHE && !clearCache
                     || (action == Action.CLEAR_ALL || action == Action.CLEAR_PAGE) && !clearDustbin) continue;
             result.put(id(action), new ScreenCoordinate(left - 24, y, 21, 20));
+            result.put(id(action) + "_icon", new ScreenCoordinate(left - 19.5, y + 4, 12, 12));
             y += 23;
         }
         layout = next;
@@ -105,6 +133,11 @@ public final class DustbinUiSession implements UiPageSession {
 
     public boolean click(double x, double y, int button) {
         if (button < 0 || button > 2) return false;
+        if (hitClose(x, y)) {
+            capturedButtons |= 1 << button;
+            if (button == 0) requestClose();
+            return true;
+        }
         Action action = hit(x, y);
         if (action == null) return false;
         capturedButtons |= 1 << button;
@@ -148,14 +181,40 @@ public final class DustbinUiSession implements UiPageSession {
         return null;
     }
 
+    public boolean hitClose(double x, double y) {
+        if (view == null || !matches(menu) || !Double.isFinite(x) || !Double.isFinite(y)) return false;
+        ScreenCoordinate b = view.bounds("close");
+        return b != null && Double.isFinite(b.x()) && Double.isFinite(b.y()) && Double.isFinite(b.width())
+                && Double.isFinite(b.height()) && b.width() > 0 && b.height() > 0
+                && x >= b.x() && x < b.x() + b.width() && y >= b.y() && y < b.y() + b.height();
+    }
+
+    private void requestClose() {
+        if (closeRequested || !matches(menu)) return;
+        closeRequested = true;
+        closeScreen.run();
+    }
+
+    private static UiGameElement icon(String name) {
+        return UiGameElement.sprite(xin.vanilla.banira.client.data.Texture.of(new net.minecraft.resources.ResourceLocation(
+                "apricityui", "apricity/aotake_sweep/icons/" + name + ".png"), 32, 32));
+    }
+
     @Override public void bind(UiView next) {
         detach(UiDetachReason.RELOAD);
         if (closed) return;
         view = next;
+        iconStates = -1;
+        next.gameElement("brand", UiGameElement.sprite(xin.vanilla.banira.client.data.Texture.of(
+                new net.minecraft.resources.ResourceLocation("aotake_sweep", "gui/quick_icon.png"), 200, 200)));
+        next.gameElement("close_icon", UiGameElement.sprite(xin.vanilla.banira.client.data.Texture.of(
+                new net.minecraft.resources.ResourceLocation("apricityui", "apricity/banira_codex/icons/close.png"), 16, 16)));
+        bindings.add(next.onAction("close", () -> { if (view == next) requestClose(); }));
         for (Action action : Action.values()) {
             bindings.add(next.onAction(id(action), () -> { if (view == next) perform(action); }));
             next.enabled(id(action), allowed(action));
         }
+        state(page, pages, clearCache, clearDustbin);
     }
     public void label(Action action, Component label, Component tooltip) {
         if (view != null) { view.text(id(action), label); view.tooltip(id(action), tooltip); }

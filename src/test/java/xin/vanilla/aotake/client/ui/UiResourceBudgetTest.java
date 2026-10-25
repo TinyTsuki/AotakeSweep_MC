@@ -7,7 +7,7 @@ public class UiResourceBudgetTest {
     @Test public void ownedResourcesStayWithinBudgetAndPlayerPageUsesSharedStyles() throws Exception {
         Map<String, byte[]> files = UiBoundaryChecks.ownResources("aotake_sweep");
         assertFalse(files.isEmpty()); assertEquals(List.of(), UiBoundaryChecks.resources(files, false));
-        assertTrue(new String(files.get("player.html"), StandardCharsets.UTF_8).contains("../banira_codex/shared.css"));
+        assertFalse("Player configuration reuses Banira's shared template", files.containsKey("player.html"));
     }
     @Test public void oversizedScriptsFontsBitmapsAndRemoteResourcesAreRejected() {
         for (var fixture : List.of(Map.of("page.html", "<script src='https://example.invalid/a.js'></script>".getBytes(StandardCharsets.UTF_8)),

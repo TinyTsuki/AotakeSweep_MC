@@ -48,6 +48,7 @@
   "word.aotake_sweep.dustbin_clear_detail": "清空垃圾箱\n参数列表：\n [<页数>]",
   "word.aotake_sweep.dustbin_drop": "以掉落物的形式清空垃圾箱",
   "word.aotake_sweep.dustbin_drop_detail": "以掉落物的形式清空垃圾箱\n参数列表：\n [<页数>]",
+  "word.aotake_sweep.dustbin": "垃圾箱",
   "word.aotake_sweep.dustbin_open": "打开垃圾箱",
   "word.aotake_sweep.dustbin_open_detail": "打开垃圾箱\n参数列表：\n [<页数>] [<玩家>]",
   "word.aotake_sweep.dustbin_page_empty": "§c服务器未启用垃圾箱",

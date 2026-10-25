@@ -46,6 +46,19 @@ public class AotakeUiRouteTest {
         assertEquals(2, attempts.get());
     }
 
+    @Test public void invalidBooleanDraftCannotBeSilentlySavedAsFalse() {
+        var owner = new net.minecraft.client.gui.screens.Screen(net.minecraft.network.chat.Component.empty()) { };
+        for (String field : new String[]{"showSweepResult", "enableWarningVoice"}) {
+            AtomicInteger saves = new AtomicInteger();
+            AotakePlayerUiSession session = new AotakePlayerUiSession(owner, true, true, (show, voice) -> saves.incrementAndGet());
+            session.shared().fields().draft(field, "invalid");
+            assertFalse("Malformed preference accepted: " + field, session.submit());
+            assertEquals(0, saves.get()); assertEquals("invalid", session.shared().fields().draft(field));
+            session.shared().fields().draft(field, "false");
+            assertTrue(session.submit()); assertEquals(1, saves.get()); assertFalse(session.submit());
+        }
+    }
+
     @Test public void containerAppearanceNeverConstructsMenusOrForwardsInventoryClicks() throws Exception {
         for (String name : new String[]{"AotakeUiPages", "DustbinUiSession"}) {
             ClassNode node = read("client/ui/" + name);
@@ -79,7 +92,7 @@ public class AotakeUiRouteTest {
         assertTrue(html.contains("aui-mouse-events\" content=\"none"));
         assertTrue(css.contains("pointer-events:none"));
         long bytes = 0;
-        for (String file : new String[]{"player.html", "dustbin.html", "aotake.css"}) {
+        for (String file : new String[]{"dustbin.html", "aotake.css"}) {
             String text = Files.readString(root.resolve(file), StandardCharsets.UTF_8);
             assertFalse(text.contains("<script")); assertFalse(text.contains("https:"));
             bytes += Files.size(root.resolve(file));
