@@ -16,7 +16,7 @@ public final class SweepProgressUiBinding implements UiHudBinding {
         this.contextVisible = java.util.Objects.requireNonNull(contextVisible);
     }
 
-    public UiHudSpec spec() { return new UiHudSpec(ID, "aotake_sweep/progress.html", this, true, true); }
+    public UiHudSpec spec() { return new UiHudSpec(ID, "aotake_sweep/progress.html", this, true, false); }
     public void prepare(UiHudFrame next) { frame = next; }
     public void clear() { frame = null; }
     @Override public boolean visible() { return contextVisible.getAsBoolean() && frame != null && !frame.parts().isEmpty(); }

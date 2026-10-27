@@ -70,7 +70,7 @@ public final class ProgressRender {
             int drawX = getPoleX();
             int drawY = getPoleY();
             ResourceLocation poleTex = TextureUtils.loadCustomTexture(Identifier.id(), "gui/pole.png");
-            parts.add(new UiHudFrame.Sprite("pole", poleTex, drawX, drawY, width, height, cpp.progressBarPoleAngle()));
+            parts.add(new UiHudFrame.Sprite("cleanup-pole", poleTex, drawX, drawY, width, height, cpp.progressBarPoleAngle()));
         }
         if (displayList.contains(EnumProgressBarType.TEXT)) {
             String line = time.formattedTime();
@@ -79,7 +79,7 @@ public final class ProgressRender {
             KeyValue<Integer, Integer> layout = LabelWidget.calculateLimitedTextSize(
                     FontDrawArgs.of(probe).x(0).y(0).inScreen(false).wrap(false).fontSize(lh));
             double[] anchor = progressTextAnchorScreen(cpt);
-            parts.add(new UiHudFrame.Text("countdown", line, anchor[0], anchor[1], layout.key(), layout.val(), lh,
+            parts.add(new UiHudFrame.Text("cleanup-time", line, anchor[0], anchor[1], layout.key(), layout.val(), lh,
                     scale, SweepProgressUiBinding.textAngleRadians(cpt.progressBarTextAngle()), alignPivotX(cpt.progressBarTextAlignH(), layout.key()),
                     alignPivotY(cpt.progressBarTextAlignV(), layout.val()), getTextColor().argb()));
         }
@@ -92,7 +92,7 @@ public final class ProgressRender {
             int drawX = (int) (startX + rangeWidth * time.progress());
             int drawY = getLeafY();
             ResourceLocation leafTex = TextureUtils.loadCustomTexture(Identifier.id(), "gui/leaf.png");
-            parts.add(new UiHudFrame.Sprite("leaf", leafTex, drawX, drawY, width, height, cpl.progressBarLeafAngle()));
+            parts.add(new UiHudFrame.Sprite("cleanup-leaf", leafTex, drawX, drawY, width, height, cpl.progressBarLeafAngle()));
         }
         UiHudFrame frame = new UiHudFrame(parts);
         BINDING.prepare(frame);

@@ -80,6 +80,29 @@ public class SweepProgressUiParityTest {
         assertTrue(template.contains("aui-mouse-events\" content=\"none"));
         assertTrue(template.contains("pointer-events:none")); assertFalse(template.contains("<script")); assertTrue(template.length() < 1024);
         assertTrue(new SweepProgressUiBinding().spec().manual());
-        assertTrue(new SweepProgressUiBinding().spec().shared());
+        assertFalse("The cleanup HUD must load its own overridable HTML template", new SweepProgressUiBinding().spec().shared());
+    }
+
+    @Test public void defaultHudStylesAreLightweightAndDoNotAddDecorativeChrome() throws Exception {
+        String css;
+        try (var in = getClass().getResourceAsStream("/assets/apricityui/apricity/aotake_sweep/progress.css")) {
+            assertNotNull("HTML styles must be resource-pack overridable", in);
+            css = new String(in.readAllBytes(), java.nio.charset.StandardCharsets.UTF_8);
+        }
+        assertTrue(css.length() < 2048);
+        assertTrue(css.contains("var(--hud-color)"));
+        assertTrue(css.contains("var(--hud-angle)"));
+        assertFalse(css.contains("box-shadow"));
+        assertFalse(css.contains("border-radius"));
+        assertFalse(css.contains("font-family"));
+        assertFalse(css.contains("!important"));
+        var node = new org.objectweb.asm.tree.ClassNode();
+        try (var in = getClass().getResourceAsStream("/xin/vanilla/aotake/screen/ProgressRender.class")) {
+            new org.objectweb.asm.ClassReader(in).accept(node, 0);
+        }
+        var ids = new HashSet<String>();
+        for (var m : node.methods) for (var insn : m.instructions)
+            if (insn instanceof org.objectweb.asm.tree.LdcInsnNode ldc && ldc.cst instanceof String value && value.startsWith("cleanup-")) ids.add(value);
+        assertEquals(Set.of("cleanup-leaf", "cleanup-pole", "cleanup-time"), ids);
     }
 }
