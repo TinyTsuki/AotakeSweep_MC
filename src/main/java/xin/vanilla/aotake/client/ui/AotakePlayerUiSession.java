@@ -5,8 +5,8 @@ import xin.vanilla.aotake.AotakeComponent;
 import xin.vanilla.banira.client.gui.InputFormScreen;
 import xin.vanilla.banira.client.gui.component.Text;
 import xin.vanilla.banira.client.gui.widget.DropdownOption;
-import xin.vanilla.banira.internal.client.ui.page.PlayerConfigUiSession;
 import xin.vanilla.banira.internal.client.ui.page.PlayerConfigUiPresentation;
+import xin.vanilla.banira.internal.client.ui.page.PlayerConfigUiSession;
 
 import java.util.Arrays;
 import java.util.function.BiConsumer;
@@ -41,10 +41,27 @@ public final class AotakePlayerUiSession {
                 .defaultValue(Boolean.toString(value));
     }
 
-    public PlayerConfigUiSession shared() { return shared; }
-    public boolean showResult() { return Boolean.parseBoolean(shared.fields().draft("showSweepResult")); }
-    public boolean warningVoice() { return Boolean.parseBoolean(shared.fields().draft("enableWarningVoice")); }
-    public void showResult(boolean value) { shared.fields().draft("showSweepResult", Boolean.toString(value)); }
-    public void warningVoice(boolean value) { shared.fields().draft("enableWarningVoice", Boolean.toString(value)); }
-    public boolean submit() { return shared.fields().submit(); }
+    public PlayerConfigUiSession shared() {
+        return shared;
+    }
+
+    public boolean showResult() {
+        return Boolean.parseBoolean(shared.fields().draft("showSweepResult"));
+    }
+
+    public boolean warningVoice() {
+        return Boolean.parseBoolean(shared.fields().draft("enableWarningVoice"));
+    }
+
+    public void showResult(boolean value) {
+        shared.fields().draft("showSweepResult", Boolean.toString(value));
+    }
+
+    public void warningVoice(boolean value) {
+        shared.fields().draft("enableWarningVoice", Boolean.toString(value));
+    }
+
+    public boolean submit() {
+        return shared.fields().submit();
+    }
 }

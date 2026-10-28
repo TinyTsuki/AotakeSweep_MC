@@ -8,7 +8,9 @@ import java.util.function.Supplier;
 
 import static org.junit.Assert.*;
 
-/** Checks the actual dev runtime API without starting Spark or Minecraft. */
+/**
+ * Checks the actual dev runtime API without starting Spark or Minecraft.
+ */
 public class AotakeNetworkSmokeSparkApiTest {
     @Test
     public void specificDumperAcceptsTheActualRenderThreadNotLegacyThreadIds() throws Exception {
@@ -36,7 +38,10 @@ public class AotakeNetworkSmokeSparkApiTest {
         Class<?> propsType = Class.forName("me.lucko.spark.common.sampler.Sampler$ExportProps");
         Object props = propsType.getConstructor().newInstance();
         AtomicInteger calls = new AtomicInteger();
-        Supplier<Object> supplier = () -> { calls.incrementAndGet(); return null; };
+        Supplier<Object> supplier = () -> {
+            calls.incrementAndGet();
+            return null;
+        };
         propsType.getMethod("mergeMode", Supplier.class).invoke(props, supplier);
         propsType.getMethod("classSourceLookup", Supplier.class).invoke(props, supplier);
         assertSame(supplier, propsType.getMethod("mergeMode").invoke(props));

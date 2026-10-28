@@ -8,10 +8,9 @@ import net.minecraft.client.gui.screens.Screen;
 import xin.vanilla.aotake.AotakeComponent;
 import xin.vanilla.aotake.AotakeSweep;
 import xin.vanilla.aotake.client.ui.AotakePlayerUiSession;
-import xin.vanilla.banira.api.client.ui.UiPageSpec;
-import xin.vanilla.banira.internal.client.ui.page.PlayerConfigUiSession;
 import xin.vanilla.aotake.network.packet.PlayerConfigSyncToServer;
 import xin.vanilla.banira.BaniraComponent;
+import xin.vanilla.banira.api.client.ui.UiPageSpec;
 import xin.vanilla.banira.client.data.BaniraColorConfig;
 import xin.vanilla.banira.client.data.ScreenCoordinate;
 import xin.vanilla.banira.client.enums.EnumAlignment;
@@ -19,16 +18,13 @@ import xin.vanilla.banira.client.gui.BaniraScreen;
 import xin.vanilla.banira.client.gui.component.Notification;
 import xin.vanilla.banira.client.gui.component.Text;
 import xin.vanilla.banira.client.gui.event.MouseEvent;
-import xin.vanilla.banira.client.gui.widget.BaseWidget;
-import xin.vanilla.banira.client.gui.widget.ButtonWidget;
-import xin.vanilla.banira.client.gui.widget.CollapsiblePanelWidget;
-import xin.vanilla.banira.client.gui.widget.IWidget;
-import xin.vanilla.banira.client.gui.widget.LabelWidget;
+import xin.vanilla.banira.client.gui.widget.*;
 import xin.vanilla.banira.client.util.NotificationManager;
 import xin.vanilla.banira.common.data.Component;
 import xin.vanilla.banira.common.enums.EnumPosition;
 import xin.vanilla.banira.common.enums.EnumSeason;
 import xin.vanilla.banira.common.util.PacketUtils;
+import xin.vanilla.banira.internal.client.ui.page.PlayerConfigUiSession;
 
 import javax.annotation.Nullable;
 
@@ -58,9 +54,13 @@ public class PlayerConfigScreen extends xin.vanilla.banira.client.gui.PlayerConf
         preferences = new AotakePlayerUiSession(this, args.showSweepResult(), args.enableWarningVoice(), this::savePreferences);
     }
 
-    @Override protected PlayerConfigUiSession playerUiSession() { return preferences.shared(); }
+    @Override
+    protected PlayerConfigUiSession playerUiSession() {
+        return preferences.shared();
+    }
 
-    @Override public UiPageSpec uiPage() {
+    @Override
+    public UiPageSpec uiPage() {
         return preferences.shared().spec(this, uiSurfaceId());
     }
 

@@ -26,12 +26,18 @@ public class AotakeNetworkSmokeTimingsTest {
     @Test
     public void boundsStorageAndRejectsNegativeMeasurementsWithoutChangingTheData() {
         AotakeNetworkSmokeTimings samples = new AotakeNetworkSmokeTimings(1);
-        try { samples.record(-1); fail("Negative time accepted"); }
-        catch (IllegalArgumentException expected) { }
+        try {
+            samples.record(-1);
+            fail("Negative time accepted");
+        } catch (IllegalArgumentException expected) {
+        }
         assertEquals(0, samples.count());
         samples.record(7);
-        try { samples.record(8); fail("Capacity exceeded silently"); }
-        catch (IllegalStateException expected) { }
+        try {
+            samples.record(8);
+            fail("Capacity exceeded silently");
+        } catch (IllegalStateException expected) {
+        }
         assertEquals(1, samples.count());
         assertEquals(7, samples.maximum());
     }
@@ -41,11 +47,17 @@ public class AotakeNetworkSmokeTimingsTest {
         AotakeNetworkSmokeTimings samples = new AotakeNetworkSmokeTimings(2);
         assertEquals(0, samples.average());
         assertEquals(0, samples.percentile(95));
-        for (int value : new int[] {0, 101}) {
-            try { samples.percentile(value); fail("Invalid percentile accepted"); }
-            catch (IllegalArgumentException expected) { }
+        for (int value : new int[]{0, 101}) {
+            try {
+                samples.percentile(value);
+                fail("Invalid percentile accepted");
+            } catch (IllegalArgumentException expected) {
+            }
         }
-        try { new AotakeNetworkSmokeTimings(0); fail("Invalid capacity accepted"); }
-        catch (IllegalArgumentException expected) { }
+        try {
+            new AotakeNetworkSmokeTimings(0);
+            fail("Invalid capacity accepted");
+        } catch (IllegalArgumentException expected) {
+        }
     }
 }

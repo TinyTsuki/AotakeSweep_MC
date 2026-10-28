@@ -1,8 +1,10 @@
 package xin.vanilla.aotake.network;
 
 import org.junit.Test;
+
 import java.lang.reflect.Method;
-import static org.junit.Assert.*;
+
+import static org.junit.Assert.assertEquals;
 
 public class SweepScheduleSyncTest {
     private long effective(long deadline, long interval, boolean disabled, boolean ready) throws Exception {
@@ -16,19 +18,23 @@ public class SweepScheduleSyncTest {
         return ((Number) method.invoke(null, deadline, interval, disabled, ready)).longValue();
     }
 
-    @Test public void runningReadyScheduleKeepsAuthoritativeDeadline() throws Exception {
+    @Test
+    public void runningReadyScheduleKeepsAuthoritativeDeadline() throws Exception {
         assertEquals(90000, effective(90000, 60000, false, true));
     }
 
-    @Test public void disabledScheduleMustSendInvalidDeadlineInsteadOfOldTime() throws Exception {
+    @Test
+    public void disabledScheduleMustSendInvalidDeadlineInsteadOfOldTime() throws Exception {
         assertEquals(0, effective(90000, 60000, true, true));
     }
 
-    @Test public void unfinishedRuleLoadCannotAdvertiseScheduledTime() throws Exception {
+    @Test
+    public void unfinishedRuleLoadCannotAdvertiseScheduledTime() throws Exception {
         assertEquals(0, effective(90000, 60000, false, false));
     }
 
-    @Test public void nonPositiveIntervalAndDeadlineAreHidden() throws Exception {
+    @Test
+    public void nonPositiveIntervalAndDeadlineAreHidden() throws Exception {
         assertEquals(0, effective(90000, 0, false, true));
         assertEquals(0, effective(90000, -1, false, true));
         assertEquals(0, effective(0, 60000, false, true));

@@ -1,34 +1,49 @@
 package xin.vanilla.aotake.rule;
 
+import com.google.gson.Gson;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.network.protocol.Packet;
+import net.minecraft.server.Bootstrap;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
-import net.minecraft.nbt.CompoundTag;
-import net.minecraft.network.protocol.Packet;
-import net.minecraft.server.Bootstrap;
-import net.minecraft.network.chat.Component;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import xin.vanilla.aotake.api.rule.*;
 import xin.vanilla.aotake.internal.forge.rule.ForgeEntityRuleContext;
 import xin.vanilla.aotake.internal.forge.rule.ForgeNativeMembers;
-import xin.vanilla.banira.api.script.*;
+import xin.vanilla.banira.api.script.BaniraScripts;
+import xin.vanilla.banira.api.script.ScriptLimits;
+import xin.vanilla.banira.api.script.ScriptSession;
+import xin.vanilla.banira.api.script.ScriptSource;
 import xin.vanilla.banira.internal.forge.platform.ForgeBaniraRegistryService;
 import xin.vanilla.banira.platform.BaniraPlatform;
 import xin.vanilla.banira.platform.BaniraPlatforms;
+
+import java.io.InputStreamReader;
+import java.io.Reader;
 import java.lang.reflect.Proxy;
-import java.io.*;
 import java.nio.charset.StandardCharsets;
-import java.util.*;
-import com.google.gson.*;
-import java.util.concurrent.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Objects;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicReference;
+
 import static org.junit.Assert.*;
 
 public class RuleObjectAccessTest {
-    @Test public void resourceMatchingUsesNativePartsAndExpiresWithTheEvaluation() {
+    @Test
+    public void resourceMatchingUsesNativePartsAndExpiresWithTheEvaluation() {
         RuleBindingPlan plan = RuleBindingPlan.defaults();
         ForgeEntityRuleContext context = new ForgeEntityRuleContext(plan);
         ItemEntity item = new ItemEntity(null, 0, 0, 0, new ItemStack(Items.APPLE), 0, 0, 0);
@@ -42,14 +57,22 @@ public class RuleObjectAccessTest {
             return true;
         }, item, plan));
         assertThrows(IllegalStateException.class, () -> context.matchesResource("*", "*"));
-        assertTrue(context.evaluateResource(c -> { throw new AssertionError("Native ID used a text evaluation frame"); },
+        assertTrue(context.evaluateResource(c -> {
+                    throw new AssertionError("Native ID used a text evaluation frame");
+                },
                 item, plan, "minecraft", "item"));
-        assertFalse(context.evaluateResource(c -> { throw new AssertionError("Native ID used a text evaluation frame"); },
+        assertFalse(context.evaluateResource(c -> {
+                    throw new AssertionError("Native ID used a text evaluation frame");
+                },
                 item, plan, "minecraft", "items"));
         assertThrows(IllegalStateException.class, context::resourceId);
     }
-    @BeforeClass public static void bootstrap() {
-        net.minecraft.SharedConstants.tryDetectVersion(); Bootstrap.bootStrap(); xin.vanilla.aotake.rule.ForgeNativeTestBootstrap.initialize();
+
+    @BeforeClass
+    public static void bootstrap() {
+        net.minecraft.SharedConstants.tryDetectVersion();
+        Bootstrap.bootStrap();
+        xin.vanilla.aotake.rule.ForgeNativeTestBootstrap.initialize();
         ForgeBaniraRegistryService registry = ForgeBaniraRegistryService.INSTANCE;
         BaniraPlatforms.install((BaniraPlatform) Proxy.newProxyInstance(BaniraPlatform.class.getClassLoader(),
                 new Class<?>[]{BaniraPlatform.class}, (proxy, method, args) -> {
@@ -58,7 +81,8 @@ public class RuleObjectAccessTest {
                 }));
     }
 
-    @Test public void entityAndLegacyGettersShareTheEvaluationCache() {
+    @Test
+    public void entityAndLegacyGettersShareTheEvaluationCache() {
         Entity entity = new PlainEntity();
         entity.tickCount = 10;
         entity.setCustomName(net.minecraft.network.chat.Component.literal("before"));
@@ -77,7 +101,8 @@ public class RuleObjectAccessTest {
         assertTrue(context.evaluate(c -> c.entity().tick() == 20 && "after".equals(c.customName()), entity, plan));
     }
 
-    @Test public void nativeIdentityAndItemAccessFollowTheActiveEvaluationOnly() throws Exception {
+    @Test
+    public void nativeIdentityAndItemAccessFollowTheActiveEvaluationOnly() throws Exception {
         ItemEntity item = new ItemEntity(null, 1, 2, 3, new ItemStack(Items.STONE, 7), 0, 0, 0);
         RuleBindingPlan plan = RuleBindingPlan.defaults();
         ForgeEntityRuleContext context = new ForgeEntityRuleContext(plan);
@@ -93,15 +118,19 @@ public class RuleObjectAccessTest {
             try {
                 CompletableFuture.runAsync(() -> c.entity().x()).get(5, TimeUnit.SECONDS);
                 fail("Cross-thread access accepted");
-            } catch (ExecutionException expected) { assertTrue(expected.getCause() instanceof IllegalStateException); }
-            catch (InterruptedException | TimeoutException error) { throw new AssertionError(error); }
+            } catch (ExecutionException expected) {
+                assertTrue(expected.getCause() instanceof IllegalStateException);
+            } catch (InterruptedException | TimeoutException error) {
+                throw new AssertionError(error);
+            }
             return true;
         }, item, plan));
         assertThrows(IllegalStateException.class, () -> context.nativeEntity(Entity.class));
         assertThrows(IllegalStateException.class, () -> borrowed.get().x());
     }
 
-    @Test public void nonItemAccessHasNoFabricatedItemAndNestedCallsRestoreEntity() {
+    @Test
+    public void nonItemAccessHasNoFabricatedItemAndNestedCallsRestoreEntity() {
         Entity plain = new PlainEntity();
         ItemEntity item = new ItemEntity(null, 0, 0, 0, new ItemStack(Items.STONE), 0, 0, 0);
         RuleBindingPlan plan = RuleBindingPlan.defaults();
@@ -116,7 +145,8 @@ public class RuleObjectAccessTest {
         }, plain, plan));
     }
 
-    @Test public void borrowedViewsCannotFollowAnotherEvaluationFrame() {
+    @Test
+    public void borrowedViewsCannotFollowAnotherEvaluationFrame() {
         Entity plain = new PlainEntity();
         ItemEntity item = new ItemEntity(null, 0, 0, 0, new ItemStack(Items.STONE), 0, 0, 0);
         RuleBindingPlan plan = RuleBindingPlan.defaults();
@@ -127,7 +157,9 @@ public class RuleObjectAccessTest {
         AtomicReference<ServerAccess> outerServer = new AtomicReference<>();
         assertTrue(context.evaluate(c -> {
             EntityAccess outer = c.entity();
-            previous.set(outer); outerWorld.set(c.world()); outerServer.set(c.server());
+            previous.set(outer);
+            outerWorld.set(c.world());
+            outerServer.set(c.server());
             assertSame(outer, c.entity());
             assertTrue(context.evaluate(inner -> {
                 nested.set(inner.entity());
@@ -151,16 +183,18 @@ public class RuleObjectAccessTest {
         }, item, plan));
     }
 
-    @Test public void externalProbeCompilesWithNativeInterfacesAndPreparedMinecraftMembers() throws Exception {
+    @Test
+    public void externalProbeCompilesWithNativeInterfacesAndPreparedMinecraftMembers() throws Exception {
         StringBuilder source = new StringBuilder();
         try (Reader reader = resource("NativeEntityProbe.java")) {
-            char[] buffer = new char[1024]; int n;
+            char[] buffer = new char[1024];
+            int n;
             while ((n = reader.read(buffer)) != -1) source.append(buffer, 0, n);
         }
         try (ScriptSession<EntityRule> session = BaniraScripts.open("aotake_sweep", EntityRule.class,
                 "1", ScriptLimits.defaults(), Runnable::run)) {
             EntityRule rule = session.prepare(Collections.singletonList(new ScriptSource("native-probe",
-                    "xin.vanilla.banira.generated.NativeEntityProbe", "NativeEntityProbe.java", source.toString())))
+                            "xin.vanilla.banira.generated.NativeEntityProbe", "NativeEntityProbe.java", source.toString())))
                     .get(10, TimeUnit.SECONDS).scripts().get("native-probe");
             List<NativeMemberSpec> specs = new ArrayList<>();
             ClassLoader loader = rule.getClass().getClassLoader();
@@ -192,7 +226,9 @@ public class RuleObjectAccessTest {
                 assertEquals(42D, entity.getX(), 0D);
                 assertFalse(context.evaluate(rule, entity, plan));
                 assertEquals(80D, entity.getX(), 0D);
-            } finally { System.clearProperty("aotake.policySmoke.moveDuringRecycle"); }
+            } finally {
+                System.clearProperty("aotake.policySmoke.moveDuringRecycle");
+            }
         }
     }
 
@@ -202,10 +238,25 @@ public class RuleObjectAccessTest {
     }
 
     private static final class PlainEntity extends Entity {
-        PlainEntity() { super(EntityType.ARMOR_STAND, null); }
-        @Override protected void defineSynchedData() { }
-        @Override protected void readAdditionalSaveData(CompoundTag tag) { }
-        @Override protected void addAdditionalSaveData(CompoundTag tag) { }
-        @Override public Packet<net.minecraft.network.protocol.game.ClientGamePacketListener> getAddEntityPacket() { throw new UnsupportedOperationException(); }
+        PlainEntity() {
+            super(EntityType.ARMOR_STAND, null);
+        }
+
+        @Override
+        protected void defineSynchedData() {
+        }
+
+        @Override
+        protected void readAdditionalSaveData(CompoundTag tag) {
+        }
+
+        @Override
+        protected void addAdditionalSaveData(CompoundTag tag) {
+        }
+
+        @Override
+        public Packet<net.minecraft.network.protocol.game.ClientGamePacketListener> getAddEntityPacket() {
+            throw new UnsupportedOperationException();
+        }
     }
 }

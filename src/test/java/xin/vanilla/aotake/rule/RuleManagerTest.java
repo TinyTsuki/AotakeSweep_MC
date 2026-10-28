@@ -4,21 +4,27 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 import xin.vanilla.aotake.api.rule.EntityRule;
-import xin.vanilla.banira.api.script.*;
-import xin.vanilla.banira.common.config.*;
+import xin.vanilla.banira.api.script.BaniraScripts;
+import xin.vanilla.banira.api.script.ScriptLimits;
+import xin.vanilla.banira.api.script.ScriptSession;
+import xin.vanilla.banira.common.config.ConfigEditOrigin;
+import xin.vanilla.banira.common.config.ConfigHolder;
 import xin.vanilla.banira.internal.forge.config.AotakeRuleConfigFixture;
 
 import java.nio.charset.StandardCharsets;
-import java.nio.file.*;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.*;
 import java.util.concurrent.*;
 
 import static org.junit.Assert.*;
 
 public class RuleManagerTest {
-    @Rule public TemporaryFolder temporary = new TemporaryFolder();
+    @Rule
+    public TemporaryFolder temporary = new TemporaryFolder();
 
-    @Test public void initialPublicationGateWaitsForOwnerAndDoesNotWeakenLaterInvalidation() throws Exception {
+    @Test
+    public void initialPublicationGateWaitsForOwnerAndDoesNotWeakenLaterInvalidation() throws Exception {
         try (Fixture f = fixture(false)) {
             Queue<Runnable> workers = new ArrayDeque<>();
             f.start(workers::add);
@@ -39,7 +45,8 @@ public class RuleManagerTest {
         }
     }
 
-    @Test public void initialFailureKeepsGateClosedUntilExplicitSuccessfulReload() throws Exception {
+    @Test
+    public void initialFailureKeepsGateClosedUntilExplicitSuccessfulReload() throws Exception {
         try (Fixture f = fixture()) {
             BuiltinRules.install(f.store);
             Path source = f.store.root().resolve(RuleCatalog.sourcePath(BuiltinRules.CLEANUP));
@@ -55,7 +62,8 @@ public class RuleManagerTest {
         }
     }
 
-    @Test public void stoppedManagerNeverOpensGateForLatePreparation() throws Exception {
+    @Test
+    public void stoppedManagerNeverOpensGateForLatePreparation() throws Exception {
         try (Fixture f = fixture(false)) {
             Queue<Runnable> workers = new ArrayDeque<>();
             f.start(workers::add);
@@ -69,7 +77,8 @@ public class RuleManagerTest {
         }
     }
 
-    @Test public void latePreviousServerPreparationCannotOpenReplacementGate() throws Exception {
+    @Test
+    public void latePreviousServerPreparationCannotOpenReplacementGate() throws Exception {
         try (Fixture previous = fixture(false); Fixture replacement = fixture(false)) {
             Queue<Runnable> oldWorkers = new ArrayDeque<>();
             Queue<Runnable> newWorkers = new ArrayDeque<>();
@@ -97,17 +106,21 @@ public class RuleManagerTest {
         }
     }
 
-    @Test public void legacyDefaultsMigrateAlongsideInstalledBuiltinsWithoutClassCollisions() throws Exception {
+    @Test
+    public void legacyDefaultsMigrateAlongsideInstalledBuiltinsWithoutClassCollisions() throws Exception {
         try (Fixture f = fixture(false)) {
             f.holder.set(RuleMigrationTransaction.LISTS.get(0), Collections.singletonList(LegacyRuleMigrationTest.CREATE));
             f.holder.set(RuleMigrationTransaction.LISTS.get(1), Collections.singletonList(LegacyRuleMigrationTest.CREATE));
             f.holder.set(RuleMigrationTransaction.LISTS.get(2), Collections.singletonList(LegacyRuleMigrationTest.PROTECTION));
             f.holder.set(RuleMigrationTransaction.LISTS.get(3), Collections.singletonList("minecraft:pig"));
-            f.holder.save(); f.start();
+            f.holder.save();
+            f.start();
             f.await(f.manager.reload());
-            RuleGeneration<Map<String,Object>> generation = f.manager.acquire(RuleManager.RuleUse.SWEEP);
-            Map<String,Object> subject = entity("minecraft:item", 8);
-            subject.put("clazz", String.class); subject.put("itemClazz", Object.class); subject.put("hasOwner", false);
+            RuleGeneration<Map<String, Object>> generation = f.manager.acquire(RuleManager.RuleUse.SWEEP);
+            Map<String, Object> subject = entity("minecraft:item", 8);
+            subject.put("clazz", String.class);
+            subject.put("itemClazz", Object.class);
+            subject.put("hasOwner", false);
             assertTrue(generation.matches(RuleGeneration.RuleList.SWEEP, subject));
             assertTrue(generation.matches(RuleGeneration.RuleList.CHUNK, subject));
             assertFalse(generation.matches(RuleGeneration.RuleList.REDLIST, subject));
@@ -116,21 +129,23 @@ public class RuleManagerTest {
             List<?> sweepRules = f.holder.get(RuleMigrationTransaction.LISTS.get(0));
             List<?> chunkRules = f.holder.get(RuleMigrationTransaction.LISTS.get(1));
             assertEquals(sweepRules, chunkRules);
-            for (int i = 0; i < 3; i++) assertTrue(((List<?>) f.holder.get(RuleMigrationTransaction.LISTS.get(i))).get(0).toString().startsWith("script:legacy_"));
+            for (int i = 0; i < 3; i++)
+                assertTrue(((List<?>) f.holder.get(RuleMigrationTransaction.LISTS.get(i))).get(0).toString().startsWith("script:legacy_"));
             byte[] manifest = Files.readAllBytes(f.store.root().resolve(RuleFileStore.MANIFEST));
             f.await(f.manager.reload());
             assertArrayEquals(manifest, Files.readAllBytes(f.store.root().resolve(RuleFileStore.MANIFEST)));
         }
     }
 
-    @Test public void startupBlocksUntilMigrationCommitThenUsesAllFourListsAndCapturedModes() throws Exception {
+    @Test
+    public void startupBlocksUntilMigrationCommitThenUsesAllFourListsAndCapturedModes() throws Exception {
         try (Fixture f = fixture()) {
             for (RuleManager.RuleUse use : RuleManager.RuleUse.values())
                 assertThrows(RuleExecutionException.class, () -> f.manager.acquire(use));
             CompletableFuture<Long> reload = f.manager.reload();
             assertThrows(RuleExecutionException.class, () -> f.manager.acquire(RuleManager.RuleUse.SWEEP));
             long id = f.await(reload);
-            RuleGeneration<Map<String,Object>> generation = f.manager.acquire(RuleManager.RuleUse.SWEEP);
+            RuleGeneration<Map<String, Object>> generation = f.manager.acquire(RuleManager.RuleUse.SWEEP);
             assertEquals(id, generation.id());
             for (RuleGeneration.RuleList list : RuleGeneration.RuleList.values()) {
                 assertTrue(generation.matches(list, entity("test:item", 6)));
@@ -143,10 +158,11 @@ public class RuleManagerTest {
         }
     }
 
-    @Test public void sourceFailureKeepsSameSelectionButChangedModeCannotUseOldGeneration() throws Exception {
+    @Test
+    public void sourceFailureKeepsSameSelectionButChangedModeCannotUseOldGeneration() throws Exception {
         try (Fixture f = fixture()) {
             long id = f.await(f.manager.reload());
-            RuleGeneration<Map<String,Object>> old = f.manager.acquire(RuleManager.RuleUse.SWEEP);
+            RuleGeneration<Map<String, Object>> old = f.manager.acquire(RuleManager.RuleUse.SWEEP);
             f.replaceSource("this is not Java");
             assertThrows(ExecutionException.class, () -> f.await(f.manager.reload()));
             assertTrue(f.manager.isUsable(id));
@@ -160,7 +176,8 @@ public class RuleManagerTest {
         }
     }
 
-    @Test public void delayedBatchGateDetectsUnsavedModeChangesWithoutAcquiringAnotherScan() throws Exception {
+    @Test
+    public void delayedBatchGateDetectsUnsavedModeChangesWithoutAcquiringAnotherScan() throws Exception {
         try (Fixture f = fixture()) {
             long id = f.await(f.manager.reload());
             f.holder.set(RuleMigrationTransaction.MODES.get(0), "BLACK");
@@ -168,7 +185,8 @@ public class RuleManagerTest {
         }
     }
 
-    @Test public void unchangedBatchGateDoesNotAllocateASelectionSnapshot() throws Exception {
+    @Test
+    public void unchangedBatchGateDoesNotAllocateASelectionSnapshot() throws Exception {
         java.lang.management.ThreadMXBean bean = java.lang.management.ManagementFactory.getThreadMXBean();
         org.junit.Assume.assumeTrue(bean instanceof com.sun.management.ThreadMXBean);
         com.sun.management.ThreadMXBean allocations = (com.sun.management.ThreadMXBean) bean;
@@ -187,12 +205,13 @@ public class RuleManagerTest {
         }
     }
 
-    @Test public void runtimeFailurePoisonsWholeGenerationAndNeverBecomesWhiteListNonMatch() throws Exception {
+    @Test
+    public void runtimeFailurePoisonsWholeGenerationAndNeverBecomesWhiteListNonMatch() throws Exception {
         try (Fixture f = fixture()) {
             f.await(f.manager.reload());
             f.replaceSource(f.source().replace("return ", "if (context.tick() < 0) throw new IllegalStateException(\"broken\"); return "));
             f.await(f.manager.reload());
-            RuleGeneration<Map<String,Object>> generation = f.manager.acquire(RuleManager.RuleUse.SWEEP);
+            RuleGeneration<Map<String, Object>> generation = f.manager.acquire(RuleManager.RuleUse.SWEEP);
             assertThrows(RuleExecutionException.class, () -> generation.shouldClean(false, entity("test:item", -1)));
             assertFalse(f.manager.isUsable(generation.id()));
             for (RuleManager.RuleUse use : RuleManager.RuleUse.values())
@@ -202,13 +221,14 @@ public class RuleManagerTest {
         }
     }
 
-    @Test public void failuresInRedlistOrCaptureAlsoBlockFurtherSweepAndChunkWork() throws Exception {
+    @Test
+    public void failuresInRedlistOrCaptureAlsoBlockFurtherSweepAndChunkWork() throws Exception {
         for (RuleGeneration.RuleList list : Arrays.asList(RuleGeneration.RuleList.REDLIST, RuleGeneration.RuleList.CAPTURE)) {
             try (Fixture f = fixture()) {
                 f.await(f.manager.reload());
                 f.replaceSource(f.source().replace("return ", "if (context.tick() < 0) throw new AssertionError(\"broken\"); return "));
                 f.await(f.manager.reload());
-                RuleGeneration<Map<String,Object>> generation = f.manager.acquire(RuleManager.RuleUse.RECYCLE);
+                RuleGeneration<Map<String, Object>> generation = f.manager.acquire(RuleManager.RuleUse.RECYCLE);
                 assertThrows(RuleExecutionException.class, () -> generation.matches(list, entity("test:item", -1)));
                 assertFalse(f.manager.isUsable(generation.id()));
                 assertThrows(RuleExecutionException.class, () -> generation.shouldClean(true, entity("test:item", 8)));
@@ -217,10 +237,11 @@ public class RuleManagerTest {
         }
     }
 
-    @Test public void replacingGenerationInvalidatesRetainedScanAndDoesNotRetainEntity() throws Exception {
+    @Test
+    public void replacingGenerationInvalidatesRetainedScanAndDoesNotRetainEntity() throws Exception {
         try (Fixture f = fixture()) {
             f.await(f.manager.reload());
-            RuleGeneration<Map<String,Object>> old = f.manager.acquire(RuleManager.RuleUse.CHUNK);
+            RuleGeneration<Map<String, Object>> old = f.manager.acquire(RuleManager.RuleUse.CHUNK);
             assertTrue(old.matches(RuleGeneration.RuleList.CHUNK, entity("test:item", 8)));
             String previous = f.source();
             String edited = previous.replaceAll("return .*;", "return context.tick() >= 10;");
@@ -234,12 +255,13 @@ public class RuleManagerTest {
         }
     }
 
-    @Test public void guardRejectsRemoteDslAndUnknownIdsWithoutFileAccessOrPartialMutation() throws Exception {
+    @Test
+    public void guardRejectsRemoteDslAndUnknownIdsWithoutFileAccessOrPartialMutation() throws Exception {
         try (Fixture f = fixture()) {
             f.await(f.manager.reload());
             Path source = f.sourcePath();
             Files.delete(source);
-            Map<String,Object> change = new LinkedHashMap<>();
+            Map<String, Object> change = new LinkedHashMap<>();
             change.put("unrelated", 9);
             change.put(RuleMigrationTransaction.LISTS.get(0), Arrays.asList("minecraft:arrow", "tick -> tick > 7"));
             assertThrows(IllegalArgumentException.class, () -> f.holder.setAll(change, ConfigEditOrigin.REMOTE));
@@ -253,10 +275,11 @@ public class RuleManagerTest {
         }
     }
 
-    @Test public void closeCancelsLateCompilationInvalidatesScansAndUnregistersGuard() throws Exception {
+    @Test
+    public void closeCancelsLateCompilationInvalidatesScansAndUnregistersGuard() throws Exception {
         try (Fixture f = fixture()) {
             f.await(f.manager.reload());
-            RuleGeneration<Map<String,Object>> old = f.manager.acquire(RuleManager.RuleUse.SWEEP);
+            RuleGeneration<Map<String, Object>> old = f.manager.acquire(RuleManager.RuleUse.SWEEP);
             CompletableFuture<Long> pending = f.manager.reload();
             f.manager.close();
             assertThrows(CancellationException.class, pending::join);
@@ -269,13 +292,16 @@ public class RuleManagerTest {
         }
     }
 
-    @Test public void resourceWildcardsAndEmptyRulesKeepExistingBlackWhiteSemantics() throws Exception {
+    @Test
+    public void resourceWildcardsAndEmptyRulesKeepExistingBlackWhiteSemantics() throws Exception {
         try (Fixture f = fixture(false)) {
             f.holder.set(RuleMigrationTransaction.LISTS.get(0), Arrays.asList("test:*", "*:arrow"));
             f.holder.set(RuleMigrationTransaction.LISTS.get(1), Collections.emptyList());
             f.holder.set(RuleMigrationTransaction.MODES.get(0), "BLACK");
-            f.holder.save(); f.start(); f.await(f.manager.reload());
-            RuleGeneration<Map<String,Object>> generation = f.manager.acquire(RuleManager.RuleUse.SWEEP);
+            f.holder.save();
+            f.start();
+            f.await(f.manager.reload());
+            RuleGeneration<Map<String, Object>> generation = f.manager.acquire(RuleManager.RuleUse.SWEEP);
             assertTrue(generation.shouldClean(false, entity("test:stone", 0)));
             assertTrue(generation.shouldClean(false, entity("other:arrow", 0)));
             assertFalse(generation.shouldClean(false, entity("other:stone", 0)));
@@ -286,24 +312,30 @@ public class RuleManagerTest {
         }
     }
 
-    @Test public void coalescedReloadHasOnePublicationAndOnlyOwnerMayReadEntities() throws Exception {
+    @Test
+    public void coalescedReloadHasOnePublicationAndOnlyOwnerMayReadEntities() throws Exception {
         try (Fixture f = fixture()) {
             CompletableFuture<Long> first = f.manager.reload();
             assertSame(first, f.manager.reload());
             assertSame(first, f.manager.reload());
             long id = f.await(first);
-            RuleGeneration<Map<String,Object>> generation = f.manager.acquire(RuleManager.RuleUse.SWEEP);
+            RuleGeneration<Map<String, Object>> generation = f.manager.acquire(RuleManager.RuleUse.SWEEP);
             assertEquals(id, generation.id());
             Throwable error = CompletableFuture.supplyAsync(() -> {
-                try { generation.matches(RuleGeneration.RuleList.SWEEP, entity("test:item", 8)); return null; }
-                catch (Throwable ex) { return ex; }
+                try {
+                    generation.matches(RuleGeneration.RuleList.SWEEP, entity("test:item", 8));
+                    return null;
+                } catch (Throwable ex) {
+                    return ex;
+                }
             }).get(5, TimeUnit.SECONDS);
             assertTrue(error instanceof IllegalStateException);
             assertTrue(f.manager.isUsable(id));
         }
     }
 
-    @Test public void reloadBetweenOwnerCallbacksCannotPublishAnExpiredCandidateOrLoseTheLatestRequest() throws Exception {
+    @Test
+    public void reloadBetweenOwnerCallbacksCannotPublishAnExpiredCandidateOrLoseTheLatestRequest() throws Exception {
         try (Fixture f = fixture()) {
             CompletableFuture<Long> first = f.manager.reload();
             // Run instantiation and coordinator delivery individually, just as separate server tasks.
@@ -315,10 +347,11 @@ public class RuleManagerTest {
         }
     }
 
-    @Test public void changedConfigDuringPreparationCannotPublishOrOverwriteExternalEdit() throws Exception {
+    @Test
+    public void changedConfigDuringPreparationCannotPublishOrOverwriteExternalEdit() throws Exception {
         try (Fixture f = fixture()) {
             f.await(f.manager.reload());
-            RuleGeneration<Map<String,Object>> old = f.manager.acquire(RuleManager.RuleUse.SWEEP);
+            RuleGeneration<Map<String, Object>> old = f.manager.acquire(RuleManager.RuleUse.SWEEP);
             CompletableFuture<Long> pending = f.manager.reload();
             f.holder.set(RuleMigrationTransaction.MODES.get(0), "BLACK");
             assertThrows(ExecutionException.class, () -> f.await(pending));
@@ -330,10 +363,13 @@ public class RuleManagerTest {
         }
     }
 
-    @Test public void savedRuleChangesReloadButUnrelatedSettingsDoNotReplaceGeneration() throws Exception {
+    @Test
+    public void savedRuleChangesReloadButUnrelatedSettingsDoNotReplaceGeneration() throws Exception {
         try (Fixture f = fixture()) {
             long id = f.await(f.manager.reload());
-            f.holder.set("unrelated", 2); f.holder.save(); f.drain();
+            f.holder.set("unrelated", 2);
+            f.holder.save();
+            f.drain();
             assertTrue(f.manager.isUsable(id));
             assertTrue(f.owner.isEmpty());
             f.holder.set(RuleMigrationTransaction.LISTS.get(0), Collections.singletonList("minecraft:arrow"));
@@ -346,7 +382,8 @@ public class RuleManagerTest {
         }
     }
 
-    @Test public void reloadFromMigrationSaveListenerIsNotLostOrPublishedPrematurely() throws Exception {
+    @Test
+    public void reloadFromMigrationSaveListenerIsNotLostOrPublishedPrematurely() throws Exception {
         try (Fixture f = fixture(false)) {
             Queue<Runnable> workers = new ArrayDeque<>();
             f.start(workers::add);
@@ -361,17 +398,23 @@ public class RuleManagerTest {
                 CompletableFuture<Long> reload = f.manager.reload();
                 workers.remove().run();
                 long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(15);
-                while (!once[0] && System.nanoTime() < deadline) { f.drain(); Thread.sleep(1); }
+                while (!once[0] && System.nanoTime() < deadline) {
+                    f.drain();
+                    Thread.sleep(1);
+                }
                 assertTrue("Save listener was not exercised", once[0]);
                 assertFalse("Older candidate was published despite a newer request", reload.isDone());
                 assertEquals(1, workers.size());
                 workers.remove().run();
                 assertEquals((long) f.await(reload), f.manager.acquire(RuleManager.RuleUse.SWEEP).id());
-            } finally { remove.run(); }
+            } finally {
+                remove.run();
+            }
         }
     }
 
-    @Test public void rejectedOwnerDispatchDoesNotPoisonSubsequentReloads() throws Exception {
+    @Test
+    public void rejectedOwnerDispatchDoesNotPoisonSubsequentReloads() throws Exception {
         try (Fixture f = fixture()) {
             f.await(f.manager.reload());
             String original = f.source();
@@ -387,13 +430,16 @@ public class RuleManagerTest {
         }
     }
 
-    @Test public void fourListsHaveIndependentResultsAndModes() throws Exception {
+    @Test
+    public void fourListsHaveIndependentResultsAndModes() throws Exception {
         try (Fixture f = fixture(false)) {
             for (int i = 0; i < RuleMigrationTransaction.LISTS.size(); i++)
                 f.holder.set(RuleMigrationTransaction.LISTS.get(i), Collections.singletonList("tick -> tick == " + i));
             f.holder.set(RuleMigrationTransaction.MODES.get(0), "BLACK");
-            f.holder.save(); f.start(); f.await(f.manager.reload());
-            RuleGeneration<Map<String,Object>> generation = f.manager.acquire(RuleManager.RuleUse.SWEEP);
+            f.holder.save();
+            f.start();
+            f.await(f.manager.reload());
+            RuleGeneration<Map<String, Object>> generation = f.manager.acquire(RuleManager.RuleUse.SWEEP);
             for (RuleGeneration.RuleList list : RuleGeneration.RuleList.values()) {
                 for (int tick = 0; tick < 4; tick++)
                     assertEquals(list.name(), tick == list.ordinal(), generation.matches(list, entity("test:item", tick)));
@@ -405,7 +451,8 @@ public class RuleManagerTest {
         }
     }
 
-    @Test public void sourceEditAfterPreparationIsRejectedAndKeepsPreviouslyPublishedRules() throws Exception {
+    @Test
+    public void sourceEditAfterPreparationIsRejectedAndKeepsPreviouslyPublishedRules() throws Exception {
         try (Fixture f = fixture()) {
             long original = f.await(f.manager.reload());
             CompletableFuture<Long> reload = f.manager.reload();
@@ -416,7 +463,8 @@ public class RuleManagerTest {
         }
     }
 
-    @Test public void stopFromSaveListenerNeverPublishesLateCandidate() throws Exception {
+    @Test
+    public void stopFromSaveListenerNeverPublishesLateCandidate() throws Exception {
         try (Fixture f = fixture()) {
             Runnable remove = f.holder.onSaved(paths -> f.manager.close());
             try {
@@ -424,11 +472,14 @@ public class RuleManagerTest {
                 assertThrows(CancellationException.class, () -> f.await(reload));
                 assertTrue(f.session.active().isEmpty());
                 assertTrue(f.contexts.stream().allMatch(Context::released));
-            } finally { remove.run(); }
+            } finally {
+                remove.run();
+            }
         }
     }
 
-    @Test public void sweepFaultCancelsAllCurrentLeasesWithoutPoisoningReplacement() throws Exception {
+    @Test
+    public void sweepFaultCancelsAllCurrentLeasesWithoutPoisoningReplacement() throws Exception {
         try (Fixture f = fixture()) {
             long original = f.await(f.manager.reload());
             List<String> cancellations = new ArrayList<>();
@@ -443,12 +494,19 @@ public class RuleManagerTest {
                 assertNotEquals(original, replacement);
                 f.manager.failGeneration(original, new IllegalStateException("late failure"));
                 assertTrue(f.manager.isUsable(replacement));
-            } finally { first.close(); second.close(); }
+            } finally {
+                first.close();
+                second.close();
+            }
         }
     }
 
-    private Fixture fixture() throws Exception { return fixture(true); }
-    @Test public void preparedSelectionStillCancelsImmediatelyAfterUnsavedNativeListEdit() throws Exception {
+    private Fixture fixture() throws Exception {
+        return fixture(true);
+    }
+
+    @Test
+    public void preparedSelectionStillCancelsImmediatelyAfterUnsavedNativeListEdit() throws Exception {
         try (Fixture f = fixture()) {
             long id = f.await(f.manager.reload());
             List<String> cancellations = new ArrayList<>();
@@ -462,18 +520,44 @@ public class RuleManagerTest {
             }
         }
     }
-    private Fixture fixture(boolean start) throws Exception { return new Fixture(temporary.newFolder().toPath(), start); }
-    static Map<String,Object> entity(String resource, int tick) {
-        Map<String,Object> value = new HashMap<>(); value.put("resource", resource); value.put("tick", tick); return value;
+
+    private Fixture fixture(boolean start) throws Exception {
+        return new Fixture(temporary.newFolder().toPath(), start);
     }
-    static final class Context extends LazyRuleContext<Map<String,Object>> {
+
+    static Map<String, Object> entity(String resource, int tick) {
+        Map<String, Object> value = new HashMap<>();
+        value.put("resource", resource);
+        value.put("tick", tick);
+        return value;
+    }
+
+    static final class Context extends LazyRuleContext<Map<String, Object>> {
         xin.vanilla.aotake.api.rule.NativeMembers members = xin.vanilla.aotake.api.rule.NativeMembers.EMPTY;
-        @Override public xin.vanilla.aotake.api.rule.NativeMembers members() { return members; }
+
+        @Override
+        public xin.vanilla.aotake.api.rule.NativeMembers members() {
+            return members;
+        }
+
         int clearCalls;
-        @Override public void clear() { super.clear(); clearCalls++; }
-        @Override protected Object read(RuleBindingPlan.Binding binding) { return subject().get(binding.payload()); }
-        boolean released() { return subject() == null; }
+
+        @Override
+        public void clear() {
+            super.clear();
+            clearCalls++;
+        }
+
+        @Override
+        protected Object read(RuleBindingPlan.Binding binding) {
+            return subject().get(binding.payload());
+        }
+
+        boolean released() {
+            return subject() == null;
+        }
     }
+
     static final class Fixture implements AutoCloseable {
         final Queue<Runnable> owner = new ConcurrentLinkedQueue<>();
         final List<Context> contexts = new ArrayList<>();
@@ -482,42 +566,77 @@ public class RuleManagerTest {
         final RuleFileStore store;
         final ScriptSession<EntityRule> session;
         volatile boolean rejectOwner;
-        RuleManager<Map<String,Object>> manager;
+        RuleManager<Map<String, Object>> manager;
+
         Fixture(Path root, boolean start) throws Exception {
-            config = new AotakeRuleConfigFixture(root.resolve("test.toml")); holder = config.holder;
-            for (String path : RuleMigrationTransaction.LISTS) holder.set(path, Collections.singletonList("tick -> tick >= 5"));
-            holder.save(); store = new RuleFileStore(root.resolve("owner"));
+            config = new AotakeRuleConfigFixture(root.resolve("test.toml"));
+            holder = config.holder;
+            for (String path : RuleMigrationTransaction.LISTS)
+                holder.set(path, Collections.singletonList("tick -> tick >= 5"));
+            holder.save();
+            store = new RuleFileStore(root.resolve("owner"));
             session = BaniraScripts.open("aotake_sweep", EntityRule.class, "1", ScriptLimits.defaults(), owner::add);
             if (start) start();
         }
-        void start() { start(Runnable::run); }
+
+        void start() {
+            start(Runnable::run);
+        }
+
         void start(Executor worker) {
             manager = new RuleManager<>(store, holder, session, worker, task -> {
                 if (rejectOwner) throw new RejectedExecutionException("Owner temporarily unavailable");
                 owner.add(task);
             }, (plan, members) -> {
-                Context context = new Context(); context.members = members; contexts.add(context); return context;
+                Context context = new Context();
+                context.members = members;
+                contexts.add(context);
+                return context;
             }, BaniraScripts.openFactorySession("aotake_sweep", xin.vanilla.aotake.api.sweep.SweepPolicy.class, "1", ScriptLimits.defaults(), owner::add),
                     (specs, loader) -> xin.vanilla.aotake.internal.forge.rule.ForgeNativeMembers.prepare(specs, loader, (kind, name) -> name));
         }
+
         <T> T await(CompletableFuture<T> future) throws Exception {
             long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(15);
-            while (!future.isDone() && System.nanoTime() < deadline) { drain(); Thread.sleep(1); }
+            while (!future.isDone() && System.nanoTime() < deadline) {
+                drain();
+                Thread.sleep(1);
+            }
             return future.get(1, TimeUnit.SECONDS);
         }
-        void drain() { Runnable task; while ((task = owner.poll()) != null) task.run(); }
+
+        void drain() {
+            Runnable task;
+            while ((task = owner.poll()) != null) task.run();
+        }
+
         void nextOwnerTask() throws Exception {
             long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(15);
             Runnable task;
             while ((task = owner.poll()) == null && System.nanoTime() < deadline) Thread.sleep(1);
-            assertNotNull("Owner callback was not scheduled", task); task.run();
+            assertNotNull("Owner callback was not scheduled", task);
+            task.run();
         }
+
         Path sourcePath() throws Exception {
             String reference = ((List<String>) holder.get(RuleMigrationTransaction.LISTS.get(0))).get(0);
             return store.root().resolve(RuleCatalog.sourcePath(reference.substring(7)));
         }
-        String source() throws Exception { return new String(Files.readAllBytes(sourcePath()), StandardCharsets.UTF_8); }
-        void replaceSource(String text) throws Exception { Files.write(sourcePath(), text.getBytes(StandardCharsets.UTF_8)); }
-        @Override public void close() { if (manager != null) manager.close(); session.close(); drain(); config.close(); }
+
+        String source() throws Exception {
+            return new String(Files.readAllBytes(sourcePath()), StandardCharsets.UTF_8);
+        }
+
+        void replaceSource(String text) throws Exception {
+            Files.write(sourcePath(), text.getBytes(StandardCharsets.UTF_8));
+        }
+
+        @Override
+        public void close() {
+            if (manager != null) manager.close();
+            session.close();
+            drain();
+            config.close();
+        }
     }
 }

@@ -1,8 +1,8 @@
 package xin.vanilla.aotake.internal.forge.rule;
 
-import net.minecraft.world.entity.Entity;
 import net.minecraft.nbt.*;
 import net.minecraft.network.syncher.EntityDataAccessor;
+import net.minecraft.world.entity.Entity;
 import xin.vanilla.aotake.rule.RuleBindingPlan;
 import xin.vanilla.aotake.rule.RuleDiagnostic;
 
@@ -206,7 +206,7 @@ public final class ForgeRuleBindings {
             try {
                 Field field = type.getDeclaredField(name.startsWith("f_")
                         ? net.minecraftforge.fml.util.ObfuscationReflectionHelper.remapName(
-                            cpw.mods.modlauncher.api.INameMappingService.Domain.FIELD, name) : name);
+                        cpw.mods.modlauncher.api.INameMappingService.Domain.FIELD, name) : name);
                 field.setAccessible(true);
                 return field;
             } catch (NoSuchFieldException ignored) {

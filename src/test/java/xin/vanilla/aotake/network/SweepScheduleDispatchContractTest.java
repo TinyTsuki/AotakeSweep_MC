@@ -6,7 +6,9 @@ import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.tree.*;
 
 import java.io.InputStream;
-import static org.junit.Assert.*;
+
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
 
 public class SweepScheduleDispatchContractTest {
     private ClassNode node(String path) throws Exception {
@@ -37,23 +39,26 @@ public class SweepScheduleDispatchContractTest {
     public void intervalSaveCallbackContainsTargetedScheduleDispatch() throws Exception {
         ClassNode root = node("AotakeSweep");
         boolean path = false, dispatch = false;
-        for (MethodNode method : root.methods) if (method.name.startsWith("lambda$")) {
-            int anyMatch = -1;
-            for (AbstractInsnNode i : method.instructions) {
-                if (i instanceof LdcInsnNode && "base.sweep.sweepInterval".equals(((LdcInsnNode) i).cst)) path = true;
-                if (i instanceof MethodInsnNode && ((MethodInsnNode) i).name.equals("anyMatch"))
-                    anyMatch = method.instructions.indexOf(i);
-                if (i instanceof MethodInsnNode && ((MethodInsnNode) i).owner.endsWith("/SweepScheduleSync")
-                        && ((MethodInsnNode) i).name.equals("broadcast")) {
-                    int send = method.instructions.indexOf(i);
-                    for (AbstractInsnNode branch : method.instructions) {
-                        if (branch instanceof JumpInsnNode && branch.getOpcode() == Opcodes.IFEQ
-                                && method.instructions.indexOf(branch) > anyMatch && method.instructions.indexOf(branch) < send
-                                && method.instructions.indexOf(((JumpInsnNode) branch).label) > send) dispatch |= anyMatch >= 0;
+        for (MethodNode method : root.methods)
+            if (method.name.startsWith("lambda$")) {
+                int anyMatch = -1;
+                for (AbstractInsnNode i : method.instructions) {
+                    if (i instanceof LdcInsnNode && "base.sweep.sweepInterval".equals(((LdcInsnNode) i).cst))
+                        path = true;
+                    if (i instanceof MethodInsnNode && ((MethodInsnNode) i).name.equals("anyMatch"))
+                        anyMatch = method.instructions.indexOf(i);
+                    if (i instanceof MethodInsnNode && ((MethodInsnNode) i).owner.endsWith("/SweepScheduleSync")
+                            && ((MethodInsnNode) i).name.equals("broadcast")) {
+                        int send = method.instructions.indexOf(i);
+                        for (AbstractInsnNode branch : method.instructions) {
+                            if (branch instanceof JumpInsnNode && branch.getOpcode() == Opcodes.IFEQ
+                                    && method.instructions.indexOf(branch) > anyMatch && method.instructions.indexOf(branch) < send
+                                    && method.instructions.indexOf(((JumpInsnNode) branch).label) > send)
+                                dispatch |= anyMatch >= 0;
+                        }
                     }
                 }
             }
-        }
         assertTrue(path && dispatch);
     }
 
@@ -61,13 +66,14 @@ public class SweepScheduleDispatchContractTest {
     public void broadcastIsScheduledAndFiltersClientsWithInstalledMod() throws Exception {
         ClassNode sync = node("network/SweepScheduleSync");
         boolean scheduled = false, filtered = false, sent = false;
-        for (MethodNode method : sync.methods) for (AbstractInsnNode i : method.instructions) {
-            if (!(i instanceof MethodInsnNode)) continue;
-            MethodInsnNode call = (MethodInsnNode) i;
-            scheduled |= call.name.equals("execute");
-            filtered |= call.name.equals("isRemoteClientModInstalled");
-            sent |= call.name.equals("sendPacketToPlayer");
-        }
+        for (MethodNode method : sync.methods)
+            for (AbstractInsnNode i : method.instructions) {
+                if (!(i instanceof MethodInsnNode)) continue;
+                MethodInsnNode call = (MethodInsnNode) i;
+                scheduled |= call.name.equals("execute");
+                filtered |= call.name.equals("isRemoteClientModInstalled");
+                sent |= call.name.equals("sendPacketToPlayer");
+            }
         assertTrue(scheduled && filtered && sent);
     }
 
@@ -81,7 +87,8 @@ public class SweepScheduleDispatchContractTest {
             if (i instanceof MethodInsnNode) {
                 MethodInsnNode call = (MethodInsnNode) i;
                 if (call.name.equals("isClientSide")) side = handle.instructions.indexOf(i);
-                if (call.owner.endsWith("/AotakeMinimapCountdown") && call.name.equals("accept")) receiver = handle.instructions.indexOf(i);
+                if (call.owner.endsWith("/AotakeMinimapCountdown") && call.name.equals("accept"))
+                    receiver = handle.instructions.indexOf(i);
             }
             if (side >= 0 && receiver < 0 && i.getOpcode() == Opcodes.RETURN) returnsEarly = true;
         }

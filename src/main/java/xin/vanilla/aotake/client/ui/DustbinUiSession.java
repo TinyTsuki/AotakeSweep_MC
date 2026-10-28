@@ -12,7 +12,8 @@ import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
 
 public final class DustbinUiSession implements UiPageSession {
-    public enum Action { CLEAR_CACHE, CLEAR_ALL, CLEAR_PAGE, REFRESH, PREVIOUS, NEXT }
+    public enum Action {CLEAR_CACHE, CLEAR_ALL, CLEAR_PAGE, REFRESH, PREVIOUS, NEXT}
+
     private final AbstractContainerMenu menu;
     private final List<Slot> slots;
     private final int[] coordinates;
@@ -29,11 +30,14 @@ public final class DustbinUiSession implements UiPageSession {
     private int capturedButtons;
     private Layout layout;
     private Map<String, ScreenCoordinate> cachedRegions;
-    private record Layout(int left, int top, int width, int height, boolean cache, boolean clear) { }
+
+    private record Layout(int left, int top, int width, int height, boolean cache, boolean clear) {
+    }
 
     public DustbinUiSession(AbstractContainerMenu menu, boolean chunkVault,
                             BooleanSupplier current, Consumer<Action> actions) {
-        this(menu, chunkVault, current, actions, () -> { });
+        this(menu, chunkVault, current, actions, () -> {
+        });
     }
 
     public DustbinUiSession(AbstractContainerMenu menu, boolean chunkVault,
@@ -76,8 +80,9 @@ public final class DustbinUiSession implements UiPageSession {
             }
             if (nextIcons != iconStates) {
                 iconStates = nextIcons;
-                for (Action action : Action.values()) view.gameElement(id(action) + "_icon",
-                        icon(id(action) + ((nextIcons & 1 << action.ordinal()) == 0 ? "_disabled" : "")));
+                for (Action action : Action.values())
+                    view.gameElement(id(action) + "_icon",
+                            icon(id(action) + ((nextIcons & 1 << action.ordinal()) == 0 ? "_disabled" : "")));
             }
         }
     }
@@ -85,11 +90,17 @@ public final class DustbinUiSession implements UiPageSession {
     public boolean allowed(Action action) {
         if (closeRequested || !matches(menu) || !menu.getCarried().isEmpty()) return false;
         switch (action) {
-            case CLEAR_CACHE: return clearCache;
-            case CLEAR_ALL: case CLEAR_PAGE: return clearDustbin;
-            case PREVIOUS: return DustbinPageNavigation.canNavigate(page, pages, -1);
-            case NEXT: return DustbinPageNavigation.canNavigate(page, pages, 1);
-            default: return true;
+            case CLEAR_CACHE:
+                return clearCache;
+            case CLEAR_ALL:
+            case CLEAR_PAGE:
+                return clearDustbin;
+            case PREVIOUS:
+                return DustbinPageNavigation.canNavigate(page, pages, -1);
+            case NEXT:
+                return DustbinPageNavigation.canNavigate(page, pages, 1);
+            default:
+                return true;
         }
     }
 
@@ -99,7 +110,9 @@ public final class DustbinUiSession implements UiPageSession {
         return true;
     }
 
-    public static String id(Action action) { return action.name().toLowerCase(Locale.ROOT); }
+    public static String id(Action action) {
+        return action.name().toLowerCase(Locale.ROOT);
+    }
 
     public Map<String, ScreenCoordinate> regions(int left, int top, int width, int height) {
         if (!matches(menu) || slots.size() != 90 || width < 96 || height < 1) return Collections.emptyMap();
@@ -152,7 +165,8 @@ public final class DustbinUiSession implements UiPageSession {
             if (bounds == null || !Double.isFinite(bounds.x()) || !Double.isFinite(bounds.y())
                     || !Double.isFinite(bounds.width()) || !Double.isFinite(bounds.height())
                     || Math.abs(bounds.x()) > 16384 || Math.abs(bounds.y()) > 16384
-                    || bounds.width() <= 0 || bounds.height() <= 0 || bounds.width() > 16384 || bounds.height() > 16384) continue;
+                    || bounds.width() <= 0 || bounds.height() <= 0 || bounds.width() > 16384 || bounds.height() > 16384)
+                continue;
             if (x >= bounds.x() && x < bounds.x() + bounds.width()
                     && y >= bounds.y() && y < bounds.y() + bounds.height()) {
                 capturedButtons |= 1 << button;
@@ -200,7 +214,8 @@ public final class DustbinUiSession implements UiPageSession {
                 "apricityui", "apricity/aotake_sweep/icons/" + name + ".png"), 32, 32));
     }
 
-    @Override public void bind(UiView next) {
+    @Override
+    public void bind(UiView next) {
         detach(UiDetachReason.RELOAD);
         if (closed) return;
         view = next;
@@ -209,24 +224,40 @@ public final class DustbinUiSession implements UiPageSession {
                 new net.minecraft.resources.ResourceLocation("aotake_sweep", "gui/quick_icon.png"), 200, 200)));
         next.gameElement("close_icon", UiGameElement.sprite(xin.vanilla.banira.client.data.Texture.of(
                 new net.minecraft.resources.ResourceLocation("apricityui", "apricity/banira_codex/icons/close.png"), 16, 16)));
-        bindings.add(next.onAction("close", () -> { if (view == next) requestClose(); }));
+        bindings.add(next.onAction("close", () -> {
+            if (view == next) requestClose();
+        }));
         for (Action action : Action.values()) {
-            bindings.add(next.onAction(id(action), () -> { if (view == next) perform(action); }));
+            bindings.add(next.onAction(id(action), () -> {
+                if (view == next) perform(action);
+            }));
             next.enabled(id(action), allowed(action));
         }
         state(page, pages, clearCache, clearDustbin);
     }
+
     public void label(Action action, Component label, Component tooltip) {
-        if (view != null) { view.text(id(action), label); view.tooltip(id(action), tooltip); }
+        if (view != null) {
+            view.text(id(action), label);
+            view.tooltip(id(action), tooltip);
+        }
     }
-    @Override public void detach(UiDetachReason reason) {
+
+    @Override
+    public void detach(UiDetachReason reason) {
         view = null;
         for (AutoCloseable binding : bindings) {
-            try { binding.close(); } catch (Exception failure) { throw new IllegalStateException(failure); }
+            try {
+                binding.close();
+            } catch (Exception failure) {
+                throw new IllegalStateException(failure);
+            }
         }
         bindings.clear();
     }
-    @Override public void close(UiCloseReason reason) {
+
+    @Override
+    public void close(UiCloseReason reason) {
         if (closed) return;
         closed = true;
         capturedButtons = 0;

@@ -13,6 +13,8 @@ import xin.vanilla.aotake.config.ClientConfigView;
 import xin.vanilla.aotake.enums.EnumProgressBarTextAlignH;
 import xin.vanilla.aotake.enums.EnumProgressBarTextAlignV;
 import xin.vanilla.aotake.enums.EnumProgressBarType;
+import xin.vanilla.banira.api.client.ui.BaniraUi;
+import xin.vanilla.banira.api.client.ui.UiHudFrame;
 import xin.vanilla.banira.client.data.FontDrawArgs;
 import xin.vanilla.banira.client.data.TransformArgs;
 import xin.vanilla.banira.client.gui.component.Text;
@@ -22,8 +24,6 @@ import xin.vanilla.banira.client.util.TextureUtils;
 import xin.vanilla.banira.common.data.Color;
 import xin.vanilla.banira.common.data.KeyValue;
 import xin.vanilla.banira.common.enums.EnumPosition;
-import xin.vanilla.banira.api.client.ui.BaniraUi;
-import xin.vanilla.banira.api.client.ui.UiHudFrame;
 import xin.vanilla.banira.common.util.NumberUtils;
 
 import java.util.ArrayList;
@@ -46,7 +46,9 @@ public final class ProgressRender {
         if (registration == null) registration = BaniraUi.registerHud(BINDING.spec());
     }
 
-    public static void reset() { BINDING.clear(); }
+    public static void reset() {
+        BINDING.clear();
+    }
 
     public static void render(RenderGuiOverlayEvent event, boolean showProgressHeld) {
         ClientConfigView.ProgressBarView cp = ClientConfig.get().progressBar();
@@ -55,7 +57,10 @@ public final class ProgressRender {
         ClientConfigView.ProgressBarView.TextView cpt = cp.text();
         Minecraft mc = Minecraft.getInstance();
         var time = AotakeMinimapCountdown.snapshot();
-        if (mc.options.hideGui || mc.player == null || time.formattedTime().isEmpty()) { BINDING.clear(); return; }
+        if (mc.options.hideGui || mc.player == null || time.formattedTime().isEmpty()) {
+            BINDING.clear();
+            return;
+        }
         var selection = SweepProgressUiBinding.selection(cp.progressBarDisplayNormal(), cp.progressBarDisplayHold(),
                 showProgressHeld, mc.screen != null, cpl.hideExperienceBarLeaf(), cpp.hideExperienceBarPole(), cpt.hideExperienceBarText());
         boolean pre = event instanceof RenderGuiOverlayEvent.Pre;
@@ -258,7 +263,9 @@ public final class ProgressRender {
             stack.translate(-text.pivotX(), -text.pivotY(), 0);
             Text drawText = Text.literal(text.value()).stack(stack).font(mc.font).color(Color.argb(text.color())).shadow(true);
             LabelWidget.drawLimitedText(FontDrawArgs.of(drawText).x(0).y(0).inScreen(false).wrap(false).fontSize(text.fontSize()));
-        } finally { stack.popPose(); }
+        } finally {
+            stack.popPose();
+        }
     }
 
     private static float alignPivotX(EnumProgressBarTextAlignH h, int layoutWidth) {

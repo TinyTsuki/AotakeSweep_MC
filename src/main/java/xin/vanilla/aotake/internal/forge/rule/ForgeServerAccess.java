@@ -1,7 +1,7 @@
 package xin.vanilla.aotake.internal.forge.rule;
 
-import net.minecraft.server.MinecraftServer;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import xin.vanilla.aotake.api.rule.EntityAccess;
 import xin.vanilla.aotake.api.rule.ServerAccess;

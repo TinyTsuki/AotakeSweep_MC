@@ -50,9 +50,12 @@ public final class SweepCountdownState {
         return Math.max(0, durationNanos - elapsed);
     }
 
-    public synchronized double progress() { return snapshot().progress(); }
+    public synchronized double progress() {
+        return snapshot().progress();
+    }
 
-    public record Snapshot(String formattedTime, double progress) { }
+    public record Snapshot(String formattedTime, double progress) {
+    }
 
     public synchronized Snapshot snapshot() {
         if (!ready) return new Snapshot("", 0);

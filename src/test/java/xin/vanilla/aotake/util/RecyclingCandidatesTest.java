@@ -1,12 +1,18 @@
 package xin.vanilla.aotake.util;
 
 import org.junit.Test;
+
 import java.lang.management.ManagementFactory;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+
 import static org.junit.Assert.*;
 
 public class RecyclingCandidatesTest {
-    @Test public void canonicalIdentityIsEvaluatedOnceEvenWhenFirstOccurrenceIsInvalid() {
+    @Test
+    public void canonicalIdentityIsEvaluatedOnceEvenWhenFirstOccurrenceIsInvalid() {
         Object parent = new Object(), child = new Object(), other = new Object();
         int[] checks = {0};
         RecyclingCandidates<Object> index = new RecyclingCandidates<>();
@@ -23,7 +29,8 @@ public class RecyclingCandidatesTest {
         assertFalse(index.ready(parent));
     }
 
-    @Test public void unpreparedAndClearedIdentitiesCannotBeCommitted() {
+    @Test
+    public void unpreparedAndClearedIdentitiesCannotBeCommitted() {
         Object entity = new Object(), unknown = new Object();
         RecyclingCandidates<Object> index = new RecyclingCandidates<>();
         index.gather(Collections.singletonList(entity), value -> value, value -> true);
@@ -39,7 +46,8 @@ public class RecyclingCandidatesTest {
         assertFalse(index.ready(entity));
     }
 
-    @Test public void equalValuesWithDifferentIdentitiesRemainDistinct() {
+    @Test
+    public void equalValuesWithDifferentIdentitiesRemainDistinct() {
         String first = new String("same"), second = new String("same");
         RecyclingCandidates<String> index = new RecyclingCandidates<>();
         assertEquals(2, index.gather(Arrays.asList(first, second, first), value -> value, value -> true).size());
@@ -49,7 +57,8 @@ public class RecyclingCandidatesTest {
         assertFalse(index.recycle(second));
     }
 
-    @Test public void freshBatchUsesOneIdentityTableAllocation() {
+    @Test
+    public void freshBatchUsesOneIdentityTableAllocation() {
         com.sun.management.ThreadMXBean meter = (com.sun.management.ThreadMXBean) ManagementFactory.getThreadMXBean();
         org.junit.Assume.assumeTrue(meter.isThreadAllocatedMemorySupported());
         meter.setThreadAllocatedMemoryEnabled(true);

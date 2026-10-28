@@ -1,22 +1,34 @@
 package xin.vanilla.aotake.data.world;
 
-import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.Items;
 import net.minecraft.nbt.NbtIo;
 import net.minecraft.server.Bootstrap;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
 import org.junit.BeforeClass;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 import xin.vanilla.aotake.util.EntitySweeper;
-import java.nio.file.*;
-import static org.junit.Assert.*;
+
+import java.nio.file.Files;
+import java.nio.file.Path;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 public class ChunkVaultPendingTest {
-    @Rule public TemporaryFolder temporary = new TemporaryFolder();
-    @BeforeClass public static void bootstrap() { net.minecraft.SharedConstants.tryDetectVersion(); Bootstrap.bootStrap(); xin.vanilla.aotake.rule.ForgeNativeTestBootstrap.initialize(); }
+    @Rule
+    public TemporaryFolder temporary = new TemporaryFolder();
 
-    @Test public void stoppingCanceledSweepPersistsEachOriginWithoutDuplicatingItems() throws Exception {
+    @BeforeClass
+    public static void bootstrap() {
+        net.minecraft.SharedConstants.tryDetectVersion();
+        Bootstrap.bootStrap();
+        xin.vanilla.aotake.rule.ForgeNativeTestBootstrap.initialize();
+    }
+
+    @Test
+    public void stoppingCanceledSweepPersistsEachOriginWithoutDuplicatingItems() throws Exception {
         Path first = temporary.newFolder().toPath(), second = temporary.newFolder().toPath();
         ChunkVaultStorage.queueRecycledItem(first, "run", new ItemStack(Items.STONE, 3));
         ChunkVaultStorage.queueRecycledItem(second, "run", new ItemStack(Items.APPLE, 7));
@@ -29,7 +41,8 @@ public class ChunkVaultPendingTest {
         assertEquals(7, count(second));
     }
 
-    @Test public void failedWriteRetainsOriginalDestinationForRetry() throws Exception {
+    @Test
+    public void failedWriteRetainsOriginalDestinationForRetry() throws Exception {
         Path blocked = temporary.newFile().toPath();
         ChunkVaultStorage.queueRecycledItem(blocked, "run", new ItemStack(Items.STONE, 3));
         ChunkVaultStorage.flushPending();

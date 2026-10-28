@@ -1,7 +1,7 @@
 package xin.vanilla.aotake.network;
 
-import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.level.ServerPlayer;
 import xin.vanilla.aotake.AotakeSweep;
 import xin.vanilla.aotake.network.packet.SweepDataSyncToClient;
 import xin.vanilla.banira.common.util.PacketUtils;

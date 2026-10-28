@@ -9,8 +9,8 @@ import net.minecraftforge.event.TickEvent;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import xin.vanilla.aotake.config.ClientConfig;
-import xin.vanilla.aotake.internal.client.dev.AotakeUiSmokeRunner;
 import xin.vanilla.aotake.internal.client.dev.AotakeNetworkSmokeClientRunner;
+import xin.vanilla.aotake.internal.client.dev.AotakeUiSmokeRunner;
 import xin.vanilla.aotake.network.packet.OpenDustbinToServer;
 import xin.vanilla.aotake.screen.DustbinRender;
 import xin.vanilla.aotake.screen.ProgressRender;
@@ -37,7 +37,9 @@ public final class ClientGameEventHandler {
         BaniraClientEvents.Player.onClientLoggedIn(player -> xin.vanilla.aotake.client.minimap.AotakeMinimapCountdown.beginConnection());
         BaniraClientEvents.Player.onClientLoggedOut(player -> xin.vanilla.aotake.client.minimap.AotakeMinimapCountdown.reset());
         BaniraClientEvents.Player.onClientLoggedOut(player -> {
-            PROGRESS_STATE.reset(); showProgress = false; ProgressRender.reset();
+            PROGRESS_STATE.reset();
+            showProgress = false;
+            ProgressRender.reset();
         });
         BaniraClientEvents.Player.onClientLoggedOut(player -> LOGGER.debug("Client: Player logged out."));
         MinecraftForge.EVENT_BUS.addListener((TickEvent.ClientTickEvent event) -> ClientGameEventHandler.onClientTick(event));

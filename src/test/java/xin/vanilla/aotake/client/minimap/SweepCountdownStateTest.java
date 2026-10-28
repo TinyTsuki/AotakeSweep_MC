@@ -21,7 +21,8 @@ public class SweepCountdownStateTest {
 
     private Object call(Object state, String name, Object... args) throws Exception {
         for (Method method : state.getClass().getMethods()) {
-            if (method.getName().equals(name) && method.getParameterCount() == args.length) return method.invoke(state, args);
+            if (method.getName().equals(name) && method.getParameterCount() == args.length)
+                return method.invoke(state, args);
         }
         throw new AssertionError("Missing countdown method " + name);
     }

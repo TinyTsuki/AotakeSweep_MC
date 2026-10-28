@@ -6,11 +6,16 @@ import net.minecraftforge.registries.ForgeRegistries;
 import net.minecraftforge.registries.IForgeRegistry;
 import net.minecraftforge.registries.RegistryBuilder;
 import net.minecraftforge.registries.RegistryObject;
+
 import java.lang.reflect.Field;
 
-/** Supplies loader-owned fluid registrations for isolated JUnit entity construction. */
+/**
+ * Supplies loader-owned fluid registrations for isolated JUnit entity construction.
+ */
 public final class ForgeNativeTestBootstrap {
-    private ForgeNativeTestBootstrap() { }
+    private ForgeNativeTestBootstrap() {
+    }
+
     public static synchronized void initialize() {
         if (ForgeMod.EMPTY_TYPE.isPresent()) return;
         try {
@@ -29,6 +34,8 @@ public final class ForgeNativeTestBootstrap {
                 registry.register(reference.getId(), type);
                 value.set(reference, type);
             }
-        } catch (ReflectiveOperationException error) { throw new IllegalStateException(error); }
+        } catch (ReflectiveOperationException error) {
+            throw new IllegalStateException(error);
+        }
     }
 }

@@ -12,7 +12,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.LongSupplier;
 import java.util.function.Supplier;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
 
 public class SweepCountdownConnectionTest {
     private Object connection(AtomicReference<Object> current) throws Exception {
@@ -29,7 +29,8 @@ public class SweepCountdownConnectionTest {
 
     private Object call(Object target, String name, Object... args) throws Exception {
         for (Method method : target.getClass().getMethods()) {
-            if (method.getName().equals(name) && method.getParameterCount() == args.length) return method.invoke(target, args);
+            if (method.getName().equals(name) && method.getParameterCount() == args.length)
+                return method.invoke(target, args);
         }
         throw new AssertionError("Missing connection method " + name);
     }
@@ -38,14 +39,43 @@ public class SweepCountdownConnectionTest {
         private final Object key;
         private final List<Runnable> pending = new ArrayList<>();
 
-        private PacketContext(Object key) { this.key = key; }
-        @Override public Object connectionKey() { return key; }
-        @Override public void enqueueWork(Runnable work) { pending.add(work); }
-        @Override public void markHandled() { }
-        @Override public boolean isClientSide() { return true; }
-        @Override public boolean isServerSide() { return false; }
-        @Override public Object sender() { return null; }
-        private void flush() { for (Runnable work : pending) work.run(); pending.clear(); }
+        private PacketContext(Object key) {
+            this.key = key;
+        }
+
+        @Override
+        public Object connectionKey() {
+            return key;
+        }
+
+        @Override
+        public void enqueueWork(Runnable work) {
+            pending.add(work);
+        }
+
+        @Override
+        public void markHandled() {
+        }
+
+        @Override
+        public boolean isClientSide() {
+            return true;
+        }
+
+        @Override
+        public boolean isServerSide() {
+            return false;
+        }
+
+        @Override
+        public Object sender() {
+            return null;
+        }
+
+        private void flush() {
+            for (Runnable work : pending) work.run();
+            pending.clear();
+        }
     }
 
     @Test
@@ -110,7 +140,8 @@ public class SweepCountdownConnectionTest {
         Object key = new Object();
         Object receiver = connection(new AtomicReference<>(key));
         PacketContext ctx = new PacketContext(key);
-        call(receiver, "accept", ctx, 1000L, 61000L, 60000L, (Runnable) () -> { });
+        call(receiver, "accept", ctx, 1000L, 61000L, 60000L, (Runnable) () -> {
+        });
         ctx.flush();
         call(receiver, "beginConnection");
         assertEquals("01:00", call(receiver, "formattedTime"));
@@ -122,7 +153,8 @@ public class SweepCountdownConnectionTest {
         AtomicReference<Object> live = new AtomicReference<>(key);
         Object receiver = connection(live);
         PacketContext ctx = new PacketContext(key);
-        call(receiver, "accept", ctx, 1000L, 61000L, 60000L, (Runnable) () -> { });
+        call(receiver, "accept", ctx, 1000L, 61000L, 60000L, (Runnable) () -> {
+        });
         ctx.flush();
         AtomicInteger cache = new AtomicInteger();
         call(receiver, "accept", ctx, 1000L, 11000L, 60000L, (Runnable) cache::incrementAndGet);

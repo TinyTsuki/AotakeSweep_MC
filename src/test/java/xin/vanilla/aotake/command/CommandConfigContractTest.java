@@ -4,40 +4,18 @@ import org.junit.Test;
 import xin.vanilla.aotake.config.CommonConfig;
 import xin.vanilla.aotake.enums.EnumCommandType;
 import xin.vanilla.aotake.util.AotakeUtils;
-import xin.vanilla.banira.common.config.ConfigCategoryTitleSpec;
-import xin.vanilla.banira.common.config.ConfigEntryDescriptor;
 import xin.vanilla.banira.common.config.ConfigHolder;
-import xin.vanilla.banira.common.config.ConfigScope;
 import xin.vanilla.banira.common.config.ConfigValueStore;
-import xin.vanilla.banira.platform.BaniraConfigHandle;
-import xin.vanilla.banira.platform.BaniraConfigService;
-import xin.vanilla.banira.platform.BaniraInputService;
-import xin.vanilla.banira.platform.BaniraLogoService;
-import xin.vanilla.banira.platform.BaniraNetworkService;
-import xin.vanilla.banira.platform.BaniraNotificationService;
-import xin.vanilla.banira.platform.BaniraPathService;
-import xin.vanilla.banira.platform.BaniraPermissionService;
-import xin.vanilla.banira.platform.BaniraPlayerDataService;
-import xin.vanilla.banira.platform.BaniraPlatform;
-import xin.vanilla.banira.platform.BaniraPlatforms;
-import xin.vanilla.banira.platform.BaniraRegistryService;
-import xin.vanilla.banira.platform.BaniraServerService;
+import xin.vanilla.banira.platform.*;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.lang.reflect.Proxy;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.LinkedHashMap;
-import java.util.Map;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.*;
 
 /**
  * 命令名由 Banira 配置视图驱动，迁移版本时必须保持同一套语义。
@@ -45,7 +23,10 @@ import static org.junit.Assert.assertTrue;
 public class CommandConfigContractTest {
 
     @org.junit.BeforeClass
-    public static void bootstrapDefaults() { net.minecraft.SharedConstants.tryDetectVersion(); net.minecraft.server.Bootstrap.bootStrap(); }
+    public static void bootstrapDefaults() {
+        net.minecraft.SharedConstants.tryDetectVersion();
+        net.minecraft.server.Bootstrap.bootStrap();
+    }
 
     @Test
     public void defaultCommandConfigProducesStableCommands() throws Exception {

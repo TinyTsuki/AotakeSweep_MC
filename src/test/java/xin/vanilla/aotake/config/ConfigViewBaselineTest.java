@@ -1,14 +1,16 @@
 package xin.vanilla.aotake.config;
 
-import org.junit.Test;
 import org.junit.BeforeClass;
+import org.junit.Test;
+
 import java.util.LinkedHashMap;
 import java.util.Map;
 
 public class ConfigViewBaselineTest {
     @BeforeClass
     public static void bootstrapRegistryDefaults() {
-        net.minecraft.SharedConstants.tryDetectVersion(); net.minecraft.server.Bootstrap.bootStrap();
+        net.minecraft.SharedConstants.tryDetectVersion();
+        net.minecraft.server.Bootstrap.bootStrap();
     }
 
     @Test

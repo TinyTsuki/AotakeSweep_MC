@@ -1,16 +1,14 @@
 package xin.vanilla.aotake.internal.client.dev;
 
-import org.junit.Test;
 import net.minecraft.client.gui.GuiGraphics;
+import org.junit.Test;
 import xin.vanilla.banira.client.data.ScreenCoordinate;
 import xin.vanilla.banira.client.gui.widget.BaseWidget;
 
 import java.util.Collections;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.*;
 
 public class AotakeNetworkSmokeScreensTest {
     @Test
@@ -32,9 +30,13 @@ public class AotakeNetworkSmokeScreensTest {
             super(null, new ScreenCoordinate(x, y, width, height));
         }
 
-        private boolean inside() { return mouseInside; }
+        private boolean inside() {
+            return mouseInside;
+        }
 
-        @Override public void render(GuiGraphics graphics, float partialTicks) { }
+        @Override
+        public void render(GuiGraphics graphics, float partialTicks) {
+        }
     }
 
     @Test

@@ -3,7 +3,10 @@ package xin.vanilla.aotake.data.world;
 import org.junit.Test;
 import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.Opcodes;
-import org.objectweb.asm.tree.*;
+import org.objectweb.asm.tree.AbstractInsnNode;
+import org.objectweb.asm.tree.ClassNode;
+import org.objectweb.asm.tree.MethodInsnNode;
+import org.objectweb.asm.tree.MethodNode;
 
 import static org.junit.Assert.*;
 
@@ -33,7 +36,8 @@ public class ChunkVaultAccessContractTest {
         boolean checked = false, rejected = false;
         for (var instruction : method.instructions) {
             if (instruction instanceof MethodInsnNode call) {
-                if (call.owner.equals(ROOT + "data/world/ChunkVaultGrants") && call.name.equals("canOpen")) checked = true;
+                if (call.owner.equals(ROOT + "data/world/ChunkVaultGrants") && call.name.equals("canOpen"))
+                    checked = true;
                 if (call.owner.equals(ROOT + "data/world/ChunkVaultStorage") && call.name.equals("readAllItems")
                         || call.name.equals("openMenu") || call.name.equals("m_5893_")) {
                     assertTrue("Access must be checked before reading/opening in " + name, checked && rejected);
@@ -45,36 +49,53 @@ public class ChunkVaultAccessContractTest {
         assertTrue("Denied access must return in " + name, rejected);
     }
 
-    @Test public void openingRequiresCurrentServerAuthority() throws Exception { guarded("open"); }
-    @Test public void navigationAndRefreshRequireCurrentServerAuthority() throws Exception { guarded("navigateOrReload"); }
-    @Test public void scheduledReopenRequiresCurrentServerAuthority() throws Exception { guarded("reopenAfterPageChange"); }
+    @Test
+    public void openingRequiresCurrentServerAuthority() throws Exception {
+        guarded("open");
+    }
 
-    @Test public void revocationInvalidatesOnlyTheAffectedSession() throws Exception {
+    @Test
+    public void navigationAndRefreshRequireCurrentServerAuthority() throws Exception {
+        guarded("navigateOrReload");
+    }
+
+    @Test
+    public void scheduledReopenRequiresCurrentServerAuthority() throws Exception {
+        guarded("reopenAfterPageChange");
+    }
+
+    @Test
+    public void revocationInvalidatesOnlyTheAffectedSession() throws Exception {
         assertTrue("Revocation must invalidate live access", calls(method("data/world/ChunkVaultGrants", "revoke"),
                 "data/world/ChunkVaultSession", "checkAccess"));
         MethodNode check = method("data/world/ChunkVaultSession", "checkAccess");
         assertTrue(calls(check, "data/world/ChunkVaultGrants", "canOpen"));
     }
 
-    @Test public void serverTicksRecheckOpenSessions() throws Exception {
+    @Test
+    public void serverTicksRecheckOpenSessions() throws Exception {
         assertTrue("Permission loss must not leave a live container", calls(method("event/EventHandlerProxy", "onServerTick"),
                 "data/world/ChunkVaultSession", "checkAccess"));
     }
 
-    @Test public void grantsKeepTheirExistingPersistence() throws Exception {
+    @Test
+    public void grantsKeepTheirExistingPersistence() throws Exception {
         assertTrue(calls(method("data/world/ChunkVaultGrants", "grant"), "data/world/ChunkVaultGrants", "save"));
     }
 
-    @Test public void revocationsKeepTheirExistingPersistence() throws Exception {
+    @Test
+    public void revocationsKeepTheirExistingPersistence() throws Exception {
         assertTrue(calls(method("data/world/ChunkVaultGrants", "revoke"), "data/world/ChunkVaultGrants", "save"));
     }
 
-    @Test public void disabledCleanupCannotSkipLiveAuthorityChecks() throws Exception {
+    @Test
+    public void disabledCleanupCannotSkipLiveAuthorityChecks() throws Exception {
         boolean checked = false, disabledGate = false;
         for (AbstractInsnNode instruction : method("event/EventHandlerProxy", "onServerTick").instructions) {
             if (!(instruction instanceof MethodInsnNode)) continue;
             MethodInsnNode call = (MethodInsnNode) instruction;
-            if (call.owner.equals(ROOT + "data/world/ChunkVaultSession") && call.name.equals("checkAccess")) checked = true;
+            if (call.owner.equals(ROOT + "data/world/ChunkVaultSession") && call.name.equals("checkAccess"))
+                checked = true;
             if (call.owner.equals(ROOT + "AotakeSweep") && call.name.equals("isDisable")) {
                 disabledGate = true;
                 assertTrue("Disabled cleanup must not skip live vault authority", checked);
@@ -83,7 +104,8 @@ public class ChunkVaultAccessContractTest {
         assertTrue(disabledGate && checked);
     }
 
-    @Test public void logoutPersistsAndClearsOnlyThePlayerSession() throws Exception {
+    @Test
+    public void logoutPersistsAndClearsOnlyThePlayerSession() throws Exception {
         assertTrue("Logout must finalize the player's vault session", calls(method("event/EventHandlerProxy", "onPlayerLoggedOut"),
                 "data/world/ChunkVaultSession", "onPlayerDisconnected"));
         MethodNode cleanup = method("data/world/ChunkVaultSession", "onPlayerDisconnected");

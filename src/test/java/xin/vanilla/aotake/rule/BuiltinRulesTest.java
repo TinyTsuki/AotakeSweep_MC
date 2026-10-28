@@ -3,13 +3,19 @@ package xin.vanilla.aotake.rule;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
+
 import java.nio.charset.StandardCharsets;
-import java.nio.file.*;
+import java.nio.file.Files;
+import java.nio.file.Path;
+
 import static org.junit.Assert.*;
 
 public class BuiltinRulesTest {
-    @Rule public TemporaryFolder temporary = new TemporaryFolder();
-    @Test public void installsOnceWithoutOverwritingCustomizedJavaOrRepairingMissingFiles() throws Exception {
+    @Rule
+    public TemporaryFolder temporary = new TemporaryFolder();
+
+    @Test
+    public void installsOnceWithoutOverwritingCustomizedJavaOrRepairingMissingFiles() throws Exception {
         RuleFileStore store = new RuleFileStore(temporary.newFolder().toPath());
         BuiltinRules.install(store);
         assertEquals(2, store.loadCatalog().sources().size());

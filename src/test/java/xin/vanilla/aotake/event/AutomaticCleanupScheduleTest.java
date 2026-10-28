@@ -1,29 +1,34 @@
 package xin.vanilla.aotake.event;
 
-import org.junit.Test;
-import org.junit.Before;
 import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
+
 import java.lang.reflect.Field;
+
 import static org.junit.Assert.*;
 
 public class AutomaticCleanupScheduleTest {
     private long savedSweep, savedChunk;
     private Object savedWarning;
 
-    @Before public void saveState() throws Exception {
+    @Before
+    public void saveState() throws Exception {
         savedSweep = EventHandlerProxy.getNextSweepTime();
         savedChunk = field("lastChunkCheckTime").getLong(null);
         savedWarning = field("lastCountdownWarningDispatchKey").get(null);
         EventHandlerProxy.resetCleanupState();
     }
 
-    @After public void restoreState() throws Exception {
+    @After
+    public void restoreState() throws Exception {
         EventHandlerProxy.setNextSweepTime(savedSweep);
         field("lastChunkCheckTime").setLong(null, savedChunk);
         field("lastCountdownWarningDispatchKey").set(null, savedWarning);
     }
 
-    @Test public void pendingInitialLoadDoesNotConsumeScheduledOpportunity() {
+    @Test
+    public void pendingInitialLoadDoesNotConsumeScheduledOpportunity() {
         EventHandlerProxy.setNextSweepTime(50);
         assertFalse(EventHandlerProxy.beginScheduledSweep(100, 600, false));
         assertEquals(50, EventHandlerProxy.getNextSweepTime());
@@ -33,7 +38,8 @@ public class AutomaticCleanupScheduleTest {
         assertTrue(EventHandlerProxy.beginScheduledSweep(701, 600, true));
     }
 
-    @Test public void disabledSweepAndFutureManualDeadlineRemainUnconsumed() {
+    @Test
+    public void disabledSweepAndFutureManualDeadlineRemainUnconsumed() {
         assertFalse(EventHandlerProxy.beginScheduledSweep(100, 0, true));
         assertFalse(EventHandlerProxy.beginScheduledSweep(100, -1, true));
         assertEquals(0, EventHandlerProxy.getNextSweepTime());
@@ -42,7 +48,8 @@ public class AutomaticCleanupScheduleTest {
         assertEquals(500, EventHandlerProxy.getNextSweepTime());
     }
 
-    @Test public void pendingInitialLoadAndPendingChunkTaskDoNotConsumeChunkOpportunity() throws Exception {
+    @Test
+    public void pendingInitialLoadAndPendingChunkTaskDoNotConsumeChunkOpportunity() throws Exception {
         assertFalse(EventHandlerProxy.beginChunkCheck(100, 50, false, false));
         assertEquals(0, field("lastChunkCheckTime").getLong(null));
         assertFalse(EventHandlerProxy.beginChunkCheck(100, 50, true, true));
@@ -53,13 +60,15 @@ public class AutomaticCleanupScheduleTest {
         assertTrue(EventHandlerProxy.beginChunkCheck(150, 50, true, false));
     }
 
-    @Test public void disabledChunkChecksRemainUnconsumed() throws Exception {
+    @Test
+    public void disabledChunkChecksRemainUnconsumed() throws Exception {
         assertFalse(EventHandlerProxy.beginChunkCheck(100, 0, true, false));
         assertFalse(EventHandlerProxy.beginChunkCheck(100, -1, true, false));
         assertEquals(0, field("lastChunkCheckTime").getLong(null));
     }
 
-    @Test public void newServerResetsExpiredOpportunityAndCountdownDeduplication() throws Exception {
+    @Test
+    public void newServerResetsExpiredOpportunityAndCountdownDeduplication() throws Exception {
         long original = EventHandlerProxy.getNextSweepTime();
         Field chunk = field("lastChunkCheckTime");
         Field warning = field("lastCountdownWarningDispatchKey");

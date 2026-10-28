@@ -22,8 +22,12 @@ public final class AotakeUiPages {
     private static boolean owned;
     private static boolean registered;
 
-    private AotakeUiPages() { }
-    public static void register() { registered = true; }
+    private AotakeUiPages() {
+    }
+
+    public static void register() {
+        registered = true;
+    }
 
     public static void attach(Screen candidate) {
         if (!registered || !(candidate instanceof ContainerScreen chest)) return;
@@ -45,7 +49,10 @@ public final class AotakeUiPages {
         attach(chest);
         owned = false;
         if (screen != chest || session == null || !session.matches(chest.getMenu())) {
-            if (screen == chest && layer != null) { layer.close(); layer = null; }
+            if (screen == chest && layer != null) {
+                layer.close();
+                layer = null;
+            }
             if (screen == chest && session != null) session.detach(UiDetachReason.SWITCH);
             DustbinRender.nativeToolbarVisible(true);
             return false;
@@ -58,7 +65,7 @@ public final class AotakeUiPages {
         try {
             if (layer == null) {
                 layer = BaniraUi.container(new UiPageSpec("aotake_sweep:containers", "aotake_sweep/dustbin.html", session,
-                        previous -> chest, ClientThemeManager::getEffectiveTheme),
+                                previous -> chest, ClientThemeManager::getEffectiveTheme),
                         () -> mc.screen == chest && mc.player != null && mc.player.containerMenu == chest.getMenu());
                 if (layer != null) {
                     session.bind(layer.view());
@@ -95,15 +102,20 @@ public final class AotakeUiPages {
         return owned;
     }
 
-    public static boolean owns(Screen candidate) { return candidate == screen && owned; }
+    public static boolean owns(Screen candidate) {
+        return candidate == screen && owned;
+    }
+
     public static boolean click(Screen candidate, double x, double y, int button) {
         if (candidate != screen || session == null) return false;
         return owns(candidate) ? session.click(x, y, button)
                 : session.captureNativePress(x, y, button, DustbinRender.nativeToolbarRegions(candidate));
     }
+
     public static boolean release(Screen candidate, int button) {
         return candidate == screen && session != null && session.release(button);
     }
+
     public static void action(Screen candidate, DustbinUiSession.Action action) {
         attach(candidate);
         if (screen != candidate || session == null || !session.matches(screen.getMenu())) return;
@@ -131,6 +143,7 @@ public final class AotakeUiPages {
                 graphics.renderTooltip(Minecraft.getInstance().font, candidate.getTitle(), mouseX, mouseY);
         }
     }
+
     private static String tooltipKey(DustbinUiSession.Action action) {
         return switch (action) {
             case CLEAR_CACHE -> "clear_cache";
@@ -141,6 +154,7 @@ public final class AotakeUiPages {
             case NEXT -> "next_page";
         };
     }
+
     public static void close(Screen candidate) {
         if (candidate != screen) return;
         owned = false;

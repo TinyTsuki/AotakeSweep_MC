@@ -2,18 +2,24 @@ package xin.vanilla.aotake.sweep;
 
 import org.junit.Test;
 import xin.vanilla.aotake.api.rule.EntityAccess;
+
 import java.lang.management.ManagementFactory;
 import java.util.List;
+
 import static org.junit.Assert.*;
 
 public class SweepCandidateAllocationTest {
-    @Test public void knownCollectionSizeAvoidsGrowingIdentityTablesAndArrays() {
+    @Test
+    public void knownCollectionSizeAvoidsGrowingIdentityTablesAndArrays() {
         com.sun.management.ThreadMXBean meter = (com.sun.management.ThreadMXBean) ManagementFactory.getThreadMXBean();
         org.junit.Assume.assumeTrue(meter.isThreadAllocatedMemorySupported());
         meter.setThreadAllocatedMemoryEnabled(true);
         SweepFixture fixture = new SweepFixture();
         for (int i = 0; i < 1024; i++) fixture.add("entity" + i);
-        for (int i = 0; i < 8; i++) { populate(fixture.source, false); populate(fixture.source, true); }
+        for (int i = 0; i < 8; i++) {
+            populate(fixture.source, false);
+            populate(fixture.source, true);
+        }
         long thread = Thread.currentThread().getId(), before = meter.getThreadAllocatedBytes(thread);
         populate(fixture.source, false);
         long growing = meter.getThreadAllocatedBytes(thread) - before;

@@ -8,7 +8,9 @@ import org.objectweb.asm.tree.MethodInsnNode;
 import org.objectweb.asm.tree.MethodNode;
 
 import java.io.InputStream;
-import static org.junit.Assert.*;
+
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
 
 public class SweepInitialReadySyncTest {
     @Test
@@ -19,14 +21,15 @@ public class SweepInitialReadySyncTest {
             new ClassReader(input).accept(node, 0);
         }
         boolean refreshed = false;
-        for (MethodNode method : node.methods) for (AbstractInsnNode instruction : method.instructions) {
-            if (!(instruction instanceof MethodInsnNode)) continue;
-            MethodInsnNode call = (MethodInsnNode) instruction;
-            if (call.owner.equals("xin/vanilla/aotake/network/SweepScheduleSync") && call.name.equals("broadcast")) {
-                assertTrue("Schedule refresh must belong to initial-load completion", method.name.startsWith("lambda$start$"));
-                refreshed = true;
+        for (MethodNode method : node.methods)
+            for (AbstractInsnNode instruction : method.instructions) {
+                if (!(instruction instanceof MethodInsnNode)) continue;
+                MethodInsnNode call = (MethodInsnNode) instruction;
+                if (call.owner.equals("xin/vanilla/aotake/network/SweepScheduleSync") && call.name.equals("broadcast")) {
+                    assertTrue("Schedule refresh must belong to initial-load completion", method.name.startsWith("lambda$start$"));
+                    refreshed = true;
+                }
             }
-        }
         assertTrue("A pending deadline must become visible when initial rules finish loading", refreshed);
     }
 }

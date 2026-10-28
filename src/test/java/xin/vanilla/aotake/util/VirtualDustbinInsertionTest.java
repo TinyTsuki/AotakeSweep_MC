@@ -1,10 +1,10 @@
 package xin.vanilla.aotake.util;
 
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.server.Bootstrap;
 import net.minecraft.world.SimpleContainer;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
-import net.minecraft.nbt.CompoundTag;
-import net.minecraft.server.Bootstrap;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
@@ -12,12 +12,19 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.Arrays;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 public class VirtualDustbinInsertionTest {
-    @BeforeClass public static void bootstrap() { net.minecraft.SharedConstants.tryDetectVersion(); Bootstrap.bootStrap(); xin.vanilla.aotake.rule.ForgeNativeTestBootstrap.initialize(); }
+    @BeforeClass
+    public static void bootstrap() {
+        net.minecraft.SharedConstants.tryDetectVersion();
+        Bootstrap.bootStrap();
+        xin.vanilla.aotake.rule.ForgeNativeTestBootstrap.initialize();
+    }
 
-    @Test public void insertionUsesVanillaMergingWithoutASecondSlotScan() throws Exception {
+    @Test
+    public void insertionUsesVanillaMergingWithoutASecondSlotScan() throws Exception {
         CountingInventory inventory = new CountingInventory(2);
         inventory.setItem(0, new ItemStack(Items.APPLE, 63));
         ItemStack input = new ItemStack(Items.APPLE, 5);
@@ -28,7 +35,8 @@ public class VirtualDustbinInsertionTest {
         assertEquals(0, inventory.preflights);
     }
 
-    @Test public void fullInventoriesPreserveTheRemainderAndContinueToLaterPages() throws Exception {
+    @Test
+    public void fullInventoriesPreserveTheRemainderAndContinueToLaterPages() throws Exception {
         CountingInventory full = new CountingInventory(1), next = new CountingInventory(1);
         full.setItem(0, new ItemStack(Items.APPLE, 64));
         next.setItem(0, new ItemStack(Items.APPLE, 60));
@@ -41,10 +49,13 @@ public class VirtualDustbinInsertionTest {
         assertEquals(0, full.preflights + next.preflights);
     }
 
-    @Test public void differentTagsAreNotMerged() throws Exception {
+    @Test
+    public void differentTagsAreNotMerged() throws Exception {
         CountingInventory inventory = new CountingInventory(1);
         ItemStack stored = new ItemStack(Items.APPLE, 1);
-        CompoundTag tag = new CompoundTag(); tag.putString("kind", "stored"); stored.setTag(tag);
+        CompoundTag tag = new CompoundTag();
+        tag.putString("kind", "stored");
+        stored.setTag(tag);
         inventory.setItem(0, stored);
         ItemStack input = new ItemStack(Items.APPLE, 2);
         assertEquals(2, insert(input, inventory).getCount());
@@ -54,7 +65,8 @@ public class VirtualDustbinInsertionTest {
 
     private static ItemStack insert(ItemStack stack, SimpleContainer... inventories) throws Exception {
         EntitySweeper sweeper = new EntitySweeper();
-        Field field = EntitySweeper.class.getDeclaredField("inventoryList"); field.setAccessible(true);
+        Field field = EntitySweeper.class.getDeclaredField("inventoryList");
+        field.setAccessible(true);
         field.set(sweeper, Arrays.asList(inventories));
         Method method = EntitySweeper.class.getDeclaredMethod("addItemToVirtualDustbin", ItemStack.class);
         method.setAccessible(true);
@@ -63,7 +75,15 @@ public class VirtualDustbinInsertionTest {
 
     private static final class CountingInventory extends SimpleContainer {
         int preflights;
-        CountingInventory(int size) { super(size); }
-        @Override public boolean canAddItem(ItemStack stack) { preflights++; return super.canAddItem(stack); }
+
+        CountingInventory(int size) {
+            super(size);
+        }
+
+        @Override
+        public boolean canAddItem(ItemStack stack) {
+            preflights++;
+            return super.canAddItem(stack);
+        }
     }
 }

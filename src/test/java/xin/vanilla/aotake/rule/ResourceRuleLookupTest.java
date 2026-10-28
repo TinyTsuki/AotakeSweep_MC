@@ -1,26 +1,38 @@
 package xin.vanilla.aotake.rule;
 
 import com.google.gson.JsonObject;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.Bootstrap;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.item.ItemEntity;
-import net.minecraft.resources.ResourceLocation;
-import net.minecraft.server.Bootstrap;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import xin.vanilla.aotake.api.rule.EntityRule;
 import xin.vanilla.aotake.internal.forge.rule.ForgeEntityRuleContext;
 import xin.vanilla.banira.internal.forge.platform.ForgeBaniraRegistryService;
-import xin.vanilla.banira.platform.*;
-import java.lang.reflect.*;
+import xin.vanilla.banira.platform.BaniraPlatform;
+import xin.vanilla.banira.platform.BaniraPlatforms;
+import xin.vanilla.banira.platform.BaniraRegistryService;
+
+import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Proxy;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicReference;
+
 import static org.junit.Assert.*;
 
 public class ResourceRuleLookupTest {
-    @BeforeClass public static void bootstrap() { net.minecraft.SharedConstants.tryDetectVersion(); Bootstrap.bootStrap(); xin.vanilla.aotake.rule.ForgeNativeTestBootstrap.initialize(); }
+    @BeforeClass
+    public static void bootstrap() {
+        net.minecraft.SharedConstants.tryDetectVersion();
+        Bootstrap.bootStrap();
+        xin.vanilla.aotake.rule.ForgeNativeTestBootstrap.initialize();
+    }
 
-    @Test public void longIdRunReadsRegistryOncePerMatchAndDoesNotCacheAcrossEntities() throws Exception {
+    @Test
+    public void longIdRunReadsRegistryOncePerMatchAndDoesNotCacheAcrossEntities() throws Exception {
         try (Registry fixture = new Registry()) {
             List<String> rules = new ArrayList<>();
             for (int i = 0; i < 127; i++) rules.add("probe:missing_" + i);
@@ -34,17 +46,22 @@ public class ResourceRuleLookupTest {
         }
     }
 
-    @Test public void scriptChangesInvalidateThePreviousIdRunKey() throws Exception {
+    @Test
+    public void scriptChangesInvalidateThePreviousIdRunKey() throws Exception {
         try (Registry fixture = new Registry()) {
             RuleGeneration<Entity> generation = generation(Arrays.asList(
-                    "probe:before", "probe:before_again", "script:probe", "probe:after", "probe:changed"),
-                    context -> { fixture.key = new ResourceLocation("probe:changed"); return false; });
+                            "probe:before", "probe:before_again", "script:probe", "probe:after", "probe:changed"),
+                    context -> {
+                        fixture.key = new ResourceLocation("probe:changed");
+                        return false;
+                    });
             assertTrue(generation.matches(RuleGeneration.RuleList.SWEEP, item()));
             assertEquals("Two independent ID runs around the script", 2, fixture.lookups);
         }
     }
 
-    @Test public void nestedMatchesDoNotReplaceTheOuterRunsKey() throws Exception {
+    @Test
+    public void nestedMatchesDoNotReplaceTheOuterRunsKey() throws Exception {
         try (Registry fixture = new Registry()) {
             AtomicReference<RuleGeneration<Entity>> active = new AtomicReference<>();
             RuleGeneration<Entity> generation = generation(Arrays.asList(
@@ -58,7 +75,8 @@ public class ResourceRuleLookupTest {
         }
     }
 
-    @Test public void lookupRetirementStopsBeforeTheNextIdRule() throws Exception {
+    @Test
+    public void lookupRetirementStopsBeforeTheNextIdRule() throws Exception {
         try (Registry fixture = new Registry()) {
             RuleGeneration<Entity> generation = generation(Arrays.asList("probe:a", "minecraft:item"), null);
             fixture.afterLookup = () -> generation.retire("retired during lookup");
@@ -71,10 +89,13 @@ public class ResourceRuleLookupTest {
         }
     }
 
-    @Test public void registryFailuresKeepTheCurrentRuleDiagnostic() throws Exception {
+    @Test
+    public void registryFailuresKeepTheCurrentRuleDiagnostic() throws Exception {
         try (Registry fixture = new Registry()) {
             RuleGeneration<Entity> generation = generation(Arrays.asList("probe:a", "minecraft:item"), null);
-            fixture.afterLookup = () -> { throw new IllegalStateException("registry read failed"); };
+            fixture.afterLookup = () -> {
+                throw new IllegalStateException("registry read failed");
+            };
             RuleExecutionException failure = assertThrows(RuleExecutionException.class,
                     () -> generation.matches(RuleGeneration.RuleList.SWEEP, item()));
             assertTrue(failure.getMessage().contains("Rule probe:a failed"));
@@ -83,7 +104,8 @@ public class ResourceRuleLookupTest {
         }
     }
 
-    @Test public void wildcardAndUnknownKeysKeepTheExistingFallback() throws Exception {
+    @Test
+    public void wildcardAndUnknownKeysKeepTheExistingFallback() throws Exception {
         try (Registry fixture = new Registry()) {
             assertTrue(generation(Arrays.asList("probe:a", "minecraft:*"), null)
                     .matches(RuleGeneration.RuleList.SWEEP, item()));
@@ -95,7 +117,8 @@ public class ResourceRuleLookupTest {
         }
     }
 
-    @Test public void singleIdDoesNotAddASecondRegistryLookup() throws Exception {
+    @Test
+    public void singleIdDoesNotAddASecondRegistryLookup() throws Exception {
         try (Registry fixture = new Registry()) {
             assertTrue(generation(Collections.singletonList("minecraft:item"), null)
                     .matches(RuleGeneration.RuleList.SWEEP, item()));
@@ -103,10 +126,14 @@ public class ResourceRuleLookupTest {
         }
     }
 
-    private static ItemEntity item() { return new ItemEntity(net.minecraft.world.entity.EntityType.ITEM, null); }
+    private static ItemEntity item() {
+        return new ItemEntity(net.minecraft.world.entity.EntityType.ITEM, null);
+    }
+
     private static RuleGeneration<Entity> generation(List<String> rules, EntityRule script) {
         Map<String, Object> config = new HashMap<>();
-        for (String path : RuleMigrationTransaction.LISTS) config.put(path, Arrays.asList("probe:nested_a", "probe:nested_b"));
+        for (String path : RuleMigrationTransaction.LISTS)
+            config.put(path, Arrays.asList("probe:nested_a", "probe:nested_b"));
         config.put(RuleMigrationTransaction.LISTS.get(0), rules);
         for (String path : RuleMigrationTransaction.MODES) config.put(path, "BLACK");
         Map<String, RuleSource> sources = script == null ? Collections.emptyMap()
@@ -121,18 +148,27 @@ public class ResourceRuleLookupTest {
         private final Object previous;
         int lookups;
         ResourceLocation key = new ResourceLocation("minecraft:item");
-        Runnable afterLookup = () -> {};
+        Runnable afterLookup = () -> {
+        };
+
         Registry() throws Exception {
-            field = BaniraPlatforms.class.getDeclaredField("platform"); field.setAccessible(true);
+            field = BaniraPlatforms.class.getDeclaredField("platform");
+            field.setAccessible(true);
             previous = field.get(null);
             ForgeBaniraRegistryService actual = ForgeBaniraRegistryService.INSTANCE;
             BaniraRegistryService registry = (BaniraRegistryService) Proxy.newProxyInstance(
                     BaniraRegistryService.class.getClassLoader(), new Class<?>[]{BaniraRegistryService.class}, (proxy, method, args) -> {
                         if (method.getName().equals("entityTypeKeyObject")) {
-                            assertSame(EntityType.ITEM, args[0]); lookups++; afterLookup.run(); return key;
+                            assertSame(EntityType.ITEM, args[0]);
+                            lookups++;
+                            afterLookup.run();
+                            return key;
                         }
-                        try { return method.invoke(actual, args); }
-                        catch (InvocationTargetException failure) { throw failure.getCause(); }
+                        try {
+                            return method.invoke(actual, args);
+                        } catch (InvocationTargetException failure) {
+                            throw failure.getCause();
+                        }
                     });
             BaniraPlatforms.install((BaniraPlatform) Proxy.newProxyInstance(BaniraPlatform.class.getClassLoader(),
                     new Class<?>[]{BaniraPlatform.class}, (proxy, method, args) -> {
@@ -140,6 +176,10 @@ public class ResourceRuleLookupTest {
                         throw new UnsupportedOperationException(method.toString());
                     }));
         }
-        @Override public void close() throws Exception { field.set(null, previous); }
+
+        @Override
+        public void close() throws Exception {
+            field.set(null, previous);
+        }
     }
 }

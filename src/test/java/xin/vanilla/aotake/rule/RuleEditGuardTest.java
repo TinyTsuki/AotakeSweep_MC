@@ -1,20 +1,31 @@
 package xin.vanilla.aotake.rule;
 
-import org.junit.*;
+import org.junit.Rule;
+import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
-import xin.vanilla.banira.common.config.*;
+import xin.vanilla.banira.common.config.ConfigEditOrigin;
+
 import java.nio.file.Files;
-import java.util.*;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.LinkedHashMap;
+import java.util.Map;
+
 import static org.junit.Assert.*;
 
 public class RuleEditGuardTest {
-    @Rule public TemporaryFolder temporary = new TemporaryFolder();
-    @Test public void rejectsWholeRemoteBatchAndOnlyAllowsApprovedReferencesWithoutIo() throws Exception {
+    @Rule
+    public TemporaryFolder temporary = new TemporaryFolder();
+
+    @Test
+    public void rejectsWholeRemoteBatchAndOnlyAllowsApprovedReferencesWithoutIo() throws Exception {
         try (RuleMigrationTransactionTest.Fixture f = new RuleMigrationTransactionTest.Fixture(temporary.newFolder().toPath())) {
-            RuleMigrationTransaction.PreparedMigration candidate = f.prepare(); f.transaction.commit(candidate);
+            RuleMigrationTransaction.PreparedMigration candidate = f.prepare();
+            f.transaction.commit(candidate);
             Runnable unregister = f.holder.onEdit(candidate.catalog().guard());
             byte[] before = Files.readAllBytes(f.config);
-            Map<String,Object> values = new LinkedHashMap<>(); values.put("unrelated", 2);
+            Map<String, Object> values = new LinkedHashMap<>();
+            values.put("unrelated", 2);
             for (String invalid : new String[]{"tick -> tick > 1", "script:missing", "script:../escape", "minecraft:arrow;"}) {
                 values.put(RuleMigrationTransaction.LISTS.get(0), Collections.singletonList(invalid));
                 assertThrows(IllegalArgumentException.class, () -> f.holder.setAll(values, ConfigEditOrigin.REMOTE));

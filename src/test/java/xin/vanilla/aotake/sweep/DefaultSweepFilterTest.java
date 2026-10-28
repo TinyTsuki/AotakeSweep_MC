@@ -1,17 +1,25 @@
 package xin.vanilla.aotake.sweep;
 
 import org.junit.Test;
+
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
-import static org.junit.Assert.*;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 public class DefaultSweepFilterTest {
-    @Test public void unreachableLimitsDoNotBuildChunkCounts() {
+    @Test
+    public void unreachableLimitsDoNotBuildChunkCounts() {
         int[] hashes = {0};
         Object chunk = new Object() {
-            @Override public int hashCode() { hashes[0]++; return 1; }
+            @Override
+            public int hashCode() {
+                hashes[0]++;
+                return 1;
+            }
         };
-        List<DefaultSweepFilter.Entry<String,Object>> entries = Arrays.asList(
+        List<DefaultSweepFilter.Entry<String, Object>> entries = Arrays.asList(
                 new DefaultSweepFilter.Entry<>("safe", true, true, null, chunk),
                 new DefaultSweepFilter.Entry<>("other", false, false, "other", null),
                 new DefaultSweepFilter.Entry<>("junk", false, true, null, null));
@@ -21,11 +29,13 @@ public class DefaultSweepFilterTest {
         assertTrue(hashes[0] > 0);
         assertEquals(Arrays.asList("other", "junk"), DefaultSweepFilter.selectEntries(entries, 0, 3));
     }
+
     private DefaultSweepFilter.Entry<String, String> entry(String id, boolean safe, boolean junk, String type, String chunk) {
         return new DefaultSweepFilter.Entry<>(id, safe, junk, type, chunk);
     }
 
-    @Test public void safetyProtectsOrdinaryJunkButNotExceededTypeOrSafeChunkLimits() {
+    @Test
+    public void safetyProtectsOrdinaryJunkButNotExceededTypeOrSafeChunkLimits() {
         Map<String, DefaultSweepFilter.Entry<String, String>> entries = new LinkedHashMap<>();
         entries.put("normal", entry("normal", false, true, null, null));
         entries.put("protected", entry("protected", true, true, null, "quiet"));
@@ -39,7 +49,8 @@ public class DefaultSweepFilterTest {
                 new DefaultSweepFilter<String, String>(1, 2, entries::get).select(new ArrayList<>(entries.keySet())));
     }
 
-    @Test public void thresholdsAreStrictAndNonJunkCountsExcludeJunk() {
+    @Test
+    public void thresholdsAreStrictAndNonJunkCountsExcludeJunk() {
         Map<String, DefaultSweepFilter.Entry<String, String>> entries = new HashMap<>();
         entries.put("a", entry("a", false, false, "arrow", null));
         entries.put("b", entry("b", false, false, "arrow", null));
@@ -50,7 +61,8 @@ public class DefaultSweepFilterTest {
                 .select(Arrays.asList("a", "b", "junk")));
     }
 
-    @Test public void eachCandidateIsInspectedOnceAndRejectedEntriesDoNotAffectCounts() {
+    @Test
+    public void eachCandidateIsInspectedOnceAndRejectedEntriesDoNotAffectCounts() {
         List<String> input = new ArrayList<>(Arrays.asList("a", "invalid", "b"));
         AtomicInteger inspections = new AtomicInteger();
         DefaultSweepFilter<String, String> filter = new DefaultSweepFilter<>(2, 2, id -> {

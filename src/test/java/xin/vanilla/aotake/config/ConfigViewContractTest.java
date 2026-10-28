@@ -6,10 +6,7 @@ import xin.vanilla.aotake.enums.EnumProgressBarType;
 
 import java.util.Arrays;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertSame;
+import static org.junit.Assert.*;
 
 /**
  * 锁定 Aotake 通过 Banira 配置视图暴露给业务层的基础契约。
@@ -18,7 +15,8 @@ public class ConfigViewContractTest {
 
     @org.junit.BeforeClass
     public static void initializeRegistryDefaults() {
-        net.minecraft.SharedConstants.tryDetectVersion(); net.minecraft.server.Bootstrap.bootStrap();
+        net.minecraft.SharedConstants.tryDetectVersion();
+        net.minecraft.server.Bootstrap.bootStrap();
     }
 
     @Test
