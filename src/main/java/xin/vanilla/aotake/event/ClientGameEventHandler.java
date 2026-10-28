@@ -38,6 +38,8 @@ public final class ClientGameEventHandler {
         NeoForge.EVENT_BUS.addListener((ScreenEvent.Init.Post event) -> DustbinRender.handleGuiScreen(event));
         NeoForge.EVENT_BUS.addListener((ScreenEvent.Render.Post event) -> DustbinRender.handleGuiScreen(event));
         NeoForge.EVENT_BUS.addListener((ScreenEvent.KeyPressed.Pre event) -> DustbinRender.handleGuiScreen(event));
+        NeoForge.EVENT_BUS.addListener((ScreenEvent.MouseButtonPressed.Pre event) -> DustbinRender.handleGuiScreen(event));
+        NeoForge.EVENT_BUS.addListener((ScreenEvent.MouseButtonReleased.Pre event) -> DustbinRender.handleGuiScreen(event));
     }
 
     private static void onClientTick(ClientTickEvent.Post event) {
