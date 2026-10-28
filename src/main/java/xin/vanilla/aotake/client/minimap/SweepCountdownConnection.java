@@ -43,8 +43,12 @@ public final class SweepCountdownConnection {
     }
 
     public synchronized String formattedTime() {
-        if (connection == null || connection != currentConnection.get()) return "";
-        return state.formattedTime();
+        return snapshot().formattedTime();
+    }
+
+    public synchronized SweepCountdownState.Snapshot snapshot() {
+        if (connection == null || connection != currentConnection.get()) return new SweepCountdownState.Snapshot("", 0);
+        return state.snapshot();
     }
 
     public synchronized void reset() {

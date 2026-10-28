@@ -1,0 +1,8 @@
+html,body{margin:0;padding:0;width:100%;height:100%;background:transparent;pointer-events:none}
+#progress{position:absolute;left:0;top:0;width:100%;height:100%;pointer-events:none}
+.progress-sprite,.progress-text{position:absolute;left:var(--hud-x);top:var(--hud-y);width:var(--hud-width);height:var(--hud-height);margin:0;padding:0;border:0;background:transparent;pointer-events:none}
+.progress-sprite{transform-origin:50% 50%;transform:rotate(var(--hud-angle))}
+.progress-text{transform-origin:0 0;transform:rotate(var(--hud-angle)) scale(var(--hud-scale)) translate(var(--hud-pivot-x),var(--hud-pivot-y))}
+.progress-value,.progress-shadow{position:absolute;left:0;top:0;width:var(--hud-width);height:var(--hud-height);margin:0;padding:0;border:0;background:transparent;white-space:pre;pointer-events:none;font-size:var(--hud-font-size);line-height:var(--hud-font-size)}
+.progress-value{color:var(--hud-color)}
+.progress-shadow{left:var(--hud-shadow-offset);top:var(--hud-shadow-offset);color:var(--hud-shadow-color)}
