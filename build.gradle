@@ -7,6 +7,7 @@ plugins {
 }
 
 apply from: 'gradle/config-view-processor.gradle'
+apply from: 'gradle/aui-validation-output.gradle'
 
 def javaVer = 21
 
@@ -19,6 +20,7 @@ base {
 
 java {
     toolchain.languageVersion = JavaLanguageVersion.of(javaVer)
+    withSourcesJar()
 }
 
 runs {
@@ -161,7 +163,7 @@ tasks.named('jar', Jar).configure {
     // 自定义打包路径与输出格式
     archiveBaseName.set(mod_id)
     archiveVersion.set("${loader_type}-${minecraft_version}-${mod_version}")
-    destinationDirectory.set(file("${projectDir}/builds/${mod_version}"))
+    destinationDirectory.set(baniraDistributionDirectory)
     manifest {
         attributes([
                 "Implementation-Title"  : project.name,
@@ -175,7 +177,7 @@ def aotakeCopyFatJar = { File fat, String destName ->
     if (fat != null && fat.exists()) {
         copy {
             from fat
-            into file("${projectDir}/builds/${mod_version}")
+            into baniraDistributionDirectory
             rename { destName }
         }
     }
@@ -201,6 +203,8 @@ afterEvaluate {
     }
 }
 // endregion
+
+apply from: 'gradle/aui-validation-publication.gradle'
 
 // Keeps the development client FPS counter enabled without affecting published artifacts.
 def baniraDevFpsDefaultSettingsKey = 'extra_settings'
