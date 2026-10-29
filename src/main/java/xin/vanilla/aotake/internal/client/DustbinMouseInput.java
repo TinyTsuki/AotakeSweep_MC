@@ -20,6 +20,13 @@ public final class DustbinMouseInput {
     private boolean leftDown;
     private boolean leftReleased;
 
+    public void reset() {
+        leftDown = false;
+        leftReleased = false;
+        leftDownX = -1;
+        leftDownY = -1;
+    }
+
     public void poll(double mouseX, double mouseY) {
         update(mouseX, mouseY, BaniraInput.isMouseDown(BaniraKeyCodes.MOUSE_LEFT));
     }

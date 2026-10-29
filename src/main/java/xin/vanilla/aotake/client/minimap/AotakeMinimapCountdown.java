@@ -40,4 +40,8 @@ public final class AotakeMinimapCountdown {
     public static void reset() {
         CONNECTION.reset();
     }
+
+    public static SweepCountdownState.Snapshot snapshot() {
+        return CONNECTION.snapshot();
+    }
 }

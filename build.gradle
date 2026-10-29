@@ -223,3 +223,5 @@ publishing {
 }
 
 apply from: 'gradle/fabric-dev-runtime.gradle'
+apply from: 'gradle/aui-validation-publication.gradle'
+apply from: 'gradle/aui-validation-output.gradle'

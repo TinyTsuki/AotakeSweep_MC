@@ -24,17 +24,25 @@ public final class ClientGameEventHandler {
 
     private static long lastTime = 0;
     private static boolean showProgress = false;
+    private static final xin.vanilla.aotake.client.ui.SweepProgressUiBinding.KeyState PROGRESS_STATE =
+            new xin.vanilla.aotake.client.ui.SweepProgressUiBinding.KeyState();
 
     private ClientGameEventHandler() {
     }
 
     public static void register() {
         xin.vanilla.aotake.client.minimap.AotakeMinimapCountdown.register();
+        BaniraClientEvents.ModLifecycle.onClientSetup(event -> ProgressRender.register());
         xin.vanilla.banira.api.client.event.BaniraClientEvents.Player.onClientLoggedIn(
                 player -> xin.vanilla.aotake.client.minimap.AotakeMinimapCountdown.beginConnection());
         xin.vanilla.banira.api.client.event.BaniraClientEvents.Player.onClientLoggedOut(
                 player -> xin.vanilla.aotake.client.minimap.AotakeMinimapCountdown.reset());
         BaniraClientEvents.Player.onClientLoggedOut(player -> LOGGER.debug("Client: Player logged out."));
+        BaniraClientEvents.Player.onClientLoggedOut(player -> {
+            PROGRESS_STATE.reset();
+            showProgress = false;
+            ProgressRender.reset();
+        });
         BaniraClientEvents.Client.onClientTick(event -> onClientTick());
         AotakeNetworkSmokeClientRunner.register();
         BaniraHudEvents.onElementPreRender(HudOverlayElement.EXPERIENCE_BAR, ClientGameEventHandler::interceptExperience);
@@ -44,40 +52,27 @@ public final class ClientGameEventHandler {
     private static void onClientTick() {
         AotakeUiSmokeRunner.tick(Minecraft.getInstance());
         AotakeNetworkSmokeClientRunner.tick(Minecraft.getInstance());
+        showProgress = PROGRESS_STATE.tick(ClientModEventHandler.PROGRESS_KEY.isDown(), Minecraft.getInstance().screen != null,
+                ClientConfig.get().progressBar().progressBarKeyApplyMode());
         if (Minecraft.getInstance().screen == null) {
             if (ClientModEventHandler.DUSTBIN_KEY.isDown() && System.currentTimeMillis() - lastTime > 100) {
                 lastTime = System.currentTimeMillis();
                 PacketUtils.sendPacketToServer(new OpenDustbinToServer(0));
             }
-            if (ClientConfig.get().progressBar().progressBarKeyApplyMode()) {
-                if (ClientModEventHandler.PROGRESS_KEY.isDown() && System.currentTimeMillis() - lastTime > 100) {
-                    lastTime = System.currentTimeMillis();
-                    showProgress = !showProgress;
-                }
-            } else {
-                showProgress = ClientModEventHandler.PROGRESS_KEY.isDown();
-            }
         }
     }
 
     public static void renderHud(GuiGraphics graphics, DeltaTracker deltaTracker) {
-        ProgressRender.render(graphics.pose(), showProgress);
-    }
-
-    static boolean hidesExperience(boolean held, java.util.List<xin.vanilla.aotake.enums.EnumProgressBarType> normal,
-                                   boolean leaf, boolean pole, boolean text) {
-        return held || normal.contains(xin.vanilla.aotake.enums.EnumProgressBarType.LEAF) && leaf
-                || normal.contains(xin.vanilla.aotake.enums.EnumProgressBarType.POLE) && pole
-                || normal.contains(xin.vanilla.aotake.enums.EnumProgressBarType.TEXT) && text;
+        if (ProgressRender.shouldRenderProgressOverlay(showProgress)) {
+            ProgressRender.render(graphics, showProgress);
+        } else ProgressRender.reset();
     }
 
     private static void interceptExperience(BaniraHudRenderEvent event) {
         Minecraft minecraft = Minecraft.getInstance();
         if (minecraft.player == null || minecraft.screen != null || minecraft.options.hideGui) return;
-        xin.vanilla.aotake.config.ClientConfigView.ProgressBarView progress = ClientConfig.get().progressBar();
-        if (hidesExperience(showProgress, progress.progressBarDisplayNormal(),
-                progress.leaf().hideExperienceBarLeaf(), progress.pole().hideExperienceBarPole(),
-                progress.text().hideExperienceBarText())) {
+        if (ProgressRender.shouldRenderProgressOverlay(showProgress)
+                && ProgressRender.shouldHideVanillaExperienceBar(showProgress)) {
             event.cancel();
         }
     }

@@ -1,0 +1,17 @@
+if (providers.gradleProperty('banira.validationOutputRoot').isPresent()) {
+    def local = System.getProperty('maven.repo.local')
+    if (local == null || !new File(local).isAbsolute()
+            || new File(local).canonicalPath.replace('\\', '/').split('/').any { it.equalsIgnoreCase('builds') }) {
+        throw new GradleException('Validation publication requires an isolated absolute Maven root')
+    }
+    publishing.publications.named('mavenJava', MavenPublication) {
+        groupId = 'xin.vanilla.aotake'
+        artifactId = mod_id
+        version = "${loader_type}-${minecraft_version}-${mod_version}"
+        setArtifacts([tasks.named('remapJar'), tasks.named('sourcesJar')])
+    }
+    // Validation publishes explicit remapped artifacts, without development variants.
+    tasks.withType(org.gradle.api.publish.tasks.GenerateModuleMetadata).configureEach {
+        enabled = false
+    }
+}

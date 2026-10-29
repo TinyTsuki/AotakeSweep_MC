@@ -41,6 +41,7 @@ public final class AotakeClientBootstrap {
 
         ClientGameEventHandler.register();
         ClientModEventHandler.register();
+        xin.vanilla.aotake.client.ui.AotakeUiPages.register();
 
         ResourceLocation texture = Identifier.id().create("gui/quick_icon.png");
         Component label = AotakeComponent.get().transClient("key.aotake_sweep.categories");
