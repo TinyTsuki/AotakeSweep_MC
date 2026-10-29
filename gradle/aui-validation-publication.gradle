@@ -14,4 +14,17 @@ if (providers.gradleProperty('banira.validationOutputRoot').isPresent()) {
     tasks.withType(org.gradle.api.publish.tasks.GenerateModuleMetadata).configureEach {
         enabled = false
     }
+    gradle.projectsEvaluated {
+        // Apply after Loom contributes its development-runtime dependencies.
+        publishing.publications.named('mavenJava', MavenPublication) {
+            pom.withXml {
+                def root = asElement()
+                for (int i = root.childNodes.length - 1; i >= 0; i--) {
+                    def child = root.childNodes.item(i)
+                    if (child.nodeType == org.w3c.dom.Node.ELEMENT_NODE
+                            && (child.localName ?: child.nodeName) == 'dependencies') root.removeChild(child)
+                }
+            }
+        }
+    }
 }
