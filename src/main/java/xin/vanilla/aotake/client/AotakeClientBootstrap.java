@@ -40,6 +40,7 @@ public final class AotakeClientBootstrap {
             return;
         }
         initialized = true;
+        xin.vanilla.aotake.client.ui.AotakeUiPages.register();
 
         ClientModEventHandler.register();
         ClientGameEventHandler.register();

@@ -11,6 +11,7 @@ buildscript {
 plugins {
     id 'eclipse'
     id 'idea'
+    id 'maven-publish'
     id 'net.minecraftforge.gradle' version '[6.0.16,6.2)'
 }
 
@@ -27,6 +28,7 @@ base {
 
 java {
     toolchain.languageVersion = JavaLanguageVersion.of(javaVer)
+    withSourcesJar()
 }
 
 minecraft {
@@ -203,7 +205,7 @@ def aotakeCopyFatJar = { File fat, String destName ->
     if (fat != null && fat.exists()) {
         copy {
             from fat
-            into file("${projectDir}/builds/${mod_version}")
+            into baniraDistributionDirectory
             rename { destName }
         }
     }
@@ -243,3 +245,6 @@ sourceSets.each {
     it.output.resourcesDir = dir
     it.java.destinationDirectory = dir
 }
+
+apply from: 'gradle/aui-validation-output.gradle'
+apply from: 'gradle/aui-validation-publication.gradle'
