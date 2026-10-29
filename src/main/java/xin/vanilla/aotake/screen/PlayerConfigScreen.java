@@ -1,14 +1,16 @@
 package xin.vanilla.aotake.screen;
 
-import com.mojang.blaze3d.vertex.PoseStack;
 import lombok.Data;
 import lombok.experimental.Accessors;
 import net.minecraft.client.Minecraft;
+import com.mojang.blaze3d.vertex.PoseStack;
 import net.minecraft.client.gui.screens.Screen;
 import xin.vanilla.aotake.AotakeComponent;
 import xin.vanilla.aotake.AotakeSweep;
+import xin.vanilla.aotake.client.ui.AotakePlayerUiSession;
 import xin.vanilla.aotake.network.packet.PlayerConfigSyncToServer;
 import xin.vanilla.banira.BaniraComponent;
+import xin.vanilla.banira.api.client.ui.UiPageSpec;
 import xin.vanilla.banira.client.data.BaniraColorConfig;
 import xin.vanilla.banira.client.data.ScreenCoordinate;
 import xin.vanilla.banira.client.enums.EnumAlignment;
@@ -16,16 +18,13 @@ import xin.vanilla.banira.client.gui.BaniraScreen;
 import xin.vanilla.banira.client.gui.component.Notification;
 import xin.vanilla.banira.client.gui.component.Text;
 import xin.vanilla.banira.client.gui.event.MouseEvent;
-import xin.vanilla.banira.client.gui.widget.BaseWidget;
-import xin.vanilla.banira.client.gui.widget.ButtonWidget;
-import xin.vanilla.banira.client.gui.widget.CollapsiblePanelWidget;
-import xin.vanilla.banira.client.gui.widget.IWidget;
-import xin.vanilla.banira.client.gui.widget.LabelWidget;
+import xin.vanilla.banira.client.gui.widget.*;
 import xin.vanilla.banira.client.util.NotificationManager;
 import xin.vanilla.banira.common.data.Component;
 import xin.vanilla.banira.common.enums.EnumPosition;
 import xin.vanilla.banira.common.enums.EnumSeason;
 import xin.vanilla.banira.common.util.PacketUtils;
+import xin.vanilla.banira.internal.client.ui.page.PlayerConfigUiSession;
 
 import javax.annotation.Nullable;
 
@@ -38,8 +37,7 @@ public class PlayerConfigScreen extends xin.vanilla.banira.client.gui.PlayerConf
     private static final int GAP_LABEL_TO_VALUE = 4;
     private static final double VALUE_AREA_MIN_WIDTH = 56;
 
-    private boolean showSweepResult;
-    private boolean enableWarningVoice;
+    private final AotakePlayerUiSession preferences;
 
     public PlayerConfigScreen(@Nullable Screen parent, boolean showSweepResult, boolean enableWarningVoice) {
         this(new Args().parentScreen(parent).showSweepResult(showSweepResult)
@@ -53,8 +51,17 @@ public class PlayerConfigScreen extends xin.vanilla.banira.client.gui.PlayerConf
     private PlayerConfigScreen(Args args, boolean ignored) {
         super(AotakeSweep.MODID, AotakeComponent.get().transClientAuto("player_prefs_screen_title"),
                 args.parentScreen(), args.theme(), args.season());
-        showSweepResult = args.showSweepResult();
-        enableWarningVoice = args.enableWarningVoice();
+        preferences = new AotakePlayerUiSession(this, args.showSweepResult(), args.enableWarningVoice(), this::savePreferences);
+    }
+
+    @Override
+    protected PlayerConfigUiSession playerUiSession() {
+        return preferences.shared();
+    }
+
+    @Override
+    public UiPageSpec uiPage() {
+        return preferences.shared().spec(this, uiSurfaceId());
     }
 
     @Data
@@ -95,14 +102,14 @@ public class PlayerConfigScreen extends xin.vanilla.banira.client.gui.PlayerConf
         button.id(id + "_toggle");
         button.bounds(new ScreenCoordinate(valueStartX(rowWidth), 0,
                 valueWidgetWidth(rowWidth), ROW_HEIGHT));
-        button.text(toggleText(sweepResultRow ? showSweepResult : enableWarningVoice));
+        button.text(toggleText(sweepResultRow ? preferences.showResult() : preferences.warningVoice()));
         button.onClick(clicked -> {
             if (sweepResultRow) {
-                showSweepResult = !showSweepResult;
-                clicked.text(toggleText(showSweepResult));
+                preferences.showResult(!preferences.showResult());
+                clicked.text(toggleText(preferences.showResult()));
             } else {
-                enableWarningVoice = !enableWarningVoice;
-                clicked.text(toggleText(enableWarningVoice));
+                preferences.warningVoice(!preferences.warningVoice());
+                clicked.text(toggleText(preferences.warningVoice()));
             }
         });
 
@@ -144,6 +151,13 @@ public class PlayerConfigScreen extends xin.vanilla.banira.client.gui.PlayerConf
             NotificationManager.get().addNotification(notification);
             return;
         }
+        preferences.submit();
+    }
+
+    private void savePreferences(boolean showSweepResult, boolean enableWarningVoice) {
+        if (Minecraft.getInstance().getConnection() == null) {
+            throw new IllegalStateException(BaniraComponent.get().transClientAuto("config_editor_sync_not_connected").toString());
+        }
         PacketUtils.sendPacketToServer(new PlayerConfigSyncToServer(showSweepResult, enableWarningVoice));
         AotakeSweep.setClientCachedPlayerSweepPrefs(showSweepResult, enableWarningVoice);
         onClose();
@@ -170,8 +184,8 @@ public class PlayerConfigScreen extends xin.vanilla.banira.client.gui.PlayerConf
         }
 
         @Override
-        public void render(PoseStack stack, float partialTicks) {
-            if (visible()) renderChildren(stack, partialTicks);
+        public void render(PoseStack graphics, float partialTicks) {
+            if (visible()) renderChildren(graphics, partialTicks);
         }
     }
 }

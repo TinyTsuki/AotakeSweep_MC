@@ -21,6 +21,16 @@ import xin.vanilla.banira.common.data.KeyValue;
 @Mixin(AbstractContainerScreen.class)
 public abstract class ContainerScreenMixin {
 
+    @Inject(method = "renderLabels", at = @At("HEAD"), cancellable = true)
+    private void aotake$renderUiLabels(com.mojang.blaze3d.vertex.PoseStack graphics, int mouseX, int mouseY, CallbackInfo ci) {
+        if (xin.vanilla.aotake.client.ui.AotakeUiPages.owns((AbstractContainerScreen) (Object) this)) ci.cancel();
+    }
+
+    @Inject(method = "removed", at = @At("TAIL"))
+    private void aotake$releaseUiAppearance(CallbackInfo ci) {
+        xin.vanilla.aotake.client.ui.AotakeUiPages.close((AbstractContainerScreen) (Object) this);
+    }
+
     @Inject(method = "init", at = @At("TAIL"))
     private void aotake$adjustDustbinLayout(CallbackInfo ci) {
         AbstractContainerScreen screen = (AbstractContainerScreen) (Object) this;

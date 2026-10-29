@@ -29,12 +29,17 @@ public abstract class ChestScreenMixin {
             at = @At("HEAD"),
             cancellable = true
     )
-    private void aotake$interceptRenderBg(PoseStack stack, float partialTicks, int mouseX, int mouseY, CallbackInfo ci) {
+    private void aotake$interceptRenderBg(PoseStack graphics, float partialTicks, int mouseX, int mouseY, CallbackInfo ci) {
+        PoseStack stack = graphics;
         Minecraft mc = Minecraft.getInstance();
         Player player = mc.player;
         if (player == null) return;
         ContainerScreen screen = (ContainerScreen) (Object) this;
         if (!aotake$isDustbinScreen(screen)) return;
+        if (xin.vanilla.aotake.client.ui.AotakeUiPages.renderBackground(screen, graphics)) {
+            ci.cancel();
+            return;
+        }
         EnumDustbinClientUiStyle ui = ClientConfig.get().dustbin().dustbinUiStyle();
         if (ui == EnumDustbinClientUiStyle.VANILLA) return;
 
