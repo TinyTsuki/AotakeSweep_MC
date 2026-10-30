@@ -27,12 +27,12 @@ import xin.vanilla.aotake.util.AotakeUtils;
 import xin.vanilla.aotake.util.DustbinPageNavigation;
 import xin.vanilla.banira.client.data.BaniraColorConfig;
 import xin.vanilla.banira.client.data.FontDrawArgs;
+import xin.vanilla.banira.client.data.ScreenCoordinate;
 import xin.vanilla.banira.client.gui.component.Text;
 import xin.vanilla.banira.client.gui.widget.ButtonWidget;
 import xin.vanilla.banira.client.gui.widget.TooltipWidget;
 import xin.vanilla.banira.client.util.AbstractGuiUtils;
 import xin.vanilla.banira.client.util.ClientThemeManager;
-import xin.vanilla.banira.client.util.InputStateManager;
 import xin.vanilla.banira.client.util.TextureUtils;
 import xin.vanilla.banira.common.data.Component;
 import xin.vanilla.banira.common.data.KeyValue;
@@ -42,6 +42,8 @@ import xin.vanilla.banira.common.util.PacketUtils;
 import xin.vanilla.banira.common.util.StringUtils;
 
 import javax.annotation.Nullable;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.function.Consumer;
 
 /**
@@ -64,8 +66,9 @@ public final class DustbinRender {
     private static int chunkVaultTotalPage = -1;
     private static Button dustbinPrevButton;
     private static Button dustbinNextButton;
-    private static final DustbinToolbarTooltipRegistry<Component> vanillaButtonTooltips =
-            new DustbinToolbarTooltipRegistry<>();
+    private static final java.util.List<Button> nativeToolbar = new java.util.ArrayList<>();
+    private static final DustbinToolbarTooltipRegistry<Component> vanillaButtonTooltips = new DustbinToolbarTooltipRegistry<>();
+    private static boolean nativeToolbarShown = true;
     private static long lastDustbinScreenKeyTime = 0L;
     private static boolean leftMouseWasDown = false;
     private static boolean leftMouseReleased = false;
@@ -73,6 +76,53 @@ public final class DustbinRender {
     private static double leftMouseDownY = -1;
 
     private DustbinRender() {
+    }
+
+    public static int currentPage(boolean chunk) {
+        return chunk ? chunkVaultPage : dustbinPage;
+    }
+
+    public static int totalPages(boolean chunk) {
+        return chunk ? chunkVaultTotalPage : dustbinTotalPage;
+    }
+
+    public static void nativeToolbarVisible(boolean visible) {
+        if (nativeToolbarShown != visible) {
+            leftMouseWasDown = false;
+            leftMouseReleased = false;
+            nativeToolbarShown = visible;
+        }
+        for (Button button : nativeToolbar) button.visible = visible;
+    }
+
+    private static void performCurrentUiAction(xin.vanilla.aotake.client.ui.DustbinUiSession.Action action) {
+        xin.vanilla.aotake.client.ui.AotakeUiPages.action(Minecraft.getInstance().screen, action);
+    }
+
+    private static void navigateCurrent(int direction) {
+        performCurrentUiAction(direction < 0 ? xin.vanilla.aotake.client.ui.DustbinUiSession.Action.PREVIOUS
+                : direction > 0 ? xin.vanilla.aotake.client.ui.DustbinUiSession.Action.NEXT
+                : xin.vanilla.aotake.client.ui.DustbinUiSession.Action.REFRESH);
+    }
+
+    public static void performUiAction(boolean chunk, xin.vanilla.aotake.client.ui.DustbinUiSession.Action action) {
+        switch (action) {
+            case CLEAR_CACHE:
+                PacketUtils.sendPacketToServer(new ClearDustbinToServer(true, true));
+                break;
+            case CLEAR_ALL:
+                PacketUtils.sendPacketToServer(new ClearDustbinToServer(true, false));
+                break;
+            case CLEAR_PAGE:
+                PacketUtils.sendPacketToServer(new ClearDustbinToServer(false, false));
+                break;
+            default:
+                int direction = action == xin.vanilla.aotake.client.ui.DustbinUiSession.Action.PREVIOUS ? -1
+                        : action == xin.vanilla.aotake.client.ui.DustbinUiSession.Action.NEXT ? 1 : 0;
+                queueCursorRestoreBeforeContainerRefresh();
+                if (chunk) PacketUtils.sendPacketToServer(new ChunkVaultNavigateToServer(direction));
+                else PacketUtils.sendPacketToServer(new OpenDustbinToServer(direction));
+        }
     }
 
     public static boolean isDustbinTitle(String title) {
@@ -107,8 +157,8 @@ public final class DustbinRender {
      * 在发送会触发垃圾箱界面重建的 {@link OpenDustbinToServer} 之前调用，记录当前光标
      */
     private static void queueCursorRestoreBeforeContainerRefresh() {
-        KeyValue<Double, Double> cur = InputStateManager.getRawCursorPos();
-        pendingMouseRaw.key(cur.key()).value(cur.val());
+        Minecraft mc = Minecraft.getInstance();
+        pendingMouseRaw.key(mc.mouseHandler.xpos()).value(mc.mouseHandler.ypos());
     }
 
     private static boolean isOurDustbinChestScreen(Screen screen, Minecraft mc) {
@@ -143,7 +193,8 @@ public final class DustbinRender {
         double rx = pendingMouseRaw.key();
         double ry = pendingMouseRaw.val();
         pendingMouseRaw.key(-1D).val(-1D);
-        InputStateManager.setMouseRawPos(rx, ry);
+        Minecraft mc = Minecraft.getInstance();
+        GLFW.glfwSetCursorPos(mc.getWindow().getWindow(), rx, ry);
     }
 
     public static void handleGuiScreen(ScreenEvent event) {
@@ -155,8 +206,10 @@ public final class DustbinRender {
         }
 
         if (event instanceof ScreenEvent.InitScreenEvent.Post eve) {
+            nativeToolbar.clear();
+            vanillaButtonTooltips.clear();
+            xin.vanilla.aotake.client.ui.AotakeUiPages.attach(screen);
             if (ClientConfig.get().dustbin().dustbinUiStyle() == EnumDustbinClientUiStyle.VANILLA) {
-                vanillaButtonTooltips.clear();
                 LocalPlayer player = mc.player;
                 ContainerScreenAccessor accessor = (ContainerScreenAccessor) screen;
                 int baseX = accessor.aotake$getLeftPos();
@@ -173,7 +226,7 @@ public final class DustbinRender {
                                     , baseY + 21 * (yOffset++)
                                     , 20, 20
                                     , AotakeComponent.get().literal("✕").color(EnumMCColor.RED.getColor())
-                                    , button -> PacketUtils.sendPacketToServer(new ClearDustbinToServer(true, true))
+                                    , button -> performCurrentUiAction(xin.vanilla.aotake.client.ui.DustbinUiSession.Action.CLEAR_CACHE)
                                     , AotakeComponent.get().trans(EnumI18nType.WORD, "clear_cache")
                             )
                     );
@@ -184,7 +237,7 @@ public final class DustbinRender {
                                     , baseY + 21 * (yOffset++)
                                     , 20, 20
                                     , AotakeComponent.get().literal("✕").color(EnumMCColor.RED.getColor())
-                                    , button -> PacketUtils.sendPacketToServer(new ClearDustbinToServer(true, false))
+                                    , button -> performCurrentUiAction(xin.vanilla.aotake.client.ui.DustbinUiSession.Action.CLEAR_ALL)
                                     , AotakeComponent.get().trans(EnumI18nType.WORD, "clear_all_dustbin")
                             )
                     );
@@ -193,7 +246,7 @@ public final class DustbinRender {
                                     , baseY + 21 * (yOffset++)
                                     , 20, 20
                                     , AotakeComponent.get().literal("✕").color(EnumMCColor.YELLOW.getColor())
-                                    , button -> PacketUtils.sendPacketToServer(new ClearDustbinToServer(false, false))
+                                    , button -> performCurrentUiAction(xin.vanilla.aotake.client.ui.DustbinUiSession.Action.CLEAR_PAGE)
                                     , AotakeComponent.get().trans(EnumI18nType.WORD, "clear_cur_dustbin")
                             )
                     );
@@ -204,12 +257,7 @@ public final class DustbinRender {
                                 , 20, 20
                                 , AotakeComponent.get().literal("↻")
                                 , button -> {
-                                    queueCursorRestoreBeforeContainerRefresh();
-                                    if (chunkVault) {
-                                        PacketUtils.sendPacketToServer(new ChunkVaultNavigateToServer(0));
-                                    } else {
-                                        PacketUtils.sendPacketToServer(new OpenDustbinToServer(0));
-                                    }
+                                    navigateCurrent(0);
                                 }
                                 , AotakeComponent.get().trans(EnumI18nType.WORD, "refresh_page")
                         )
@@ -219,12 +267,7 @@ public final class DustbinRender {
                         , 20, 20
                         , AotakeComponent.get().literal("▲")
                         , button -> {
-                            queueCursorRestoreBeforeContainerRefresh();
-                            if (chunkVault) {
-                                PacketUtils.sendPacketToServer(new ChunkVaultNavigateToServer(-1));
-                            } else {
-                                PacketUtils.sendPacketToServer(new OpenDustbinToServer(-1));
-                            }
+                            navigateCurrent(-1);
                         }
                         , AotakeComponent.get().trans(EnumI18nType.WORD, "previous_page")
                 );
@@ -236,12 +279,7 @@ public final class DustbinRender {
                         , 20, 20
                         , AotakeComponent.get().literal("▼")
                         , button -> {
-                            queueCursorRestoreBeforeContainerRefresh();
-                            if (chunkVault) {
-                                PacketUtils.sendPacketToServer(new ChunkVaultNavigateToServer(1));
-                            } else {
-                                PacketUtils.sendPacketToServer(new OpenDustbinToServer(1));
-                            }
+                            navigateCurrent(1);
                         }
                         , AotakeComponent.get().trans(EnumI18nType.WORD, "next_page")
                 );
@@ -249,8 +287,18 @@ public final class DustbinRender {
                 dustbinNextButton = nextButton;
                 eve.addListener(nextButton);
             }
-        } else if (event instanceof ScreenEvent.DrawScreenEvent.Post) {
-            ScreenEvent.DrawScreenEvent.Post drawEvent = (ScreenEvent.DrawScreenEvent.Post) event;
+        } else if (event instanceof ScreenEvent.MouseClickedEvent.Pre click) {
+            if (xin.vanilla.aotake.client.ui.AotakeUiPages.click(screen, click.getMouseX(), click.getMouseY(), click.getButton())) {
+                click.setCanceled(true);
+            }
+        } else if (event instanceof ScreenEvent.MouseReleasedEvent.Pre release) {
+            if (xin.vanilla.aotake.client.ui.AotakeUiPages.release(screen, release.getButton()))
+                release.setCanceled(true);
+        } else if (event instanceof ScreenEvent.DrawScreenEvent.Post rendered) {
+            if (xin.vanilla.aotake.client.ui.AotakeUiPages.owns(screen)) {
+                xin.vanilla.aotake.client.ui.AotakeUiPages.tooltip(screen, rendered.getPoseStack(), rendered.getMouseX(), rendered.getMouseY());
+                return;
+            }
             if (ClientConfig.get().dustbin().dustbinUiStyle() == EnumDustbinClientUiStyle.VANILLA) {
                 boolean chunkVault = isChunkVaultTitle(screen.getTitle().getString());
                 int curPage = chunkVault ? chunkVaultPage : dustbinPage;
@@ -263,11 +311,11 @@ public final class DustbinRender {
                 if (dustbinNextButton != null) {
                     dustbinNextButton.active = canNext;
                 }
-                Component tooltip = vanillaButtonTooltips.find(drawEvent.getMouseX(), drawEvent.getMouseY());
+                Component tooltip = vanillaButtonTooltips.find(rendered.getMouseX(), rendered.getMouseY());
                 if (tooltip != null) {
-                    TooltipWidget.drawPopupMessage(drawEvent.getPoseStack(),
-                            FontDrawArgs.ofPopo(new Text(tooltip).stack(drawEvent.getPoseStack()))
-                                    .x(drawEvent.getMouseX()).y(drawEvent.getMouseY()),
+                    TooltipWidget.drawPopupMessage(rendered.getPoseStack(),
+                            FontDrawArgs.ofPopo(new Text(tooltip).stack(rendered.getPoseStack()))
+                                    .x(rendered.getMouseX()).y(rendered.getMouseY()),
                             ClientThemeManager.getEffectiveTheme(), null);
                 }
             }
@@ -353,7 +401,7 @@ public final class DustbinRender {
                     }
 
                     if (isLeftClickedInRect(mouseX, mouseY, x, y, w, h)) {
-                        PacketUtils.sendPacketToServer(new ClearDustbinToServer(true, true));
+                        performCurrentUiAction(xin.vanilla.aotake.client.ui.DustbinUiSession.Action.CLEAR_CACHE);
                     }
                 }
                 if (canClearDustbin) {
@@ -387,7 +435,7 @@ public final class DustbinRender {
                         }
 
                         if (isLeftClickedInRect(mouseX, mouseY, x, y, w, h)) {
-                            PacketUtils.sendPacketToServer(new ClearDustbinToServer(true, false));
+                            performCurrentUiAction(xin.vanilla.aotake.client.ui.DustbinUiSession.Action.CLEAR_ALL);
                         }
                     }
 
@@ -421,7 +469,7 @@ public final class DustbinRender {
                         }
 
                         if (isLeftClickedInRect(mouseX, mouseY, x, y, w, h)) {
-                            PacketUtils.sendPacketToServer(new ClearDustbinToServer(false, false));
+                            performCurrentUiAction(xin.vanilla.aotake.client.ui.DustbinUiSession.Action.CLEAR_PAGE);
                         }
                     }
                 }
@@ -458,12 +506,7 @@ public final class DustbinRender {
                     }
 
                     if (isLeftClickedInRect(mouseX, mouseY, x, y, w, h)) {
-                        queueCursorRestoreBeforeContainerRefresh();
-                        if (chunkVaultDraw) {
-                            PacketUtils.sendPacketToServer(new ChunkVaultNavigateToServer(0));
-                        } else {
-                            PacketUtils.sendPacketToServer(new OpenDustbinToServer(0));
-                        }
+                        navigateCurrent(0);
                     }
                 }
                 if (dustbinUi == EnumDustbinClientUiStyle.BANIRA_THEME) {
@@ -499,12 +542,7 @@ public final class DustbinRender {
                     }
 
                     if (canPrev && isLeftClickedInRect(mouseX, mouseY, x, y, w, h)) {
-                        queueCursorRestoreBeforeContainerRefresh();
-                        if (chunkVaultDraw) {
-                            PacketUtils.sendPacketToServer(new ChunkVaultNavigateToServer(-1));
-                        } else {
-                            PacketUtils.sendPacketToServer(new OpenDustbinToServer(-1));
-                        }
+                        navigateCurrent(-1);
                     }
                 }
                 {
@@ -537,12 +575,7 @@ public final class DustbinRender {
                     }
 
                     if (canNext && isLeftClickedInRect(mouseX, mouseY, x, y, w, h)) {
-                        queueCursorRestoreBeforeContainerRefresh();
-                        if (chunkVaultDraw) {
-                            PacketUtils.sendPacketToServer(new ChunkVaultNavigateToServer(1));
-                        } else {
-                            PacketUtils.sendPacketToServer(new OpenDustbinToServer(1));
-                        }
+                        navigateCurrent(1);
                     }
                 }
             }
@@ -562,12 +595,7 @@ public final class DustbinRender {
                     int total = chunkKeys ? chunkVaultTotalPage : dustbinTotalPage;
                     if (!DustbinPageNavigation.canNavigate(current, total, -1)) return;
                     lastDustbinScreenKeyTime = System.currentTimeMillis();
-                    queueCursorRestoreBeforeContainerRefresh();
-                    if (chunkKeys) {
-                        PacketUtils.sendPacketToServer(new ChunkVaultNavigateToServer(-1));
-                    } else {
-                        PacketUtils.sendPacketToServer(new OpenDustbinToServer(-1));
-                    }
+                    navigateCurrent(-1);
                 }
             } else if (keyEvent.getKeyCode() == ClientModEventHandler.DUSTBIN_NEXT_KEY.currentKey()) {
                 if (System.currentTimeMillis() - lastDustbinScreenKeyTime > 200) {
@@ -575,15 +603,48 @@ public final class DustbinRender {
                     int total = chunkKeys ? chunkVaultTotalPage : dustbinTotalPage;
                     if (!DustbinPageNavigation.canNavigate(current, total, 1)) return;
                     lastDustbinScreenKeyTime = System.currentTimeMillis();
-                    queueCursorRestoreBeforeContainerRefresh();
-                    if (chunkKeys) {
-                        PacketUtils.sendPacketToServer(new ChunkVaultNavigateToServer(1));
-                    } else {
-                        PacketUtils.sendPacketToServer(new OpenDustbinToServer(1));
-                    }
+                    navigateCurrent(1);
                 }
             }
         }
+    }
+
+    public static List<ScreenCoordinate> nativeToolbarRegions(Screen screen) {
+        if (!isOurSpecialChestScreen(screen, Minecraft.getInstance())) return List.of();
+        List<ScreenCoordinate> regions = new ArrayList<>();
+        EnumDustbinClientUiStyle style = ClientConfig.get().dustbin().dustbinUiStyle();
+        if (style == EnumDustbinClientUiStyle.VANILLA) {
+            for (Button button : nativeToolbar)
+                if (button.visible)
+                    regions.add(new ScreenCoordinate(button.x, button.y, button.getWidth(), button.getHeight()));
+            return regions;
+        }
+        ContainerScreenAccessor accessor = (ContainerScreenAccessor) screen;
+        int x = DustbinGuiLayoutCache.valid
+                ? DustbinGuiLayoutCache.leftPos + DustbinGuiConfig.getButtonXOffset() : accessor.aotake$getLeftPos();
+        int y = DustbinGuiLayoutCache.valid
+                ? DustbinGuiLayoutCache.topPos + DustbinGuiConfig.getButtonYOffset() : accessor.aotake$getTopPos();
+        boolean themed = style == EnumDustbinClientUiStyle.BANIRA_THEME;
+        if (themed) {
+            x -= BANIRA_TOOLBAR_CONTAINER_GAP;
+            y += BANIRA_TOOLBAR_RAIL_PADDING;
+        }
+        boolean chunk = isChunkVaultTitle(screen.getTitle().getString());
+        LocalPlayer player = Minecraft.getInstance().player;
+        int clearButtons = (!chunk && AotakeUtils.hasCommandPermission(player, EnumCommandType.CACHE_CLEAR) ? 1 : 0)
+                + (!chunk && AotakeUtils.hasCommandPermission(player, EnumCommandType.DUSTBIN_CLEAR) ? 2 : 0);
+        for (int i = 0; i < clearButtons; i++) {
+            regions.add(new ScreenCoordinate(x - 17, y, 16, 16));
+            y += 17;
+        }
+        if (themed && clearButtons > 0) y += BANIRA_TOOLBAR_GROUP_GAP;
+        regions.add(new ScreenCoordinate(x - 17, y, 16, 16));
+        y += 17;
+        if (themed) y += BANIRA_TOOLBAR_GROUP_GAP;
+        regions.add(new ScreenCoordinate(x - 17, y, 16, 16));
+        y += 17;
+        regions.add(new ScreenCoordinate(x - 17, y, 16, 16));
+        return regions;
     }
 
     private static boolean isRectHit(double mouseX, double mouseY, int x, int y, int width, int height) {
@@ -597,7 +658,8 @@ public final class DustbinRender {
     }
 
     private static boolean isLeftMousePressing() {
-        return InputStateManager.isMousePressing(GLFW.GLFW_MOUSE_BUTTON_LEFT);
+        Minecraft mc = Minecraft.getInstance();
+        return GLFW.glfwGetMouseButton(mc.getWindow().getWindow(), GLFW.GLFW_MOUSE_BUTTON_LEFT) == GLFW.GLFW_PRESS;
     }
 
     private static void updateMouseClickState(double mouseX, double mouseY) {
@@ -648,6 +710,7 @@ public final class DustbinRender {
                                     Component tooltip) {
         Button button = new Button(x, y, width, height, label.toVanilla(), onPress::accept);
         vanillaButtonTooltips.add(x, y, width, height, tooltip);
+        nativeToolbar.add(button);
         return button;
     }
 }

@@ -1,7 +1,5 @@
 package xin.vanilla.aotake.client;
 
-import xin.vanilla.banira.api.BaniraConfigs;
-
 import net.minecraft.client.Minecraft;
 import net.minecraft.resources.ResourceLocation;
 import xin.vanilla.aotake.AotakeComponent;
@@ -11,12 +9,13 @@ import xin.vanilla.aotake.config.ClientConfig;
 import xin.vanilla.aotake.config.CommonConfig;
 import xin.vanilla.aotake.event.ClientGameEventHandler;
 import xin.vanilla.aotake.event.ClientModEventHandler;
-import xin.vanilla.aotake.internal.client.dev.AotakeUiSmokeRunner;
 import xin.vanilla.aotake.internal.client.dev.AotakeNetworkSmokeClientRunner;
+import xin.vanilla.aotake.internal.client.dev.AotakeUiSmokeRunner;
 import xin.vanilla.aotake.internal.dev.AotakeNetworkSmokeStatus;
 import xin.vanilla.aotake.network.packet.OpenDustbinToServer;
 import xin.vanilla.aotake.screen.PlayerConfigScreen;
-import xin.vanilla.banira.client.event.BaniraClientEventHub;
+import xin.vanilla.banira.api.BaniraConfigs;
+import xin.vanilla.banira.api.client.event.BaniraClientEvents;
 import xin.vanilla.banira.client.gui.ConfigEditorScreen;
 import xin.vanilla.banira.client.gui.quickaction.QuickActionContext;
 import xin.vanilla.banira.client.gui.quickaction.QuickActionContextMenuItem;
@@ -41,10 +40,12 @@ public final class AotakeClientBootstrap {
         }
         initialized = true;
 
+        xin.vanilla.aotake.client.ui.AotakeUiPages.register();
+
         ClientModEventHandler.register();
         ClientGameEventHandler.register();
 
-        BaniraClientEventHub.ModLifecycle.onClientSetup(event -> {
+        BaniraClientEvents.ModLifecycle.onClientSetup(event -> {
             ResourceLocation texture = Identifier.id().create("gui/quick_icon.png");
             Component label = AotakeComponent.get().transClient("key.aotake_sweep.categories");
             QuickActionContextMenuItem editClientConfig = new QuickActionContextMenuItem(AotakeComponent.get().transClientAuto("edit_client_config"), ctx ->
