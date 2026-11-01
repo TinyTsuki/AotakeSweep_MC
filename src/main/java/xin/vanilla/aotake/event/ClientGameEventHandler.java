@@ -23,6 +23,8 @@ public final class ClientGameEventHandler {
 
     private static long lastTime = 0;
     private static boolean showProgress = false;
+    private static final xin.vanilla.aotake.client.ui.SweepProgressUiBinding.KeyState PROGRESS_STATE =
+            new xin.vanilla.aotake.client.ui.SweepProgressUiBinding.KeyState();
 
     private ClientGameEventHandler() {
     }
@@ -34,6 +36,11 @@ public final class ClientGameEventHandler {
         xin.vanilla.banira.api.client.event.BaniraClientEvents.Player.onClientLoggedOut(
                 player -> xin.vanilla.aotake.client.minimap.AotakeMinimapCountdown.reset());
         BaniraClientEvents.Player.onClientLoggedOut(player -> LOGGER.debug("Client: Player logged out."));
+        BaniraClientEvents.Player.onClientLoggedOut(player -> {
+            PROGRESS_STATE.reset();
+            showProgress = false;
+            ProgressRender.reset();
+        });
         BaniraClientEvents.Client.onClientTick(event -> onClientTick());
         BaniraHudEvents.onElementPreRender(HudOverlayElement.EXPERIENCE_BAR, ClientGameEventHandler::interceptExperience);
         BaniraHudEvents.onElementPreRender(HudOverlayElement.EXPERIENCE_TEXT, ClientGameEventHandler::interceptExperience);
@@ -43,24 +50,18 @@ public final class ClientGameEventHandler {
         Minecraft client = Minecraft.getInstance();
         AotakeUiSmokeRunner.tick(client);
         AotakeNetworkSmokeClientRunner.tick(client);
+        showProgress = PROGRESS_STATE.tick(ClientModEventHandler.PROGRESS_KEY.isDown(), client.screen != null,
+                ClientConfig.get().progressBar().progressBarKeyApplyMode());
         if (client.screen == null) {
             if (ClientModEventHandler.DUSTBIN_KEY.isDown() && System.currentTimeMillis() - lastTime > 100) {
                 lastTime = System.currentTimeMillis();
                 PacketUtils.sendPacketToServer(new OpenDustbinToServer(0));
             }
-            if (ClientConfig.get().progressBar().progressBarKeyApplyMode()) {
-                if (ClientModEventHandler.PROGRESS_KEY.isDown() && System.currentTimeMillis() - lastTime > 100) {
-                    lastTime = System.currentTimeMillis();
-                    showProgress = !showProgress;
-                }
-            } else {
-                showProgress = ClientModEventHandler.PROGRESS_KEY.isDown();
-            }
         }
     }
 
     public static void renderHud(GuiGraphics graphics, float partialTick) {
-        ProgressRender.render(graphics.pose(), showProgress);
+        ProgressRender.render(graphics, showProgress);
     }
 
     static boolean hidesExperience(boolean held, java.util.List<xin.vanilla.aotake.enums.EnumProgressBarType> normal,
