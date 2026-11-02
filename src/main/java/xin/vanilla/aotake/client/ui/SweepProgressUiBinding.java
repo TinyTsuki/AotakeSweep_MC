@@ -85,7 +85,7 @@ public final class SweepProgressUiBinding implements UiHudBinding {
 
     public static double textAngleRadians(double configured) {
         float angle = (float) configured;
-        return Math.abs(angle % 360f) > 1e-3f ? angle : 0;
+        return Math.abs(angle % 360f) > 1e-3f ? Math.toRadians(angle) : 0;
     }
 
     public static final class KeyState {
