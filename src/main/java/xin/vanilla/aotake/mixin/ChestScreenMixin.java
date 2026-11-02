@@ -35,6 +35,10 @@ public abstract class ChestScreenMixin {
         if (player == null) return;
         ContainerScreen screen = (ContainerScreen) (Object) this;
         if (!aotake$isDustbinScreen(screen)) return;
+        if (xin.vanilla.aotake.client.ui.AotakeUiPages.renderBackground(screen, stack)) {
+            ci.cancel();
+            return;
+        }
         EnumDustbinClientUiStyle ui = ClientConfig.get().dustbin().dustbinUiStyle();
         if (ui == EnumDustbinClientUiStyle.VANILLA) return;
 

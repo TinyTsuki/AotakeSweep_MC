@@ -1,5 +1,6 @@
 package xin.vanilla.aotake.mixin;
 
+import com.mojang.blaze3d.vertex.PoseStack;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.client.gui.screens.inventory.ContainerScreen;
 import net.minecraft.resources.ResourceLocation;
@@ -20,6 +21,16 @@ import xin.vanilla.banira.common.data.KeyValue;
 
 @Mixin(AbstractContainerScreen.class)
 public abstract class ContainerScreenMixin {
+
+    @Inject(method = "renderLabels", at = @At("HEAD"), cancellable = true)
+    private void aotake$renderUiLabels(PoseStack graphics, int mouseX, int mouseY, CallbackInfo ci) {
+        if (xin.vanilla.aotake.client.ui.AotakeUiPages.owns((AbstractContainerScreen) (Object) this)) ci.cancel();
+    }
+
+    @Inject(method = "removed", at = @At("HEAD"))
+    private void aotake$releaseUiAppearance(CallbackInfo ci) {
+        xin.vanilla.aotake.client.ui.AotakeUiPages.close((AbstractContainerScreen) (Object) this);
+    }
 
     @Inject(method = "init", at = @At("TAIL"))
     private void aotake$adjustDustbinLayout(CallbackInfo ci) {
