@@ -134,9 +134,11 @@ public class AotakeSweep {
                 }
             }
         });
-        AotakeNetworkSmokeServerRunner.register();
-        xin.vanilla.aotake.internal.server.dev.AotakeRuleNetworkSmokeServerRunner.register();
-        xin.vanilla.aotake.internal.server.dev.AotakeSweepPolicySmokeServerRunner.register();
+        if (!net.minecraftforge.fml.loading.FMLEnvironment.production) {
+            AotakeNetworkSmokeServerRunner.register();
+            xin.vanilla.aotake.internal.server.dev.AotakeRuleNetworkSmokeServerRunner.register();
+            xin.vanilla.aotake.internal.server.dev.AotakeSweepPolicySmokeServerRunner.register();
+        }
         ForgeAotakeGameEventAdapter.register();
 
         // Development referent validation resolves the supplier before checking the physical side.

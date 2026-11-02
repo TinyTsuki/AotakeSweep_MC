@@ -38,6 +38,7 @@ public final class AotakeClientBootstrap {
             return;
         }
         initialized = true;
+        xin.vanilla.aotake.client.ui.AotakeUiPages.register();
 
         ClientModEventHandler.register();
         ClientGameEventHandler.register();
@@ -62,8 +63,10 @@ public final class AotakeClientBootstrap {
             );
             QuickActionRegistry.get().registerIcon(AotakeSweep.MODID + ":quick", texture, label, action,
                     editPlayerConfig, editClientConfig, editCommonConfig);
-            AotakeUiSmokeRunner.register();
-            AotakeNetworkSmokeClientRunner.register();
+            if (!net.minecraftforge.fml.loading.FMLEnvironment.production) {
+                AotakeUiSmokeRunner.register();
+                AotakeNetworkSmokeClientRunner.register();
+            }
         });
     }
 }
