@@ -23,8 +23,17 @@ public class SweepProgressUiParityTest {
         assertEquals(0.0, (Double) angle.invoke(null, 0.0), 0);
         assertEquals(0.0, (Double) angle.invoke(null, 360.0), 0);
         assertEquals(0.0, (Double) angle.invoke(null, .00001), 0);
-        assertEquals(90.0, (Double) angle.invoke(null, 90.0), 0);
-        assertEquals((double) (float) 45.1, (Double) angle.invoke(null, 45.1), 0);
+        assertEquals(Math.toRadians(90.0), (Double) angle.invoke(null, 90.0), 0);
+        assertEquals(Math.toRadians((float) 45.1), (Double) angle.invoke(null, 45.1), 0);
+    }
+
+    @Test
+    public void negativeAndRepeatedTurnsConvertOnlyOnce() throws Exception {
+        Method angle = binding().getMethod("textAngleRadians", double.class);
+        for (double value : new double[]{-90, -450, 720.5, 45.1, -45.1})
+            assertEquals(Math.toRadians((float) value), (Double) angle.invoke(null, value), 0);
+        for (double value : new double[]{-720, -360, 720, Double.NaN, Double.POSITIVE_INFINITY})
+            assertEquals(0, (Double) angle.invoke(null, value), 0);
     }
 
     private Class<?> binding() {
