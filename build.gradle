@@ -4,6 +4,8 @@ plugins {
 }
 
 apply from: 'gradle/config-view-processor.gradle'
+apply from: 'gradle/aui-validation-output.gradle'
+apply from: 'gradle/aui-artifact-check.gradle'
 
 def javaVer = 17
 def aotakeNetworkSmokeServer = (project.findProperty('aotake.networkSmoke.server') ?: 'false').toString().toBoolean()
@@ -11,6 +13,7 @@ def aotakeNetworkSmokeServer = (project.findProperty('aotake.networkSmoke.server
 group = 'xin.vanilla.aotake'
 
 version = project.mod_version
+group = 'xin.vanilla.aotake'
 mod_id = project.mod_id
 mod_name = project.mod_name
 mod_desc = project.mod_desc
@@ -110,7 +113,9 @@ tasks.register('prepareDevFpsOverlay') {
     doLast prepareBaniraDevFpsOverlay
 }
 
-prepareBaniraDevFpsOverlay()
+tasks.named('runClient').configure {
+    dependsOn 'prepareDevFpsOverlay'
+}
 
 // Loom does not expose nested runtime jars from client-only performance mods in dev runs.
 
@@ -192,7 +197,7 @@ tasks.named('remapJar') {
     // 自定义打包路径与输出格式
     archiveBaseName.set(mod_id)
     archiveVersion.set("${loader_type}-${minecraft_version}-${mod_version}")
-    destinationDirectory.set(file("${projectDir}/builds/${mod_version}"))
+    destinationDirectory.set(baniraDistributionDirectory)
 }
 
 // region 发布到 Maven 仓库（含本地 ~/.m2/repository）
@@ -213,12 +218,12 @@ afterEvaluate {
     publishing.publications.named('mavenJava', MavenPublication) {
         // 子 mod 只能依赖 remap 后的正式命名 JAR，不能发布 Loom 的开发命名产物。
         artifact tasks.named('remapJar')
-        artifact tasks.named('sourcesJar')
+        artifact tasks.named('remapSourcesJar')
     }
 }
 
 tasks.withType(PublishToMavenLocal).configureEach {
-    dependsOn 'remapJar', 'sourcesJar'
+    dependsOn 'remapJar', 'remapSourcesJar'
 }
 // endregion 发布到 Maven 仓库（含本地 ~/.m2/repository）
 

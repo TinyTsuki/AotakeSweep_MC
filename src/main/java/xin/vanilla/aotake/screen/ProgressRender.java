@@ -4,13 +4,16 @@ import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.math.Vector3f;
 import net.minecraft.client.Minecraft;
 import net.minecraft.resources.ResourceLocation;
-import xin.vanilla.aotake.AotakeSweep;
 import xin.vanilla.aotake.Identifier;
+import xin.vanilla.aotake.client.minimap.AotakeMinimapCountdown;
+import xin.vanilla.aotake.client.ui.SweepProgressUiBinding;
 import xin.vanilla.aotake.config.ClientConfig;
 import xin.vanilla.aotake.config.ClientConfigView;
 import xin.vanilla.aotake.enums.EnumProgressBarTextAlignH;
 import xin.vanilla.aotake.enums.EnumProgressBarTextAlignV;
 import xin.vanilla.aotake.enums.EnumProgressBarType;
+import xin.vanilla.banira.api.client.ui.BaniraUi;
+import xin.vanilla.banira.api.client.ui.UiHudFrame;
 import xin.vanilla.banira.client.data.FontDrawArgs;
 import xin.vanilla.banira.client.data.TransformArgs;
 import xin.vanilla.banira.client.gui.component.Text;
@@ -20,76 +23,91 @@ import xin.vanilla.banira.client.util.TextureUtils;
 import xin.vanilla.banira.common.data.Color;
 import xin.vanilla.banira.common.data.KeyValue;
 import xin.vanilla.banira.common.enums.EnumPosition;
-import xin.vanilla.banira.common.util.DateUtils;
 import xin.vanilla.banira.common.util.NumberUtils;
 
-import java.util.Date;
+import java.util.ArrayList;
 import java.util.List;
 
 /**
  * 经验条区域上的扫地倒计时进度条绘制
  */
 public final class ProgressRender {
+    private static final SweepProgressUiBinding BINDING = new SweepProgressUiBinding(() -> {
+        Minecraft mc = Minecraft.getInstance();
+        return mc.player != null && !mc.options.hideGui && !AotakeMinimapCountdown.snapshot().formattedTime().isEmpty();
+    });
+    private static AutoCloseable registration;
 
     private ProgressRender() {
     }
 
-    public static void render(PoseStack ms, boolean showProgressHeld) {
+    public static void register() {
+        if (registration == null) registration = BaniraUi.registerHud(BINDING.spec());
+    }
+
+    public static void reset() {
+        BINDING.clear();
+    }
+
+    public static void render(PoseStack graphics, boolean showProgressHeld) {
         ClientConfigView.ProgressBarView cp = ClientConfig.get().progressBar();
         ClientConfigView.ProgressBarView.LeafView cpl = cp.leaf();
         ClientConfigView.ProgressBarView.PoleView cpp = cp.pole();
         ClientConfigView.ProgressBarView.TextView cpt = cp.text();
         Minecraft mc = Minecraft.getInstance();
-        if (mc.options.hideGui) return;
-        if (mc.player == null) return;
-        boolean hold = showProgressHeld && mc.screen == null;
-        List<EnumProgressBarType> displayList = hold ? cp.progressBarDisplayHold() : cp.progressBarDisplayNormal();
-
+        var time = AotakeMinimapCountdown.snapshot();
+        if (mc.options.hideGui || mc.player == null || time.formattedTime().isEmpty()) {
+            BINDING.clear();
+            return;
+        }
+        var selection = SweepProgressUiBinding.selection(cp.progressBarDisplayNormal(), cp.progressBarDisplayHold(),
+                showProgressHeld, mc.screen != null, cpl.hideExperienceBarLeaf(), cpp.hideExperienceBarPole(), cpt.hideExperienceBarText());
+        List<EnumProgressBarType> displayList = selection.types();
+        List<UiHudFrame.Part> parts = new ArrayList<>(3);
         double scale = cpt.progressBarTextSize() / 16.0;
-
         if (displayList.contains(EnumProgressBarType.POLE)) {
             int width = cpp.progressBarPoleWidth();
             int height = cpp.progressBarPoleHeight();
             int drawX = getPoleX();
             int drawY = getPoleY();
-
-            TransformArgs transformArgs = new TransformArgs(ms);
-            transformArgs.angle(cpp.progressBarPoleAngle())
-                    .center(EnumPosition.CENTER)
-                    .x(drawX)
-                    .y(drawY)
-                    .width(width)
-                    .height(height);
             ResourceLocation poleTex = TextureUtils.loadCustomTexture(Identifier.id(), "gui/pole.png");
-            AbstractGuiUtils.renderByTransform(transformArgs, (arg) ->
-                    blitProgressAtlas(ms, poleTex, (int) arg.x(), (int) arg.y(), (int) arg.width(), (int) arg.height()));
+            parts.add(new UiHudFrame.Sprite("cleanup-pole", poleTex, drawX, drawY, width, height, cpp.progressBarPoleAngle()));
         }
-
         if (displayList.contains(EnumProgressBarType.TEXT)) {
-            drawProgressCountdownText(mc, ms, cpt, scale);
+            String line = time.formattedTime();
+            float lh = mc.font.lineHeight;
+            Text probe = Text.literal(line).font(mc.font).color(getTextColor()).shadow(true);
+            KeyValue<Integer, Integer> layout = LabelWidget.calculateLimitedTextSize(
+                    FontDrawArgs.of(probe).x(0).y(0).inScreen(false).wrap(false).fontSize(lh));
+            double[] anchor = progressTextAnchorScreen(cpt);
+            parts.add(new UiHudFrame.Text("cleanup-time", line, anchor[0], anchor[1], layout.key(), layout.val(), lh,
+                    scale, SweepProgressUiBinding.textAngleRadians(cpt.progressBarTextAngle()), alignPivotX(cpt.progressBarTextAlignH(), layout.key()),
+                    alignPivotY(cpt.progressBarTextAlignV(), layout.val()), getTextColor().argb()));
         }
-
         if (displayList.contains(EnumProgressBarType.LEAF)) {
             int poleW = cpp.progressBarPoleWidth();
-
             int width = cpl.progressBarLeafWidth();
             int height = cpl.progressBarLeafHeight();
             int rangeWidth = poleW - width;
             int startX = getLeafX();
-
-            int drawX = (int) (startX + rangeWidth * getProgress());
+            int drawX = (int) (startX + rangeWidth * time.progress());
             int drawY = getLeafY();
-
-            TransformArgs transformArgs = new TransformArgs(ms);
-            transformArgs.angle(cpl.progressBarLeafAngle())
-                    .center(EnumPosition.CENTER)
-                    .x(drawX)
-                    .y(drawY)
-                    .width(width)
-                    .height(height);
             ResourceLocation leafTex = TextureUtils.loadCustomTexture(Identifier.id(), "gui/leaf.png");
-            AbstractGuiUtils.renderByTransform(transformArgs, (arg) ->
-                    blitProgressAtlas(ms, leafTex, (int) arg.x(), (int) arg.y(), (int) arg.width(), (int) arg.height()));
+            parts.add(new UiHudFrame.Sprite("cleanup-leaf", leafTex, drawX, drawY, width, height, cpl.progressBarLeafAngle()));
+        }
+        UiHudFrame frame = new UiHudFrame(parts);
+        BINDING.prepare(frame);
+        if (parts.isEmpty() || BaniraUi.renderHud(SweepProgressUiBinding.ID, graphics)) return;
+        PoseStack ms = graphics;
+        for (UiHudFrame.Part part : parts) {
+            if (part instanceof UiHudFrame.Sprite sprite) {
+                TransformArgs transformArgs = new TransformArgs(ms).angle(sprite.angleDegrees()).center(EnumPosition.CENTER)
+                        .x(sprite.x()).y(sprite.y()).width(sprite.width()).height(sprite.height());
+                AbstractGuiUtils.renderByTransform(transformArgs, arg ->
+                        blitProgressAtlas(ms, sprite.texture(), (int) arg.x(), (int) arg.y(), (int) arg.width(), (int) arg.height()));
+            } else if (part instanceof UiHudFrame.Text text) {
+                drawProgressCountdownText(mc, ms, text);
+            }
         }
     }
 
@@ -230,37 +248,20 @@ public final class ProgressRender {
     /**
      * 倒计时文字
      */
-    private static void drawProgressCountdownText(Minecraft mc, PoseStack stack, ClientConfigView.ProgressBarView.TextView cpt, double scale) {
-        String line = getText();
-        if (line.isEmpty()) {
-            return;
-        }
-        float lh = mc.font.lineHeight;
-        Color color = getTextColor();
-        Text probe = Text.literal(line).font(mc.font).color(color).shadow(true);
-        FontDrawArgs measureArgs = FontDrawArgs.of(probe).x(0).y(0).inScreen(false).wrap(false).fontSize(lh);
-        KeyValue<Integer, Integer> layout = LabelWidget.calculateLimitedTextSize(measureArgs);
-        int layoutW = layout.key();
-        int layoutH = layout.val();
-
-        double[] anchor = progressTextAnchorScreen(cpt);
-        float ax = (float) anchor[0];
-        float ay = (float) anchor[1];
-        float pivotX = alignPivotX(cpt.progressBarTextAlignH(), layoutW);
-        float pivotY = alignPivotY(cpt.progressBarTextAlignV(), layoutH);
-        float angle = (float) cpt.progressBarTextAngle();
-
+    private static void drawProgressCountdownText(Minecraft mc, PoseStack stack, UiHudFrame.Text text) {
         stack.pushPose();
-        stack.translate(ax, ay, 0);
-        if (Math.abs(angle % 360f) > 1e-3f) {
-            stack.mulPose(Vector3f.ZP.rotationDegrees(angle));
+        try {
+            stack.translate(text.x(), text.y(), 0);
+            if (text.angleRadians() != 0) {
+                stack.mulPose(Vector3f.ZP.rotation((float) text.angleRadians()));
+            }
+            stack.scale((float) text.scale(), (float) text.scale(), 1f);
+            stack.translate(-text.pivotX(), -text.pivotY(), 0);
+            Text drawText = Text.literal(text.value()).stack(stack).font(mc.font).color(Color.argb(text.color())).shadow(true);
+            LabelWidget.drawLimitedText(FontDrawArgs.of(drawText).x(0).y(0).inScreen(false).wrap(false).fontSize(text.fontSize()));
+        } finally {
+            stack.popPose();
         }
-        stack.scale((float) scale, (float) scale, 1f);
-        stack.translate(-pivotX, -pivotY, 0);
-
-        Text drawText = Text.literal(line).stack(stack).font(mc.font).color(color).shadow(true);
-        LabelWidget.drawLimitedText(FontDrawArgs.of(drawText).x(0).y(0).inScreen(false).wrap(false).fontSize(lh));
-        stack.popPose();
     }
 
     private static float alignPivotX(EnumProgressBarTextAlignH h, int layoutWidth) {
@@ -318,52 +319,6 @@ public final class ProgressRender {
         double x = (quadrant == 2 || quadrant == 3) ? baseX - relX : baseX + relX;
         double y = (quadrant == 1 || quadrant == 2) ? baseY - relY : baseY + relY;
         return new double[]{x, y};
-    }
-
-    private static String getText() {
-        Date now = new Date();
-        Date nextSweepTime = getNextSweepTime(now);
-        if (nextSweepTime.after(now)) {
-            long seconds = DateUtils.secondsOfTwo(now, nextSweepTime);
-            if (seconds / 60 >= 100) {
-                long hours = seconds / 3600;
-                long minutes = (seconds % 3600) / 60;
-                long secs = seconds % 60;
-                return String.format("%02d:%02d:%02d", hours, minutes, secs);
-            } else {
-                long minutes = seconds / 60;
-                long secs = seconds % 60;
-                return String.format("%02d:%02d", minutes, secs);
-            }
-        } else {
-            return "∞";
-        }
-    }
-
-    private static double getProgress() {
-        Date now = new Date();
-        Date nextSweepTime = getNextSweepTime(now);
-        if (nextSweepTime.after(now)) {
-            Date lastSweepTime = DateUtils.addMilliSecond(nextSweepTime, -AotakeSweep.getSweepTime().key().intValue());
-            return (double) (now.getTime() - lastSweepTime.getTime()) / (double) (nextSweepTime.getTime() - lastSweepTime.getTime());
-        } else {
-            return 0;
-        }
-    }
-
-    private static Date getNextSweepTime(Date now) {
-        int difference = (int) ((AotakeSweep.getClientServerTime().key() - AotakeSweep.getClientServerTime().val()) / 1000L);
-        Date nextSweepTime = DateUtils.addSecond(new Date(AotakeSweep.getSweepTime().val()), difference);
-        if (nextSweepTime.before(now)) {
-            for (int i = 0; i < 5; i++) {
-                if (nextSweepTime.before(now)) {
-                    nextSweepTime = DateUtils.addMilliSecond(nextSweepTime, AotakeSweep.getSweepTime().key().intValue());
-                } else {
-                    break;
-                }
-            }
-        }
-        return nextSweepTime;
     }
 
     private static Color getTextColor() {

@@ -4,6 +4,7 @@ import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback;
 import net.fabricmc.fabric.api.client.screen.v1.ScreenEvents;
 import net.fabricmc.fabric.api.client.screen.v1.ScreenKeyboardEvents;
+import net.fabricmc.fabric.api.client.screen.v1.ScreenMouseEvents;
 import net.fabricmc.fabric.api.client.screen.v1.Screens;
 import xin.vanilla.aotake.client.AotakeClientBootstrap;
 import xin.vanilla.aotake.event.ClientGameEventHandler;
@@ -21,6 +22,10 @@ public final class FabricAotakeClientEntry implements ClientModInitializer {
         ScreenEvents.AFTER_INIT.register((client, screen, width, height) -> {
             DustbinRender.handleGuiScreen(new DustbinRender.InitPost(screen,
                     button -> Screens.getButtons(screen).add(button)));
+            ScreenMouseEvents.allowMouseClick(screen).register((scr, x, y, button) ->
+                    !xin.vanilla.aotake.client.ui.AotakeUiPages.click(scr, x, y, button));
+            ScreenMouseEvents.allowMouseRelease(screen).register((scr, x, y, button) ->
+                    !xin.vanilla.aotake.client.ui.AotakeUiPages.release(scr, button));
             ScreenEvents.afterRender(screen).register((scr, stack, mouseX, mouseY, tickDelta) -> {
                 boolean ownsTooltipFrame = TooltipWidget.beginPopupFrameIfIdle(scr, mouseX, mouseY);
                 try {
