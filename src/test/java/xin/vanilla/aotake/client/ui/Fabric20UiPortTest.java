@@ -68,7 +68,9 @@ public class Fabric20UiPortTest {
     public void isolatedBuildCannotWriteDistributionOrClientSettings() throws Exception {
         String build = Files.readString(Path.of("build.gradle"));
         assertTrue(build.contains("destinationDirectory.set(baniraDistributionDirectory)"));
-        assertTrue(build.contains("if (providers.gradleProperty('banira.validationOutputRoot').orNull == null) prepareBaniraDevFpsOverlay()"));
+        assertTrue(build.contains("tasks.named('runClient').configure { dependsOn 'prepareDevFpsOverlay' }"));
+        assertTrue(build.contains("doLast prepareBaniraDevFpsOverlay"));
+        assertFalse(build.contains("orNull == null) prepareBaniraDevFpsOverlay()"));
         String isolation = Files.readString(Path.of("gradle/aui-validation-output.gradle"));
         assertTrue(isolation.contains("disallowChanges()"));
         assertTrue(isolation.contains("Unsafe validation output root"));

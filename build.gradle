@@ -120,7 +120,7 @@ tasks.register('prepareDevFpsOverlay') {
     doLast prepareBaniraDevFpsOverlay
 }
 
-if (providers.gradleProperty('banira.validationOutputRoot').orNull == null) prepareBaniraDevFpsOverlay()
+tasks.named('runClient').configure { dependsOn 'prepareDevFpsOverlay' }
 
 // Loom does not expose nested runtime jars from client-only performance mods in dev runs.
 
