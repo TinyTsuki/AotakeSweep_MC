@@ -77,6 +77,7 @@ public class RuleObjectAccessTest {
         BaniraPlatforms.install((BaniraPlatform) Proxy.newProxyInstance(BaniraPlatform.class.getClassLoader(),
                 new Class<?>[]{BaniraPlatform.class}, (proxy, method, args) -> {
                     if (method.getName().equals("registryService")) return registry;
+                    if (method.getName().equals("isClient")) return false;
                     throw new UnsupportedOperationException(method.toString());
                 }));
     }

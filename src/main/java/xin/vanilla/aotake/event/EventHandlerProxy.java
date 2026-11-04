@@ -496,11 +496,11 @@ public class EventHandlerProxy {
                     aotake.put("entity", entityTag);
                     aotake.putString("entityId", EntityUtils.getEntityRegistryString(entity));
                 }
-                String originalNameText = copy.getHoverName().getString();
+                Component originalName = AotakeComponent.get().object(copy.getHoverName().copy());
                 String originalNameJson = ItemUtils.getItemCustomNameJson(copy);
                 aotake.putString("name", originalNameJson);
                 AotakeUtils.setAotakeTag(copy, aotake);
-                copy.set(DataComponents.CUSTOM_NAME, AotakeComponent.get().literal(String.format("%s %s", entity.getDisplayName().getString(), originalNameText)).toVanilla());
+                copy.set(DataComponents.CUSTOM_NAME, AotakeComponent.get().literal("%s %s").appendArg(entity.getDisplayName()).appendArg(originalName).toChat(Translator.getServerPlayerLanguage(player)));
                 player.addItem(copy);
                 if (!(entity instanceof ServerPlayer)) {
                     AotakeUtils.removeEntity(entity, true);
