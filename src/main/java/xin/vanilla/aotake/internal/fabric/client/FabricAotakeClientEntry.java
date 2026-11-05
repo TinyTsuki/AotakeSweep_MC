@@ -1,7 +1,7 @@
 package xin.vanilla.aotake.internal.fabric.client;
 
 import net.fabricmc.api.ClientModInitializer;
-import net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback;
+import net.fabricmc.fabric.api.client.rendering.v1.hud.HudElementRegistry;
 import net.fabricmc.fabric.api.client.screen.v1.ScreenEvents;
 import net.fabricmc.fabric.api.client.screen.v1.ScreenKeyboardEvents;
 import net.fabricmc.fabric.api.client.screen.v1.ScreenMouseEvents;
@@ -18,17 +18,18 @@ public final class FabricAotakeClientEntry implements ClientModInitializer {
     @Override
     public void onInitializeClient() {
         AotakeClientBootstrap.init();
-        HudRenderCallback.EVENT.register(ClientGameEventHandler::renderHud);
+        HudElementRegistry.addLast(net.minecraft.resources.Identifier.fromNamespaceAndPath("aotake_sweep", "cleanup"),
+                ClientGameEventHandler::renderHud);
         ScreenEvents.AFTER_INIT.register((client, screen, width, height) -> {
             DustbinRender.handleGuiScreen(new DustbinRender.InitPost(screen,
-                    button -> Screens.getButtons(screen).add(button)));
-            ScreenMouseEvents.allowMouseClick(screen).register((scr, mouseX, mouseY, button) ->
-                    !xin.vanilla.aotake.client.ui.AotakeUiPages.click(scr, mouseX, mouseY, button));
-            ScreenMouseEvents.allowMouseRelease(screen).register((scr, mouseX, mouseY, button) ->
-                    !xin.vanilla.aotake.client.ui.AotakeUiPages.release(scr, button));
-            ScreenEvents.afterRender(screen).register((scr, stack, mouseX, mouseY, tickDelta) -> {
+                    button -> Screens.getWidgets(screen).add(button)));
+            ScreenMouseEvents.allowMouseClick(screen).register((scr, event) ->
+                    !xin.vanilla.aotake.client.ui.AotakeUiPages.click(scr, event.x(), event.y(), event.button()));
+            ScreenMouseEvents.allowMouseRelease(screen).register((scr, event) ->
+                    !xin.vanilla.aotake.client.ui.AotakeUiPages.release(scr, event.button()));
+            ScreenEvents.afterExtract(screen).register((scr, stack, mouseX, mouseY, tickDelta) -> {
                 boolean ownsTooltipFrame = TooltipWidget.beginPopupFrameIfIdle(scr, mouseX, mouseY);
-                try {
+                try (var extraction = xin.vanilla.banira.client.util.ExtractedGuiRenderer.bind(stack)) {
                     DustbinRender.handleGuiScreen(new DustbinRender.DrawPost(scr, stack, mouseX, mouseY));
                 } finally {
                     if (ownsTooltipFrame) {
@@ -36,8 +37,8 @@ public final class FabricAotakeClientEntry implements ClientModInitializer {
                     }
                 }
             });
-            ScreenKeyboardEvents.allowKeyPress(screen).register((scr, keyCode, scanCode, modifiers) -> {
-                DustbinRender.KeyPressedPre event = new DustbinRender.KeyPressedPre(scr, keyCode, modifiers);
+            ScreenKeyboardEvents.allowKeyPress(screen).register((scr, key) -> {
+                DustbinRender.KeyPressedPre event = new DustbinRender.KeyPressedPre(scr, key.key(), key.modifiers());
                 DustbinRender.handleGuiScreen(event);
                 return !event.isCanceled();
             });

@@ -163,10 +163,10 @@ public final class ChunkVaultStorage {
                 if (!root.contains("Kind")) {
                     root.putString("Kind", "chunk_overload");
                 }
-                ListTag list = root.getList("Items", 10);
+                ListTag list = root.getListOrEmpty("Items");
                 for (ItemStack s : stacks) {
                     if (s.isEmpty()) continue;
-                    list.add(s.save(server.registryAccess()));
+                    list.add(xin.vanilla.aotake.internal.fabric.NativeStorageData.item(s, server.registryAccess()));
                 }
                 root.put("Items", list);
                 NBTUtils.writeCompressed(root, file.toFile());
@@ -197,10 +197,10 @@ public final class ChunkVaultStorage {
     }
 
     public static List<ItemStack> readItemsFromRoot(CompoundTag root, HolderLookup.Provider provider) {
-        ListTag list = root.getList("Items", 10);
+        ListTag list = root.getListOrEmpty("Items");
         List<ItemStack> out = new ArrayList<>(list.size());
         for (int i = 0; i < list.size(); i++) {
-            ItemStack st = ItemStack.parseOptional(provider, list.getCompound(i));
+            ItemStack st = xin.vanilla.aotake.internal.fabric.NativeStorageData.item(list.get(i), provider);
             if (!st.isEmpty()) {
                 out.add(st);
             }
@@ -229,7 +229,7 @@ public final class ChunkVaultStorage {
                 ListTag list = new ListTag();
                 for (ItemStack s : stacks) {
                     if (s.isEmpty()) continue;
-                    list.add(s.save(server.registryAccess()));
+                    list.add(xin.vanilla.aotake.internal.fabric.NativeStorageData.item(s, server.registryAccess()));
                 }
                 root.put("Items", list);
                 if (list.isEmpty()) {

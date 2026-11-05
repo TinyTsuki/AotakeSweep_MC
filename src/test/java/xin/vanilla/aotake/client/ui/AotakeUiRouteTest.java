@@ -3,9 +3,11 @@ package xin.vanilla.aotake.client.ui;
 import org.junit.BeforeClass;
 import org.junit.Before;
 import org.junit.After;
+import org.junit.Rule;
 import org.junit.Test;
 import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.tree.*;
+import xin.vanilla.aotake.test.NativeClientRule;
 import xin.vanilla.banira.api.client.ui.UiCloseReason;
 import xin.vanilla.banira.api.client.ui.UiDetachReason;
 import xin.vanilla.banira.internal.client.ui.NativeUiView;
@@ -20,6 +22,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 import static org.junit.Assert.*;
 
 public class AotakeUiRouteTest {
+    @Rule
+    public final NativeClientRule client = new NativeClientRule();
     private BaniraPlatform previousPlatform;
 
     @Before

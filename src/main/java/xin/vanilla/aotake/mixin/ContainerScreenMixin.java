@@ -2,7 +2,6 @@ package xin.vanilla.aotake.mixin;
 
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.client.gui.screens.inventory.ContainerScreen;
-import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.player.Player;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
@@ -21,8 +20,8 @@ import xin.vanilla.banira.common.data.KeyValue;
 @Mixin(AbstractContainerScreen.class)
 public abstract class ContainerScreenMixin {
 
-    @Inject(method = "renderLabels", at = @At("HEAD"), cancellable = true)
-    private void aotake$renderUiLabels(net.minecraft.client.gui.GuiGraphics graphics, int mouseX, int mouseY, CallbackInfo ci) {
+    @Inject(method = "extractLabels", at = @At("HEAD"), cancellable = true)
+    private void aotake$renderUiLabels(net.minecraft.client.gui.GuiGraphicsExtractor graphics, int mouseX, int mouseY, CallbackInfo ci) {
         if (xin.vanilla.aotake.client.ui.AotakeUiPages.owns((AbstractContainerScreen) (Object) this)) ci.cancel();
     }
 
@@ -49,7 +48,7 @@ public abstract class ContainerScreenMixin {
         }
 
         DustbinGuiConfig.reload();
-        ResourceLocation texture = TextureUtils.loadCustomTexture(Identifier.id(), "gui/dustbin_gui.png");
+        net.minecraft.resources.Identifier texture = TextureUtils.loadCustomTexture(Identifier.id(), "gui/dustbin_gui.png");
         KeyValue<Integer, Integer> size = TextureUtils.getTextureSize(texture);
         int srcW = size.key();
         int srcH = size.val();

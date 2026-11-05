@@ -9,7 +9,7 @@ import net.minecraft.world.SimpleContainer;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.Pose;
-import net.minecraft.world.entity.animal.Cow;
+import net.minecraft.world.entity.animal.cow.Cow;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
@@ -164,9 +164,9 @@ public final class AotakeNetworkSmokeServerRunner {
                 player.setNoGravity(true);
                 ItemStack ordinary = new ItemStack(Items.APPLE);
                 player.setItemInHand(InteractionHand.MAIN_HAND, ordinary);
-                net.minecraft.world.InteractionResultHolder<ItemStack> vanilla =
+                InteractionResult vanilla =
                         EventHandlerProxy.onPlayerUseItem(player, level, InteractionHand.MAIN_HAND);
-                if (vanilla.getResult() != InteractionResult.PASS || vanilla.getObject() != ordinary) {
+                if (vanilla != InteractionResult.PASS || player.getItemInHand(InteractionHand.MAIN_HAND) != ordinary) {
                     throw new IllegalStateException("Ordinary item use was intercepted");
                 }
                 AotakeNetworkSmokeStatus.append("PASS vanilla-item-use");
@@ -237,11 +237,11 @@ public final class AotakeNetworkSmokeServerRunner {
             case WAIT_GLOBAL_BATCH:
                 if (globalSweepItems.stream().anyMatch(Entity::isAlive)) return false;
                 AotakeNetworkSmokeStatus.append("PASS global-batch-cleanup");
-                captureTarget = EntityType.COW.create(level);
+                captureTarget = EntityType.COW.create(level, net.minecraft.world.entity.EntitySpawnReason.COMMAND);
                 if (captureTarget == null) throw new IllegalStateException("Could not create capture target");
-                captureTarget.moveTo(24.5D, 65.0D, 24.5D, 0.0F, 0.0F);
+                captureTarget.snapTo(24.5D, 65.0D, 24.5D, 0.0F, 0.0F);
                 level.addFreshEntity(captureTarget);
-                player.teleportTo(level, 23.5D, 65.0D, 24.5D, 0.0F, 0.0F);
+                player.teleportTo(level, 23.5D, 65.0D, 24.5D, java.util.Collections.emptySet(), 0.0F, 0.0F, false);
                 player.getInventory().add(new ItemStack(Items.STICK));
                 player.setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(Items.STICK));
                 player.setShiftKeyDown(true);
@@ -258,7 +258,7 @@ public final class AotakeNetworkSmokeServerRunner {
                 return false;
             case WAIT_CAPTURE:
                 if (captureTarget.isAlive()) return false;
-                if (player.getInventory().items.stream().noneMatch(AotakeUtils::hasAotakeTag)) {
+                if (player.getInventory().getNonEquipmentItems().stream().noneMatch(AotakeUtils::hasAotakeTag)) {
                     throw new IllegalStateException("Captured entity payload was not added to inventory");
                 }
                 AotakeNetworkSmokeStatus.append("PASS entity-capture");
@@ -337,7 +337,7 @@ public final class AotakeNetworkSmokeServerRunner {
     }
 
     private static boolean verifyConciseCommandRefresh(ServerPlayer player) {
-        MinecraftServer server = player.getServer();
+        MinecraftServer server = player.level().getServer();
         String root = CommonConfig.get().command().commandClearDrop();
         boolean registered = server.getCommands().getDispatcher().getRoot().getChild(root) != null;
         boolean enabled = CommonConfig.get().concise().conciseClearDrop();

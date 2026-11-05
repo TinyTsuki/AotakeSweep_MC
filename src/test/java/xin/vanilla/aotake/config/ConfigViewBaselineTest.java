@@ -8,7 +8,7 @@ import java.util.Map;
 public class ConfigViewBaselineTest {
     @BeforeClass
     public static void bootstrapRegistryDefaults() {
-        net.minecraft.SharedConstants.tryDetectVersion(); net.minecraft.server.Bootstrap.bootStrap();
+        net.minecraft.SharedConstants.tryDetectVersion(); xin.vanilla.aotake.test.NativeBootstrap.initialize();
     }
 
     @Test

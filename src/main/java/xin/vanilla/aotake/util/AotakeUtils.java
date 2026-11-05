@@ -234,14 +234,14 @@ public class AotakeUtils {
      * 判断是否拥有指令权限
      */
     public static boolean hasCommandPermission(CommandSourceStack source, EnumCommandType type) {
-        return source.hasPermission(getCommandPermissionLevel(type)) || CommandUtils.hasVirtualPermission(source.getEntity(), type);
+        return xin.vanilla.aotake.internal.fabric.NativePermissionAccess.has(source.permissions(), getCommandPermissionLevel(type)) || CommandUtils.hasVirtualPermission(source.getEntity(), type);
     }
 
     /**
      * 判断是否拥有指令权限
      */
     public static boolean hasCommandPermission(Player player, EnumCommandType type) {
-        return player.hasPermissions(getCommandPermissionLevel(type)) || CommandUtils.hasVirtualPermission(player, type);
+        return xin.vanilla.aotake.internal.fabric.NativePermissionAccess.has(player.permissions(), getCommandPermissionLevel(type)) || CommandUtils.hasVirtualPermission(player, type);
     }
 
     /**
@@ -360,12 +360,10 @@ public class AotakeUtils {
                                 .append(msg)
                                 .append(AotakeComponent.get().literal("[x]")
                                         .color(EnumMCColor.RED.getColor())
-                                        .hoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT
-                                                , AotakeComponent.get().transAuto("not_show_button")
+                                        .hoverEvent(new HoverEvent.ShowText(AotakeComponent.get().transAuto("not_show_button")
                                                 .toVanilla(language))
                                         )
-                                        .clickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND
-                                                , "/" + AotakeUtils.getCommandPrefix() + " config player showSweepResult change")
+                                        .clickEvent(new ClickEvent.RunCommand("/" + AotakeUtils.getCommandPrefix() + " config player showSweepResult change")
                                         )
                                 )
                         , AotakeNotificationTypes.SWEEP_RESULT_INTERACTIVE);
@@ -403,10 +401,10 @@ public class AotakeUtils {
         DataComponentMap components = itemStack.getComponents();
         if (!components.isEmpty() && components.has(DataComponents.CUSTOM_DATA)) {
             CompoundTag tag = components.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag();
-            CompoundTag aotake = tag.getCompound(AotakeSweep.MODID);
+            CompoundTag aotake = tag.getCompoundOrEmpty(AotakeSweep.MODID);
             if (aotake.contains("entity")) {
                 try {
-                    result = EntityType.loadEntityRecursive(aotake.getCompound("entity"), level, e -> e);
+                    result = EntityType.loadEntityRecursive(aotake.getCompoundOrEmpty("entity"), level, net.minecraft.world.entity.EntitySpawnReason.LOAD, e -> e);
                 } catch (Exception e) {
                     LOGGER.error("Failed to load entity from item stack: {}", itemStack, e);
                 }
@@ -617,8 +615,8 @@ public class AotakeUtils {
 
             BlockHitResult ray = new BlockHitResult(hitVec, direction, coordinate.toBlockPos(), false);
 
-            BlockState state = player.serverLevel().getBlockState(coordinate.toBlockPos());
-            InteractionResult res = state.useWithoutItem(player.serverLevel(), player, ray);
+            BlockState state = player.level().getBlockState(coordinate.toBlockPos());
+            InteractionResult res = state.useWithoutItem(player.level(), player, ray);
             if (res.consumesAction()) {
                 result = 1;
             }
@@ -673,9 +671,9 @@ public class AotakeUtils {
         inventoryList.forEach(inventory -> inventory.removeAllItems()
                 .forEach(item -> {
                     if (!item.isEmpty()) {
-                        Entity entity = AotakeUtils.getEntityFromItem(player.serverLevel(), item);
-                        entity.moveTo(player.getX(), player.getY(), player.getZ(), player.getYRot(), player.getXRot());
-                        player.serverLevel().addFreshEntity(entity);
+                        Entity entity = AotakeUtils.getEntityFromItem(player.level(), item);
+                        entity.snapTo(player.getX(), player.getY(), player.getZ(), player.getYRot(), player.getXRot());
+                        player.level().addFreshEntity(entity);
                     }
                 })
         );
@@ -692,9 +690,9 @@ public class AotakeUtils {
                         for (int i = 0; i < handler.getContainerSize(); i++) {
                             ItemStack stack = handler.removeItemNoUpdate(i);
                             if (!stack.isEmpty()) {
-                                Entity entity = AotakeUtils.getEntityFromItem(player.serverLevel(), stack);
-                                entity.moveTo(player.getX(), player.getY(), player.getZ(), player.getYRot(), player.getXRot());
-                                player.serverLevel().addFreshEntity(entity);
+                                Entity entity = AotakeUtils.getEntityFromItem(player.level(), stack);
+                                entity.snapTo(player.getX(), player.getY(), player.getZ(), player.getYRot(), player.getXRot());
+                                player.level().addFreshEntity(entity);
                             }
                         }
                     }
@@ -708,9 +706,9 @@ public class AotakeUtils {
                     for (int i = 0; i < handler.getContainerSize(); i++) {
                         ItemStack stack = handler.removeItemNoUpdate(i);
                         if (!stack.isEmpty()) {
-                            Entity entity = AotakeUtils.getEntityFromItem(player.serverLevel(), stack);
-                            entity.moveTo(player.getX(), player.getY(), player.getZ(), player.getYRot(), player.getXRot());
-                            player.serverLevel().addFreshEntity(entity);
+                            Entity entity = AotakeUtils.getEntityFromItem(player.level(), stack);
+                            entity.snapTo(player.getX(), player.getY(), player.getZ(), player.getYRot(), player.getXRot());
+                            player.level().addFreshEntity(entity);
                         }
                     }
                 }
@@ -765,7 +763,7 @@ public class AotakeUtils {
         }
         CompoundTag tag = item.getComponents()
                 .getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag();
-        return tag.getCompound(AotakeSweep.MODID);
+        return tag.getCompoundOrEmpty(AotakeSweep.MODID);
     }
 
     public static void setAotakeTag(@NonNull ItemStack item, CompoundTag aotakeTag) {

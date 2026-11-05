@@ -39,7 +39,7 @@ public class FabricUiPortTest {
         int factories = 0;
         for (var method : read("client/ui/DustbinUiSession").methods)
             for (var instruction : method.instructions)
-                if (instruction instanceof MethodInsnNode call && call.owner.equals("net/minecraft/resources/ResourceLocation")) {
+                if (instruction instanceof MethodInsnNode call && call.owner.equals("net/minecraft/resources/Identifier")) {
                     assertNotEquals("<init>", call.name);
                     if (call.name.equals("fromNamespaceAndPath")) factories++;
                 }

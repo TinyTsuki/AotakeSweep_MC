@@ -45,8 +45,8 @@ public class ClearDropCommand {
             boolean ignoreFilter = CommandUtils.getBooleanDefault(context, "ignoreFilter", false);
 
             ServerPlayer player = range > 0 ? context.getSource().getPlayerOrException() : null;
-            String dimensionId = player != null ? player.level().dimension().location().toString()
-                    : dimension == null ? null : dimension.dimension().location().toString();
+            String dimensionId = player != null ? player.level().dimension().identifier().toString()
+                    : dimension == null ? null : dimension.dimension().identifier().toString();
             FabricSweepTarget target =
                     new FabricSweepTarget(dimensionId,
                             player == null ? null : player.getBoundingBox().inflate(range), withEntity);

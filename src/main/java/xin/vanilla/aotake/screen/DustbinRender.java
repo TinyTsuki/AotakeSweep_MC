@@ -1,14 +1,12 @@
 package xin.vanilla.aotake.screen;
 
-import com.mojang.blaze3d.systems.RenderSystem;
-import com.mojang.blaze3d.vertex.PoseStack;
+import org.joml.Matrix3x2fStack;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.inventory.ContainerScreen;
 import net.minecraft.client.player.LocalPlayer;
-import net.minecraft.resources.ResourceLocation;
 import xin.vanilla.aotake.AotakeComponent;
 import xin.vanilla.aotake.AotakeLang;
 import xin.vanilla.aotake.Identifier;
@@ -289,7 +287,7 @@ public final class DustbinRender {
         } else if (event instanceof DrawPost) {
             DrawPost drawEvent = (DrawPost) event;
             if (AotakeUiPages.owns(screen)) {
-                AotakeUiPages.tooltip(screen, drawEvent.getGuiGraphics(), drawEvent.getMouseX(), drawEvent.getMouseY());
+                AotakeUiPages.tooltip(screen, drawEvent.getGuiGraphicsExtractor(), drawEvent.getMouseX(), drawEvent.getMouseY());
                 return;
             }
             mouseHelper.poll(drawEvent.getMouseX(), drawEvent.getMouseY());
@@ -307,8 +305,8 @@ public final class DustbinRender {
                 }
                 Component tooltip = vanillaButtonTooltips.find(drawEvent.getMouseX(), drawEvent.getMouseY());
                 if (tooltip != null) {
-                    TooltipWidget.drawPopupMessage(drawEvent.getPoseStack(),
-                            FontDrawArgs.ofPopo(new Text(tooltip).stack(drawEvent.getPoseStack()))
+                    TooltipWidget.drawPopupMessage(drawEvent.getMatrix3x2fStack(),
+                            FontDrawArgs.ofPopo(new Text(tooltip).stack(drawEvent.getMatrix3x2fStack()))
                                     .x(drawEvent.getMouseX()).y(drawEvent.getMouseY()),
                             ClientThemeManager.getEffectiveTheme(), null);
                 }
@@ -320,7 +318,7 @@ public final class DustbinRender {
                 int mouseX = eve.getMouseX();
                 int mouseY = eve.getMouseY();
 
-                PoseStack stack = eve.getPoseStack();
+                Matrix3x2fStack stack = eve.getMatrix3x2fStack();
                 BaniraColorConfig baniraTheme = dustbinUi == EnumDustbinClientUiStyle.BANIRA_THEME
                         ? ClientThemeManager.getEffectiveTheme() : null;
                 int baseW = 16;
@@ -640,26 +638,24 @@ public final class DustbinRender {
         return regions;
     }
 
-    private static void dustbinDrawToolbarAppearance(PoseStack stack,
+    private static void dustbinDrawToolbarAppearance(Matrix3x2fStack stack,
                                                      EnumDustbinClientUiStyle dustbinUi,
                                                      BaniraColorConfig baniraTheme,
                                                      int x, int y, int w, int h,
                                                      boolean hover,
                                                      boolean enabled,
                                                      boolean pressVisual,
-                                                     @Nullable ResourceLocation texture,
+                                                     @Nullable net.minecraft.resources.Identifier texture,
                                                      @Nullable ButtonWidget.PresetStyle baniraPreset,
                                                      @Nullable DustbinBaniraToolbarButtonRenderer.IconTint baniraTint) {
         if (dustbinUi == EnumDustbinClientUiStyle.TEXTURED) {
             if (texture == null) {
                 return;
             }
+            var graphics = xin.vanilla.banira.client.util.ExtractedGuiRenderer.graphics();
+            graphics.blit(net.minecraft.client.renderer.RenderPipelines.GUI_TEXTURED, texture,
+                    x, y, 0f, 0f, w, h, w, h, enabled ? 0xFFFFFFFF : 0x80FFFFFF);
             if (!enabled) {
-                RenderSystem.setShaderColor(1.0F, 1.0F, 1.0F, 0.5F);
-            }
-            AbstractGuiUtils.blitBlend(stack, texture, x, y, 0, 0, 0, w, h, w, h);
-            if (!enabled) {
-                RenderSystem.setShaderColor(1.0F, 1.0F, 1.0F, 1.0F);
                 AbstractGuiUtils.fill(stack, x, y, w, h, 0x66000000);
             }
             return;
@@ -715,22 +711,22 @@ public final class DustbinRender {
     }
 
     public static final class DrawPost extends ScreenEvent {
-        private final GuiGraphics graphics;
+        private final GuiGraphicsExtractor graphics;
         private final int mouseX;
         private final int mouseY;
 
-        public DrawPost(Screen gui, GuiGraphics graphics, int mouseX, int mouseY) {
+        public DrawPost(Screen gui, GuiGraphicsExtractor graphics, int mouseX, int mouseY) {
             super(gui);
             this.graphics = graphics;
             this.mouseX = mouseX;
             this.mouseY = mouseY;
         }
 
-        public PoseStack getPoseStack() {
+        public Matrix3x2fStack getMatrix3x2fStack() {
             return graphics.pose();
         }
 
-        public GuiGraphics getGuiGraphics() {
+        public GuiGraphicsExtractor getGuiGraphicsExtractor() {
             return graphics;
         }
 

@@ -2,7 +2,7 @@ package xin.vanilla.aotake.event;
 
 import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import xin.vanilla.aotake.config.ClientConfig;
@@ -62,7 +62,7 @@ public final class ClientGameEventHandler {
         }
     }
 
-    public static void renderHud(GuiGraphics graphics, DeltaTracker deltaTracker) {
+    public static void renderHud(GuiGraphicsExtractor graphics, DeltaTracker deltaTracker) {
         if (ProgressRender.shouldRenderProgressOverlay(showProgress)) {
             ProgressRender.render(graphics, showProgress);
         } else ProgressRender.reset();

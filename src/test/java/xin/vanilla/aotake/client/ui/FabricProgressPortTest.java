@@ -23,13 +23,13 @@ public class FabricProgressPortTest {
         for (var method : read("event/ClientGameEventHandler").methods)
             for (var instruction : method.instructions)
                 if (instruction instanceof MethodInsnNode call && call.owner.endsWith("/ProgressRender") && call.name.equals("render")) {
-                    assertEquals("(Lnet/minecraft/client/gui/GuiGraphics;Z)V", call.desc);
+                    assertEquals("(Lnet/minecraft/client/gui/GuiGraphicsExtractor;Z)V", call.desc);
                     draws++;
                 }
         assertEquals(1, draws);
         var renderer = read("screen/ProgressRender");
         assertTrue(renderer.methods.stream().anyMatch(method -> method.name.equals("render")
-                && method.desc.equals("(Lnet/minecraft/client/gui/GuiGraphics;Z)V")));
+                && method.desc.equals("(Lnet/minecraft/client/gui/GuiGraphicsExtractor;Z)V")));
         for (var method : renderer.methods)
             for (var instruction : method.instructions)
                 if (instruction instanceof MethodInsnNode call) {

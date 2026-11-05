@@ -4,7 +4,7 @@ import com.google.gson.JsonObject;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.item.ItemEntity;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.Bootstrap;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -18,7 +18,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import static org.junit.Assert.*;
 
 public class ResourceRuleLookupTest {
-    @BeforeClass public static void bootstrap() { net.minecraft.SharedConstants.tryDetectVersion(); Bootstrap.bootStrap(); }
+    @BeforeClass public static void bootstrap() { net.minecraft.SharedConstants.tryDetectVersion(); xin.vanilla.aotake.test.NativeBootstrap.initialize(); }
 
     @Test public void longIdRunReadsRegistryOncePerMatchAndDoesNotCacheAcrossEntities() throws Exception {
         try (Registry fixture = new Registry()) {
@@ -28,7 +28,7 @@ public class ResourceRuleLookupTest {
             RuleGeneration<Entity> generation = generation(rules, null);
             assertTrue(generation.matches(RuleGeneration.RuleList.SWEEP, item()));
             assertEquals("One lookup for the whole pure ID run", 1, fixture.lookups);
-            fixture.key = ResourceLocation.parse("probe:changed");
+            fixture.key = Identifier.parse("probe:changed");
             assertFalse(generation.matches(RuleGeneration.RuleList.SWEEP, item()));
             assertEquals(2, fixture.lookups);
         }
@@ -38,7 +38,7 @@ public class ResourceRuleLookupTest {
         try (Registry fixture = new Registry()) {
             RuleGeneration<Entity> generation = generation(Arrays.asList(
                     "probe:before", "probe:before_again", "script:probe", "probe:after", "probe:changed"),
-                    context -> { fixture.key = ResourceLocation.parse("probe:changed"); return false; });
+                    context -> { fixture.key = Identifier.parse("probe:changed"); return false; });
             assertTrue(generation.matches(RuleGeneration.RuleList.SWEEP, item()));
             assertEquals("Two independent ID runs around the script", 2, fixture.lookups);
         }
@@ -120,7 +120,7 @@ public class ResourceRuleLookupTest {
         private final Field field;
         private final Object previous;
         int lookups;
-        ResourceLocation key = ResourceLocation.parse("minecraft:item");
+        Identifier key = Identifier.parse("minecraft:item");
         Runnable afterLookup = () -> {};
         Registry() throws Exception {
             field = BaniraPlatforms.class.getDeclaredField("platform"); field.setAccessible(true);

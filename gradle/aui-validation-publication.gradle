@@ -8,9 +8,9 @@ if (providers.gradleProperty('banira.validationOutputRoot').isPresent()) {
         groupId = 'xin.vanilla.aotake'
         artifactId = mod_id
         version = "${loader_type}-${minecraft_version}-${mod_version}"
-        setArtifacts([tasks.named('remapJar'), tasks.named('remapSourcesJar')])
+        setArtifacts([tasks.named('jar'), tasks.named('sourcesJar')])
     }
-    // Validation publishes explicit remapped artifacts, without development variants.
+    // Publish the unobfuscated distribution without development variants.
     tasks.withType(org.gradle.api.publish.tasks.GenerateModuleMetadata).configureEach {
         enabled = false
     }

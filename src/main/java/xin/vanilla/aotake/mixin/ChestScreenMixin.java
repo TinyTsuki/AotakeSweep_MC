@@ -1,9 +1,8 @@
 package xin.vanilla.aotake.mixin;
 
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.screens.inventory.ContainerScreen;
-import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.player.Player;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
@@ -25,11 +24,18 @@ import xin.vanilla.banira.client.util.TextureUtils;
 public abstract class ChestScreenMixin {
 
     @Inject(
-            method = "renderBg",
+            method = "extractBackground",
             at = @At("HEAD"),
             cancellable = true
     )
-    private void aotake$interceptRenderBg(GuiGraphics graphics, float partialTicks, int mouseX, int mouseY, CallbackInfo ci) {
+    private void aotake$interceptRenderBg(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTicks, CallbackInfo ci) {
+        try (var extraction = xin.vanilla.banira.client.util.ExtractedGuiRenderer.bind(graphics)) {
+            aotake$extractBackground(graphics, ci);
+        }
+    }
+
+    @Unique
+    private void aotake$extractBackground(GuiGraphicsExtractor graphics, CallbackInfo ci) {
         Minecraft mc = Minecraft.getInstance();
         Player player = mc.player;
         if (player == null) return;
@@ -52,7 +58,7 @@ public abstract class ChestScreenMixin {
             int srcWidth = DustbinGuiLayoutCache.srcWidth;
             int srcHeight = DustbinGuiLayoutCache.srcHeight;
 
-            ResourceLocation texture = TextureUtils.loadCustomTexture(Identifier.id(), "gui/dustbin_gui.png");
+            net.minecraft.resources.Identifier texture = TextureUtils.loadCustomTexture(Identifier.id(), "gui/dustbin_gui.png");
             AbstractGuiUtils.renderByDepth(graphics.pose(), 0, (s) ->
                     AbstractGuiUtils.blitBlend(s, texture, leftPos, topPos, 0, 0, drawWidth, drawHeight, srcWidth, srcHeight)
             );

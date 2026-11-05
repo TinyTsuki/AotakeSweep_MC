@@ -16,7 +16,7 @@ import static org.junit.Assert.*;
 public class ConfigViewLifecycleTest {
     @Rule public TemporaryFolder temporary = new TemporaryFolder();
     private BaniraPlatform previous;
-    @BeforeClass public static void bootstrap() { net.minecraft.SharedConstants.tryDetectVersion(); net.minecraft.server.Bootstrap.bootStrap(); }
+    @BeforeClass public static void bootstrap() { net.minecraft.SharedConstants.tryDetectVersion(); xin.vanilla.aotake.test.NativeBootstrap.initialize(); }
     @Before public void rememberPlatform() { previous = BaniraPlatforms.get(); }
     @After public void restorePlatform() { BaniraPlatforms.install(previous); }
     @Test public void retainedRulesFollowRealFileReloadAndRebinding() throws Exception { verify(false); }

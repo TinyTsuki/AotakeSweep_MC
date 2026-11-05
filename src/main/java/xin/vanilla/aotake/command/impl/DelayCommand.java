@@ -49,8 +49,7 @@ public class DelayCommand {
                     , context.getSource().getEntity() instanceof ServerPlayer
                             ? context.getSource().getPlayerOrException().getDisplayName().getString()
                             : "server"
-                    , AotakeComponent.get().literal(String.valueOf(seconds)).hoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT
-                            , AotakeComponent.get().literal(DateUtils.toDateTimeString(new Date(EventHandlerProxy.getNextSweepTime())) + " (Server Time)").toVanilla())
+                    , AotakeComponent.get().literal(String.valueOf(seconds)).hoverEvent(new HoverEvent.ShowText(AotakeComponent.get().literal(DateUtils.toDateTimeString(new Date(EventHandlerProxy.getNextSweepTime())) + " (Server Time)").toVanilla())
                     )
             );
             AotakeServerRuntime.requireServer()

@@ -2,7 +2,8 @@
   "required": true,
   "minVersion": "0.8",
   "package": "xin.vanilla.aotake.mixin",
-  "compatibilityLevel": "JAVA_21",
+  "plugin": "xin.vanilla.aotake.mixin.AotakeMixinPlugin",
+  "compatibilityLevel": "JAVA_25",
   "mixins": [
     "CommandNodeAccessor",
     "ServerPlayerMixin"
@@ -12,7 +13,8 @@
     "ContainerScreenAccessor",
     "ContainerScreenMixin",
     "MinecraftMixin",
-    "ScreenMixin"
+    "ScreenMixin",
+    "SmokeScreenshotFrameMixin"
   ],
   "injectors": {
     "defaultRequire": 1

@@ -83,7 +83,7 @@ public final class ChunkVaultCommand {
     private static int list(CommandContext<CommandSourceStack> context, int page) throws CommandSyntaxException {
         if (CommandUtils.checkModStatus(context, AotakeSweep::isDisable)) return 0;
         ServerPlayer player = context.getSource().getPlayerOrException();
-        List<String> ids = ChunkVaultStorage.listVaultIds(player.getServer());
+        List<String> ids = ChunkVaultStorage.listVaultIds(player.level().getServer());
         if (CollectionUtils.isNullOrEmpty(ids)) {
             MessageUtils.sendNotification(player, AotakeComponent.get().transAuto("chunk_vault_list_empty"), AotakeNotificationTypes.CHUNK_VAULT_LIST);
             return 1;
@@ -103,9 +103,8 @@ public final class ChunkVaultCommand {
             String openCmd = "/" + AotakeUtils.getCommandPrefix() + " " + CommonConfig.get().command().commandChunkVault()
                     + " open " + id;
             body.append(AotakeComponent.get().literal(id)
-                    .clickEvent(new ClickEvent(ClickEvent.Action.SUGGEST_COMMAND, openCmd))
-                    .hoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT,
-                            AotakeComponent.get().transAuto("click_to_suggest").toVanilla(lang))));
+                    .clickEvent(new ClickEvent.SuggestCommand(openCmd))
+                    .hoverEvent(new HoverEvent.ShowText(AotakeComponent.get().transAuto("click_to_suggest").toVanilla(lang))));
         }
         MessageUtils.sendNotification(player, header.append("\n").append(body), AotakeNotificationTypes.CHUNK_VAULT_LIST);
         return 1;
@@ -134,7 +133,7 @@ public final class ChunkVaultCommand {
             return 0;
         }
         for (ServerPlayer target : targets) {
-            ChunkVaultGrants.grant(admin.getServer(), vaultId, target);
+            ChunkVaultGrants.grant(admin.level().getServer(), vaultId, target);
             MessageUtils.sendNotification(target, AotakeComponent.get().transAuto("chunk_vault_granted", vaultId), AotakeNotificationTypes.DUSTBIN);
         }
         String playerNames = targets.stream()

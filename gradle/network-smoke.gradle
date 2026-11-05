@@ -40,7 +40,7 @@ if (smokeChild) {
 def readUtf8 = { File file -> file.isFile() ? file.getText('UTF-8') : '' }
 def tailUtf8 = { File file -> file.isFile() ? file.readLines('UTF-8').takeRight(120).join(System.lineSeparator()) : '' }
 def sparkRuntime = {
-    def candidates = configurations.findByName('modRuntimeOnly')?.files ?: []
+    def candidates = configurations.findByName('runtimeClasspath')?.files ?: []
     candidates.find { candidate ->
         if (!candidate.isFile() || !candidate.name.toLowerCase().startsWith('spark-')) {
             false
@@ -112,12 +112,12 @@ tasks.register('networkSmoke') {
             inputs[project.relativePath(it).replace('\\', '/')] = sha256(it)
         }
         def jars = [:]
-        (configurations.runtimeClasspath.files + configurations.modRuntimeOnly.files).findAll {
+        configurations.runtimeClasspath.files.findAll {
             it.isFile() && it.name.endsWith('.jar')
         }.each { jars[it.absolutePath] = sha256(it) }
         new File(evidence, 'source-state.json').setText(groovy.json.JsonOutput.prettyPrint(
                 groovy.json.JsonOutput.toJson([files: inputs, runtimeJars: jars, mutableThresholds: mutableThresholds])), 'UTF-8')
-        File spark = configurations.modRuntimeOnly.files.find { it.name.startsWith('spark-') }
+        File spark = configurations.runtimeClasspath.files.find { it.name.startsWith('spark-') }
         if (spark == null) throw new GradleException('Missing Spark runtime')
         new File(evidence, 'spark-runtime-phase-one.txt').setText(spark.absolutePath, 'UTF-8')
         ['phase-one', 'phase-two'].each { phase ->

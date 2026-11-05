@@ -73,7 +73,7 @@ public final class DustbinMouseInput {
     }
 
     private static long windowHandle() {
-        return Minecraft.getInstance().getWindow().getWindow();
+        return Minecraft.getInstance().getWindow().handle();
     }
 
     private static boolean contains(double pointX, double pointY,

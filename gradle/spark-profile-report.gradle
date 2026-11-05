@@ -27,7 +27,7 @@ def resolveSparkProfileJar = { File report ->
         if (candidate.isFile()) return candidate
     }
     def candidates = []
-    ['modRuntimeOnly', 'runtimeClasspath'].each { name ->
+    ['runtimeClasspath', 'runtimeClasspath'].each { name ->
         def configuration = configurations.findByName(name)
         if (configuration != null) candidates.addAll(configuration.files)
     }

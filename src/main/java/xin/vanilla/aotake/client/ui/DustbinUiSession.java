@@ -210,7 +210,7 @@ public final class DustbinUiSession implements UiPageSession {
     }
 
     private static UiGameElement icon(String name) {
-        return UiGameElement.sprite(xin.vanilla.banira.client.data.Texture.of(net.minecraft.resources.ResourceLocation.fromNamespaceAndPath(
+        return UiGameElement.sprite(xin.vanilla.banira.client.data.Texture.of(net.minecraft.resources.Identifier.fromNamespaceAndPath(
                 "apricityui", "apricity/aotake_sweep/icons/" + name + ".png"), 32, 32));
     }
 
@@ -221,9 +221,9 @@ public final class DustbinUiSession implements UiPageSession {
         view = next;
         iconStates = -1;
         next.gameElement("brand", UiGameElement.sprite(xin.vanilla.banira.client.data.Texture.of(
-                net.minecraft.resources.ResourceLocation.fromNamespaceAndPath("aotake_sweep", "gui/quick_icon.png"), 200, 200)));
+                net.minecraft.resources.Identifier.fromNamespaceAndPath("aotake_sweep", "gui/quick_icon.png"), 200, 200)));
         next.gameElement("close_icon", UiGameElement.sprite(xin.vanilla.banira.client.data.Texture.of(
-                net.minecraft.resources.ResourceLocation.fromNamespaceAndPath("apricityui", "apricity/banira_codex/icons/close.png"), 16, 16)));
+                net.minecraft.resources.Identifier.fromNamespaceAndPath("apricityui", "apricity/banira_codex/icons/close.png"), 16, 16)));
         bindings.add(next.onAction("close", () -> {
             if (view == next) requestClose();
         }));

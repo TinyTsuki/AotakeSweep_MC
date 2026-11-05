@@ -13,12 +13,11 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
-import net.minecraft.world.InteractionResultHolder;
 import net.minecraft.world.SimpleContainer;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
-import net.minecraft.world.entity.boss.EnderDragonPart;
+import net.minecraft.world.entity.boss.enderdragon.EnderDragonPart;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
@@ -248,29 +247,24 @@ public class EventHandlerProxy {
                                 ? "chunk_check_msg_no"
                                 : "chunk_check_msg_yes"
                         , AotakeComponent.get().literal(entityCoordinate.chunkXZString())
-                                .hoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT
-                                        , AotakeComponent.get().literal(entityCoordinate.dimensionId()).toVanilla())
+                                .hoverEvent(new HoverEvent.ShowText(AotakeComponent.get().literal(entityCoordinate.dimensionId()).toVanilla())
                                 )
                 );
-                if (player.hasPermissions(1)
+                if (xin.vanilla.aotake.internal.fabric.NativePermissionAccess.has(player.permissions(), 1)
                         && PlayerSweepData.getData(player).isShowSweepResult()
                 ) {
                     MessageUtils.sendNotification(player, message
-                                    .hoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT
-                                            , AotakeComponent.get().trans(EnumI18nType.WORD, "chunk_check_msg_hover")
+                                    .hoverEvent(new HoverEvent.ShowText(AotakeComponent.get().trans(EnumI18nType.WORD, "chunk_check_msg_hover")
                                             .toVanilla(language))
                                     )
-                                    .clickEvent(new ClickEvent(ClickEvent.Action.SUGGEST_COMMAND
-                                            , AotakeUtils.genTeleportCommand(entityCoordinate))
+                                    .clickEvent(new ClickEvent.SuggestCommand(AotakeUtils.genTeleportCommand(entityCoordinate))
                                     )
                                     .append(AotakeComponent.get().literal("[+]")
                                             .color(EnumMCColor.GREEN.getColor())
-                                            .hoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT
-                                                    , AotakeComponent.get().trans(EnumI18nType.WORD, "click_to_copy_detail")
+                                            .hoverEvent(new HoverEvent.ShowText(AotakeComponent.get().trans(EnumI18nType.WORD, "click_to_copy_detail")
                                                     .toVanilla(language))
                                             )
-                                            .clickEvent(new ClickEvent(ClickEvent.Action.COPY_TO_CLIPBOARD
-                                                    , overcrowdedChunks.stream()
+                                            .clickEvent(new ClickEvent.CopyToClipboard(overcrowdedChunks.stream()
                                                     .map(entry -> String.format("%s, Entities: %s"
                                                             , formatChunkKey(entry.getKey(), advanced)
                                                             , entry.getValue().size()))
@@ -279,12 +273,10 @@ public class EventHandlerProxy {
                                     )
                                     .append(AotakeComponent.get().literal("[x]")
                                             .color(EnumMCColor.RED.getColor())
-                                            .hoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT
-                                                    , AotakeComponent.get().trans(EnumI18nType.WORD, "not_show_button")
+                                            .hoverEvent(new HoverEvent.ShowText(AotakeComponent.get().trans(EnumI18nType.WORD, "not_show_button")
                                                     .toVanilla(language))
                                             )
-                                            .clickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND
-                                                    , "/" + AotakeUtils.getCommandPrefix() + " config player showSweepResult change")
+                                            .clickEvent(new ClickEvent.RunCommand("/" + AotakeUtils.getCommandPrefix() + " config player showSweepResult change")
                                             )
                                     )
                             , AotakeNotificationTypes.CHUNK_CHECK_INTERACTIVE);
@@ -302,25 +294,25 @@ public class EventHandlerProxy {
         return String.format("Dimension: %s, Chunk: %s %s", key.dimension(), key.chunkX(), key.chunkZ());
     }
 
-    public static InteractionResultHolder<ItemStack> onPlayerUseItem(Player player, Level level, InteractionHand hand) {
+    public static InteractionResult onPlayerUseItem(Player player, Level level, InteractionHand hand) {
         ItemStack stack = player.getItemInHand(hand);
         if (AotakeSweep.isDisable() || !(player instanceof ServerPlayer)) {
-            return InteractionResultHolder.pass(stack);
+            return InteractionResult.PASS;
         }
         if (AotakeUtils.hasAotakeTag(stack)) {
             CompoundTag aotake = AotakeUtils.getAotakeTag(stack);
             if (aotake.isEmpty()) {
                 AotakeUtils.clearItemTagEx(stack);
-                return InteractionResultHolder.pass(stack);
+                return InteractionResult.PASS;
             }
             FabricInteractionPolicy.Decision decision = FabricInteractionPolicy.itemUse(
                     true, aotake.contains("entity"), aotake.contains("player"));
             if (decision == FabricInteractionPolicy.Decision.CONSUME) {
                 // 捕获载荷只能由释放逻辑处理，右键空气时不应触发原物品行为。
-                return InteractionResultHolder.fail(stack);
+                return InteractionResult.FAIL;
             }
         }
-        return InteractionResultHolder.pass(stack);
+        return InteractionResult.PASS;
     }
 
     public static InteractionResult onRightBlock(Player player, Level level, InteractionHand hand, BlockHitResult hit) {
@@ -354,25 +346,25 @@ public class EventHandlerProxy {
                     if (!AotakeUtils.hasCommandPermission(player, EnumCommandType.CATCH_PLAYER)) {
                         return null;
                     }
-                    String playerId = aotake.getString("player");
+                    String playerId = aotake.getStringOr("player", "");
                     Player targetPlayerEntity = PlayerUtils.getPlayerByUUID(playerId);
                     ServerPlayer target = targetPlayerEntity instanceof ServerPlayer
                             ? (ServerPlayer) targetPlayerEntity : null;
                     if (target != null) {
                         ServerLevel level = DimensionUtils.getLevel(coordinate.dimension());
                         if (level == null) {
-                            level = player.serverLevel();
+                            level = player.level();
                         }
-                        target.teleportTo(level, coordinate.x(), coordinate.y(), coordinate.z(), (float) coordinate.yaw(), (float) coordinate.pitch());
+                        target.teleportTo(level, coordinate.x(), coordinate.y(), coordinate.z(), java.util.Collections.emptySet(), (float) coordinate.yaw(), (float) coordinate.pitch(), false);
                         original.shrink(1);
-                        net.minecraft.network.chat.Component name = parseNameFromJson(aotake.getString("name"));
+                        net.minecraft.network.chat.Component name = parseNameFromJson(aotake.getStringOr("name", ""));
                         if (name != null) {
                             copy.set(DataComponents.CUSTOM_NAME, name);
                         } else {
                             clearCustomName(copy);
                         }
                         AotakeUtils.clearItemTagEx(copy);
-                        if (!aotake.getBoolean("byPlayer")) {
+                        if (!aotake.getBooleanOr("byPlayer", false)) {
                             copy.shrink(1);
                         }
                         if (!copy.isEmpty()) {
@@ -383,21 +375,21 @@ public class EventHandlerProxy {
                         return target;
                     }
                 } else {
-                    CompoundTag entityData = aotake.getCompound("entity");
+                    CompoundTag entityData = aotake.getCompoundOrEmpty("entity");
                     if (!entityData.contains("id") && aotake.contains("entityId")) {
-                        entityData.putString("id", aotake.getString("entityId"));
+                        entityData.putString("id", aotake.getStringOr("entityId", ""));
                     }
                     AotakeUtils.sanitizeCapturedEntityTag(entityData);
-                    ServerLevel level = player.serverLevel();
-                    Entity entity = EntityType.loadEntityRecursive(entityData, level, e -> e);
+                    ServerLevel level = player.level();
+                    Entity entity = EntityType.loadEntityRecursive(entityData, level, net.minecraft.world.entity.EntitySpawnReason.LOAD, e -> e);
                     if (entity != null) {
-                        entity.moveTo(coordinate.x(), coordinate.y(), coordinate.z(), (float) coordinate.yaw(), (float) coordinate.pitch());
+                        entity.snapTo(coordinate.x(), coordinate.y(), coordinate.z(), (float) coordinate.yaw(), (float) coordinate.pitch());
                         boolean spawned = level.addFreshEntity(entity);
                         if (!spawned) {
                             return null;
                         }
                         original.shrink(1);
-                        String originalNameJson = aotake.getString("name");
+                        String originalNameJson = aotake.getStringOr("name", "");
                         net.minecraft.network.chat.Component name = parseNameFromJson(originalNameJson);
                         if (name != null) {
                             copy.set(DataComponents.CUSTOM_NAME, name);
@@ -405,7 +397,7 @@ public class EventHandlerProxy {
                             clearCustomName(copy);
                         }
                         AotakeUtils.clearItemTagEx(copy);
-                        if (!aotake.getBoolean("byPlayer")) {
+                        if (!aotake.getBooleanOr("byPlayer", false)) {
                             copy.shrink(1);
                         }
                         if (!copy.isEmpty()) {
@@ -425,7 +417,7 @@ public class EventHandlerProxy {
         if (AotakeSweep.isDisable() || !(user instanceof ServerPlayer)) return InteractionResult.PASS;
         {
             ServerPlayer player = (ServerPlayer) user;
-            long tick = player.serverLevel().getGameTime();
+            long tick = player.level().getGameTime();
             String uuid = player.getStringUUID();
             Long lastHandledTick = lastHandledEntityUseTick.get(uuid);
             if (FabricInteractionPolicy.duplicateEntityUse(lastHandledTick != null && lastHandledTick == tick)
@@ -460,8 +452,8 @@ public class EventHandlerProxy {
                         if (back.isPassenger()) {
                             back.stopRiding();
                         }
-                        back.startRiding(entity, true);
-                        ((ServerLevel) entity.level()).getChunkSource().broadcast(entity, new ClientboundSetPassengersPacket(entity));
+                        back.startRiding(entity, true, true);
+                        ((ServerLevel) entity.level()).getChunkSource().sendToTrackingPlayers(entity, new ClientboundSetPassengersPacket(entity));
                         markEntityUseHandled(uuid, tick);
                         return InteractionResult.SUCCESS;
                     }
@@ -490,8 +482,7 @@ public class EventHandlerProxy {
                     if (entity.isPassenger()) {
                         entity.stopRiding();
                     }
-                    CompoundTag entityTag = new CompoundTag();
-                    entity.save(entityTag);
+                    CompoundTag entityTag = xin.vanilla.aotake.internal.fabric.NativeStorageData.entity(entity);
                     AotakeUtils.sanitizeCapturedEntityTag(entityTag);
                     aotake.put("entity", entityTag);
                     aotake.putString("entityId", EntityUtils.getEntityRegistryString(entity));
@@ -662,7 +653,7 @@ public class EventHandlerProxy {
                             || Math.abs(targetPlayer.getXRot() - pitch) > 1.0f;
             if (needTeleport) {
                 ServerLevel level = (ServerLevel) target.level();
-                targetPlayer.teleportTo(level, desired.x, desired.y, desired.z, yaw, pitch);
+                targetPlayer.teleportTo(level, desired.x, desired.y, desired.z, java.util.Collections.emptySet(), yaw, pitch, false);
                 targetPlayer.setDeltaMovement(Vec3.ZERO);
                 targetPlayer.fallDistance = 0;
             }
@@ -682,27 +673,29 @@ public class EventHandlerProxy {
         if (!AotakeUtils.hasAotakeTag(stack)) return null;
         CompoundTag aotake = AotakeUtils.getAotakeTag(stack);
         if (!aotake.contains("player")) return null;
-        String uuid = aotake.getString("player");
+        String uuid = aotake.getStringOr("player", "");
         return StringUtils.isNullOrEmptyEx(uuid) ? null : uuid;
     }
 
     private static void collectCapturedTargetsFromPlayer(ServerPlayer player, java.util.Set<String> uuidSet, Map<String, Entity> targets) {
-        for (ItemStack stack : player.getInventory().items) {
+        for (ItemStack stack : player.getInventory().getNonEquipmentItems()) {
             collectCapturedTarget(stack, uuidSet, targets, player);
         }
-        for (ItemStack stack : player.getInventory().armor) {
-            collectCapturedTarget(stack, uuidSet, targets, player);
-        }
-        for (ItemStack stack : player.getInventory().offhand) {
-            collectCapturedTarget(stack, uuidSet, targets, player);
+        for (net.minecraft.world.entity.EquipmentSlot slot : java.util.List.of(
+                net.minecraft.world.entity.EquipmentSlot.FEET, net.minecraft.world.entity.EquipmentSlot.LEGS,
+                net.minecraft.world.entity.EquipmentSlot.CHEST, net.minecraft.world.entity.EquipmentSlot.HEAD,
+                net.minecraft.world.entity.EquipmentSlot.OFFHAND)) {
+            collectCapturedTarget(player.getItemBySlot(slot), uuidSet, targets, player);
         }
     }
 
     private static void collectCapturedTargetsFromLiving(LivingEntity living, java.util.Set<String> uuidSet, Map<String, Entity> targets) {
         collectCapturedTarget(living.getMainHandItem(), uuidSet, targets, living);
         collectCapturedTarget(living.getOffhandItem(), uuidSet, targets, living);
-        for (ItemStack stack : living.getArmorSlots()) {
-            collectCapturedTarget(stack, uuidSet, targets, living);
+        for (net.minecraft.world.entity.EquipmentSlot slot : net.minecraft.world.entity.EquipmentSlot.values()) {
+            if (slot.getType() == net.minecraft.world.entity.EquipmentSlot.Type.HUMANOID_ARMOR) {
+                collectCapturedTarget(living.getItemBySlot(slot), uuidSet, targets, living);
+            }
         }
     }
 
@@ -719,7 +712,9 @@ public class EventHandlerProxy {
         try {
             MinecraftServer server = BaniraServer.currentAs(MinecraftServer.class);
             return server == null ? null
-                    : net.minecraft.network.chat.Component.Serializer.fromJson(json, server.registryAccess());
+                    : net.minecraft.network.chat.ComponentSerialization.CODEC.parse(
+                            server.registryAccess().createSerializationContext(com.mojang.serialization.JsonOps.INSTANCE),
+                            com.google.gson.JsonParser.parseString(json)).result().orElse(null);
         } catch (Exception e) {
             return null;
         }

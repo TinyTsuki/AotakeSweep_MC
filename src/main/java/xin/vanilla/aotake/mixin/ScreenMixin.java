@@ -1,6 +1,5 @@
 package xin.vanilla.aotake.mixin;
 
-import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.inventory.ContainerScreen;
 import org.spongepowered.asm.mixin.Mixin;
@@ -12,8 +11,8 @@ import xin.vanilla.aotake.screen.DustbinRender;
 @Mixin(Screen.class)
 public abstract class ScreenMixin {
 
-    @Inject(method = "init(Lnet/minecraft/client/Minecraft;II)V", at = @At("HEAD"))
-    private void aotake$abandonCursorRestoreIfNotDustbin(Minecraft mc, int width, int height, CallbackInfo ci) {
+    @Inject(method = "init(II)V", at = @At("HEAD"))
+    private void aotake$abandonCursorRestoreIfNotDustbin(int width, int height, CallbackInfo ci) {
         Screen self = (Screen) (Object) this;
         if (self instanceof ContainerScreen && (DustbinRender.isDustbinTitle(self.getTitle().getString())
                 || DustbinRender.isChunkVaultTitle(self.getTitle().getString()))) {
@@ -22,8 +21,8 @@ public abstract class ScreenMixin {
         DustbinRender.abandonPendingCursorRestore();
     }
 
-    @Inject(method = "init(Lnet/minecraft/client/Minecraft;II)V", at = @At("TAIL"))
-    private void aotake$applyPendingCursorAfterInit(Minecraft mc, int width, int height, CallbackInfo ci) {
+    @Inject(method = "init(II)V", at = @At("TAIL"))
+    private void aotake$applyPendingCursorAfterInit(int width, int height, CallbackInfo ci) {
         Screen self = (Screen) (Object) this;
         if (!(self instanceof ContainerScreen)) {
             return;

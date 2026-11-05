@@ -41,7 +41,7 @@ public final class ChunkVaultSession {
     }
 
     public static void open(ServerPlayer player, String vaultId, int page1Based) {
-        MinecraftServer server = player.getServer();
+        MinecraftServer server = player.level().getServer();
         if (server == null || !ChunkVaultGrants.canOpen(player, vaultId)) return;
         if (!ChunkVaultStorage.vaultExists(vaultId)) {
             return;
@@ -63,7 +63,7 @@ public final class ChunkVaultSession {
      * 翻页或刷新（offset 0）：复用内存中的分页数据，避免每次关箱都写盘并全量重读 NBT。
      */
     public static void navigateOrReload(ServerPlayer player, int offset) {
-        MinecraftServer server = player.getServer();
+        MinecraftServer server = player.level().getServer();
         if (server == null) return;
         String uuid = PlayerUtils.getPlayerUUIDString(player);
         Holder holder = OPEN.get(uuid);
@@ -105,7 +105,7 @@ public final class ChunkVaultSession {
 
         if (holder.skipPersistOnNextClose) {
             holder.skipPersistOnNextClose = false;
-            MinecraftServer server = player.getServer();
+            MinecraftServer server = player.level().getServer();
             if (server == null) return;
             BaniraScheduler.schedule(server, 0, () -> reopenAfterPageChange(player, uuid));
             return;
@@ -143,7 +143,7 @@ public final class ChunkVaultSession {
     }
 
     private static void persist(ServerPlayer player, Holder holder) {
-        MinecraftServer server = player.getServer();
+        MinecraftServer server = player.level().getServer();
         if (server == null) return;
         try {
             List<ItemStack> flat = flattenInventories(holder.pages);

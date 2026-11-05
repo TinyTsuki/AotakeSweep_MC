@@ -46,7 +46,7 @@ public class ChunkKey {
 
     public static ChunkKey of(Entity entity) {
         String dimension = entity.level() != null
-                ? entity.level().dimension().location().toString()
+                ? entity.level().dimension().identifier().toString()
                 : "unknown";
         int chunkX = entity.blockPosition().getX() >> 4;
         int chunkZ = entity.blockPosition().getZ() >> 4;

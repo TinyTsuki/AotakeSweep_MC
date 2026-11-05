@@ -4,8 +4,8 @@ import com.mojang.serialization.Lifecycle;
 import net.minecraft.core.*;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
-import net.minecraft.world.damagesource.DamageType;
-import net.minecraft.world.damagesource.DamageTypes;
+import net.minecraft.data.registries.VanillaRegistries;
+import net.minecraft.resources.ResourceKey;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -15,15 +15,20 @@ public final class RuleTestRegistries {
     private static final class Lazy {
         static final RegistryAccess ACCESS = create();
         private static RegistryAccess create() {
-            HolderLookup.Provider lookup = new RegistrySetBuilder().add(Registries.DAMAGE_TYPE, DamageTypes::bootstrap).build(RegistryAccess.EMPTY);
-            MappedRegistry<DamageType> damage = new MappedRegistry<>(Registries.DAMAGE_TYPE, Lifecycle.stable());
-            lookup.lookupOrThrow(Registries.DAMAGE_TYPE).listElements().forEach(holder ->
-                    damage.register(holder.unwrapKey().get(), holder.value(), RegistrationInfo.BUILT_IN));
-            damage.freeze();
+            HolderLookup.Provider lookup = VanillaRegistries.createLookup();
             List<Registry<?>> registries = new ArrayList<>();
             for (Registry<?> registry : BuiltInRegistries.REGISTRY) registries.add(registry);
-            registries.add(damage);
+            registries.add(registry(lookup, Registries.DAMAGE_TYPE));
+            registries.add(registry(lookup, Registries.BIOME));
+            registries.add(registry(lookup, Registries.DIMENSION_TYPE));
             return new RegistryAccess.ImmutableRegistryAccess(registries).freeze();
+        }
+
+        private static <T> Registry<T> registry(HolderLookup.Provider lookup, ResourceKey<Registry<T>> key) {
+            MappedRegistry<T> registry = new MappedRegistry<>(key, Lifecycle.stable());
+            lookup.lookupOrThrow(key).listElements().forEach(holder ->
+                    registry.register(holder.key(), holder.value(), RegistrationInfo.BUILT_IN));
+            return registry.freeze();
         }
     }
 }

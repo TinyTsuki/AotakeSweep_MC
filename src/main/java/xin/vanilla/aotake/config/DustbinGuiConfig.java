@@ -4,7 +4,6 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import lombok.Getter;
 import net.minecraft.client.Minecraft;
-import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.packs.resources.Resource;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -20,7 +19,7 @@ import java.nio.charset.StandardCharsets;
  */
 public final class DustbinGuiConfig {
     private static final Logger LOGGER = LogManager.getLogger();
-    private static final ResourceLocation CONFIG_LOCATION = Identifier.id().create("dustbin/config.json");
+    private static final net.minecraft.resources.Identifier CONFIG_LOCATION = Identifier.id().create("dustbin/config.json");
 
     @Getter
     private static EnumDustbinScaleMode scaleMode = EnumDustbinScaleMode.FIT;

@@ -1,11 +1,14 @@
 plugins {
-    id 'fabric-loom' version '1.17.21'
+    id 'net.fabricmc.fabric-loom' version '1.17.21'
     id 'maven-publish'
 }
 
 apply from: 'gradle/config-view-processor.gradle'
 
-def javaVer = 21
+def javaVer = 25
+if (JavaVersion.current() < JavaVersion.toVersion(javaVer)) {
+    throw new GradleException('Minecraft 26.1 requires a Java 25 or newer Gradle JVM')
+}
 def aotakeNetworkSmokeServer = (project.findProperty('aotake.networkSmoke.server') ?: 'false').toString().toBoolean()
 
 version = project.mod_version
@@ -65,36 +68,25 @@ repositories {
 }
 
 dependencies {
-    modRuntimeOnly "maven.modrinth:spark:cALUj9l1"
-    modRuntimeOnly "maven.modrinth:fabric-permissions-api:62DUD085"
-    if (!aotakeNetworkSmokeServer) {
-        // Development runtime performance mod; not bundled into published artifacts.
-        modRuntimeOnly "maven.modrinth:AANobbMI:u1OEbNKx"
-        // Sodium Extra 0.6.x targets the bundled Sodium 0.6 line for Minecraft 1.21.1.
-        modRuntimeOnly "maven.modrinth:sodium-extra:anDafurZ"
-    }
+    // Optional runtime libraries require verified exact-version pins.
     // To change the versions see the gradle.properties file
     minecraft "com.mojang:minecraft:${project.minecraft_version}"
-    mappings loom.officialMojangMappings()
-    modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
-    modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
-    modImplementation "net.fabricmc.fabric-api:fabric-networking-api-v1:${project.fabric_version}"
-    modImplementation "net.fabricmc.fabric-api:fabric-lifecycle-events-v1:${project.fabric_version}"
-
-    modApi "me.shedaniel.cloth:cloth-config-fabric:${project.cloth_config_version}"
-
-    modImplementation("com.terraformersmc:modmenu:${project.modmenu_version}")
+    implementation("net.fabricmc:fabric-loader:${project.loader_version}") { version { strictly(project.loader_version.toString()) } }
+    implementation("net.fabricmc.fabric-api:fabric-api:${project.fabric_version}") { version { strictly(project.fabric_version.toString()) } }
+    implementation fabricApi.module('fabric-networking-api-v1', project.fabric_version)
+    implementation fabricApi.module('fabric-lifecycle-events-v1', project.fabric_version)
+    compileOnly("com.terraformersmc:modmenu:${project.modmenu_version}")
 
     testImplementation 'junit:junit:4.13.2'
-    compileOnly 'org.projectlombok:lombok:1.18.34'
-    annotationProcessor 'org.projectlombok:lombok:1.18.34'
-    testCompileOnly 'org.projectlombok:lombok:1.18.34'
-    testAnnotationProcessor 'org.projectlombok:lombok:1.18.34'
+    compileOnly 'org.projectlombok:lombok:1.18.48'
+    annotationProcessor 'org.projectlombok:lombok:1.18.48'
+    testCompileOnly 'org.projectlombok:lombok:1.18.48'
+    testAnnotationProcessor 'org.projectlombok:lombok:1.18.48'
 
     implementation "com.google.code.findbugs:jsr305:3.0.2"
     implementation "org.apache.maven:maven-artifact:4.0.0-rc-3"
 
-    modImplementation("xin.vanilla.banira:banira_codex:${loader_type}-${minecraft_version}-${banira_version}") {
+    implementation("xin.vanilla.banira:banira_codex:${loader_type}-${minecraft_version}-${banira_version}") {
         changing = true
     }
 }
@@ -115,6 +107,12 @@ def prepareBaniraDevFpsOverlay = {
 }
 
 tasks.register('prepareDevFpsOverlay') {
+    onlyIf { providers.gradleProperty('banira.devFpsOverlay').getOrElse('false').toBoolean() }
+    doFirst {
+        if (!project.baniraDevOptionalRuntimeProjects.contains('sodium-extra')) {
+            throw new GradleException('Development FPS overlay requires a verified exact-version sodium-extra pin')
+        }
+    }
     doLast prepareBaniraDevFpsOverlay
 }
 
@@ -170,9 +168,6 @@ java {
     if (JavaVersion.current() < javaVersion) {
         toolchain.languageVersion = JavaLanguageVersion.of(javaVer)
     }
-    // Loom will automatically attach sourcesJar to a RemapSourcesJar task and to the "build" task
-    // if it is present.
-    // If you remove this line, sources will not be generated.
     withSourcesJar()
 }
 
@@ -194,7 +189,7 @@ tasks.named('jar', Jar).configure {
     }
 }
 
-tasks.named('remapJar') {
+tasks.named('jar') {
     // 自定义打包路径与输出格式
     archiveBaseName.set(mod_id)
     archiveVersion.set("${loader_type}-${minecraft_version}-${mod_version}")

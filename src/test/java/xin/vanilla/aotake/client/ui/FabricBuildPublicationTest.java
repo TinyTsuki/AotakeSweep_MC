@@ -28,10 +28,11 @@ public class FabricBuildPublicationTest {
     }
 
     @Test
-    public void validationPublishesBothRemappedArchives() throws Exception {
+    public void validationPublishesBothUnobfuscatedArchives() throws Exception {
         String publication = source("gradle/aui-validation-publication.gradle");
-        assertTrue(publication.contains("setArtifacts([tasks.named('remapJar'), tasks.named('remapSourcesJar')])"));
-        assertFalse(publication.contains("tasks.named('sourcesJar')"));
+        assertTrue(publication.contains("setArtifacts([tasks.named('jar'), tasks.named('sourcesJar')])"));
+        assertFalse(publication.contains("tasks.named('remapJar')"));
+        assertFalse(publication.contains("tasks.named('remapSourcesJar')"));
         assertTrue(publication.contains("gradle.projectsEvaluated"));
         assertTrue(publication.contains("pom.withXml"));
     }

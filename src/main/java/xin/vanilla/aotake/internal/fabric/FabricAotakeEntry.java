@@ -14,7 +14,7 @@ import xin.vanilla.aotake.event.EventHandlerProxy;
 import xin.vanilla.banira.common.util.BaniraEventBus;
 
 /**
- * Fabric 1.19.2 适配入口，只负责把加载器回调转换为 Aotake 的稳定业务方法。
+ * Fabric 适配入口，只负责把加载器回调转换为 Aotake 的稳定业务方法。
  */
 public final class FabricAotakeEntry implements ModInitializer {
     @Override
@@ -24,7 +24,7 @@ public final class FabricAotakeEntry implements ModInitializer {
         UseItemCallback.EVENT.register(EventHandlerProxy::onPlayerUseItem);
         UseBlockCallback.EVENT.register(EventHandlerProxy::onRightBlock);
         UseEntityCallback.EVENT.register(EventHandlerProxy::onRightEntity);
-        ServerTickEvents.START_WORLD_TICK.register(EventHandlerProxy::onWorldTick);
+        ServerTickEvents.START_LEVEL_TICK.register(EventHandlerProxy::onWorldTick);
         BaniraEventBus.PlayerEvents.onLoggedOut(event -> {
             ServerPlayer player = event.playerAs(ServerPlayer.class);
             if (player != null) ChunkVaultSession.onPlayerCloseContainer(player);

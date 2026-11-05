@@ -10,7 +10,7 @@ import java.util.List;
 import static org.junit.Assert.*;
 
 public class GeneratedConfigSchemaTest {
-    @BeforeClass public static void bootstrap() { net.minecraft.SharedConstants.tryDetectVersion(); net.minecraft.server.Bootstrap.bootStrap(); }
+    @BeforeClass public static void bootstrap() { net.minecraft.SharedConstants.tryDetectVersion(); xin.vanilla.aotake.test.NativeBootstrap.initialize(); }
 
     @Test public void commonSchemaMatchesRegistration() throws Exception {
         ConfigBaselineFixture fixture = new ConfigBaselineFixture(CommonConfig.class);

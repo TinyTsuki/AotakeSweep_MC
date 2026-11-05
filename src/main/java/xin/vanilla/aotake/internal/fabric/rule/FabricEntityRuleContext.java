@@ -4,7 +4,7 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.TamableAnimal;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import com.mojang.authlib.GameProfile;
 import net.minecraft.nbt.CompoundTag;
 import xin.vanilla.aotake.api.rule.EntityAccess;
@@ -89,7 +89,7 @@ public final class FabricEntityRuleContext extends LazyRuleContext<Entity> {
     @Override
     public ServerAccess server() {
         prepareViews();
-        if (serverView == null) serverView = new FabricServerAccess(() -> subject().getServer(), frameGuard());
+        if (serverView == null) serverView = new FabricServerAccess(() -> subject().level().getServer(), frameGuard());
         return serverView;
     }
 
@@ -102,7 +102,7 @@ public final class FabricEntityRuleContext extends LazyRuleContext<Entity> {
     @Override
     public boolean matchesResource(String namespace, String path) {
         checkAccess();
-        ResourceLocation id = EntityUtils.getEntityRegistry(subject());
+        Identifier id = EntityUtils.getEntityRegistry(subject());
         if (id == null) return super.matchesResource(namespace, path);
         return (namespace.equals("*") || namespace.equals(id.getNamespace()))
                 && (path.equals("*") || path.equals(id.getPath()));
@@ -111,7 +111,7 @@ public final class FabricEntityRuleContext extends LazyRuleContext<Entity> {
     @Override
     protected boolean evaluateResourceValue(EntityRule fallback, Entity subject, RuleBindingPlan plan,
                                             String namespace, String path) {
-        ResourceLocation id = EntityUtils.getEntityRegistry(subject);
+        Identifier id = EntityUtils.getEntityRegistry(subject);
         if (id == null) return super.evaluateResourceValue(fallback, subject, plan, namespace, path);
         return (namespace.equals("*") || namespace.equals(id.getNamespace()))
                 && (path.equals("*") || path.equals(id.getPath()));
@@ -119,7 +119,7 @@ public final class FabricEntityRuleContext extends LazyRuleContext<Entity> {
 
     @Override
     protected Class<?> resourceMatchKeyType() {
-        return ResourceLocation.class;
+        return Identifier.class;
     }
 
     @Override
@@ -131,7 +131,7 @@ public final class FabricEntityRuleContext extends LazyRuleContext<Entity> {
     protected boolean evaluateResourceValue(EntityRule fallback, Entity subject, RuleBindingPlan plan,
                                             String namespace, String path, Object key) {
         if (key == null) return super.evaluateResourceValue(fallback, subject, plan, namespace, path);
-        ResourceLocation id = (ResourceLocation) key;
+        Identifier id = (Identifier) key;
         return (namespace.equals("*") || namespace.equals(id.getNamespace()))
                 && (path.equals("*") || path.equals(id.getPath()));
     }
@@ -173,7 +173,7 @@ public final class FabricEntityRuleContext extends LazyRuleContext<Entity> {
 
     private CompoundTag entityNbt() {
         if (entityNbt == null || nbtFrame != evaluationFrame()) {
-            entityNbt = subject().saveWithoutId(new CompoundTag());
+            entityNbt = xin.vanilla.aotake.internal.fabric.NativeStorageData.entityWithoutId(subject());
             nbtFrame = evaluationFrame();
         }
         return entityNbt;
@@ -238,12 +238,13 @@ public final class FabricEntityRuleContext extends LazyRuleContext<Entity> {
             case "chunkZ":
                 return net.minecraft.util.Mth.floor(entity.getZ()) >> 4;
             case "hasOwner":
-                return entity instanceof TamableAnimal && ((TamableAnimal) entity).getOwnerUUID() != null;
+                return entity instanceof TamableAnimal && ((TamableAnimal) entity).getOwnerReference() != null;
             case "ownerName": {
-                UUID owner = entity instanceof TamableAnimal ? ((TamableAnimal) entity).getOwnerUUID() : null;
-                if (owner == null || entity.getServer() == null) return null;
-                GameProfile profile = entity.getServer().getProfileCache().get(owner).orElse(null);
-                return profile == null ? null : profile.getName();
+                var reference = entity instanceof TamableAnimal ? ((TamableAnimal) entity).getOwnerReference() : null;
+                UUID owner = reference == null ? null : reference.getUUID();
+                if (owner == null || entity.level().getServer() == null) return null;
+                GameProfile profile = entity.level().getServer().services().profileResolver().fetchById(owner).orElse(null);
+                return profile == null ? null : profile.name();
             }
             default:
                 throw new IllegalStateException("Unknown built-in binding: " + key);

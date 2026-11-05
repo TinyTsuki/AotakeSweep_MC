@@ -6,7 +6,7 @@ import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.Pose;
 import net.minecraft.world.entity.ExperienceOrb;
 import net.minecraft.world.entity.item.ItemEntity;
-import net.minecraft.world.entity.animal.Cow;
+import net.minecraft.world.entity.animal.cow.Cow;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.SimpleContainer;
 import net.minecraft.world.item.ItemStack;
@@ -55,10 +55,10 @@ final class AotakeNetworkSmokeWorkload {
 
     AotakeNetworkSmokeWorkload(ServerPlayer player) {
         this.player = player;
-        this.level = player.serverLevel();
+        this.level = player.level();
         this.origin = new BlockPos((player.blockPosition().getX() >> 4) * 16 + 4, 100,
                 (player.blockPosition().getZ() >> 4) * 16 + 4);
-        player.teleportTo(level, origin.getX() + 1.5D, origin.getY() + 1.0D, origin.getZ(), 0.0F, 0.0F);
+        player.teleportTo(level, origin.getX() + 1.5D, origin.getY() + 1.0D, origin.getZ(), java.util.Collections.emptySet(), 0.0F, 0.0F, false);
         CommonConfig.get().base().dustbin().selfCleanMode(Collections.singletonList(EnumSelfCleanMode.NONE))
                 .selfCleanInterval(0L).dustbinPersistent(true).cacheLimit(100000);
         CommonConfig.get().base().sweep().entityList(Arrays.asList("minecraft:item", "minecraft:experience_orb"));
@@ -66,11 +66,11 @@ final class AotakeNetworkSmokeWorkload {
         WorldTrashData.get().getDropList().clear();
         WorldTrashData.get().getInventoryList().forEach(SimpleContainer::clearContent);
         player.getInventory().clearContent();
-        player.getInventory().selected = 8;
+        player.getInventory().setSelectedSlot(8);
         for (int x = 0; x < 2; x++) for (int z = 0; z < 2; z++) {
             int chunkX = (origin.getX() >> 4) + x;
             int chunkZ = (origin.getZ() >> 4) + z;
-            if (!level.getForcedChunks().contains(net.minecraft.world.level.ChunkPos.asLong(chunkX, chunkZ))) {
+            if (!level.getForceLoadedChunks().contains(net.minecraft.world.level.ChunkPos.pack(chunkX, chunkZ))) {
                 level.setChunkForced(chunkX, chunkZ, true);
                 forcedChunks.add(new net.minecraft.world.level.ChunkPos(chunkX, chunkZ));
             }
@@ -85,7 +85,7 @@ final class AotakeNetworkSmokeWorkload {
     boolean chunksReady() {
         for (int chunk = 0; chunk < 4; chunk++) {
             BlockPos position = BlockPos.containing(x(chunk), origin.getY(), z(chunk));
-            if (!level.areEntitiesLoaded(net.minecraft.world.level.ChunkPos.asLong(position))
+            if (!level.areEntitiesLoaded(net.minecraft.world.level.ChunkPos.pack(position))
                     || !level.isPositionEntityTicking(position)) return false;
         }
         return true;
@@ -187,11 +187,11 @@ final class AotakeNetworkSmokeWorkload {
     }
 
     private void prepareCapture() {
-        Cow cow = EntityType.COW.create(level);
+        Cow cow = EntityType.COW.create(level, net.minecraft.world.entity.EntitySpawnReason.COMMAND);
         require(cow != null, "Could not create capture target");
         cow.setNoAi(true);
         cow.setNoGravity(true);
-        cow.moveTo(origin.getX(), origin.getY(), origin.getZ(), 0.0F, 0.0F);
+        cow.snapTo(origin.getX(), origin.getY(), origin.getZ(), 0.0F, 0.0F);
         require(level.addFreshEntity(cow), "Could not add capture target");
         pending = new ArrayList<>();
         pending.add(cow);
@@ -213,7 +213,7 @@ final class AotakeNetworkSmokeWorkload {
         ItemStack captured = player.getMainHandItem();
         if (AotakeUtils.hasAotakeTag(captured)) {
             boolean moved = false;
-            for (int slot = 0; slot < player.getInventory().items.size(); slot++) {
+            for (int slot = 0; slot < player.getInventory().getNonEquipmentItems().size(); slot++) {
                 if (slot != 8 && player.getInventory().getItem(slot).isEmpty()) {
                     player.setItemInHand(InteractionHand.MAIN_HAND, ItemStack.EMPTY);
                     player.getInventory().setItem(slot, captured);
@@ -276,7 +276,7 @@ final class AotakeNetworkSmokeWorkload {
         AotakeNetworkSmokeStatus.append("PASS measured-cleanup cycles=" + cycles + " paper=" + recoveredPaper()
                 + " burst-entities=" + burstEntities + " global-entities=" + globalEntities
                 + " captured=" + capturedCount(player));
-        for (net.minecraft.world.level.ChunkPos chunk : forcedChunks) level.setChunkForced(chunk.x, chunk.z, false);
+        for (net.minecraft.world.level.ChunkPos chunk : forcedChunks) level.setChunkForced(chunk.x(), chunk.z(), false);
         forcedChunks.clear();
     }
 
@@ -301,10 +301,10 @@ final class AotakeNetworkSmokeWorkload {
 
     static int capturedCount(ServerPlayer player) {
         int total = 0;
-        for (ItemStack stack : player.getInventory().items) if (AotakeUtils.hasAotakeTag(stack)) {
+        for (ItemStack stack : player.getInventory().getNonEquipmentItems()) if (AotakeUtils.hasAotakeTag(stack)) {
             net.minecraft.nbt.CompoundTag tag = AotakeUtils.getAotakeTag(stack);
-            require("minecraft:cow".equals(tag.getString("entityId"))
-                    && "minecraft:cow".equals(tag.getCompound("entity").getString("id")),
+            require("minecraft:cow".equals(tag.getStringOr("entityId", ""))
+                    && "minecraft:cow".equals(tag.getCompoundOrEmpty("entity").getString("id")),
                     "Captured payload is not the expected complete cow entity");
             total += stack.getCount();
         }

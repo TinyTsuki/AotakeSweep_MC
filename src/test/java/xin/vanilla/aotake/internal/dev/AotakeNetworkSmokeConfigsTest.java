@@ -26,7 +26,7 @@ public class AotakeNetworkSmokeConfigsTest {
     private Path directory;
     private Path file;
 
-    @BeforeClass public static void bootstrap() { net.minecraft.SharedConstants.tryDetectVersion(); net.minecraft.server.Bootstrap.bootStrap(); }
+    @BeforeClass public static void bootstrap() { net.minecraft.SharedConstants.tryDetectVersion(); xin.vanilla.aotake.test.NativeBootstrap.initialize(); }
 
     @Before public void register() throws Exception {
         previous = BaniraPlatforms.get();

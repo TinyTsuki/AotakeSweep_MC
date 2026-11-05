@@ -72,7 +72,7 @@ public class RuleObjectAccessTest {
         assertThrows(IllegalStateException.class, context::resourceId);
     }
     @BeforeClass public static void bootstrap() {
-        net.minecraft.SharedConstants.tryDetectVersion(); Bootstrap.bootStrap();
+        net.minecraft.SharedConstants.tryDetectVersion(); xin.vanilla.aotake.test.NativeBootstrap.initialize();
         FabricBaniraRegistryService registry = FabricBaniraRegistryService.INSTANCE;
         BaniraPlatforms.install((BaniraPlatform) Proxy.newProxyInstance(BaniraPlatform.class.getClassLoader(),
                 new Class<?>[]{BaniraPlatform.class}, (proxy, method, args) -> {
@@ -238,17 +238,21 @@ public class RuleObjectAccessTest {
     }
 
     private static final class PlainEntity extends Entity {
+        @Override public boolean hurtServer(net.minecraft.server.level.ServerLevel level,
+                                            net.minecraft.world.damagesource.DamageSource source,
+                                            float amount) { throw new UnsupportedOperationException(); }
         int serializations;
         int savedValue = 1;
         PlainEntity() { super(EntityType.ARMOR_STAND, null); }
         @Override protected void defineSynchedData(net.minecraft.network.syncher.SynchedEntityData.Builder builder) { }
-        @Override protected void readAdditionalSaveData(CompoundTag tag) { }
-        @Override protected void addAdditionalSaveData(CompoundTag tag) {
+        @Override public net.minecraft.core.RegistryAccess registryAccess() { return RuleTestRegistries.access(); }
+        @Override protected void readAdditionalSaveData(net.minecraft.world.level.storage.ValueInput tag) { }
+        @Override protected void addAdditionalSaveData(net.minecraft.world.level.storage.ValueOutput tag) {
             serializations++;
             CompoundTag values = new CompoundTag();
             values.putInt("a", savedValue);
             values.putInt("b", savedValue + 1);
-            tag.put("fixture", values);
+            tag.store("fixture", CompoundTag.CODEC, values);
         }
         @Override public Packet<net.minecraft.network.protocol.game.ClientGamePacketListener> getAddEntityPacket(net.minecraft.server.level.ServerEntity serverEntity) { throw new UnsupportedOperationException(); }
     }

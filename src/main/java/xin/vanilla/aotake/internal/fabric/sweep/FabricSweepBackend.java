@@ -5,7 +5,7 @@ import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
-import net.minecraft.world.entity.boss.EnderDragonPart;
+import net.minecraft.world.entity.boss.enderdragon.EnderDragonPart;
 import xin.vanilla.aotake.AotakeSweep;
 import xin.vanilla.aotake.api.rule.EntityAccess;
 import xin.vanilla.aotake.api.rule.NativeMembers;
@@ -150,7 +150,7 @@ public final class FabricSweepBackend implements SweepBackend {
     private String dimensionId(ServerLevel world) {
         String id = dimensions.get(world);
         if (id == null) {
-            id = world.dimension().location().toString();
+            id = world.dimension().identifier().toString();
             dimensions.put(world, id);
         }
         return id;

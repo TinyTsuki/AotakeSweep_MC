@@ -117,6 +117,9 @@ public final class AotakeUiSmokeRunner {
     private GameType originalLocalGameMode;
     private CompletableFuture<EntityScanResult> entityScan;
     private Notification hudSmokeNotification;
+    private CompletableFuture<Void> screenshot;
+    private Runnable afterScreenshot;
+    private long screenshotDeadline;
 
     private AotakeUiSmokeRunner(@Nonnull Path outputDir, boolean exitOnFinish, @Nonnull String worldName) {
         this.outputDir = outputDir;
@@ -162,6 +165,26 @@ public final class AotakeUiSmokeRunner {
     }
 
     private void runTick(@Nonnull Minecraft client) {
+        if (screenshot != null) {
+            if (!screenshot.isDone()) {
+                if (System.nanoTime() > screenshotDeadline) {
+                    fail(client, "screenshot-timeout", new IllegalStateException("Screenshot did not complete in 15 seconds"));
+                    screenshot = null;
+                }
+                return;
+            }
+            try {
+                screenshot.join();
+                screenshot = null;
+                Runnable next = afterScreenshot;
+                afterScreenshot = null;
+                next.run();
+            } catch (Throwable failure) {
+                screenshot = null;
+                fail(client, "screenshot", failure);
+            }
+            return;
+        }
         if (phase == Phase.FINISHED) {
             return;
         }
@@ -355,7 +378,7 @@ public final class AotakeUiSmokeRunner {
         if (skipButton == null) {
             return;
         }
-        skipButton.onPress();
+        skipButton.onPress(new net.minecraft.client.input.KeyEvent(org.lwjgl.glfw.GLFW.GLFW_KEY_ENTER, 0, 0));
         appendStatus("CONTINUE world-backup-prompt (skip backup)");
     }
 
@@ -429,35 +452,29 @@ public final class AotakeUiSmokeRunner {
         if (phaseTick < 20) {
             return;
         }
-        Path file = outputDir.resolve("04a-notification-hud.png");
-        try (NativeImage image = Screenshot.takeScreenshot(client.getMainRenderTarget())) {
+        capture("04a-notification-hud", image -> {
             int smokePixels = countNotificationSmokePixels(image);
             if (smokePixels < 32) {
                 throw new IllegalStateException("Notification color was absent from framebuffer: " + smokePixels);
             }
-            image.writeToFile(file);
             appendStatus("PASS notification-hud-without-screen pixels=" + smokePixels);
-            appendStatus("PASS 04a-notification-hud");
-            LOGGER.info("Aotake UI smoke screenshot: {}", file);
-        } catch (Throwable t) {
-            fail(client, "notification-hud-without-screen", t);
-            return;
-        }
-        hudSmokeNotification.dismiss();
-        hudSmokeNotification = null;
-        resetHudObservations();
-        phase = Phase.HUD_NORMAL;
-        phaseTick = 0;
+        }, () -> {
+            hudSmokeNotification.dismiss();
+            hudSmokeNotification = null;
+            resetHudObservations();
+            phase = Phase.HUD_NORMAL;
+            phaseTick = 0;
+        });
     }
 
     private static int countNotificationSmokePixels(@Nonnull NativeImage image) {
         int count = 0;
         for (int y = 0; y < image.getHeight(); y++) {
             for (int x = 0; x < image.getWidth(); x++) {
-                int abgr = image.getPixelRGBA(x, y);
-                int red = abgr & 0xFF;
+                int abgr = image.getPixel(x, y);
+                int red = (abgr >> 16) & 0xFF;
                 int green = (abgr >> 8) & 0xFF;
-                int blue = (abgr >> 16) & 0xFF;
+                int blue = abgr & 0xFF;
                 if (red >= 225 && green <= 24 && blue >= 245) {
                     count++;
                 }
@@ -474,8 +491,7 @@ public final class AotakeUiSmokeRunner {
         try {
             player.setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(Items.DIAMOND_PICKAXE));
             return UseItemCallback.EVENT.invoker()
-                    .interact(player, player.serverLevel(), InteractionHand.MAIN_HAND)
-                    .getResult() == InteractionResult.PASS;
+                    .interact(player, player.level(), InteractionHand.MAIN_HAND) == InteractionResult.PASS;
         } finally {
             player.setItemInHand(InteractionHand.MAIN_HAND, original);
         }
@@ -491,11 +507,12 @@ public final class AotakeUiSmokeRunner {
                 return;
             }
             appendStatus("PASS hud-normal-events");
-            capture(client, "04-gameplay-hud-normal");
-            setProgressKey(true);
-            resetHudObservations();
-            phase = Phase.HUD_HELD;
-            phaseTick = 0;
+            capture("04-gameplay-hud-normal", image -> { }, () -> {
+                setProgressKey(true);
+                resetHudObservations();
+                phase = Phase.HUD_HELD;
+                phaseTick = 0;
+            });
         }
     }
 
@@ -509,11 +526,12 @@ public final class AotakeUiSmokeRunner {
                 return;
             }
             appendStatus("PASS hud-held-events");
-            capture(client, "05-gameplay-hud-progress");
-            setProgressKey(false);
-            client.setScreen(new InventoryScreen(client.player));
-            phase = Phase.QUICK_ACTION;
-            phaseTick = 0;
+            capture("05-gameplay-hud-progress", image -> { }, () -> {
+                setProgressKey(false);
+                client.setScreen(new InventoryScreen(client.player));
+                phase = Phase.QUICK_ACTION;
+                phaseTick = 0;
+            });
         }
     }
 
@@ -535,25 +553,19 @@ public final class AotakeUiSmokeRunner {
             fail(client, "quick-action", e);
             return;
         }
-        Path file = outputDir.resolve("06-inventory-quick-actions.png");
-        try (NativeImage image = Screenshot.takeScreenshot(client.getMainRenderTarget())) {
+        capture("06-inventory-quick-actions", image -> {
             int iconPixels = countQuickActionIconPixels(image, client);
             if (iconPixels < 4) {
                 throw new IllegalStateException("Aotake quick action icon was absent from framebuffer: " + iconPixels);
             }
-            image.writeToFile(file);
             appendStatus("PASS quick-action-resource-icon pixels=" + iconPixels);
-            appendStatus("PASS 06-inventory-quick-actions");
-            LOGGER.info("Aotake UI smoke screenshot: {}", file);
-        } catch (Throwable t) {
-            fail(client, "quick-action-framebuffer", t);
-            return;
-        }
-        client.setScreen(null);
-        originalDustbinStyle = ClientConfig.get().dustbin().dustbinUiStyle();
-        dustbinStyleIndex = 0;
-        phase = Phase.DUSTBIN;
-        openDustbinStyle(client);
+        }, () -> {
+            client.setScreen(null);
+            originalDustbinStyle = ClientConfig.get().dustbin().dustbinUiStyle();
+            dustbinStyleIndex = 0;
+            phase = Phase.DUSTBIN;
+            openDustbinStyle(client);
+        });
     }
 
     private void runDustbinTick(@Nonnull Minecraft client) {
@@ -570,14 +582,12 @@ public final class AotakeUiSmokeRunner {
                 }
                 String name = String.format(Locale.ROOT, "%02d-dustbin-%s",
                         6 + dustbinStyleIndex, style.name().toLowerCase(Locale.ROOT));
-                capture(client, name);
-                appendStatus("PASS dustbin-" + style.name().toLowerCase(Locale.ROOT));
-                dustbinStyleIndex++;
-                if (dustbinStyleIndex >= DUSTBIN_STYLES.length) {
-                    finish(client);
-                } else {
-                    openDustbinStyle(client);
-                }
+                capture(name, image -> { }, () -> {
+                    appendStatus("PASS dustbin-" + style.name().toLowerCase(Locale.ROOT));
+                    dustbinStyleIndex++;
+                    if (dustbinStyleIndex >= DUSTBIN_STYLES.length) finish(client);
+                    else openDustbinStyle(client);
+                });
             }
             return;
         }
@@ -602,10 +612,10 @@ public final class AotakeUiSmokeRunner {
         int count = 0;
         for (int y = minY; y < maxY; y++) {
             for (int x = minX; x < maxX; x++) {
-                int abgr = image.getPixelRGBA(x, y);
-                int red = abgr & 0xFF;
+                int abgr = image.getPixel(x, y);
+                int red = (abgr >> 16) & 0xFF;
                 int green = (abgr >> 8) & 0xFF;
-                int blue = (abgr >> 16) & 0xFF;
+                int blue = abgr & 0xFF;
                 if (isNear(red, green, blue, 0x57, 0xBD, 0x35)
                         || isNear(red, green, blue, 0x5D, 0x8A, 0x8D)) {
                     count++;
@@ -667,7 +677,7 @@ public final class AotakeUiSmokeRunner {
         if (style == EnumDustbinClientUiStyle.VANILLA) {
             ContainerScreenAccessor accessor = (ContainerScreenAccessor) screen;
             int left = accessor.aotake$getLeftPos();
-            long sidebarButtons = Screens.getButtons(screen).stream()
+            long sidebarButtons = Screens.getWidgets(screen).stream()
                     .filter(button -> button.getX() < left)
                     .count();
             if (sidebarButtons < 3) {
@@ -703,14 +713,18 @@ public final class AotakeUiSmokeRunner {
     }
 
     private void capture(@Nonnull Minecraft client, @Nonnull String name) {
+        capture(name, image -> { }, () -> { });
+    }
+
+    private void capture(String name, java.util.function.Consumer<NativeImage> check, Runnable next) {
         Path file = outputDir.resolve(name + ".png");
-        try (NativeImage image = Screenshot.takeScreenshot(client.getMainRenderTarget())) {
-            image.writeToFile(file);
+        screenshot = SmokeScreenshotCapture.capture(file, check);
+        screenshotDeadline = System.nanoTime() + java.util.concurrent.TimeUnit.SECONDS.toNanos(15);
+        afterScreenshot = () -> {
             appendStatus("PASS " + name);
             LOGGER.info("Aotake UI smoke screenshot: {}", file);
-        } catch (Throwable t) {
-            fail(client, name, t);
-        }
+            next.run();
+        };
     }
 
     private void finish(@Nonnull Minecraft client) {

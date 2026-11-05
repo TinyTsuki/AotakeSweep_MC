@@ -1,13 +1,62 @@
 import java.util.zip.ZipFile
 
+def optionalRuntimeEnabled = providers.gradleProperty('banira.devOptionalRuntime').getOrElse('false').toBoolean()
+def optionalRuntimePins = []
+if (optionalRuntimeEnabled) {
+    def path = providers.gradleProperty('banira.devOptionalRuntimePins').orNull
+    def receiptFile = path == null ? null : new File(path)
+    if (receiptFile == null || !receiptFile.isAbsolute() || !receiptFile.isFile()) {
+        throw new GradleException('Optional development runtime has no default 26.1 pins; banira.devOptionalRuntimePins must name an existing absolute verified receipt')
+    }
+    def receipt = new groovy.json.JsonSlurper().parse(receiptFile, 'UTF-8')
+    if (receipt.targetMinecraft != project.minecraft_version || !(receipt.artifacts instanceof List) || receipt.artifacts.empty) {
+        throw new GradleException('Optional development runtime receipt must contain artifacts for the exact Minecraft version')
+    }
+    optionalRuntimePins = receipt.artifacts
+    optionalRuntimePins.each { pin ->
+        if (!(pin.declaredGameVersions instanceof List) || !pin.declaredGameVersions.contains(project.minecraft_version)
+                || pin.distributionSha1AndSha512Verified != true || !(pin.sha256 ==~ /(?i)[0-9a-f]{64}/)
+                || !(pin.project instanceof String) || !(pin.gav instanceof String) || pin.gav.split(':').length != 3) {
+            throw new GradleException('Optional development runtime requires verified GAV, SHA-256 and exact-version distribution evidence for every artifact')
+        }
+    }
+}
+ext.baniraDevOptionalRuntimeProjects = optionalRuntimePins.collect { it.project }
+
+def optionalRuntimeLibraries = configurations.create('baniraDevOptionalRuntimeLibraries') {
+    canBeConsumed = false
+    transitive = false
+}
+optionalRuntimePins.each { pin -> dependencies.add(optionalRuntimeLibraries.name, pin.gav) }
+dependencies.add('localRuntime', files(optionalRuntimeLibraries))
+
+def verifyOptionalRuntime = tasks.register('verifyDevOptionalRuntimePins') {
+    group = 'verification'
+    inputs.files(optionalRuntimeLibraries)
+    inputs.property('pins', groovy.json.JsonOutput.toJson(optionalRuntimePins))
+    doLast {
+        def artifacts = optionalRuntimeLibraries.resolvedConfiguration.resolvedArtifacts
+        optionalRuntimePins.each { pin ->
+            def artifact = artifacts.find { it.moduleVersion.id.toString() == pin.gav }
+            if (artifact == null) throw new GradleException("Missing optional development runtime artifact: ${pin.gav}")
+            def hash = java.security.MessageDigest.getInstance('SHA-256').digest(artifact.file.bytes).encodeHex().toString()
+            if (!hash.equalsIgnoreCase(pin.sha256)) throw new GradleException("Optional development runtime SHA-256 mismatch: ${pin.gav}")
+        }
+    }
+}
+tasks.matching { it.name in ['runClient', 'runServer', 'ideaSyncTask'] }.configureEach {
+    dependsOn verifyOptionalRuntime
+}
+
 // Development libraries are separate from the player's manually installed mods.
 def devLibrariesDirectory = layout.buildDirectory.dir("dev-runtime-libraries/${minecraft_version}").get().asFile
 def prepareDevLibraries = tasks.register('prepareDevRuntimeLibraries', Sync) {
     group = 'verification'
+    dependsOn verifyOptionalRuntime
     description = 'Prepares version-isolated nested libraries for the development client.'
     duplicatesStrategy = DuplicatesStrategy.EXCLUDE
     from({
-        (configurations.runtimeClasspath.files + configurations.modRuntimeOnly.files)
+        configurations.runtimeClasspath.files
                 .findAll { artifact -> artifact.name.startsWith('sodium') || artifact.name.startsWith('AANobbMI') }
                 .collect { artifact -> zipTree(artifact) }
     }) {
@@ -18,14 +67,14 @@ def prepareDevLibraries = tasks.register('prepareDevRuntimeLibraries', Sync) {
     into devLibrariesDirectory
 }
 
-def extraModsDirectories = [devLibrariesDirectory]
+def extraModsDirectories = optionalRuntimeEnabled ? [devLibrariesDirectory] : []
 if (project.hasProperty('minimapSmoke')) {
-    def mapLibrariesDirectory = file("run/minimap-smoke-libraries/${project.property('minimapSmoke') ?: 'xaero'}")
+    def mapLibrariesDirectory = file("run/minimap-smoke-libraries/${minecraft_version}/${project.property('minimapSmoke') ?: 'xaero'}")
     def prepareMapLibraries = tasks.register('prepareDevMinimapLibraries', Sync) {
         group = 'verification'
         duplicatesStrategy = DuplicatesStrategy.EXCLUDE
         from({
-            configurations.modRuntimeOnly.files
+            configurations.runtimeClasspath.files
                     .findAll { artifact -> artifact.name.startsWith('xaero') || artifact.name.startsWith('journeymap') }
                     .collect { artifact -> zipTree(artifact) }
         }) {
@@ -40,12 +89,16 @@ if (project.hasProperty('minimapSmoke')) {
         dependsOn prepareMapLibraries
     }
 }
-loom.runs.client.property 'fabric.addMods', extraModsDirectories.collect { it.absolutePath }.join(File.pathSeparator)
+if (!extraModsDirectories.empty) {
+    loom.runs.client.property 'fabric.addMods', extraModsDirectories.collect { it.absolutePath }.join(File.pathSeparator)
+}
 // IDEA uses the Gradle launch path so clean builds also prepare these libraries.
 loom.runs.client.preferGradleTask.set(true)
 
 // Only move byte-identical nested libraries previously generated by this build.
 def isolateLegacyDevLibraries = {
+    def legacy = file('run/mods')
+    if (!legacy.isDirectory()) return
     def fingerprints = [:].withDefault { new HashSet<String>() }
     def digest = { stream -> java.security.MessageDigest.getInstance('SHA-256').digest(stream.readAllBytes()).encodeHex().toString() }
     def cacheRoot = new File(gradle.gradleUserHomeDir, 'caches/modules-2/files-2.1')
@@ -61,27 +114,18 @@ def isolateLegacyDevLibraries = {
             }
         }
     }
-    def backup = file('.gradle/banira/dev-runtime-backup')
-    def legacyDirectories = [file('run/mods'), file('run-network-smoke/client/mods')]
-    def sessions = file('run-network-smoke/sessions')
-    sessions.listFiles()?.findAll { it.isDirectory() }?.each { session -> legacyDirectories.add(new File(session, 'client/mods')) }
-    legacyDirectories.findAll { it.isDirectory() }.each { legacy ->
-        legacy.listFiles()?.findAll { it.isFile() && fingerprints.containsKey(it.name) }?.each { artifact ->
-            def hash = artifact.withInputStream { stream -> digest(stream) }
-            if (fingerprints[artifact.name].contains(hash)) {
-                def target = new File(backup, hash + '/' + artifact.name)
-                target.parentFile.mkdirs()
-                java.nio.file.Files.move(artifact.toPath(), target.toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING)
-                logger.lifecycle("Backed up generated legacy development library: ${artifact.name}")
-            }
+    def backup = layout.buildDirectory.dir('legacy-dev-runtime-backup').get().asFile
+    legacy.listFiles()?.findAll { it.isFile() && fingerprints.containsKey(it.name) }?.each { artifact ->
+        def hash = artifact.withInputStream { stream -> digest(stream) }
+        if (fingerprints[artifact.name].contains(hash)) {
+            def target = new File(backup, hash + '/' + artifact.name)
+            target.parentFile.mkdirs()
+            java.nio.file.Files.move(artifact.toPath(), target.toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING)
+            logger.lifecycle("Backed up generated legacy development library: ${artifact.name}")
         }
     }
 }
-def isolateLegacy = tasks.register('isolateLegacyDevRuntimeLibraries') {
-    group = 'verification'
-    doLast isolateLegacyDevLibraries
-}
-prepareDevLibraries.configure { dependsOn isolateLegacy }
+prepareDevLibraries.configure { doFirst isolateLegacyDevLibraries }
 tasks.matching { task -> task.name == 'runClient' || task.name == 'ideaSyncTask' }.configureEach {
     dependsOn prepareDevLibraries
 }
@@ -91,7 +135,7 @@ tasks.register('verifyDevRuntimeLibraries') {
     dependsOn prepareDevLibraries
     doLast {
         def jars = devLibrariesDirectory.listFiles()?.findAll { it.name.endsWith('.jar') } ?: []
-        if (jars.isEmpty()) throw new GradleException('No development runtime libraries were prepared')
+        // An empty directory is valid when no optional performance mods are enabled.
         jars.each { artifact ->
             new ZipFile(artifact).withCloseable { zip ->
                 if (zip.getEntry('fabric.mod.json') == null && zip.getEntry('META-INF/MANIFEST.MF') == null)

@@ -8,7 +8,7 @@ import static org.junit.Assert.*;
 
 public class RuleDefaultsTest {
     @Test public void newConfigurationsUseManagedJavaRules() {
-        net.minecraft.SharedConstants.tryDetectVersion(); Bootstrap.bootStrap();
+        net.minecraft.SharedConstants.tryDetectVersion(); xin.vanilla.aotake.test.NativeBootstrap.initialize();
         CommonConfig.BaseCategory config = new CommonConfig.BaseCategory();
         assertTrue(config.sweep().entityList().contains("script:" + BuiltinRules.CLEANUP));
         assertEquals(java.util.Collections.singletonList("script:" + BuiltinRules.PROTECTION),

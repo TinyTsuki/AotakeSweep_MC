@@ -45,7 +45,7 @@ import static org.junit.Assert.assertTrue;
 public class CommandConfigContractTest {
 
     @org.junit.BeforeClass
-    public static void bootstrapDefaults() { net.minecraft.SharedConstants.tryDetectVersion(); net.minecraft.server.Bootstrap.bootStrap(); }
+    public static void bootstrapDefaults() { net.minecraft.SharedConstants.tryDetectVersion(); xin.vanilla.aotake.test.NativeBootstrap.initialize(); }
 
     @Test
     public void defaultCommandConfigProducesStableCommands() throws Exception {

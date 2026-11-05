@@ -10,7 +10,7 @@ import static org.junit.Assert.*;
 
 public class SweepProductionSettingsTest {
     @Test public void snapshotPreservesNestedValuesEnumsAndCommaContainingLists() {
-        net.minecraft.SharedConstants.tryDetectVersion(); Bootstrap.bootStrap();
+        net.minecraft.SharedConstants.tryDetectVersion(); xin.vanilla.aotake.test.NativeBootstrap.initialize();
         Map<String, Object> values = new LinkedHashMap<>();
         values.put("base.batch.sweepEntityLimit", 17);
         values.put("base.chunk.chunkCheckRetain", 0.25D);

@@ -1,6 +1,6 @@
 package xin.vanilla.aotake.screen;
 
-import com.mojang.blaze3d.vertex.PoseStack;
+import org.joml.Matrix3x2fStack;
 import xin.vanilla.banira.client.data.BaniraColorConfig;
 import xin.vanilla.banira.client.data.ShapeDrawArgs;
 import xin.vanilla.banira.client.gui.widget.BaseShapeWidget;
@@ -33,7 +33,7 @@ public final class DustbinBaniraThemePaint {
     /**
      * 绘制柜体、两个内容层级和与原版槽位对齐的轻量底面
      */
-    public static void renderFullThemeBackground(PoseStack stack, int guiLeft, int guiTop, int imageW, int imageH,
+    public static void renderFullThemeBackground(Matrix3x2fStack stack, int guiLeft, int guiTop, int imageW, int imageH,
                                                  BaniraColorConfig t, int chestRows) {
         int playerOffset = chestRowsPlayerYOffset(chestRows);
         int cabinetFill = t.bgSurface();
@@ -50,7 +50,7 @@ public final class DustbinBaniraThemePaint {
         drawSlotSurfaceGrid(stack, guiLeft, guiTop, chestRows, playerOffset, t);
     }
 
-    private static void drawHeaderSurface(PoseStack stack, int guiLeft, int guiTop, int imageW,
+    private static void drawHeaderSurface(Matrix3x2fStack stack, int guiLeft, int guiTop, int imageW,
                                           BaniraColorConfig t) {
         drawFineRoundedRect(stack, guiLeft + 1, guiTop + 1, imageW - 2, 15,
                 HEADER_RADIUS, t.bgSecondary(), 0);
@@ -58,7 +58,7 @@ public final class DustbinBaniraThemePaint {
                 1.0f, t.accent(), 0);
     }
 
-    private static void drawDustbinSurface(PoseStack stack, int guiLeft, int guiTop, int imageW,
+    private static void drawDustbinSurface(Matrix3x2fStack stack, int guiLeft, int guiTop, int imageW,
                                            int chestRows, BaniraColorConfig t) {
         int contentHeight = chestRows * SLOT_STEP + 2;
         int fill = mixArgb(t.bgQuaternary(), t.bgSurface(), 0.34f);
@@ -66,7 +66,7 @@ public final class DustbinBaniraThemePaint {
                 CONTENT_RADIUS, fill, 0);
     }
 
-    private static void drawPlayerInventorySurface(PoseStack stack, int guiLeft, int guiTop,
+    private static void drawPlayerInventorySurface(Matrix3x2fStack stack, int guiLeft, int guiTop,
                                                    int imageW, int imageH, int playerOffset,
                                                    BaniraColorConfig t) {
         int surfaceY = guiTop + PLAYER_SURFACE_BASE_Y + playerOffset;
@@ -81,7 +81,7 @@ public final class DustbinBaniraThemePaint {
                 0.0f, withAlpha(t.border(), 0.52f), 0);
     }
 
-    private static void drawSlotSurfaceGrid(PoseStack stack, int guiLeft, int guiTop,
+    private static void drawSlotSurfaceGrid(Matrix3x2fStack stack, int guiLeft, int guiTop,
                                             int chestRows, int playerOffset, BaniraColorConfig t) {
         int slotFill = withAlpha(mixArgb(t.bgQuaternary(), t.bgSurface(), 0.20f), SLOT_FILL_ALPHA);
         int slotBorder = withAlpha(t.border(), SLOT_BORDER_ALPHA);
@@ -108,7 +108,7 @@ public final class DustbinBaniraThemePaint {
         }
     }
 
-    private static void drawSlotSurface(PoseStack stack, int x, int y, int fill, int border) {
+    private static void drawSlotSurface(Matrix3x2fStack stack, int x, int y, int fill, int border) {
         // 分离的填充外框可避免相邻圆角描边在交界处形成锯齿节点。
         drawFineRoundedRect(stack, x, y, SLOT_FRAME_SIZE, SLOT_FRAME_SIZE,
                 SLOT_RADIUS + 0.5f, border, 0);
@@ -116,7 +116,7 @@ public final class DustbinBaniraThemePaint {
                 SLOT_RADIUS, fill, 0);
     }
 
-    private static void drawFineRoundedRect(PoseStack stack, int x, int y, int w, int h,
+    private static void drawFineRoundedRect(Matrix3x2fStack stack, int x, int y, int w, int h,
                                             float radius, int color, int border) {
         ShapeDrawArgs shape = ShapeDrawArgs.rect(stack, x, y, w, h, color);
         shape.rect().radius(radius).cornerMode(ShapeDrawArgs.RoundedCornerMode.FINE).border(border);

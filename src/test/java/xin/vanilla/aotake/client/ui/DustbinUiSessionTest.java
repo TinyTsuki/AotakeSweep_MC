@@ -12,12 +12,12 @@ public class DustbinUiSessionTest {
     @BeforeClass
     public static void bootstrap() {
         net.minecraft.SharedConstants.tryDetectVersion();
-        net.minecraft.server.Bootstrap.bootStrap();
+        xin.vanilla.aotake.test.NativeBootstrap.initialize();
     }
 
     @Test
     public void sessionBindsTheExistingMenuWithoutReplacingAnySlot() throws Exception {
-        ChestMenu menu = ChestMenu.sixRows(17, new Inventory(null), new SimpleContainer(54));
+        ChestMenu menu = ChestMenu.sixRows(17, new Inventory(null, new net.minecraft.world.entity.EntityEquipment()), new SimpleContainer(54));
         Object[] slots = menu.slots.toArray();
         Class<?> type;
         try {
