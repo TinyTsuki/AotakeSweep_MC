@@ -9,6 +9,7 @@
     "ServerPlayerMixin"
   ],
   "client": [
+    "ClientCaptureInteractionMixin",
     "ChestScreenMixin",
     "ContainerScreenAccessor",
     "ContainerScreenMixin",

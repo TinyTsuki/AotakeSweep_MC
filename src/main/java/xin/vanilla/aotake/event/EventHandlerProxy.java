@@ -79,6 +79,7 @@ public class EventHandlerProxy {
      * 与 {@code countdown/1000} 一致；仅在 warnKey 变化时发倒计时通知与 SweepTimeSync，避免同一秒内每 tick 重复发送约 20 次。
      */
     private static String lastCountdownWarningDispatchKey = null;
+
     public static void resetCleanupState() {
         nextSweepTime = 0;
         lastChunkCheckTime = 0;
@@ -97,7 +98,9 @@ public class EventHandlerProxy {
         lastChunkCheckTime = now;
         return true;
     }
+
     private static final Map<String, Long> lastHandledEntityUseTick = new ConcurrentHashMap<>();
+    private static final Map<String, FabricInteractionPolicy.CaptureFallback> pendingCaptureFallback = new ConcurrentHashMap<>();
     private static final Map<String, GhostState> ghostStates = new ConcurrentHashMap<>();
     private static final int ghostScanInterval = 20;
     private static final int ghostClampInterval = 4;
@@ -296,9 +299,16 @@ public class EventHandlerProxy {
 
     public static InteractionResult onPlayerUseItem(Player player, Level level, InteractionHand hand) {
         ItemStack stack = player.getItemInHand(hand);
-        if (AotakeSweep.isDisable() || !(player instanceof ServerPlayer)) {
+        if (!(player instanceof ServerPlayer)) {
             return InteractionResult.PASS;
         }
+        String uuid = player.getStringUUID();
+        var fallback = pendingCaptureFallback.get(uuid);
+        if (fallback != null && fallback.hand() == hand && pendingCaptureFallback.remove(uuid, fallback)
+                && fallback.matches(hand, stack, level.getGameTime())) {
+            return InteractionResult.FAIL;
+        }
+        if (AotakeSweep.isDisable()) return InteractionResult.PASS;
         if (AotakeUtils.hasAotakeTag(stack)) {
             CompoundTag aotake = AotakeUtils.getAotakeTag(stack);
             if (aotake.isEmpty()) {
@@ -460,14 +470,7 @@ public class EventHandlerProxy {
                 }
             }
 
-            boolean allowCatch = CommonConfig.get().base().entityCatch().allowCatchEntity();
-            boolean isCatchItem = CommonConfig.get().base().entityCatch().catchItem().stream().anyMatch(s -> s.equals(ItemUtils.getItemRegistryString(original)));
-            CompoundTag aotakeTag = AotakeUtils.getAotakeTag(copy);
-            boolean hasEntityInTag = (!aotakeTag.isEmpty()
-                    && (aotakeTag.contains("entity")
-                    || aotakeTag.contains("player")));
-
-            if (allowCatch && isCatchItem && player.isCrouching() && !hasEntityInTag) {
+            if (canAttemptCapture(player, original)) {
                 if (entity instanceof Player && !AotakeUtils.hasCommandPermission(player, EnumCommandType.CATCH_PLAYER)) {
                     return InteractionResult.PASS;
                 }
@@ -500,11 +503,23 @@ public class EventHandlerProxy {
                     startGhost(targetPlayer, player);
                 }
                 markEntityUseHandled(uuid, tick);
+                pendingCaptureFallback.put(uuid, new FabricInteractionPolicy.CaptureFallback(hand, original, tick));
                 MessageUtils.sendNotification(player, AotakeComponent.get().trans(EnumI18nType.WORD, "entity_caught"), EnumPosition.TOP_CENTER, EnumMoveType.AUTO, 2200L, EnumNotificationStyle.NORMAL, EnumNotificationVanillaFallback.ACTION_BAR, AotakeNotificationTypes.ENTITY_TOOL_FEEDBACK);
                 return InteractionResult.SUCCESS;
             }
         }
         return InteractionResult.PASS;
+    }
+
+    public static boolean canAttemptCapture(Player player, ItemStack stack) {
+        if (AotakeSweep.isDisable() || stack.isEmpty() || !player.isCrouching()) return false;
+        var config = CommonConfig.get().base().entityCatch();
+        if (!config.allowCatchEntity() || !config.catchItem().contains(ItemUtils.getItemRegistryString(stack)))
+            return false;
+        if (!AotakeUtils.hasAotakeTag(stack)) return true;
+        var payload = AotakeUtils.getAotakeTag(stack);
+        return FabricInteractionPolicy.itemUse(true, payload.contains("entity"), payload.contains("player"))
+                == FabricInteractionPolicy.Decision.PASS;
     }
 
     private static void markEntityUseHandled(String playerUuid, long tick) {
@@ -529,6 +544,8 @@ public class EventHandlerProxy {
         ChunkVaultSession.onPlayerDisconnected(player);
         PlayerUtils.removeRemoteClientDataStatus(player);
         ghostStates.remove(player.getStringUUID());
+        pendingCaptureFallback.remove(player.getStringUUID());
+        lastHandledEntityUseTick.remove(player.getStringUUID());
     }
 
     private static void startGhost(ServerPlayer target, ServerPlayer holder) {
@@ -713,8 +730,8 @@ public class EventHandlerProxy {
             MinecraftServer server = BaniraServer.currentAs(MinecraftServer.class);
             return server == null ? null
                     : net.minecraft.network.chat.ComponentSerialization.CODEC.parse(
-                            server.registryAccess().createSerializationContext(com.mojang.serialization.JsonOps.INSTANCE),
-                            com.google.gson.JsonParser.parseString(json)).result().orElse(null);
+                    server.registryAccess().createSerializationContext(com.mojang.serialization.JsonOps.INSTANCE),
+                    com.google.gson.JsonParser.parseString(json)).result().orElse(null);
         } catch (Exception e) {
             return null;
         }

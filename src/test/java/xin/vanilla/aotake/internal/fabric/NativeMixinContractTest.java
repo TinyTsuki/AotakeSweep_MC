@@ -23,10 +23,11 @@ public class NativeMixinContractTest {
         return node;
     }
 
-    @Test public void everyInjectionUsesAnActualNativeMethodAndCorrectHandlerOrder() throws Exception {
+    @Test
+    public void everyInjectionUsesAnActualNativeMethodAndCorrectHandlerOrder() throws Exception {
         int checked = 0;
         for (String name : List.of("ChestScreenMixin", "ContainerScreenMixin", "ScreenMixin", "MinecraftMixin",
-                "ServerPlayerMixin", "SmokeScreenshotFrameMixin")) {
+                "ServerPlayerMixin", "SmokeScreenshotFrameMixin", "ClientCaptureInteractionMixin")) {
             var mixin = read("xin/vanilla/aotake/mixin/" + name);
             var declaration = annotations(mixin.visibleAnnotations, mixin.invisibleAnnotations).stream()
                     .filter(annotation -> annotation.desc.equals("Lorg/spongepowered/asm/mixin/Mixin;"))
@@ -42,13 +43,16 @@ public class NativeMixinContractTest {
                         assertFalse(name + ":" + selector, nativeMethods.isEmpty());
                         Type[] handler = Type.getArgumentTypes(method.desc);
                         assertTrue(method.name, handler.length > 0);
-                        assertEquals("org/spongepowered/asm/mixin/injection/callback/CallbackInfo",
-                                handler[handler.length - 1].getInternalName());
                         assertTrue(method.name + " " + method.desc, nativeMethods.stream().anyMatch(candidate -> {
+                            String callback = Type.getReturnType(candidate.desc).equals(Type.VOID_TYPE)
+                                    ? "CallbackInfo" : "CallbackInfoReturnable";
+                            if (!handler[handler.length - 1].getInternalName().equals(
+                                    "org/spongepowered/asm/mixin/injection/callback/" + callback)) return false;
                             Type[] arguments = Type.getArgumentTypes(candidate.desc);
                             if (handler.length == 1) return true;
                             if (handler.length != arguments.length + 1) return false;
-                            for (int i = 0; i < arguments.length; i++) if (!arguments[i].equals(handler[i])) return false;
+                            for (int i = 0; i < arguments.length; i++)
+                                if (!arguments[i].equals(handler[i])) return false;
                             return true;
                         }));
                         checked++;
@@ -56,10 +60,35 @@ public class NativeMixinContractTest {
                 }
             }
         }
-        assertEquals(9, checked);
+        assertEquals(10, checked);
     }
 
-    @Test public void containerAccessorsStillReadTheRealMenuGeometryFields() throws Exception {
+    @Test
+    public void clientCaptureLeavesTheEntityPacketBeforeTheConsumedResult() throws Exception {
+        var gameMode = read("net/minecraft/client/multiplayer/MultiPlayerGameMode");
+        var interact = gameMode.methods.stream().filter(method -> method.name.equals("interact")).findFirst().orElseThrow();
+        var calls = calls(interact);
+        int packet = -1;
+        int prediction = -1;
+        for (int i = 0; i < calls.size(); i++) {
+            var call = calls.get(i);
+            if (call.owner.equals("net/minecraft/client/multiplayer/ClientPacketListener") && call.name.equals("send"))
+                packet = i;
+            if (call.name.equals("interactOn")) prediction = i;
+        }
+        assertTrue(packet >= 0 && packet < prediction);
+
+        var mixin = read("xin/vanilla/aotake/mixin/ClientCaptureInteractionMixin");
+        var handler = mixin.methods.stream().filter(method -> method.name.equals("aotake$consumeLocalCapture")).findFirst().orElseThrow();
+        var injection = annotations(handler.visibleAnnotations, handler.invisibleAnnotations).stream()
+                .filter(annotation -> annotation.desc.equals("Lorg/spongepowered/asm/mixin/injection/Inject;"))
+                .findFirst().orElseThrow();
+        assertEquals(Boolean.TRUE, value(injection, "cancellable"));
+        assertEquals("RETURN", value((AnnotationNode) ((List<?>) value(injection, "at")).getFirst(), "value"));
+    }
+
+    @Test
+    public void containerAccessorsStillReadTheRealMenuGeometryFields() throws Exception {
         var nativeScreen = read("net/minecraft/client/gui/screens/inventory/AbstractContainerScreen");
         var accessors = read("xin/vanilla/aotake/mixin/ContainerScreenAccessor");
         int checked = 0;
@@ -75,14 +104,16 @@ public class NativeMixinContractTest {
         assertEquals(4, checked);
     }
 
-    @Test public void cursorRestoreStillFollowsTheActualNativeMouseReleaseCall() throws Exception {
+    @Test
+    public void cursorRestoreStillFollowsTheActualNativeMouseReleaseCall() throws Exception {
         var minecraft = read("net/minecraft/client/Minecraft");
         assertTrue(minecraft.methods.stream().filter(method -> method.name.equals("setScreen"))
                 .anyMatch(method -> calls(method).stream().anyMatch(call -> call.owner.equals("net/minecraft/client/MouseHandler")
                         && call.name.equals("releaseMouse") && call.desc.equals("()V"))));
     }
 
-    @Test public void ordinaryItemUseKeepsThePassPathAndTheNativeStackIdentity() throws Exception {
+    @Test
+    public void ordinaryItemUseKeepsThePassPathAndTheNativeStackIdentity() throws Exception {
         var proxy = read("xin/vanilla/aotake/event/EventHandlerProxy");
         var use = proxy.methods.stream().filter(method -> method.name.equals("onPlayerUseItem")).findFirst().orElseThrow();
         assertTrue(use.desc.endsWith(")Lnet/minecraft/world/InteractionResult;"));
