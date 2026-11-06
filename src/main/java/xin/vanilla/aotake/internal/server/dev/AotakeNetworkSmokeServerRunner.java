@@ -54,7 +54,6 @@ public final class AotakeNetworkSmokeServerRunner {
     private static final long SPARK_SAMPLE_SECONDS = 60L;
     private static final int SENTINEL_COUNT = 7;
     private static final int SENTINEL_CONFIG_VALUE = 11;
-    private static final ItemStack SENTINEL_STACK = new ItemStack(Items.EMERALD, SENTINEL_COUNT);
 
     private static boolean ready;
     private static boolean commandVerified;
@@ -179,7 +178,7 @@ public final class AotakeNetworkSmokeServerRunner {
             trashData.getDropList().add(new xin.vanilla.banira.common.data.KeyValue<>(
                     new xin.vanilla.banira.common.data.WorldCoordinate(player), displaced.copy()));
         }
-        firstPage.setItem(0, SENTINEL_STACK.copy());
+        firstPage.setItem(0, new ItemStack(Items.EMERALD, SENTINEL_COUNT));
         trashData.setDirty();
         writeCheckpoint(player);
         AotakeNetworkSmokeStatus.append("PASS server-config-roundtrip");
