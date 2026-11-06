@@ -1,9 +1,8 @@
 package xin.vanilla.aotake.screen;
 
-import com.mojang.blaze3d.vertex.PoseStack;
+import org.joml.Matrix3x2fStack;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import org.joml.Quaternionf;
 import xin.vanilla.aotake.Identifier;
 import xin.vanilla.aotake.client.minimap.AotakeMinimapCountdown;
@@ -72,7 +71,13 @@ public final class ProgressRender {
         return contextVisible() && !getDisplayList(showProgressHeld).isEmpty();
     }
 
-    public static void render(GuiGraphics graphics, boolean showProgressHeld) {
+    public static void render(GuiGraphicsExtractor graphics, boolean showProgressHeld) {
+        try (var extraction = xin.vanilla.banira.client.util.ExtractedGuiRenderer.bind(graphics)) {
+            extractProgress(graphics, showProgressHeld);
+        }
+    }
+
+    private static void extractProgress(GuiGraphicsExtractor graphics, boolean showProgressHeld) {
         ClientConfigView.ProgressBarView cp = ClientConfig.get().progressBar();
         ClientConfigView.ProgressBarView.LeafView cpl = cp.leaf();
         ClientConfigView.ProgressBarView.PoleView cpp = cp.pole();
@@ -92,7 +97,7 @@ public final class ProgressRender {
             int height = cpp.progressBarPoleHeight();
             int drawX = getPoleX();
             int drawY = getPoleY();
-            ResourceLocation poleTex = TextureUtils.loadCustomTexture(Identifier.id(), "gui/pole.png");
+            net.minecraft.resources.Identifier poleTex = TextureUtils.loadCustomTexture(Identifier.id(), "gui/pole.png");
             parts.add(new UiHudFrame.Sprite("cleanup-pole", poleTex, drawX, drawY, width, height, cpp.progressBarPoleAngle()));
         }
         if (displayList.contains(EnumProgressBarType.TEXT)) {
@@ -114,13 +119,13 @@ public final class ProgressRender {
             int startX = getLeafX();
             int drawX = (int) (startX + rangeWidth * time.progress());
             int drawY = getLeafY();
-            ResourceLocation leafTex = TextureUtils.loadCustomTexture(Identifier.id(), "gui/leaf.png");
+            net.minecraft.resources.Identifier leafTex = TextureUtils.loadCustomTexture(Identifier.id(), "gui/leaf.png");
             parts.add(new UiHudFrame.Sprite("cleanup-leaf", leafTex, drawX, drawY, width, height, cpl.progressBarLeafAngle()));
         }
         UiHudFrame frame = new UiHudFrame(parts);
         BINDING.prepare(frame);
         if (parts.isEmpty() || BaniraUi.renderHud(SweepProgressUiBinding.ID, graphics)) return;
-        PoseStack ms = graphics.pose();
+        Matrix3x2fStack ms = graphics.pose();
         for (UiHudFrame.Part part : parts) {
             if (part instanceof UiHudFrame.Sprite sprite) {
                 TransformArgs transformArgs = new TransformArgs(ms).angle(sprite.angleDegrees()).center(EnumPosition.CENTER)
@@ -133,7 +138,7 @@ public final class ProgressRender {
         }
     }
 
-    private static void blitProgressAtlas(PoseStack ms, ResourceLocation texture, int x, int y, int destW, int destH) {
+    private static void blitProgressAtlas(Matrix3x2fStack ms, net.minecraft.resources.Identifier texture, int x, int y, int destW, int destH) {
         KeyValue<Integer, Integer> dim = TextureUtils.getTextureSize(texture);
         int texW = dim.key();
         int texH = dim.val();
@@ -270,19 +275,19 @@ public final class ProgressRender {
     /**
      * 倒计时文字
      */
-    private static void drawProgressCountdownText(Minecraft mc, PoseStack stack, UiHudFrame.Text text) {
-        stack.pushPose();
+    private static void drawProgressCountdownText(Minecraft mc, Matrix3x2fStack stack, UiHudFrame.Text text) {
+        stack.pushMatrix();
         try {
-            stack.translate(text.x(), text.y(), 0);
+            stack.translate((float) text.x(), (float) text.y());
             if (text.angleRadians() != 0) {
-                stack.mulPose(new Quaternionf().rotationZ((float) text.angleRadians()));
+                stack.rotate((float) text.angleRadians());
             }
-            stack.scale((float) text.scale(), (float) text.scale(), 1f);
-            stack.translate(-text.pivotX(), -text.pivotY(), 0);
+            stack.scale((float) text.scale(), (float) text.scale());
+            stack.translate((float) -text.pivotX(), (float) -text.pivotY());
             Text drawText = Text.literal(text.value()).stack(stack).font(mc.font).color(Color.argb(text.color())).shadow(true);
             LabelWidget.drawLimitedText(FontDrawArgs.of(drawText).x(0).y(0).inScreen(false).wrap(false).fontSize(text.fontSize()));
         } finally {
-            stack.popPose();
+            stack.popMatrix();
         }
     }
 

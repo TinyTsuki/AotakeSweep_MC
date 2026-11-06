@@ -1,6 +1,6 @@
 package xin.vanilla.aotake.screen;
 
-import com.mojang.blaze3d.vertex.PoseStack;
+import org.joml.Matrix3x2fStack;
 import xin.vanilla.banira.client.data.BaniraColorConfig;
 import xin.vanilla.banira.client.data.ShapeDrawArgs;
 import xin.vanilla.banira.client.gui.widget.BaseShapeWidget;
@@ -41,7 +41,7 @@ public final class DustbinBaniraToolbarButtonRenderer {
     /**
      * 在所有按钮之后方绘制一条紧凑操作轨，使分组保持统一视觉边界
      */
-    public static void drawRail(PoseStack stack, BaniraColorConfig theme,
+    public static void drawRail(Matrix3x2fStack stack, BaniraColorConfig theme,
                                 int x, int y, int w, int h) {
         int fill = withAlpha(theme.bgSecondary(), 0.88f);
         int borderColor = withAlpha(theme.border(), 0.72f);
@@ -60,7 +60,7 @@ public final class DustbinBaniraToolbarButtonRenderer {
         BaseShapeWidget.drawShape(accent);
     }
 
-    public static void draw(PoseStack stack, BaniraColorConfig theme,
+    public static void draw(Matrix3x2fStack stack, BaniraColorConfig theme,
                             int x, int y, int w, int h,
                             boolean hover,
                             boolean pressed,
@@ -177,7 +177,7 @@ public final class DustbinBaniraToolbarButtonRenderer {
     /**
      * 与 {@link ButtonWidget} 内 {@code drawPresetIcon} / {@code drawResetIcon} 几何一致。
      */
-    private static void drawPresetIcon(PoseStack stack, ButtonWidget.PresetStyle preset, int x, int y, int w, int h, int color, float iconStrokeWidth) {
+    private static void drawPresetIcon(Matrix3x2fStack stack, ButtonWidget.PresetStyle preset, int x, int y, int w, int h, int color, float iconStrokeWidth) {
         float iw = Math.max(0f, (float) w);
         float ih = Math.max(0f, (float) h);
         float size = Math.min(iw, ih);
@@ -235,7 +235,7 @@ public final class DustbinBaniraToolbarButtonRenderer {
         }
     }
 
-    private static void drawResetIcon(PoseStack stack, float cx, float cy, float r, float lw, int color) {
+    private static void drawResetIcon(Matrix3x2fStack stack, float cx, float cy, float r, float lw, int color) {
         float d = r * 1.375f;
         float triR = r * 0.65f;
         float xL = cx - d;

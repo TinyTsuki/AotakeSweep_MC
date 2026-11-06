@@ -1,7 +1,7 @@
 package xin.vanilla.aotake.internal.neoforge.rule;
 
 import net.minecraft.server.MinecraftServer;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerLevel;
 import xin.vanilla.aotake.api.rule.EntityAccess;
 import xin.vanilla.aotake.api.rule.ServerAccess;
@@ -44,9 +44,9 @@ public final class NeoForgeServerAccess implements ServerAccess {
 
     @Override
     public Optional<WorldAccess> world(String dimensionId) {
-        ResourceLocation id = ResourceLocation.parse(dimensionId);
+        Identifier id = Identifier.parse(dimensionId);
         for (ServerLevel world : current().getAllLevels()) {
-            if (world.dimension().location().equals(id))
+            if (world.dimension().identifier().equals(id))
                 return Optional.of(new NeoForgeWorldAccess(() -> world, guard, entityGuard));
         }
         return Optional.empty();

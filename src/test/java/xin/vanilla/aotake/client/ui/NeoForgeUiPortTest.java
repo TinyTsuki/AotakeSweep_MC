@@ -22,20 +22,21 @@ public class NeoForgeUiPortTest {
         var found = new java.util.HashSet<String>();
         for (var method : read("event/ClientGameEventHandler").methods)
             for (var instruction : method.instructions)
-                if (instruction instanceof MethodInsnNode call && call.owner.endsWith("/DustbinRender")
-                        && call.name.equals("handleGuiScreen")) {
-                    if (method.desc.contains("ScreenEvent$MouseButtonPressed$Pre")) found.add("press");
-                    if (method.desc.contains("ScreenEvent$MouseButtonReleased$Pre")) found.add("release");
+                if (instruction instanceof MethodInsnNode call && call.owner.endsWith("/AotakeUiPages")) {
+                    if (method.desc.contains("ScreenEvent$MouseButtonPressed$Pre") && call.name.equals("click"))
+                        found.add("press");
+                    if (method.desc.contains("ScreenEvent$MouseButtonReleased$Pre") && call.name.equals("release"))
+                        found.add("release");
                 }
         assertEquals(java.util.Set.of("press", "release"), found);
     }
 
     @Test
-    public void containerIconsUseOnlyPublicMinecraft21ResourceFactories() throws Exception {
+    public void containerIconsUseOnlyPublicMinecraftResourceFactories() throws Exception {
         int factories = 0;
         for (var method : read("client/ui/DustbinUiSession").methods)
             for (var instruction : method.instructions)
-                if (instruction instanceof MethodInsnNode call && call.owner.equals("net/minecraft/resources/ResourceLocation")) {
+                if (instruction instanceof MethodInsnNode call && call.owner.equals("net/minecraft/resources/Identifier")) {
                     assertNotEquals("<init>", call.name);
                     if (call.name.equals("fromNamespaceAndPath")) factories++;
                 }

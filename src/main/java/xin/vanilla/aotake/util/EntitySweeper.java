@@ -14,7 +14,9 @@ import net.minecraft.network.chat.HoverEvent;
 import net.minecraft.world.level.Level;
 import net.minecraft.server.level.ServerLevel;
 import net.neoforged.neoforge.entity.PartEntity;
-import net.neoforged.neoforge.items.IItemHandler;
+import net.neoforged.neoforge.transfer.ResourceHandler;
+import net.neoforged.neoforge.transfer.item.ItemResource;
+import net.neoforged.neoforge.transfer.item.ItemUtil;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import xin.vanilla.aotake.AotakeComponent;
@@ -122,9 +124,9 @@ public class EntitySweeper {
                     if (context.dustbinMode != EnumDustbinMode.BLOCK) AotakeUtils.clearVirtualDustbin();
                     if (context.dustbinMode != EnumDustbinMode.VIRTUAL) {
                         for (WorldCoordinate position : context.blockPositions) {
-                            IItemHandler handler = AotakeUtils.getBlockItemHandler(position);
-                            if (handler != null) for (int slot = 0; slot < handler.getSlots(); slot++)
-                                handler.extractItem(slot, handler.getSlotLimit(slot), false);
+                            ResourceHandler<ItemResource> handler = AotakeUtils.getBlockItemHandler(position);
+                            if (handler != null) for (int slot = 0; slot < handler.size(); slot++)
+                                AotakeUtils.extractBlockItem(handler, slot);
                         }
                     }
                 }
@@ -183,20 +185,17 @@ public class EntitySweeper {
             PlayerSweepData playerData = PlayerSweepData.getData(p);
             if (playerData.isShowSweepResult()) {
                 String openCom = "/" + AotakeUtils.getCommand(EnumCommandType.DUSTBIN_OPEN);
-                msg.clickEvent(new ClickEvent(ClickEvent.Action.SUGGEST_COMMAND, openCom))
-                        .hoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT
-                                , AotakeComponent.get().literal(openCom).toVanilla())
+                msg.clickEvent(new ClickEvent.SuggestCommand(openCom))
+                        .hoverEvent(new HoverEvent.ShowText(AotakeComponent.get().literal(openCom).toVanilla())
                         );
                 MessageUtils.sendNotification(p, AotakeComponent.get().empty()
                                 .append(msg)
                                 .append(AotakeComponent.get().literal("[x]")
                                         .color(EnumMCColor.RED.getColor())
-                                        .hoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT
-                                                , AotakeComponent.get().transAuto("not_show_button")
+                                        .hoverEvent(new HoverEvent.ShowText(AotakeComponent.get().transAuto("not_show_button")
                                                 .toVanilla(language))
                                         )
-                                        .clickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND
-                                                , "/" + AotakeUtils.getCommandPrefix() + " config player showSweepResult change")
+                                        .clickEvent(new ClickEvent.RunCommand("/" + AotakeUtils.getCommandPrefix() + " config player showSweepResult change")
                                         )
                                 )
                         , AotakeNotificationTypes.SWEEP_RESULT_INTERACTIVE);
@@ -242,8 +241,7 @@ public class EntitySweeper {
                 if (entity.isPassenger()) {
                     entity.stopRiding();
                 }
-                CompoundTag entityTag = new CompoundTag();
-                entity.save(entityTag);
+                CompoundTag entityTag = xin.vanilla.aotake.internal.common.NativeStorageData.entity(entity);
                 AotakeUtils.sanitizeCapturedEntityTag(entityTag);
                 aotake.put("entity", entityTag);
                 aotake.putString("entityId", EntityUtils.getEntityRegistryString(entity));
@@ -350,11 +348,11 @@ public class EntitySweeper {
 
     private void selfCleanDustbinBlock(SweepContext context) {
         for (WorldCoordinate dustbinPos : context.blockPositions) {
-            IItemHandler handler = AotakeUtils.getBlockItemHandler(dustbinPos);
+            ResourceHandler<ItemResource> handler = AotakeUtils.getBlockItemHandler(dustbinPos);
             if (handler != null) {
-                for (int i = 0; i < handler.getSlots(); i++) {
-                    if (!handler.getStackInSlot(i).isEmpty()) {
-                        handler.extractItem(i, handler.getSlotLimit(i), false);
+                for (int i = 0; i < handler.size(); i++) {
+                    if (!ItemUtil.getStack(handler, i).isEmpty()) {
+                        AotakeUtils.extractBlockItem(handler, i);
                         break;
                     }
                 }
@@ -409,11 +407,11 @@ public class EntitySweeper {
                     case BLOCK_VIRTUAL: {
                         WorldCoordinate dustbinPos = CollectionUtils.getRandomElement(context.blockPositions);
                         if (dustbinPos == null) break;
-                        IItemHandler handler = AotakeUtils.getBlockItemHandler(dustbinPos);
+                        ResourceHandler<ItemResource> handler = AotakeUtils.getBlockItemHandler(dustbinPos);
                         if (handler != null) {
-                            int slot = AotakeSweep.RANDOM.nextInt(handler.getSlots());
-                            handler.extractItem(slot, handler.getSlotLimit(slot), false);
-                            handler.insertItem(slot, item.copy(), false);
+                            int slot = AotakeSweep.RANDOM.nextInt(handler.size());
+                            AotakeUtils.extractBlockItem(handler, slot);
+                            ItemUtil.insertItemReturnRemaining(handler, slot, item, false, null);
                         }
                     }
                     break;

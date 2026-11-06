@@ -3,7 +3,7 @@ package xin.vanilla.aotake.internal.server.dev;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.Pose;
-import net.minecraft.world.entity.animal.Cow;
+import net.minecraft.world.entity.animal.cow.Cow;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.server.level.ServerPlayer;
 import xin.vanilla.aotake.internal.dev.AotakeNetworkSmokeNotifications;
@@ -193,7 +193,7 @@ public final class AotakeNetworkSmokeServerRunner {
         if (++gameplayTicks > 2400) {
             throw new IllegalStateException("Gameplay smoke timed out in " + gameplayStep);
         }
-        ServerLevel level = player.serverLevel();
+        ServerLevel level = player.level();
         switch (gameplayStep) {
             case PREPARE:
                 configureGameplayFixture();
@@ -276,11 +276,11 @@ public final class AotakeNetworkSmokeServerRunner {
                 if (globalSweepItems.stream().anyMatch(Entity::isAlive)) return false;
                 requireRecovered(Items.PAPER, 320);
                 AotakeNetworkSmokeStatus.append("PASS global-batch-cleanup");
-                captureTarget = EntityType.COW.create(level);
+                captureTarget = EntityType.COW.create(level, net.minecraft.world.entity.EntitySpawnReason.COMMAND);
                 if (captureTarget == null) throw new IllegalStateException("Could not create capture target");
-                captureTarget.moveTo(24.5D, 65.0D, 24.5D, 0.0F, 0.0F);
+                captureTarget.snapTo(24.5D, 65.0D, 24.5D, 0.0F, 0.0F);
                 level.addFreshEntity(captureTarget);
-                player.teleportTo(level, 23.5D, 65.0D, 24.5D, 0.0F, 0.0F);
+                player.teleportTo(level, 23.5D, 65.0D, 24.5D, java.util.Collections.emptySet(), 0.0F, 0.0F, false);
                 player.getInventory().add(new ItemStack(Items.STICK));
                 player.setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(Items.STICK));
                 player.setShiftKeyDown(true);
@@ -298,7 +298,7 @@ public final class AotakeNetworkSmokeServerRunner {
                 return false;
             case WAIT_CAPTURE:
                 if (captureTarget.isAlive()) return false;
-                if (player.getInventory().items.stream().noneMatch(AotakeUtils::hasAotakeTag)) {
+                if (player.getInventory().getNonEquipmentItems().stream().noneMatch(AotakeUtils::hasAotakeTag)) {
                     throw new IllegalStateException("Captured entity payload was not added to inventory");
                 }
                 AotakeNetworkSmokeStatus.append("PASS entity-capture");
@@ -310,11 +310,12 @@ public final class AotakeNetworkSmokeServerRunner {
             case WAIT_MEASURED_CHUNKS:
                 // Loading FULL chunks does not make their entity sections queryable yet.
                 if (!measuredWorkload.chunksReady()) {
-                    if (++measuredChunkWaitTicks > 200) throw new IllegalStateException("Measured chunks did not become ready");
+                    if (++measuredChunkWaitTicks > 200)
+                        throw new IllegalStateException("Measured chunks did not become ready");
                     return false;
                 }
                 AotakeNetworkSmokeStatus.append("PASS measured-chunks-ready chunks=4 wait-ticks=" + measuredChunkWaitTicks);
-                sparkProfile = ReflectiveSparkProfile.start(player.getServer());
+                sparkProfile = ReflectiveSparkProfile.start(player.level().getServer());
                 AotakeNetworkSmokeStatus.append("PASS spark-profiler-active");
                 AotakeNetworkSmokeStatus.append("PASS sustained-ready");
                 AotakeNetworkSmokeStatus.append("START sustained-cleanup-workload");
@@ -397,7 +398,7 @@ public final class AotakeNetworkSmokeServerRunner {
      * 通过真实配置指令触发与配置界面同步相同的 save listener，并检查命令树增删。
      */
     private static boolean verifyConciseCommandRefresh(ServerPlayer player) {
-        MinecraftServer server = player.getServer();
+        MinecraftServer server = player.level().getServer();
         String rootName = CommonConfig.get().command().commandClearDrop();
         boolean registered = server.getCommands().getDispatcher().getRoot().getChild(rootName) != null;
         boolean enabled = CommonConfig.get().concise().conciseClearDrop();
@@ -541,7 +542,9 @@ public final class AotakeNetworkSmokeServerRunner {
         COMPLETE
     }
 
-    /** Spark 1.10 sampler/export API, isolated from production dependencies. */
+    /**
+     * Spark 1.10 sampler/export API, isolated from production dependencies.
+     */
     @SuppressWarnings({"rawtypes", "unchecked"})
     private static final class ReflectiveSparkProfile {
         private final Object sampler, platform, plugin;

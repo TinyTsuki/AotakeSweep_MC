@@ -1,7 +1,7 @@
 package xin.vanilla.aotake.client.ui;
 
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.inventory.ContainerScreen;
 import xin.vanilla.aotake.AotakeComponent;
@@ -45,7 +45,7 @@ public final class AotakeUiPages {
                 action -> DustbinRender.performUiAction(chunk, action), chest::onClose);
     }
 
-    public static boolean renderBackground(ContainerScreen chest, GuiGraphics graphics) {
+    public static boolean renderBackground(ContainerScreen chest, GuiGraphicsExtractor graphics) {
         attach(chest);
         owned = false;
         if (screen != chest || session == null || !session.matches(chest.getMenu())) {
@@ -127,20 +127,20 @@ public final class AotakeUiPages {
         session.perform(action);
     }
 
-    public static void tooltip(Screen candidate, GuiGraphics graphics, int mouseX, int mouseY) {
+    public static void tooltip(Screen candidate, GuiGraphicsExtractor graphics, int mouseX, int mouseY) {
         if (!owns(candidate) || session == null) return;
         DustbinUiSession.Action action = session.hit(mouseX, mouseY);
         if (action != null) {
-            graphics.renderTooltip(Minecraft.getInstance().font,
+            graphics.setTooltipForNextFrame(Minecraft.getInstance().font,
                     AotakeComponent.get().transClientAuto(tooltipKey(action)).toVanilla(), mouseX, mouseY);
         } else if (session.hitClose(mouseX, mouseY)) {
-            graphics.renderTooltip(Minecraft.getInstance().font,
+            graphics.setTooltipForNextFrame(Minecraft.getInstance().font,
                     xin.vanilla.banira.BaniraComponent.get().transClientAuto("config_editor_close").toVanilla(), mouseX, mouseY);
         } else if (layer != null) {
             ScreenCoordinate title = layer.view().bounds("title");
             if (title != null && mouseX >= title.x() && mouseX < title.x() + title.width()
                     && mouseY >= title.y() && mouseY < title.y() + title.height())
-                graphics.renderTooltip(Minecraft.getInstance().font, candidate.getTitle(), mouseX, mouseY);
+                graphics.setTooltipForNextFrame(Minecraft.getInstance().font, candidate.getTitle(), mouseX, mouseY);
         }
     }
 

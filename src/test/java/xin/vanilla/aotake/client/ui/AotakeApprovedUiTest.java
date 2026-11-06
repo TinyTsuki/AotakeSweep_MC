@@ -47,7 +47,7 @@ public class AotakeApprovedUiTest {
     }
 
     private ChestMenu menu() {
-        return ChestMenu.sixRows(71, new Inventory(null), new SimpleContainer(54));
+        return ChestMenu.sixRows(71, new Inventory(null, new net.minecraft.world.entity.EntityEquipment()), new SimpleContainer(54));
     }
 
     private DustbinUiSession session(ChestMenu menu, AtomicInteger closes) throws Exception {

@@ -19,12 +19,15 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.MessageDigest;
 
-/** Bounded typed messages for the dedicated network smoke, not gameplay notifications. */
+/**
+ * Bounded typed messages for the dedicated network smoke, not gameplay notifications.
+ */
 public final class AotakeNetworkSmokeNotifications {
     public static final int EXPLICIT_COLOR = 0xFFFFAA00;
     private static boolean sent;
 
-    private AotakeNetworkSmokeNotifications() { }
+    private AotakeNetworkSmokeNotifications() {
+    }
 
     public static String token(String type, String phase) {
         return "notification-route:" + phase + ":" + type + ": ";
@@ -33,8 +36,8 @@ public final class AotakeNetworkSmokeNotifications {
     public static Component payload(String type, String phase) {
         return AotakeComponent.get().literal(token(type, phase)).append(
                 AotakeComponent.get().literal("detail").color(EXPLICIT_COLOR)
-                        .clickEvent(new ClickEvent(ClickEvent.Action.SUGGEST_COMMAND, "/aotake help"))
-                        .hoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT, net.minecraft.network.chat.Component.literal("full detail"))));
+                        .clickEvent(new ClickEvent.SuggestCommand("/aotake help"))
+                        .hoverEvent(new HoverEvent.ShowText(net.minecraft.network.chat.Component.literal("full detail"))));
     }
 
     public static boolean sendWhenReady(ServerPlayer player) {
@@ -48,8 +51,8 @@ public final class AotakeNetworkSmokeNotifications {
         for (String command : new String[]{AotakeUtils.getCommand(EnumCommandType.HELP),
                 AotakeUtils.getCommand(EnumCommandType.CHUNK_VAULT) + " list"}) {
             int[] result = {0};
-            player.getServer().getCommands().performPrefixedCommand(
-                    player.createCommandSourceStack().withPermission(4)
+            player.level().getServer().getCommands().performPrefixedCommand(
+                    player.createCommandSourceStack().withPermission(net.minecraft.server.permissions.PermissionSet.ALL_PERMISSIONS)
                             .withCallback((success, value) -> result[0] = success ? value : 0), command);
             if (result[0] <= 0) throw new IllegalStateException("Notification command failed: " + command);
         }
@@ -69,9 +72,12 @@ public final class AotakeNetworkSmokeNotifications {
                 if (!owner.equals(source)) throw new IllegalStateException("Banira class source mismatch: " + source);
                 byte[] bytes = Files.readAllBytes(path);
                 StringBuilder hash = new StringBuilder();
-                for (byte b : MessageDigest.getInstance("SHA-256").digest(bytes)) hash.append(String.format("%02x", b & 255));
+                for (byte b : MessageDigest.getInstance("SHA-256").digest(bytes))
+                    hash.append(String.format("%02x", b & 255));
                 AotakeNetworkSmokeStatus.append("RUNTIME " + type.getName() + " sha256=" + hash + " size=" + bytes.length + " path=" + path + " source=" + source);
             }
-        } catch (Exception error) { throw new IllegalStateException("Cannot fingerprint loaded Banira", error); }
+        } catch (Exception error) {
+            throw new IllegalStateException("Cannot fingerprint loaded Banira", error);
+        }
     }
 }

@@ -51,7 +51,7 @@ public final class NeoForgeSweepBackend implements SweepBackend {
     private boolean touched;
 
     public NeoForgeSweepBackend(MinecraftServer server, RuleManager<Entity> manager, RuleGeneration<Entity>.PolicyLease lease,
-                             SweepRequest request, NeoForgeSweepTarget target, EntitySweeper sweeper, SweepResult result) {
+                                SweepRequest request, NeoForgeSweepTarget target, EntitySweeper sweeper, SweepResult result) {
         this.server = server;
         this.manager = manager;
         this.lease = lease;
@@ -150,7 +150,7 @@ public final class NeoForgeSweepBackend implements SweepBackend {
     private String dimensionId(ServerLevel world) {
         String id = dimensions.get(world);
         if (id == null) {
-            id = world.dimension().location().toString();
+            id = world.dimension().identifier().toString();
             dimensions.put(world, id);
         }
         return id;

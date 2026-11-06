@@ -3,13 +3,16 @@ plugins {
     id 'eclipse'
     id 'idea'
     id 'maven-publish'
-    id 'net.neoforged.gradle.userdev' version '7.0.181'
+    id 'net.neoforged.gradle.userdev' version '7.1.39'
 }
 
 apply from: 'gradle/config-view-processor.gradle'
 apply from: 'gradle/aui-validation-output.gradle'
 
-def javaVer = 21
+def javaVer = 25
+if (JavaVersion.current() < JavaVersion.toVersion(javaVer)) {
+    throw new GradleException('Minecraft 26.1 requires a Java 25 or newer Gradle JVM')
+}
 
 group = mod_group_id
 version = mod_version
@@ -21,6 +24,10 @@ base {
 java {
     toolchain.languageVersion = JavaLanguageVersion.of(javaVer)
     withSourcesJar()
+}
+
+if (providers.gradleProperty('banira.neoForgeDependencyRepo').isPresent()) {
+    minecraftArtifactCache.cacheDirectory.set(layout.projectDirectory.dir('.gradle/caches/minecraft'))
 }
 
 runs {
@@ -73,10 +80,29 @@ configurations.configureEach {
 }
 
 repositories {
+    def offlineSupplement = providers.gradleProperty('banira.neoForgeOfflineSupplement').orNull
+    if (offlineSupplement != null) {
+        named('Mojang LWJGL Free Type Repository') {
+            url = uri(offlineSupplement)
+        }
+    }
     flatDir {
         dir 'libs'
     }
     mavenLocal()
+    def verifiedRepository = providers.gradleProperty('banira.neoForgeDependencyRepo').orNull
+    if (verifiedRepository != null) {
+        def verified = maven {
+            url = uri(verifiedRepository)
+            metadataSources {
+                gradleMetadata()
+                mavenPom()
+                artifact()
+            }
+        }
+        remove(verified)
+        addFirst(verified)
+    }
     mavenCentral()
     maven { name "CurseMaven"; url "https://cursemaven.com" }
     // IE
@@ -98,20 +124,15 @@ repositories {
 }
 
 dependencies {
-    runtimeOnly "maven.modrinth:spark:v5qtqRQi"
-    if (!(project.findProperty('aotake.networkSmoke.server') ?: 'false').toString().toBoolean()) {
-        runtimeOnly "curse.maven:rubidium-extra-654373:6860464"
-        // Development runtime performance mods; not bundled into published artifacts.
-        runtimeOnly "maven.modrinth:embeddium:J7b96IEd"
-    }
     implementation "net.neoforged:neoforge:${neo_version}"
 
     testImplementation 'junit:junit:4.13.2'
+    testRuntimeOnly('maven.modrinth:spark:v5qtqRQi') { transitive = false }
 
-    compileOnly 'org.projectlombok:lombok:1.18.34'
-    annotationProcessor 'org.projectlombok:lombok:1.18.34'
-    testCompileOnly 'org.projectlombok:lombok:1.18.34'
-    testAnnotationProcessor 'org.projectlombok:lombok:1.18.34'
+    compileOnly 'org.projectlombok:lombok:1.18.48'
+    annotationProcessor 'org.projectlombok:lombok:1.18.48'
+    testCompileOnly 'org.projectlombok:lombok:1.18.48'
+    testAnnotationProcessor 'org.projectlombok:lombok:1.18.48'
 
     implementation(baniraCodexCoords) {
         changing = true
@@ -120,16 +141,6 @@ dependencies {
         changing = true
         jarJar.ranged(it, baniraArtifactVersionRange)
     }
-
-    // JEI
-    runtimeOnly "curse.maven:jei-238222:${jei_id}"
-    // AE
-    // runtimeOnly fg.deobf("blank:appliedenergistics2:8.4.7")
-    // IE
-    // runtimeOnly fg.deobf("blusunrize.immersiveengineering:ImmersiveEngineering:${ie_version}")
-
-    // Narcissus
-    compileOnly "curse.maven:narcissus-farewell-1210871:${narcissus_maven_id}"
 
 }
 

@@ -6,8 +6,7 @@ import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.tree.CommandNode;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.Screenshot;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
@@ -137,6 +136,19 @@ public final class AotakeUiSmokeRunner {
     }
 
     private void runTick(@Nonnull Minecraft client) {
+        if (screenshot != null) {
+            if (!screenshot.isDone() && System.nanoTime() < screenshotDeadline) return;
+            var pending = screenshot;
+            screenshot = null;
+            try {
+                if (!pending.isDone()) throw new IllegalStateException("Screenshot did not finish");
+                pending.join();
+                afterScreenshot.run();
+            } catch (Throwable failure) {
+                fail(client, "screenshot", failure);
+            }
+            return;
+        }
         if (phase == Phase.FINISHED) {
             return;
         }
@@ -367,34 +379,28 @@ public final class AotakeUiSmokeRunner {
         if (phaseTick < 20) {
             return;
         }
-        Path file = outputDir.resolve("05-notification-hud.png");
-        try (NativeImage image = Screenshot.takeScreenshot(client.getMainRenderTarget())) {
+        capture(client, "05-notification-hud", image -> {
             int smokePixels = countNotificationSmokePixels(image);
             if (smokePixels < 32) {
                 throw new IllegalStateException("Notification color was absent from framebuffer: " + smokePixels);
             }
-            image.writeToFile(file);
             appendStatus("PASS notification-hud-without-screen pixels=" + smokePixels);
-            appendStatus("PASS 05-notification-hud");
-            LOGGER.info("Aotake UI smoke screenshot: {}", file);
-        } catch (Throwable t) {
-            fail(client, "notification-hud-without-screen", t);
-            return;
-        }
-        hudSmokeNotification.dismiss();
-        hudSmokeNotification = null;
-        phase = Phase.HUD_NORMAL;
-        phaseTick = 0;
+        }, () -> {
+            hudSmokeNotification.dismiss();
+            hudSmokeNotification = null;
+            phase = Phase.HUD_NORMAL;
+            phaseTick = 0;
+        });
     }
 
     private static int countNotificationSmokePixels(@Nonnull NativeImage image) {
         int count = 0;
         for (int y = 0; y < image.getHeight(); y++) {
             for (int x = 0; x < image.getWidth(); x++) {
-                int abgr = image.getPixelRGBA(x, y);
-                int red = abgr & 0xFF;
-                int green = (abgr >> 8) & 0xFF;
-                int blue = (abgr >> 16) & 0xFF;
+                int argb = image.getPixel(x, y);
+                int red = (argb >> 16) & 0xFF;
+                int green = (argb >> 8) & 0xFF;
+                int blue = argb & 0xFF;
                 if (red >= 225 && green <= 24 && blue >= 245) {
                     count++;
                 }
@@ -406,7 +412,6 @@ public final class AotakeUiSmokeRunner {
     private void runNormalHudTick(@Nonnull Minecraft client) {
         phaseTick++;
         if (phaseTick == 30) {
-            capture(client, "04-gameplay-hud-normal");
             try {
                 validateProgressKey(ClientModEventHandler.PROGRESS_KEY.currentKey(),
                         client.options.keyPlayerList.getKey().getValue());
@@ -414,21 +419,26 @@ public final class AotakeUiSmokeRunner {
                 fail(client, "hud-key-conflict", e);
                 return;
             }
-            setProgressKey(true);
-            phase = Phase.HUD_HELD;
-            phaseTick = 0;
+            capture(client, "04-gameplay-hud-normal", image -> {
+            }, () -> {
+                setProgressKey(true);
+                phase = Phase.HUD_HELD;
+                phaseTick = 0;
+            });
         }
     }
 
     private void runHeldHudTick(@Nonnull Minecraft client) {
         phaseTick++;
         if (phaseTick == 30) {
-            capture(client, "05-gameplay-hud-progress");
-            setProgressKey(false);
-            originalDustbinStyle = ClientConfig.get().dustbin().dustbinUiStyle();
-            dustbinStyleIndex = 0;
-            phase = Phase.DUSTBIN;
-            openDustbinStyle(client);
+            capture(client, "05-gameplay-hud-progress", image -> {
+            }, () -> {
+                setProgressKey(false);
+                originalDustbinStyle = ClientConfig.get().dustbin().dustbinUiStyle();
+                dustbinStyleIndex = 0;
+                phase = Phase.DUSTBIN;
+                openDustbinStyle(client);
+            });
         }
     }
 
@@ -446,14 +456,13 @@ public final class AotakeUiSmokeRunner {
                 }
                 String name = String.format(Locale.ROOT, "%02d-dustbin-%s",
                         6 + dustbinStyleIndex, style.name().toLowerCase(Locale.ROOT));
-                capture(client, name);
-                appendStatus("PASS dustbin-" + style.name().toLowerCase(Locale.ROOT));
-                dustbinStyleIndex++;
-                if (dustbinStyleIndex >= DUSTBIN_STYLES.length) {
-                    finish(client);
-                } else {
-                    openDustbinStyle(client);
-                }
+                capture(client, name, image -> {
+                }, () -> {
+                    appendStatus("PASS dustbin-" + style.name().toLowerCase(Locale.ROOT));
+                    dustbinStyleIndex++;
+                    if (dustbinStyleIndex >= DUSTBIN_STYLES.length) finish(client);
+                    else openDustbinStyle(client);
+                });
             }
             return;
         }
@@ -514,15 +523,26 @@ public final class AotakeUiSmokeRunner {
         }
     }
 
+    private java.util.concurrent.CompletableFuture<Void> screenshot;
+    private long screenshotDeadline;
+    private Runnable afterScreenshot;
+
     private void capture(@Nonnull Minecraft client, @Nonnull String name) {
+        capture(client, name, image -> {
+        }, () -> {
+        });
+    }
+
+    private void capture(@Nonnull Minecraft client, @Nonnull String name,
+                         java.util.function.Consumer<NativeImage> check, Runnable next) {
         Path file = outputDir.resolve(name + ".png");
-        try (NativeImage image = Screenshot.takeScreenshot(client.getMainRenderTarget())) {
-            image.writeToFile(file);
+        screenshot = SmokeScreenshotCapture.capture(file, check);
+        screenshotDeadline = System.nanoTime() + java.util.concurrent.TimeUnit.SECONDS.toNanos(15);
+        afterScreenshot = () -> {
             appendStatus("PASS " + name);
             LOGGER.info("Aotake UI smoke screenshot: {}", file);
-        } catch (Throwable t) {
-            fail(client, name, t);
-        }
+            next.run();
+        };
     }
 
     private void finish(@Nonnull Minecraft client) {
@@ -605,7 +625,7 @@ public final class AotakeUiSmokeRunner {
         }
 
         @Override
-        protected void onRender(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
+        protected void onRender(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
             renderWidgets(graphics, partialTick);
         }
 

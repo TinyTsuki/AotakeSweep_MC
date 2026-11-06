@@ -88,11 +88,11 @@ public final class PlayerSweepData implements IPlayerData<PlayerSweepData>, ICom
 
     @Override
     public void deserializeNBT(CompoundTag nbt, boolean dirty) {
-        this.notified = nbt.getBoolean("notified");
+        this.notified = nbt.getBooleanOr("notified", false);
         // 默认显示
-        this.showSweepResult = !nbt.contains("showSweepResult") || nbt.getBoolean("showSweepResult");
+        this.showSweepResult = !nbt.contains("showSweepResult") || nbt.getBooleanOr("showSweepResult", false);
         // 默认启用
-        this.enableWarningVoice = !nbt.contains("enableWarningVoice") || nbt.getBoolean("enableWarningVoice");
+        this.enableWarningVoice = !nbt.contains("enableWarningVoice") || nbt.getBooleanOr("enableWarningVoice", false);
         if (dirty) {
             this.save();
         }

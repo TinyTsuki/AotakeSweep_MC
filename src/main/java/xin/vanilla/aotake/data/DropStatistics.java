@@ -28,11 +28,11 @@ public class DropStatistics {
 
     public static DropStatistics deserializeNBT(CompoundTag tag) {
         return new DropStatistics(
-                WorldCoordinate.fromTag(tag.getCompound("coordinate"))
-                , tag.getString("name")
-                , tag.getLong("time")
-                , tag.getLong("itemCount")
-                , tag.getLong("entityCount")
+                WorldCoordinate.fromTag(tag.getCompoundOrEmpty("coordinate"))
+                , tag.getStringOr("name", "")
+                , tag.getLongOr("time", 0L)
+                , tag.getLongOr("itemCount", 0L)
+                , tag.getLongOr("entityCount", 0L)
         );
     }
 

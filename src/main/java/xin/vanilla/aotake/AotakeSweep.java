@@ -140,7 +140,7 @@ public class AotakeSweep {
         NeoForgeAotakeGameEventAdapter.register(modEventBus);
         xin.vanilla.aotake.internal.server.dev.AotakeNetworkSmokeServerRunner.register(modEventBus);
 
-        if (FMLEnvironment.dist == Dist.CLIENT) {
+        if (FMLEnvironment.getDist() == Dist.CLIENT) {
             xin.vanilla.aotake.client.AotakeClientBootstrap.init();
         }
     }

@@ -1,8 +1,9 @@
 package xin.vanilla.aotake.event;
 
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.neoforged.neoforge.client.event.ClientTickEvent;
+import net.neoforged.neoforge.client.event.RenderGuiEvent;
 import net.neoforged.neoforge.client.event.ScreenEvent;
 import net.neoforged.neoforge.common.NeoForge;
 import org.apache.logging.log4j.LogManager;
@@ -12,17 +13,21 @@ import xin.vanilla.aotake.internal.client.dev.AotakeUiSmokeRunner;
 import xin.vanilla.aotake.network.packet.OpenDustbinToServer;
 import xin.vanilla.aotake.screen.DustbinRender;
 import xin.vanilla.aotake.screen.ProgressRender;
+import xin.vanilla.aotake.client.ui.AotakeUiPages;
 import xin.vanilla.banira.api.client.event.BaniraClientEvents;
+import xin.vanilla.banira.api.client.hud.BaniraHudEvents;
+import xin.vanilla.banira.api.client.hud.BaniraHudRenderEvent;
+import xin.vanilla.banira.client.gui.widget.TooltipWidget;
+import xin.vanilla.banira.client.util.ExtractedGuiRenderer;
 import xin.vanilla.banira.common.util.PacketUtils;
 
 /**
- * 客户端 Game 逻辑；NeoForge 21.1 的经验条拦截由 Aotake Mixin 转发到此处。
+ * 客户端 Game 逻辑。
  */
 public final class ClientGameEventHandler {
     private static final Logger LOGGER = LogManager.getLogger();
     private static long lastTime = 0;
     private static boolean showProgress = false;
-    private static boolean cancelExperienceBarOverlay = false;
     private static final xin.vanilla.aotake.client.ui.SweepProgressUiBinding.KeyState PROGRESS_STATE =
             new xin.vanilla.aotake.client.ui.SweepProgressUiBinding.KeyState();
 
@@ -39,16 +44,27 @@ public final class ClientGameEventHandler {
         BaniraClientEvents.Player.onClientLoggedOut(player -> {
             PROGRESS_STATE.reset();
             showProgress = false;
-            cancelExperienceBarOverlay = false;
             ProgressRender.reset();
         });
         BaniraClientEvents.Player.onClientLoggedOut(player -> LOGGER.debug("Client: Player logged out."));
         NeoForge.EVENT_BUS.addListener((ClientTickEvent.Post event) -> ClientGameEventHandler.onClientTick(event));
-        NeoForge.EVENT_BUS.addListener((ScreenEvent.Init.Post event) -> DustbinRender.handleGuiScreen(event));
-        NeoForge.EVENT_BUS.addListener((ScreenEvent.Render.Post event) -> DustbinRender.handleGuiScreen(event));
-        NeoForge.EVENT_BUS.addListener((ScreenEvent.KeyPressed.Pre event) -> DustbinRender.handleGuiScreen(event));
-        NeoForge.EVENT_BUS.addListener((ScreenEvent.MouseButtonPressed.Pre event) -> DustbinRender.handleGuiScreen(event));
-        NeoForge.EVENT_BUS.addListener((ScreenEvent.MouseButtonReleased.Pre event) -> DustbinRender.handleGuiScreen(event));
+        BaniraHudEvents.onExperiencePreRender(ClientGameEventHandler::interceptExperience);
+        NeoForge.EVENT_BUS.addListener((RenderGuiEvent.Post event) -> renderProgressOverlay(event.getGuiGraphics()));
+        NeoForge.EVENT_BUS.addListener((ScreenEvent.Init.Post event) -> DustbinRender.handleGuiScreen(
+                new DustbinRender.InitPost(event.getScreen(), event::addListener)));
+        NeoForge.EVENT_BUS.addListener(ClientGameEventHandler::renderDustbin);
+        NeoForge.EVENT_BUS.addListener((ScreenEvent.KeyPressed.Pre event) -> {
+            var input = new DustbinRender.KeyPressedPre(event.getScreen(), event.getKeyCode(), event.getModifiers());
+            DustbinRender.handleGuiScreen(input);
+            if (input.isCanceled()) event.setCanceled(true);
+        });
+        NeoForge.EVENT_BUS.addListener((ScreenEvent.MouseButtonPressed.Pre event) -> {
+            if (AotakeUiPages.click(event.getScreen(), event.getMouseX(), event.getMouseY(), event.getButton()))
+                event.setCanceled(true);
+        });
+        NeoForge.EVENT_BUS.addListener((ScreenEvent.MouseButtonReleased.Pre event) -> {
+            if (AotakeUiPages.release(event.getScreen(), event.getButton())) event.setCanceled(true);
+        });
     }
 
     private static void onClientTick(ClientTickEvent.Post event) {
@@ -64,17 +80,26 @@ public final class ClientGameEventHandler {
         }
     }
 
-    public static void onRenderOverlayPre() {
-        cancelExperienceBarOverlay = ProgressRender.shouldRenderProgressOverlay(showProgress)
-                && ProgressRender.shouldHideVanillaExperienceBar(showProgress);
+    private static void interceptExperience(BaniraHudRenderEvent event) {
+        Minecraft client = Minecraft.getInstance();
+        if (client.player == null || client.screen != null || client.options.hideGui) return;
+        if (ProgressRender.shouldRenderProgressOverlay(showProgress)
+                && ProgressRender.shouldHideVanillaExperienceBar(showProgress)) event.cancel();
     }
 
-    public static boolean shouldCancelExperienceBarOverlay() {
-        return cancelExperienceBarOverlay;
+    private static void renderDustbin(ScreenEvent.Render.Post event) {
+        var screen = event.getScreen();
+        var graphics = event.getGuiGraphics();
+        int x = event.getMouseX(), y = event.getMouseY();
+        boolean ownsTooltipFrame = TooltipWidget.beginPopupFrameIfIdle(screen, x, y);
+        try (var extraction = ExtractedGuiRenderer.bind(graphics)) {
+            DustbinRender.handleGuiScreen(new DustbinRender.DrawPost(screen, graphics, x, y));
+        } finally {
+            if (ownsTooltipFrame) TooltipWidget.flushSubmittedPopupFrame(graphics);
+        }
     }
 
-    public static void renderProgressOverlay(GuiGraphics guiGraphics) {
-        onRenderOverlayPre();
+    public static void renderProgressOverlay(GuiGraphicsExtractor guiGraphics) {
         if (ProgressRender.shouldRenderProgressOverlay(showProgress)) {
             ProgressRender.render(guiGraphics, showProgress);
         } else ProgressRender.reset();

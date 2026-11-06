@@ -1,5 +1,6 @@
 package xin.vanilla.aotake.data.world;
 
+import xin.vanilla.aotake.internal.common.NativeStorageData;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.core.HolderLookup;
@@ -132,7 +133,7 @@ public final class ChunkVaultStorage {
 
     static synchronized void queueRecycledItem(Path directory, String vaultId, ItemStack stack, HolderLookup.Provider provider) {
         Path file = directory.toAbsolutePath().normalize().resolve(vaultId + ".nbt");
-        PENDING.computeIfAbsent(file, ignored -> new ArrayList<>()).add(stack.save(provider));
+        PENDING.computeIfAbsent(file, ignored -> new ArrayList<>()).add(NativeStorageData.item(stack, provider));
     }
 
     public static void flushPending(@Nullable MinecraftServer server) {
@@ -160,7 +161,8 @@ public final class ChunkVaultStorage {
         }
         try {
             List<Tag> saved = new ArrayList<>();
-            for (ItemStack stack : stacks) if (!stack.isEmpty()) saved.add(stack.save(server.registryAccess()));
+            for (ItemStack stack : stacks)
+                if (!stack.isEmpty()) saved.add(NativeStorageData.item(stack, server.registryAccess()));
             appendItemsToFile(dir.resolve(vaultId + ".nbt"), saved);
         } catch (IOException failure) {
             LOGGER.error("Failed to append chunk vault {}", vaultId, failure);
@@ -179,7 +181,7 @@ public final class ChunkVaultStorage {
             root.putLong("UpdatedAt", System.currentTimeMillis());
             if (!root.contains("CreatedAt")) root.putLong("CreatedAt", System.currentTimeMillis());
             if (!root.contains("Kind")) root.putString("Kind", "chunk_overload");
-            ListTag list = root.getList("Items", 10);
+            ListTag list = root.getListOrEmpty("Items");
             for (Tag saved : stacks) list.add(saved);
             root.put("Items", list);
             Path temporary = Files.createTempFile(file.getParent(), ".vault-", ".tmp");
@@ -213,10 +215,10 @@ public final class ChunkVaultStorage {
     }
 
     public static List<ItemStack> readItemsFromRoot(CompoundTag root, HolderLookup.Provider provider) {
-        ListTag list = root.getList("Items", 10);
+        ListTag list = root.getListOrEmpty("Items");
         List<ItemStack> out = new ArrayList<>(list.size());
         for (int i = 0; i < list.size(); i++) {
-            ItemStack st = ItemStack.parseOptional(provider, list.getCompound(i));
+            ItemStack st = NativeStorageData.item(list.get(i), provider);
             if (!st.isEmpty()) {
                 out.add(st);
             }
@@ -245,7 +247,7 @@ public final class ChunkVaultStorage {
                 ListTag list = new ListTag();
                 for (ItemStack s : stacks) {
                     if (s.isEmpty()) continue;
-                    list.add(s.save(server.registryAccess()));
+                    list.add(NativeStorageData.item(s, server.registryAccess()));
                 }
                 root.put("Items", list);
                 if (list.isEmpty()) {

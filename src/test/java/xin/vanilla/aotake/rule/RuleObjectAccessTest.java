@@ -1,5 +1,6 @@
 package xin.vanilla.aotake.rule;
 
+
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.item.ItemEntity;
@@ -18,17 +19,22 @@ import xin.vanilla.banira.api.script.*;
 import xin.vanilla.banira.internal.neoforge.platform.NeoForgeBaniraRegistryService;
 import xin.vanilla.banira.platform.BaniraPlatform;
 import xin.vanilla.banira.platform.BaniraPlatforms;
+
 import java.lang.reflect.Proxy;
 import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
+
 import com.google.gson.*;
+
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicReference;
+
 import static org.junit.Assert.*;
 
 public class RuleObjectAccessTest {
-    @Test public void resourceMatchingUsesNativePartsAndExpiresWithTheEvaluation() {
+    @Test
+    public void resourceMatchingUsesNativePartsAndExpiresWithTheEvaluation() {
         RuleBindingPlan plan = RuleBindingPlan.defaults();
         NeoForgeEntityRuleContext context = new NeoForgeEntityRuleContext(plan);
         ItemEntity item = new ItemEntity(null, 0, 0, 0, new ItemStack(Items.APPLE), 0, 0, 0);
@@ -42,14 +48,20 @@ public class RuleObjectAccessTest {
             return true;
         }, item, plan));
         assertThrows(IllegalStateException.class, () -> context.matchesResource("*", "*"));
-        assertTrue(context.evaluateResource(c -> { throw new AssertionError("Native ID used a text evaluation frame"); },
+        assertTrue(context.evaluateResource(c -> {
+                    throw new AssertionError("Native ID used a text evaluation frame");
+                },
                 item, plan, "minecraft", "item"));
-        assertFalse(context.evaluateResource(c -> { throw new AssertionError("Native ID used a text evaluation frame"); },
+        assertFalse(context.evaluateResource(c -> {
+                    throw new AssertionError("Native ID used a text evaluation frame");
+                },
                 item, plan, "minecraft", "items"));
         assertThrows(IllegalStateException.class, context::resourceId);
     }
-    @BeforeClass public static void bootstrap() {
-        net.minecraft.SharedConstants.tryDetectVersion(); Bootstrap.bootStrap();
+
+    @BeforeClass
+    public static void bootstrap() {
+        xin.vanilla.aotake.test.NativeBootstrap.initialize();
         NeoForgeBaniraRegistryService registry = NeoForgeBaniraRegistryService.INSTANCE;
         BaniraPlatforms.install((BaniraPlatform) Proxy.newProxyInstance(BaniraPlatform.class.getClassLoader(),
                 new Class<?>[]{BaniraPlatform.class}, (proxy, method, args) -> {
@@ -59,7 +71,8 @@ public class RuleObjectAccessTest {
                 }));
     }
 
-    @Test public void entityAndLegacyGettersShareTheEvaluationCache() {
+    @Test
+    public void entityAndLegacyGettersShareTheEvaluationCache() {
         Entity entity = new PlainEntity();
         entity.tickCount = 10;
         entity.setCustomName(net.minecraft.network.chat.Component.literal("before"));
@@ -78,7 +91,8 @@ public class RuleObjectAccessTest {
         assertTrue(context.evaluate(c -> c.entity().tick() == 20 && "after".equals(c.customName()), entity, plan));
     }
 
-    @Test public void nativeIdentityAndItemAccessFollowTheActiveEvaluationOnly() throws Exception {
+    @Test
+    public void nativeIdentityAndItemAccessFollowTheActiveEvaluationOnly() throws Exception {
         ItemEntity item = new ItemEntity(null, 1, 2, 3, new ItemStack(Items.STONE, 7), 0, 0, 0);
         RuleBindingPlan plan = RuleBindingPlan.defaults();
         NeoForgeEntityRuleContext context = new NeoForgeEntityRuleContext(plan);
@@ -94,15 +108,19 @@ public class RuleObjectAccessTest {
             try {
                 CompletableFuture.runAsync(() -> c.entity().x()).get(5, TimeUnit.SECONDS);
                 fail("Cross-thread access accepted");
-            } catch (ExecutionException expected) { assertTrue(expected.getCause() instanceof IllegalStateException); }
-            catch (InterruptedException | TimeoutException error) { throw new AssertionError(error); }
+            } catch (ExecutionException expected) {
+                assertTrue(expected.getCause() instanceof IllegalStateException);
+            } catch (InterruptedException | TimeoutException error) {
+                throw new AssertionError(error);
+            }
             return true;
         }, item, plan));
         assertThrows(IllegalStateException.class, () -> context.nativeEntity(Entity.class));
         assertThrows(IllegalStateException.class, () -> borrowed.get().x());
     }
 
-    @Test public void nonItemAccessHasNoFabricatedItemAndNestedCallsRestoreEntity() {
+    @Test
+    public void nonItemAccessHasNoFabricatedItemAndNestedCallsRestoreEntity() {
         Entity plain = new PlainEntity();
         ItemEntity item = new ItemEntity(null, 0, 0, 0, new ItemStack(Items.STONE), 0, 0, 0);
         RuleBindingPlan plan = RuleBindingPlan.defaults();
@@ -117,7 +135,8 @@ public class RuleObjectAccessTest {
         }, plain, plan));
     }
 
-    @Test public void borrowedViewsCannotFollowAnotherEvaluationFrame() {
+    @Test
+    public void borrowedViewsCannotFollowAnotherEvaluationFrame() {
         Entity plain = new PlainEntity();
         ItemEntity item = new ItemEntity(null, 0, 0, 0, new ItemStack(Items.STONE), 0, 0, 0);
         RuleBindingPlan plan = RuleBindingPlan.defaults();
@@ -128,7 +147,9 @@ public class RuleObjectAccessTest {
         AtomicReference<ServerAccess> outerServer = new AtomicReference<>();
         assertTrue(context.evaluate(c -> {
             EntityAccess outer = c.entity();
-            previous.set(outer); outerWorld.set(c.world()); outerServer.set(c.server());
+            previous.set(outer);
+            outerWorld.set(c.world());
+            outerServer.set(c.server());
             assertSame(outer, c.entity());
             assertTrue(context.evaluate(inner -> {
                 nested.set(inner.entity());
@@ -152,16 +173,18 @@ public class RuleObjectAccessTest {
         }, item, plan));
     }
 
-    @Test public void externalProbeCompilesWithNativeInterfacesAndPreparedMinecraftMembers() throws Exception {
+    @Test
+    public void externalProbeCompilesWithNativeInterfacesAndPreparedMinecraftMembers() throws Exception {
         StringBuilder source = new StringBuilder();
         try (Reader reader = resource("NativeEntityProbe.java")) {
-            char[] buffer = new char[1024]; int n;
+            char[] buffer = new char[1024];
+            int n;
             while ((n = reader.read(buffer)) != -1) source.append(buffer, 0, n);
         }
         try (ScriptSession<EntityRule> session = BaniraScripts.open("aotake_sweep", EntityRule.class,
                 "1", ScriptLimits.defaults(), Runnable::run)) {
             EntityRule rule = session.prepare(Collections.singletonList(new ScriptSource("native-probe",
-                    "xin.vanilla.banira.generated.NativeEntityProbe", "NativeEntityProbe.java", source.toString())))
+                            "xin.vanilla.banira.generated.NativeEntityProbe", "NativeEntityProbe.java", source.toString())))
                     .get(10, TimeUnit.SECONDS).scripts().get("native-probe");
             List<NativeMemberSpec> specs = new ArrayList<>();
             ClassLoader loader = rule.getClass().getClassLoader();
@@ -193,7 +216,9 @@ public class RuleObjectAccessTest {
                 assertEquals(42D, entity.getX(), 0D);
                 assertFalse(context.evaluate(rule, entity, plan));
                 assertEquals(80D, entity.getX(), 0D);
-            } finally { System.clearProperty("aotake.policySmoke.moveDuringRecycle"); }
+            } finally {
+                System.clearProperty("aotake.policySmoke.moveDuringRecycle");
+            }
         }
     }
 
@@ -203,10 +228,45 @@ public class RuleObjectAccessTest {
     }
 
     private static final class PlainEntity extends Entity {
-        PlainEntity() { super(EntityType.ARMOR_STAND, null); }
-        @Override protected void defineSynchedData(net.minecraft.network.syncher.SynchedEntityData.Builder builder) { }
-        @Override protected void readAdditionalSaveData(CompoundTag tag) { }
-        @Override protected void addAdditionalSaveData(CompoundTag tag) { }
-        @Override public Packet<net.minecraft.network.protocol.game.ClientGamePacketListener> getAddEntityPacket(net.minecraft.server.level.ServerEntity tracker) { throw new UnsupportedOperationException(); }
+        @Override
+        public boolean hurtServer(net.minecraft.server.level.ServerLevel level,
+                                  net.minecraft.world.damagesource.DamageSource source,
+                                  float amount) {
+            throw new UnsupportedOperationException();
+        }
+
+        int serializations;
+        int savedValue = 1;
+
+        PlainEntity() {
+            super(EntityType.ARMOR_STAND, null);
+        }
+
+        @Override
+        protected void defineSynchedData(net.minecraft.network.syncher.SynchedEntityData.Builder builder) {
+        }
+
+        @Override
+        public net.minecraft.core.RegistryAccess registryAccess() {
+            return RuleTestRegistries.access();
+        }
+
+        @Override
+        protected void readAdditionalSaveData(net.minecraft.world.level.storage.ValueInput tag) {
+        }
+
+        @Override
+        protected void addAdditionalSaveData(net.minecraft.world.level.storage.ValueOutput tag) {
+            serializations++;
+            CompoundTag values = new CompoundTag();
+            values.putInt("a", savedValue);
+            values.putInt("b", savedValue + 1);
+            tag.store("fixture", CompoundTag.CODEC, values);
+        }
+
+        @Override
+        public Packet<net.minecraft.network.protocol.game.ClientGamePacketListener> getAddEntityPacket(net.minecraft.server.level.ServerEntity serverEntity) {
+            throw new UnsupportedOperationException();
+        }
     }
 }

@@ -1,13 +1,14 @@
 package xin.vanilla.aotake.data.world;
 
-import com.mojang.datafixers.util.Pair;
 import lombok.Getter;
 import lombok.NonNull;
+import net.minecraft.SharedConstants;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
-import net.minecraft.nbt.NbtOps;
+import net.minecraft.nbt.ReportedNbtException;
 import net.minecraft.nbt.Tag;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -19,7 +20,13 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.inventory.ChestMenu;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.dimension.DimensionType;
 import net.minecraft.world.level.saveddata.SavedData;
+import net.minecraft.world.level.saveddata.SavedDataType;
+import net.minecraft.world.level.storage.SavedDataStorage;
+import net.minecraft.world.level.storage.LevelResource;
+import xin.vanilla.aotake.internal.common.NativeStorageData;
 import xin.vanilla.aotake.AotakeComponent;
 import xin.vanilla.aotake.AotakeLang;
 import xin.vanilla.aotake.config.CommonConfig;
@@ -32,7 +39,10 @@ import xin.vanilla.banira.common.data.WorldCoordinate;
 import xin.vanilla.banira.common.enums.EnumMCColor;
 import xin.vanilla.banira.common.util.DateUtils;
 
-import javax.annotation.ParametersAreNonnullByDefault;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.LinkOption;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
@@ -46,6 +56,7 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 @SuppressWarnings("resource")
 public class WorldTrashData extends SavedData {
     private static final String DATA_NAME = "world_trash_data";
+    private static final java.util.Map<SavedDataStorage, SavedDataType<WorldTrashData>> TYPES = new java.util.WeakHashMap<>();
 
     private List<SimpleContainer> inventoryList = new ArrayList<>();
 
@@ -74,13 +85,13 @@ public class WorldTrashData extends SavedData {
         }
 
         data.dropList = new ConcurrentShuffleList<>();
-        ListTag dropListTag = nbt.getList("dropList", 10);
+        ListTag dropListNBT = nbt.getListOrEmpty("dropList");
         ConcurrentShuffleList<KeyValue<WorldCoordinate, ItemStack>> drops = new ConcurrentShuffleList<>();
-        for (int i = 0; i < dropListTag.size(); i++) {
-            CompoundTag drop = dropListTag.getCompound(i);
-            ItemStack item = ItemStack.CODEC.decode(NbtOps.INSTANCE, drop.getCompound("item")).result().orElse(new Pair<>(null, null)).getFirst();
+        for (int i = 0; i < dropListNBT.size(); i++) {
+            CompoundTag drop = dropListNBT.getCompoundOrEmpty(i);
+            ItemStack item = NativeStorageData.item(drop.get("item"), provider);
             drops.add(new KeyValue<>(
-                    WorldCoordinate.fromTag(drop.getCompound("coordinate"))
+                    WorldCoordinate.fromTag(drop.getCompoundOrEmpty("coordinate"))
                     , item
             ));
         }
@@ -91,9 +102,9 @@ public class WorldTrashData extends SavedData {
         Queue<DropStatistics> dropCounts = DropStatisticsStorage.loadByDate(server, todayStr);
         // 若 NBT 中有 dropCount 且当日 JSON 为空，则迁移至 JSON
         if (dropCounts.isEmpty() && nbt.contains("dropCount")) {
-            ListTag dropCountNBT = nbt.getList("dropCount", 10);
+            ListTag dropCountNBT = nbt.getListOrEmpty("dropCount");
             for (int i = 0; i < dropCountNBT.size(); i++) {
-                dropCounts.add(DropStatistics.deserializeNBT(dropCountNBT.getCompound(i)));
+                dropCounts.add(DropStatistics.deserializeNBT(dropCountNBT.getCompoundOrEmpty(i)));
             }
             if (server != null && !dropCounts.isEmpty()) {
                 DropStatisticsStorage.saveByDate(server, todayStr, dropCounts);
@@ -104,29 +115,28 @@ public class WorldTrashData extends SavedData {
         data.dropStatsDate = todayStr;
 
         data.inventoryList = new ArrayList<>();
-        ListTag inventoryListTag = nbt.getList("inventoryList", 9);
-        for (Tag inbt : inventoryListTag) {
+        ListTag inventoryListNBT = nbt.getListOrEmpty("inventoryList");
+        for (Tag inbt : inventoryListNBT) {
             SimpleContainer inventory = new SimpleContainer(6 * 9);
-            inventory.fromTag((ListTag) inbt, provider);
+            NativeStorageData.inventory(inventory, (ListTag) inbt, provider);
             data.inventoryList.add(inventory);
         }
         return data;
     }
 
     @NonNull
-    @Override
-    @ParametersAreNonnullByDefault
     public CompoundTag save(CompoundTag nbt, HolderLookup.Provider provider) {
         // 未开启持久化直接返回
         try {
             if (!CommonConfig.get().base().dustbin().dustbinPersistent()) return nbt;
         } catch (Throwable ignored) {
         }
+
         ListTag dropsNBT = new ListTag();
         for (KeyValue<WorldCoordinate, ItemStack> drop : this.getDropList()) {
             if (drop == null || drop.value() == null) continue;
             CompoundTag dropTag = new CompoundTag();
-            dropTag.put("item", ItemStack.CODEC.encodeStart(NbtOps.INSTANCE, drop.value()).result().orElse(new CompoundTag()));
+            dropTag.put("item", NativeStorageData.item(drop.value(), provider));
             dropTag.put("coordinate", drop.key().toTag());
             dropsNBT.add(dropTag);
         }
@@ -141,7 +151,7 @@ public class WorldTrashData extends SavedData {
 
         ListTag inventoryNBT = new ListTag();
         for (SimpleContainer inventory : this.getInventoryList()) {
-            inventoryNBT.add(inventory.createTag(provider));
+            inventoryNBT.add(NativeStorageData.inventory(inventory, provider));
         }
         nbt.put("inventoryList", inventoryNBT);
 
@@ -194,11 +204,57 @@ public class WorldTrashData extends SavedData {
     }
 
     public static WorldTrashData get(ServerPlayer player) {
-        return get(player.serverLevel());
+        return get(player.level());
     }
 
-    public static WorldTrashData get(ServerLevel world) {
-        return world.getDataStorage().computeIfAbsent(new Factory<>(WorldTrashData::new, WorldTrashData::load, DataFixTypes.SAVED_DATA_MAP_DATA), DATA_NAME);
+    public static synchronized WorldTrashData get(ServerLevel world) {
+        return get(world.getDataStorage(), world.registryAccess(),
+                world.getServer().getWorldPath(LevelResource.ROOT), world.dimension());
+    }
+
+    static synchronized WorldTrashData get(SavedDataStorage storage, HolderLookup.Provider registries,
+                                           Path worldRoot, ResourceKey<Level> dimension) {
+        SavedDataType<WorldTrashData> type = TYPES.computeIfAbsent(storage, ignored -> type(registries));
+        WorldTrashData existing = storage.get(type);
+        if (existing != null) return existing;
+
+        Path dataDir = DimensionType.getStorageFolder(dimension, worldRoot).resolve("data");
+        Path current = type.id().withSuffix(".dat").resolveAgainst(dataDir);
+        if (!Files.notExists(current, LinkOption.NOFOLLOW_LINKS)) {
+            throw new IllegalStateException("Cannot read trash storage: " + current);
+        }
+
+        Path flatFile = dataDir.resolve(DATA_NAME + ".dat");
+        Path legacy = Files.notExists(flatFile, LinkOption.NOFOLLOW_LINKS)
+                ? legacyDataFile(worldRoot, dimension, flatFile) : flatFile;
+        if (!Files.notExists(legacy, LinkOption.NOFOLLOW_LINKS)) {
+            try {
+                var root = storage.readTagFromDisk(legacy, type.dataFixType(),
+                        SharedConstants.getCurrentVersion().dataVersion().version());
+                var data = root.getCompound("data")
+                        .orElseThrow(() -> new IOException("Missing trash data in " + legacy));
+                WorldTrashData imported = load(data, registries);
+                imported.setDirty();
+                storage.set(type, imported);
+                return imported;
+            } catch (IOException | ReportedNbtException e) {
+                throw new IllegalStateException("Cannot read legacy trash storage: " + legacy, e);
+            }
+        }
+        return storage.computeIfAbsent(type);
+    }
+
+    private static Path legacyDataFile(Path root, ResourceKey<Level> dimension, Path flatFile) {
+        if (Level.OVERWORLD.equals(dimension)) return root.resolve("data").resolve(flatFile.getFileName());
+        if (Level.NETHER.equals(dimension)) return root.resolve("DIM-1/data").resolve(flatFile.getFileName());
+        if (Level.END.equals(dimension)) return root.resolve("DIM1/data").resolve(flatFile.getFileName());
+        return flatFile;
+    }
+
+    private static SavedDataType<WorldTrashData> type(HolderLookup.Provider registries) {
+        return new SavedDataType<>(net.minecraft.resources.Identifier.withDefaultNamespace(DATA_NAME), WorldTrashData::new,
+                CompoundTag.CODEC.xmap(tag -> load(tag, registries), data -> data.save(new CompoundTag(), registries)),
+                DataFixTypes.SAVED_DATA_MAP_DATA);
     }
 
     public static MenuProvider getTrashContainer(ServerPlayer player, int page) {
@@ -211,7 +267,7 @@ public class WorldTrashData extends SavedData {
             }
         } else if (size > limit) {
             for (int i = size - limit; i > 0; i--) {
-                inventories.removeLast();
+                inventories.remove(inventories.size() - 1);
             }
         }
 

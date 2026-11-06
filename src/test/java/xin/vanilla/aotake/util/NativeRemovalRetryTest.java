@@ -20,15 +20,18 @@ import java.util.UUID;
 import static org.junit.Assert.*;
 
 public class NativeRemovalRetryTest {
-    @BeforeClass public static void bootstrap() throws ReflectiveOperationException {
+    @BeforeClass
+    public static void bootstrap() throws ReflectiveOperationException {
         xin.vanilla.aotake.rule.NativeTestRegistries.bootstrap();
     }
 
-    @Test public void removedFlagDoesNotAcknowledgeAnInterruptedNativeCallback() throws Exception {
+    @Test
+    public void removedFlagDoesNotAcknowledgeAnInterruptedNativeCallback() throws Exception {
         retry(false);
     }
 
-    @Test public void uuidTrackingRequiresRetryEvenAfterIdTrackingWasDetached() throws Exception {
+    @Test
+    public void uuidTrackingRequiresRetryEvenAfterIdTrackingWasDetached() throws Exception {
         retry(true);
     }
 
@@ -44,8 +47,12 @@ public class NativeRemovalRetryTest {
         world.byId = world.byUuid = entity;
         int[] attempts = {0};
         entity.setLevelCallback(new EntityInLevelCallback() {
-            @Override public void onMove() { }
-            @Override public void onRemove(Entity.RemovalReason reason) {
+            @Override
+            public void onMove() {
+            }
+
+            @Override
+            public void onRemove(Entity.RemovalReason reason) {
                 if (++attempts[0] == 1) {
                     if (detachIdFirst) world.byId = null;
                     throw new IllegalStateException("interrupted native callback");
@@ -72,8 +79,19 @@ public class NativeRemovalRetryTest {
 
     private static final class TestWorld extends ServerLevel {
         Entity byId, byUuid;
-        private TestWorld() { super(null, null, null, null, null, null, null, false, 0L, Collections.emptyList(), false, null); }
-        @Override public Entity getEntity(int id) { return byId != null && byId.getId() == id ? byId : null; }
-        @Override public Entity getEntity(UUID uuid) { return byUuid != null && byUuid.getUUID().equals(uuid) ? byUuid : null; }
+
+        private TestWorld() {
+            super(null, null, null, null, null, null, false, 0L, Collections.emptyList(), false);
+        }
+
+        @Override
+        public Entity getEntity(int id) {
+            return byId != null && byId.getId() == id ? byId : null;
+        }
+
+        @Override
+        public Entity getEntity(UUID uuid) {
+            return byUuid != null && byUuid.getUUID().equals(uuid) ? byUuid : null;
+        }
     }
 }

@@ -80,7 +80,7 @@ public class CacheCommand {
                     }
                     ServerLevel level = DimensionUtils.getLevel(coordinate.dimension());
                     Entity entity = AotakeUtils.getEntityFromItem(level, kv.value());
-                    entity.moveTo(coordinate.x(), coordinate.y(), coordinate.z(), (float) coordinate.yaw(), (float) coordinate.pitch());
+                    entity.snapTo(coordinate.x(), coordinate.y(), coordinate.z(), (float) coordinate.yaw(), (float) coordinate.pitch());
                     level.addFreshEntity(entity);
                 }
             });

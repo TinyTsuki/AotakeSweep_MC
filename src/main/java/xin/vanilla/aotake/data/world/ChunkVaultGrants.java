@@ -74,7 +74,7 @@ public final class ChunkVaultGrants {
     }
 
     public static boolean isGranted(ServerPlayer player, String vaultId) {
-        bootstrapWhenServerReady(player.getServer());
+        bootstrapWhenServerReady(player.level().getServer());
         Set<String> set = CACHE.get(vaultId);
         if (set == null || set.isEmpty()) return false;
         return set.contains(PlayerUtils.getPlayerUUIDString(player));

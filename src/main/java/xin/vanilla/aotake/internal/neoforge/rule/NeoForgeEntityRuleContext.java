@@ -4,7 +4,7 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.TamableAnimal;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.neoforged.neoforge.common.UsernameCache;
 import xin.vanilla.aotake.api.rule.EntityAccess;
 import xin.vanilla.aotake.api.rule.EntityRule;
@@ -86,7 +86,8 @@ public final class NeoForgeEntityRuleContext extends LazyRuleContext<Entity> {
     @Override
     public ServerAccess server() {
         prepareViews();
-        if (serverView == null) serverView = new NeoForgeServerAccess(() -> subject().getServer(), frameGuard());
+        if (serverView == null)
+            serverView = new NeoForgeServerAccess(() -> subject().level().getServer(), frameGuard());
         return serverView;
     }
 
@@ -99,7 +100,7 @@ public final class NeoForgeEntityRuleContext extends LazyRuleContext<Entity> {
     @Override
     public boolean matchesResource(String namespace, String path) {
         checkAccess();
-        ResourceLocation id = EntityUtils.getEntityRegistry(subject());
+        Identifier id = EntityUtils.getEntityRegistry(subject());
         if (id == null) return super.matchesResource(namespace, path);
         return (namespace.equals("*") || namespace.equals(id.getNamespace()))
                 && (path.equals("*") || path.equals(id.getPath()));
@@ -108,7 +109,7 @@ public final class NeoForgeEntityRuleContext extends LazyRuleContext<Entity> {
     @Override
     protected boolean evaluateResourceValue(EntityRule fallback, Entity subject, RuleBindingPlan plan,
                                             String namespace, String path) {
-        ResourceLocation id = EntityUtils.getEntityRegistry(subject);
+        Identifier id = EntityUtils.getEntityRegistry(subject);
         if (id == null) return super.evaluateResourceValue(fallback, subject, plan, namespace, path);
         return (namespace.equals("*") || namespace.equals(id.getNamespace()))
                 && (path.equals("*") || path.equals(id.getPath()));
@@ -116,7 +117,7 @@ public final class NeoForgeEntityRuleContext extends LazyRuleContext<Entity> {
 
     @Override
     protected Class<?> resourceMatchKeyType() {
-        return ResourceLocation.class;
+        return Identifier.class;
     }
 
     @Override
@@ -128,7 +129,7 @@ public final class NeoForgeEntityRuleContext extends LazyRuleContext<Entity> {
     protected boolean evaluateResourceValue(EntityRule fallback, Entity subject, RuleBindingPlan plan,
                                             String namespace, String path, Object key) {
         if (key == null) return super.evaluateResourceValue(fallback, subject, plan, namespace, path);
-        ResourceLocation id = (ResourceLocation) key;
+        Identifier id = (Identifier) key;
         return (namespace.equals("*") || namespace.equals(id.getNamespace()))
                 && (path.equals("*") || path.equals(id.getPath()));
     }
@@ -220,9 +221,10 @@ public final class NeoForgeEntityRuleContext extends LazyRuleContext<Entity> {
             case "chunkZ":
                 return net.minecraft.util.Mth.floor(entity.getZ()) >> 4;
             case "hasOwner":
-                return entity instanceof TamableAnimal && ((TamableAnimal) entity).getOwnerUUID() != null;
+                return entity instanceof TamableAnimal animal && animal.getOwnerReference() != null;
             case "ownerName": {
-                UUID owner = entity instanceof TamableAnimal ? ((TamableAnimal) entity).getOwnerUUID() : null;
+                var reference = entity instanceof TamableAnimal animal ? animal.getOwnerReference() : null;
+                UUID owner = reference == null ? null : reference.getUUID();
                 return owner == null ? null : UsernameCache.getLastKnownUsername(owner);
             }
             default:

@@ -30,9 +30,12 @@ import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.fml.ModList;
 import net.neoforged.neoforge.capabilities.Capabilities;
-import net.neoforged.neoforge.items.IItemHandler;
-import net.neoforged.neoforge.items.ItemHandlerHelper;
-import net.neoforged.neoforge.items.wrapper.InvWrapper;
+import net.neoforged.neoforge.transfer.ResourceHandler;
+import net.neoforged.neoforge.transfer.item.ItemResource;
+import net.neoforged.neoforge.transfer.item.ItemUtil;
+import net.neoforged.neoforge.transfer.item.VanillaContainerWrapper;
+import net.neoforged.neoforge.transfer.transaction.Transaction;
+import xin.vanilla.aotake.internal.common.NativePermissionAccess;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import xin.vanilla.aotake.AotakeComponent;
@@ -198,14 +201,14 @@ public class AotakeUtils {
      * 判断是否拥有指令权限
      */
     public static boolean hasCommandPermission(CommandSourceStack source, EnumCommandType type) {
-        return source.hasPermission(getCommandPermissionLevel(type)) || CommandUtils.hasVirtualPermission(source.getEntity(), type);
+        return NativePermissionAccess.has(source.permissions(), getCommandPermissionLevel(type)) || CommandUtils.hasVirtualPermission(source.getEntity(), type);
     }
 
     /**
      * 判断是否拥有指令权限
      */
     public static boolean hasCommandPermission(Player player, EnumCommandType type) {
-        return player.hasPermissions(getCommandPermissionLevel(type)) || CommandUtils.hasVirtualPermission(player, type);
+        return NativePermissionAccess.has(player.permissions(), getCommandPermissionLevel(type)) || CommandUtils.hasVirtualPermission(player, type);
     }
 
     /**
@@ -324,12 +327,10 @@ public class AotakeUtils {
                                 .append(msg)
                                 .append(AotakeComponent.get().literal("[x]")
                                         .color(EnumMCColor.RED.getColor())
-                                        .hoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT
-                                                , AotakeComponent.get().transAuto("not_show_button")
+                                        .hoverEvent(new HoverEvent.ShowText(AotakeComponent.get().transAuto("not_show_button")
                                                 .toVanilla(language))
                                         )
-                                        .clickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND
-                                                , "/" + AotakeUtils.getCommandPrefix() + " config player showSweepResult change")
+                                        .clickEvent(new ClickEvent.RunCommand("/" + AotakeUtils.getCommandPrefix() + " config player showSweepResult change")
                                         )
                                 )
                         , AotakeNotificationTypes.SWEEP_RESULT_INTERACTIVE);
@@ -368,10 +369,10 @@ public class AotakeUtils {
         if (!tag.isEmpty() && tag.has(DataComponents.CUSTOM_DATA)) {
             CompoundTag customData = tag.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag();
             if (customData.contains(AotakeSweep.MODID)) {
-                CompoundTag aotake = customData.getCompound(AotakeSweep.MODID);
+                CompoundTag aotake = customData.getCompoundOrEmpty(AotakeSweep.MODID);
                 if (aotake.contains("entity")) {
                     try {
-                        result = EntityType.loadEntityRecursive(aotake.getCompound("entity"), level, e -> e);
+                        result = EntityType.loadEntityRecursive(aotake.getCompoundOrEmpty("entity"), level, net.minecraft.world.entity.EntitySpawnReason.LOAD, e -> e);
                     } catch (Exception e) {
                         LOGGER.error("Failed to load entity from item stack: {}", itemStack, e);
                     }
@@ -583,8 +584,8 @@ public class AotakeUtils {
 
             BlockHitResult ray = new BlockHitResult(hitVec, direction, coordinate.toBlockPos(), false);
 
-            BlockState state = player.serverLevel().getBlockState(coordinate.toBlockPos());
-            InteractionResult res = state.useWithoutItem(player.serverLevel(), player, ray);
+            BlockState state = player.level().getBlockState(coordinate.toBlockPos());
+            InteractionResult res = state.useWithoutItem(player.level(), player, ray);
             if (res.consumesAction()) {
                 result = 1;
             }
@@ -610,10 +611,10 @@ public class AotakeUtils {
             for (String pos : CommonConfig.get().base().dustbin().dustbinBlockPositions()) {
                 WorldCoordinate coordinate = WorldCoordinate.fromString(pos);
                 if (coordinate != null) {
-                    IItemHandler handler = AotakeUtils.getBlockItemHandler(coordinate);
+                    ResourceHandler<ItemResource> handler = AotakeUtils.getBlockItemHandler(coordinate);
                     if (handler != null) {
-                        for (int i = 0; i < handler.getSlots(); i++) {
-                            handler.extractItem(i, handler.getSlotLimit(i), false);
+                        for (int i = 0; i < handler.size(); i++) {
+                            AotakeUtils.extractBlockItem(handler, i);
                         }
                     }
                 }
@@ -621,10 +622,10 @@ public class AotakeUtils {
         } else {
             WorldCoordinate coordinate = WorldCoordinate.fromString(CommonConfig.get().base().dustbin().dustbinBlockPositions().get(page - 1));
             if (coordinate != null) {
-                IItemHandler handler = AotakeUtils.getBlockItemHandler(coordinate);
+                ResourceHandler<ItemResource> handler = AotakeUtils.getBlockItemHandler(coordinate);
                 if (handler != null) {
-                    for (int i = 0; i < handler.getSlots(); i++) {
-                        handler.extractItem(i, handler.getSlotLimit(i), false);
+                    for (int i = 0; i < handler.size(); i++) {
+                        AotakeUtils.extractBlockItem(handler, i);
                     }
                 }
             }
@@ -643,9 +644,9 @@ public class AotakeUtils {
         inventoryList.forEach(inventory -> inventory.removeAllItems()
                 .forEach(item -> {
                     if (!item.isEmpty()) {
-                        Entity entity = AotakeUtils.getEntityFromItem(player.serverLevel(), item);
-                        entity.moveTo(player.getX(), player.getY(), player.getZ(), player.getYRot(), player.getXRot());
-                        player.serverLevel().addFreshEntity(entity);
+                        Entity entity = AotakeUtils.getEntityFromItem(player.level(), item);
+                        entity.snapTo(player.getX(), player.getY(), player.getZ(), player.getYRot(), player.getXRot());
+                        player.level().addFreshEntity(entity);
                     }
                 })
         );
@@ -657,14 +658,14 @@ public class AotakeUtils {
             for (String pos : CommonConfig.get().base().dustbin().dustbinBlockPositions()) {
                 WorldCoordinate coordinate = WorldCoordinate.fromString(pos);
                 if (coordinate != null) {
-                    IItemHandler handler = AotakeUtils.getBlockItemHandler(coordinate);
+                    ResourceHandler<ItemResource> handler = AotakeUtils.getBlockItemHandler(coordinate);
                     if (handler != null) {
-                        for (int i = 0; i < handler.getSlots(); i++) {
-                            ItemStack stack = handler.extractItem(i, handler.getSlotLimit(i), false);
+                        for (int i = 0; i < handler.size(); i++) {
+                            ItemStack stack = AotakeUtils.extractBlockItem(handler, i);
                             if (!stack.isEmpty()) {
-                                Entity entity = AotakeUtils.getEntityFromItem(player.serverLevel(), stack);
-                                entity.moveTo(player.getX(), player.getY(), player.getZ(), player.getYRot(), player.getXRot());
-                                player.serverLevel().addFreshEntity(entity);
+                                Entity entity = AotakeUtils.getEntityFromItem(player.level(), stack);
+                                entity.snapTo(player.getX(), player.getY(), player.getZ(), player.getYRot(), player.getXRot());
+                                player.level().addFreshEntity(entity);
                             }
                         }
                     }
@@ -673,14 +674,14 @@ public class AotakeUtils {
         } else {
             WorldCoordinate coordinate = WorldCoordinate.fromString(CommonConfig.get().base().dustbin().dustbinBlockPositions().get(page - 1));
             if (coordinate != null) {
-                IItemHandler handler = AotakeUtils.getBlockItemHandler(coordinate);
+                ResourceHandler<ItemResource> handler = AotakeUtils.getBlockItemHandler(coordinate);
                 if (handler != null) {
-                    for (int i = 0; i < handler.getSlots(); i++) {
-                        ItemStack stack = handler.extractItem(i, handler.getSlotLimit(i), false);
+                    for (int i = 0; i < handler.size(); i++) {
+                        ItemStack stack = AotakeUtils.extractBlockItem(handler, i);
                         if (!stack.isEmpty()) {
-                            Entity entity = AotakeUtils.getEntityFromItem(player.serverLevel(), stack);
-                            entity.moveTo(player.getX(), player.getY(), player.getZ(), player.getYRot(), player.getXRot());
-                            player.serverLevel().addFreshEntity(entity);
+                            Entity entity = AotakeUtils.getEntityFromItem(player.level(), stack);
+                            entity.snapTo(player.getX(), player.getY(), player.getZ(), player.getYRot(), player.getXRot());
+                            player.level().addFreshEntity(entity);
                         }
                     }
                 }
@@ -734,7 +735,7 @@ public class AotakeUtils {
         }
         DataComponentMap components = item.getComponents();
         CompoundTag tag = components.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag();
-        return tag.getCompound(AotakeSweep.MODID);
+        return tag.getCompoundOrEmpty(AotakeSweep.MODID);
     }
 
     public static void setAotakeTag(@NonNull ItemStack item, CompoundTag aotakeTag) {
@@ -796,12 +797,12 @@ public class AotakeUtils {
         if (te == null) return stack;
 
         try {
-            IItemHandler handler = level.getCapability(Capabilities.ItemHandler.BLOCK, pos, level.getBlockState(pos), te, coordinate.direction());
+            ResourceHandler<ItemResource> handler = level.getCapability(Capabilities.Item.BLOCK, pos, level.getBlockState(pos), te, coordinate.direction());
             if (handler == null && te instanceof Container container) {
-                handler = new InvWrapper(container);
+                handler = VanillaContainerWrapper.of(container);
             }
             if (handler != null) {
-                ItemStack remaining = ItemHandlerHelper.insertItem(handler, stack.copy(), false);
+                ItemStack remaining = ItemUtil.insertItemReturnRemaining(handler, stack, false, null);
                 te.setChanged();
                 return remaining;
             }
@@ -814,7 +815,7 @@ public class AotakeUtils {
     /**
      * 获取指定的方块容器
      */
-    public static IItemHandler getBlockItemHandler(WorldCoordinate coordinate) {
+    public static ResourceHandler<ItemResource> getBlockItemHandler(WorldCoordinate coordinate) {
         ServerLevel level = BaniraServer.require(MinecraftServer.class).getLevel(coordinate.dimension());
         if (level == null) return null;
 
@@ -832,18 +833,29 @@ public class AotakeUtils {
         if (te == null) return null;
 
         BlockState bs = chunk.getBlockState(pos);
-        IItemHandler handler = null;
+        ResourceHandler<ItemResource> handler = null;
 
         try {
-            handler = level.getCapability(Capabilities.ItemHandler.BLOCK, pos, bs, te, coordinate.direction());
-            // 别听idea的
-            if ((handler == null || (handler instanceof InvWrapper inv && inv.getInv() == null)) && te instanceof Container container) {
-                handler = new InvWrapper(container);
+            handler = level.getCapability(Capabilities.Item.BLOCK, pos, bs, te, coordinate.direction());
+            if (handler == null && te instanceof Container container) {
+                handler = VanillaContainerWrapper.of(container);
             }
         } catch (Throwable ignored) {
         }
 
         return handler;
+    }
+
+    static ItemStack extractBlockItem(ResourceHandler<ItemResource> handler, int slot) {
+        ItemResource resource = handler.getResource(slot);
+        int amount = handler.getAmountAsInt(slot);
+        if (resource.isEmpty() || amount <= 0) return ItemStack.EMPTY;
+        try (Transaction transaction = Transaction.openRoot()) {
+            int extracted = handler.extract(slot, resource, amount, transaction);
+            if (extracted == 0) return ItemStack.EMPTY;
+            transaction.commit();
+            return resource.toStack(extracted);
+        }
     }
 
     public static <T> List<T> singleList(T value) {

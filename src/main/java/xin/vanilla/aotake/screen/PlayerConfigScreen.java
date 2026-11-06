@@ -3,7 +3,7 @@ package xin.vanilla.aotake.screen;
 import lombok.Data;
 import lombok.experimental.Accessors;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.screens.Screen;
 import xin.vanilla.aotake.AotakeComponent;
 import xin.vanilla.aotake.AotakeSweep;
@@ -184,7 +184,7 @@ public class PlayerConfigScreen extends xin.vanilla.banira.client.gui.PlayerConf
         }
 
         @Override
-        public void render(GuiGraphics graphics, float partialTicks) {
+        public void render(GuiGraphicsExtractor graphics, float partialTicks) {
             if (visible()) renderChildren(graphics, partialTicks);
         }
     }

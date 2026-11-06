@@ -1,6 +1,6 @@
 package xin.vanilla.aotake.internal.client.dev;
 
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import xin.vanilla.banira.api.BaniraConfigs;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.Screen;
@@ -33,7 +33,9 @@ import java.lang.reflect.Method;
 import java.util.List;
 import java.util.function.BooleanSupplier;
 
-/** Dev-only wrappers retain the real chest mixins, sidebar events and Banira editor renderers. */
+/**
+ * Dev-only wrappers retain the real chest mixins, sidebar events and Banira editor renderers.
+ */
 public final class AotakeNetworkSmokeScreens {
     private final BooleanSupplier sampling;
     private final Metrics vanilla;
@@ -138,7 +140,7 @@ public final class AotakeNetworkSmokeScreens {
         frame.metrics.render(frame.wallNanos, frame.cpuNanos, frame.content, frame.sampled);
     }
 
-    private void render(Screen screen, Metrics metrics, GuiGraphics graphics, int mouseX, int mouseY,
+    private void render(Screen screen, Metrics metrics, GuiGraphicsExtractor graphics, int mouseX, int mouseY,
                         float partialTicks, IWidget hovered, boolean content, RenderCall actualRender) {
         int x = hovered == null ? mouseX : (int) (hovered.absoluteX() + hovered.bounds().width() / 2.0D);
         int y = hovered == null ? mouseY : (int) (hovered.absoluteY() + hovered.bounds().height() / 2.0D);
@@ -259,7 +261,7 @@ public final class AotakeNetworkSmokeScreens {
         }
 
         @Override
-        public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTicks) {
+        public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTicks) {
             Slot content = null;
             for (int index = 0; index < menu.slots.size() - 36; index++) {
                 Slot slot = menu.getSlot(index);
@@ -270,7 +272,7 @@ public final class AotakeNetworkSmokeScreens {
                 }
             }
             AotakeNetworkSmokeScreens.this.render(this, metrics, graphics, mouseX, mouseY, partialTicks,
-                    null, content != null, super::render);
+                    null, content != null, super::extractRenderState);
         }
 
         @Override
@@ -285,7 +287,7 @@ public final class AotakeNetworkSmokeScreens {
         }
 
         @Override
-        public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTicks) {
+        public void render(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTicks) {
             IWidget content = contentWidget(this, widgets(), false);
             AotakeNetworkSmokeScreens.this.render(this, clientConfig, graphics, mouseX, mouseY, partialTicks,
                     content, content != null, super::render);
@@ -298,7 +300,7 @@ public final class AotakeNetworkSmokeScreens {
         }
 
         @Override
-        public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTicks) {
+        public void render(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTicks) {
             IWidget content = contentWidget(this, widgets(), true);
             AotakeNetworkSmokeScreens.this.render(this, playerConfig, graphics, mouseX, mouseY, partialTicks,
                     content, content != null, super::render);
@@ -316,7 +318,8 @@ public final class AotakeNetworkSmokeScreens {
             boolean visible = widget.bounds().width() > 0 && widget.bounds().height() > 0
                     && x > 0 && x < screen.width && y > 40 && y < screen.height - 40;
             for (IWidget parent = widget.parent(); visible && parent != null; parent = parent.parent()) {
-                if (parent instanceof CollapsiblePanelWidget && !((CollapsiblePanelWidget) parent).expanded()) visible = false;
+                if (parent instanceof CollapsiblePanelWidget && !((CollapsiblePanelWidget) parent).expanded())
+                    visible = false;
                 if (!parent.visible() || parent.bounds() == null || x < parent.absoluteX() || y < parent.absoluteY()
                         || x >= parent.absoluteX() + parent.bounds().width()
                         || y >= parent.absoluteY() + parent.bounds().height()) visible = false;
@@ -329,7 +332,7 @@ public final class AotakeNetworkSmokeScreens {
     }
 
     private interface RenderCall {
-        void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTicks);
+        void render(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTicks);
     }
 
     private static final class PendingFrame {

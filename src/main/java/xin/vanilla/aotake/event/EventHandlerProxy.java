@@ -80,6 +80,7 @@ public class EventHandlerProxy {
      * 与 {@code countdown/1000} 一致；仅在 warnKey 变化时发倒计时通知与 SweepTimeSync，避免同一秒内每 tick 重复发送约 20 次。
      */
     private static String lastCountdownWarningDispatchKey = null;
+
     public static void resetCleanupState() {
         nextSweepTime = 0;
         lastChunkCheckTime = 0;
@@ -98,9 +99,18 @@ public class EventHandlerProxy {
         lastChunkCheckTime = now;
         return true;
     }
+
     private static final Map<String, Long> lastCatchTick = new ConcurrentHashMap<>();
     private static final Map<String, Long> lastUseEntityTick = new ConcurrentHashMap<>();
     private static final Map<String, Long> suppressUseItemTick = new ConcurrentHashMap<>();
+    private static final Map<String, CaptureFallback> pendingCaptureFallback = new ConcurrentHashMap<>();
+
+    private record CaptureFallback(net.minecraft.world.InteractionHand hand, ItemStack stack, long tick) {
+        boolean matches(net.minecraft.world.InteractionHand currentHand, ItemStack currentStack, long currentTick) {
+            return hand == currentHand && stack == currentStack && (currentTick == tick || currentTick == tick + 1);
+        }
+    }
+
     private static final Map<String, GhostState> ghostStates = new ConcurrentHashMap<>();
     private static final int ghostScanInterval = 20;
     private static final int ghostClampInterval = 4;
@@ -256,29 +266,24 @@ public class EventHandlerProxy {
                                 ? "chunk_check_msg_no"
                                 : "chunk_check_msg_yes"
                         , AotakeComponent.get().literal(entityCoordinate.chunkXZString())
-                                .hoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT
-                                        , AotakeComponent.get().literal(entityCoordinate.dimensionId()).toVanilla())
+                                .hoverEvent(new HoverEvent.ShowText(AotakeComponent.get().literal(entityCoordinate.dimensionId()).toVanilla())
                                 )
                 );
-                if (player.hasPermissions(1)
+                if (xin.vanilla.aotake.internal.common.NativePermissionAccess.has(player.permissions(), 1)
                         && PlayerSweepData.getData(player).isShowSweepResult()
                 ) {
                     MessageUtils.sendNotification(player, message
-                                    .hoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT
-                                            , AotakeComponent.get().trans(EnumI18nType.WORD, "chunk_check_msg_hover")
+                                    .hoverEvent(new HoverEvent.ShowText(AotakeComponent.get().trans(EnumI18nType.WORD, "chunk_check_msg_hover")
                                             .toVanilla(language))
                                     )
-                                    .clickEvent(new ClickEvent(ClickEvent.Action.SUGGEST_COMMAND
-                                            , AotakeUtils.genTeleportCommand(entityCoordinate))
+                                    .clickEvent(new ClickEvent.SuggestCommand(AotakeUtils.genTeleportCommand(entityCoordinate))
                                     )
                                     .append(AotakeComponent.get().literal("[+]")
                                             .color(EnumMCColor.GREEN.getColor())
-                                            .hoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT
-                                                    , AotakeComponent.get().trans(EnumI18nType.WORD, "click_to_copy_detail")
+                                            .hoverEvent(new HoverEvent.ShowText(AotakeComponent.get().trans(EnumI18nType.WORD, "click_to_copy_detail")
                                                     .toVanilla(language))
                                             )
-                                            .clickEvent(new ClickEvent(ClickEvent.Action.COPY_TO_CLIPBOARD
-                                                    , overcrowdedChunks.stream()
+                                            .clickEvent(new ClickEvent.CopyToClipboard(overcrowdedChunks.stream()
                                                     .map(entry -> String.format("%s, Entities: %s"
                                                             , formatChunkKey(entry.getKey(), advanced)
                                                             , entry.getValue().size()))
@@ -287,12 +292,10 @@ public class EventHandlerProxy {
                                     )
                                     .append(AotakeComponent.get().literal("[x]")
                                             .color(EnumMCColor.RED.getColor())
-                                            .hoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT
-                                                    , AotakeComponent.get().trans(EnumI18nType.WORD, "not_show_button")
+                                            .hoverEvent(new HoverEvent.ShowText(AotakeComponent.get().trans(EnumI18nType.WORD, "not_show_button")
                                                     .toVanilla(language))
                                             )
-                                            .clickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND
-                                                    , "/" + AotakeUtils.getCommandPrefix() + " config player showSweepResult change")
+                                            .clickEvent(new ClickEvent.RunCommand("/" + AotakeUtils.getCommandPrefix() + " config player showSweepResult change")
                                             )
                                     )
                             , AotakeNotificationTypes.CHUNK_CHECK_INTERACTIVE);
@@ -314,8 +317,15 @@ public class EventHandlerProxy {
         if (AotakeSweep.isDisable()) return;
         if (event.getEntity() instanceof ServerPlayer player) {
             ItemStack stack = event.getItemStack();
-            long tick = player.serverLevel().getGameTime();
+            long tick = player.level().getGameTime();
             String uuid = player.getStringUUID();
+            var fallback = pendingCaptureFallback.get(uuid);
+            if (fallback != null && fallback.hand() == event.getHand() && pendingCaptureFallback.remove(uuid, fallback)
+                    && fallback.matches(event.getHand(), stack, tick)) {
+                event.setCancellationResult(InteractionResult.FAIL);
+                event.setCanceled(true);
+                return;
+            }
             Long suppressTick = suppressUseItemTick.get(uuid);
             if (suppressTick != null && suppressTick == tick) {
                 event.setCancellationResult(InteractionResult.FAIL);
@@ -340,7 +350,7 @@ public class EventHandlerProxy {
             ItemStack original = event.getItemStack();
             Entity released = releaseEntity(event, player, original, new WorldCoordinate(event.getHitVec().getLocation().x(), event.getHitVec().getLocation().y(), event.getHitVec().getLocation().z()));
             if (released != null) {
-                suppressUseItemTick.put(player.getStringUUID(), player.serverLevel().getGameTime());
+                suppressUseItemTick.put(player.getStringUUID(), player.level().getGameTime());
             }
         }
     }
@@ -363,25 +373,25 @@ public class EventHandlerProxy {
                     if (!AotakeUtils.hasCommandPermission(player, EnumCommandType.CATCH_PLAYER)) {
                         return null;
                     }
-                    String playerId = aotake.getString("player");
+                    String playerId = aotake.getStringOr("player", "");
                     Player targetPlayer = PlayerUtils.getPlayerByUUID(playerId);
                     ServerPlayer target = targetPlayer instanceof ServerPlayer
                             ? (ServerPlayer) targetPlayer : null;
                     if (target != null) {
                         ServerLevel level = DimensionUtils.getLevel(coordinate.dimension());
                         if (level == null) {
-                            level = player.serverLevel();
+                            level = player.level();
                         }
-                        target.teleportTo(level, coordinate.x(), coordinate.y(), coordinate.z(), (float) coordinate.yaw(), (float) coordinate.pitch());
+                        target.teleportTo(level, coordinate.x(), coordinate.y(), coordinate.z(), Collections.emptySet(), (float) coordinate.yaw(), (float) coordinate.pitch(), false);
                         original.shrink(1);
-                        net.minecraft.network.chat.Component name = parseNameFromJson(aotake.getString("name"));
+                        net.minecraft.network.chat.Component name = parseNameFromJson(aotake.getStringOr("name", ""));
                         if (name != null) {
                             copy.set(DataComponents.CUSTOM_NAME, name);
                         } else {
                             clearCustomName(copy);
                         }
                         AotakeUtils.clearItemTagEx(copy);
-                        if (!aotake.getBoolean("byPlayer")) {
+                        if (!aotake.getBooleanOr("byPlayer", false)) {
                             copy.shrink(1);
                         }
                         if (!copy.isEmpty()) {
@@ -399,21 +409,21 @@ public class EventHandlerProxy {
                         return target;
                     }
                 } else {
-                    CompoundTag entityData = aotake.getCompound("entity");
+                    CompoundTag entityData = aotake.getCompoundOrEmpty("entity");
                     if (!entityData.contains("id") && aotake.contains("entityId")) {
-                        entityData.putString("id", aotake.getString("entityId"));
+                        entityData.putString("id", aotake.getStringOr("entityId", ""));
                     }
                     AotakeUtils.sanitizeCapturedEntityTag(entityData);
-                    ServerLevel level = player.serverLevel();
-                    Entity entity = EntityType.loadEntityRecursive(entityData, level, e -> e);
+                    ServerLevel level = player.level();
+                    Entity entity = EntityType.loadEntityRecursive(entityData, level, net.minecraft.world.entity.EntitySpawnReason.LOAD, e -> e);
                     if (entity != null) {
-                        entity.moveTo(coordinate.x(), coordinate.y(), coordinate.z(), (float) coordinate.yaw(), (float) coordinate.pitch());
+                        entity.snapTo(coordinate.x(), coordinate.y(), coordinate.z(), (float) coordinate.yaw(), (float) coordinate.pitch());
                         boolean spawned = level.addFreshEntity(entity);
                         if (!spawned) {
                             return null;
                         }
                         original.shrink(1);
-                        String originalNameJson = aotake.getString("name");
+                        String originalNameJson = aotake.getStringOr("name", "");
                         net.minecraft.network.chat.Component name = parseNameFromJson(originalNameJson);
                         if (name != null) {
                             copy.set(DataComponents.CUSTOM_NAME, name);
@@ -421,7 +431,7 @@ public class EventHandlerProxy {
                             clearCustomName(copy);
                         }
                         AotakeUtils.clearItemTagEx(copy);
-                        if (!aotake.getBoolean("byPlayer")) {
+                        if (!aotake.getBooleanOr("byPlayer", false)) {
                             copy.shrink(1);
                         }
                         if (!copy.isEmpty()) {
@@ -449,7 +459,7 @@ public class EventHandlerProxy {
         if (AotakeSweep.isDisable()) return;
         if (event.getEntity() instanceof ServerPlayer) {
             ServerPlayer player = (ServerPlayer) event.getEntity();
-            long tick = player.serverLevel().getGameTime();
+            long tick = player.level().getGameTime();
             String uuid = player.getStringUUID();
             Long lastUseTick = lastUseEntityTick.get(uuid);
             if (lastUseTick != null && lastUseTick == tick) {
@@ -495,8 +505,8 @@ public class EventHandlerProxy {
                         if (back.isPassenger()) {
                             back.stopRiding();
                         }
-                        back.startRiding(entity, true);
-                        player.server.getPlayerList().broadcastAll(new ClientboundSetPassengersPacket(entity));
+                        back.startRiding(entity, true, true);
+                        player.level().getChunkSource().sendToTrackingPlayers(entity, new ClientboundSetPassengersPacket(entity));
                         suppressUseItemTick.put(uuid, tick);
                         event.setCanceled(true);
                         event.setCancellationResult(InteractionResult.SUCCESS);
@@ -536,8 +546,7 @@ public class EventHandlerProxy {
                     if (entity.isPassenger()) {
                         entity.stopRiding();
                     }
-                    CompoundTag entityTag = new CompoundTag();
-                    entity.save(entityTag);
+                    CompoundTag entityTag = xin.vanilla.aotake.internal.common.NativeStorageData.entity(entity);
                     AotakeUtils.sanitizeCapturedEntityTag(entityTag);
                     aotake.put("entity", entityTag);
                     aotake.putString("entityId", EntityUtils.getEntityRegistryString(entity));
@@ -555,7 +564,7 @@ public class EventHandlerProxy {
                     startGhost(targetPlayer, player);
                 }
                 lastCatchTick.put(uuid, tick);
-                suppressUseItemTick.put(uuid, tick);
+                pendingCaptureFallback.put(uuid, new CaptureFallback(event.getHand(), original, tick));
                 MessageUtils.sendNotification(player, AotakeComponent.get().trans(EnumI18nType.WORD, "entity_caught"), EnumPosition.TOP_CENTER, EnumMoveType.AUTO, 2200L, EnumNotificationStyle.NORMAL, EnumNotificationVanillaFallback.ACTION_BAR, AotakeNotificationTypes.ENTITY_TOOL_FEEDBACK);
                 event.setCanceled(true);
                 event.setCancellationResult(InteractionResult.SUCCESS);
@@ -611,7 +620,12 @@ public class EventHandlerProxy {
         if (event.getEntity() instanceof ServerPlayer) {
             ChunkVaultSession.onPlayerDisconnected((ServerPlayer) event.getEntity());
             PlayerUtils.removeRemoteClientDataStatus((ServerPlayer) event.getEntity());
-            ghostStates.remove(event.getEntity().getStringUUID());
+            String uuid = event.getEntity().getStringUUID();
+            ghostStates.remove(uuid);
+            pendingCaptureFallback.remove(uuid);
+            suppressUseItemTick.remove(uuid);
+            lastCatchTick.remove(uuid);
+            lastUseEntityTick.remove(uuid);
         } else {
             AotakeSweep.getClientServerTime().key(0L).value(0L);
             AotakeSweep.getSweepTime().key(0L).value(0L);
@@ -743,7 +757,7 @@ public class EventHandlerProxy {
                             || Math.abs(targetPlayer.getXRot() - pitch) > 1.0f;
             if (needTeleport) {
                 ServerLevel level = (ServerLevel) target.level();
-                targetPlayer.teleportTo(level, desired.x, desired.y, desired.z, yaw, pitch);
+                targetPlayer.teleportTo(level, desired.x, desired.y, desired.z, Collections.emptySet(), yaw, pitch, false);
                 targetPlayer.setDeltaMovement(Vec3.ZERO);
                 targetPlayer.fallDistance = 0;
             }
@@ -763,27 +777,27 @@ public class EventHandlerProxy {
         if (!AotakeUtils.hasAotakeTag(stack)) return null;
         CompoundTag aotake = AotakeUtils.getAotakeTag(stack);
         if (!aotake.contains("player")) return null;
-        String uuid = aotake.getString("player");
+        String uuid = aotake.getStringOr("player", "");
         return StringUtils.isNullOrEmptyEx(uuid) ? null : uuid;
     }
 
     private static void collectCapturedTargetsFromPlayer(ServerPlayer player, java.util.Set<String> uuidSet, Map<String, Entity> targets) {
-        for (ItemStack stack : player.getInventory().items) {
+        for (ItemStack stack : player.getInventory().getNonEquipmentItems()) {
             collectCapturedTarget(stack, uuidSet, targets, player);
         }
-        for (ItemStack stack : player.getInventory().armor) {
-            collectCapturedTarget(stack, uuidSet, targets, player);
-        }
-        for (ItemStack stack : player.getInventory().offhand) {
-            collectCapturedTarget(stack, uuidSet, targets, player);
+        for (net.minecraft.world.entity.EquipmentSlot slot : net.minecraft.world.entity.EquipmentSlot.values()) {
+            if (slot == net.minecraft.world.entity.EquipmentSlot.OFFHAND
+                    || slot.getType() == net.minecraft.world.entity.EquipmentSlot.Type.HUMANOID_ARMOR)
+                collectCapturedTarget(player.getItemBySlot(slot), uuidSet, targets, player);
         }
     }
 
     private static void collectCapturedTargetsFromLiving(LivingEntity living, java.util.Set<String> uuidSet, Map<String, Entity> targets) {
         collectCapturedTarget(living.getMainHandItem(), uuidSet, targets, living);
         collectCapturedTarget(living.getOffhandItem(), uuidSet, targets, living);
-        for (ItemStack stack : living.getArmorSlots()) {
-            collectCapturedTarget(stack, uuidSet, targets, living);
+        for (net.minecraft.world.entity.EquipmentSlot slot : net.minecraft.world.entity.EquipmentSlot.values()) {
+            if (slot.getType() == net.minecraft.world.entity.EquipmentSlot.Type.HUMANOID_ARMOR)
+                collectCapturedTarget(living.getItemBySlot(slot), uuidSet, targets, living);
         }
     }
 
@@ -799,7 +813,9 @@ public class EventHandlerProxy {
         }
         try {
             MinecraftServer server = BaniraServer.currentAs(MinecraftServer.class);
-            return server == null ? null : net.minecraft.network.chat.Component.Serializer.fromJson(json, server.registryAccess());
+            return server == null ? null : net.minecraft.network.chat.ComponentSerialization.CODEC.parse(
+                    server.registryAccess().createSerializationContext(com.mojang.serialization.JsonOps.INSTANCE),
+                    com.google.gson.JsonParser.parseString(json)).result().orElse(null);
         } catch (Exception e) {
             return null;
         }

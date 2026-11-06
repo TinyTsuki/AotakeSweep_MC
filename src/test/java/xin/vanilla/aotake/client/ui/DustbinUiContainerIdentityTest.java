@@ -25,7 +25,7 @@ public class DustbinUiContainerIdentityTest {
     }
 
     private ChestMenu menu() {
-        return ChestMenu.sixRows(19, new Inventory(null), new SimpleContainer(54));
+        return ChestMenu.sixRows(19, new Inventory(null, new net.minecraft.world.entity.EntityEquipment()), new SimpleContainer(54));
     }
 
     private static final class View extends NativeUiView {

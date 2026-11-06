@@ -15,10 +15,7 @@ import static org.junit.Assert.*;
 public class AotakeNetworkSmokeNotificationsTest {
     @BeforeClass
     public static void bootstrapGame() throws Exception {
-        net.neoforged.fml.loading.LoadingModList.of(java.util.List.of(), java.util.List.of(),
-                java.util.List.of(), java.util.List.of(), java.util.Map.of());
-        net.minecraft.SharedConstants.tryDetectVersion();
-        net.minecraft.server.Bootstrap.bootStrap();
+        xin.vanilla.aotake.test.NativeBootstrap.initialize();
     }
 
     @Test
@@ -32,7 +29,8 @@ public class AotakeNetworkSmokeNotificationsTest {
             Component second = AotakeNetworkSmokeNotifications.payload(type, "phase-two");
             assertNotEquals(first.getString("en_us"), second.getString("en_us"));
             assertEquals(AotakeNetworkSmokeNotifications.EXPLICIT_COLOR, first.getChildren().get(0).color().argb());
-            assertEquals("/aotake help", first.getChildren().get(0).clickEvent().getValue());
+            assertEquals("/aotake help", ((net.minecraft.network.chat.ClickEvent.SuggestCommand)
+                    first.getChildren().get(0).clickEvent()).command());
             assertNotNull(first.getChildren().get(0).hoverEvent());
             assertEquals(first.toJson(), AotakeNetworkSmokeNotifications.payload(type, "phase-one").toJson());
         }

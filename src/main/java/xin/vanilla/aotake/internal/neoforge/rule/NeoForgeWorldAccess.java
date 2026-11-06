@@ -37,7 +37,7 @@ public final class NeoForgeWorldAccess implements WorldAccess {
 
     @Override
     public String dimensionId() {
-        return current().dimension().location().toString();
+        return current().dimension().identifier().toString();
     }
 
     @Override

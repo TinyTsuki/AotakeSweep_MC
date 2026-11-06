@@ -9,14 +9,22 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 import xin.vanilla.aotake.util.EntitySweeper;
+
 import java.nio.file.*;
+
 import static org.junit.Assert.*;
 
 public class ChunkVaultPendingTest {
-    @Rule public TemporaryFolder temporary = new TemporaryFolder();
-    @BeforeClass public static void bootstrap() { net.minecraft.SharedConstants.tryDetectVersion(); Bootstrap.bootStrap(); }
+    @Rule
+    public TemporaryFolder temporary = new TemporaryFolder();
 
-    @Test public void stoppingCanceledSweepPersistsEachOriginWithoutDuplicatingItems() throws Exception {
+    @BeforeClass
+    public static void bootstrap() {
+        xin.vanilla.aotake.test.NativeBootstrap.initialize();
+    }
+
+    @Test
+    public void stoppingCanceledSweepPersistsEachOriginWithoutDuplicatingItems() throws Exception {
         Path first = temporary.newFolder().toPath(), second = temporary.newFolder().toPath();
         ChunkVaultStorage.queueRecycledItem(first, "run", new ItemStack(Items.STONE, 3), provider());
         ChunkVaultStorage.queueRecycledItem(second, "run", new ItemStack(Items.APPLE, 7), provider());
@@ -29,7 +37,8 @@ public class ChunkVaultPendingTest {
         assertEquals(7, count(second));
     }
 
-    @Test public void failedWriteRetainsOriginalDestinationForRetry() throws Exception {
+    @Test
+    public void failedWriteRetainsOriginalDestinationForRetry() throws Exception {
         Path blocked = temporary.newFile().toPath();
         ChunkVaultStorage.queueRecycledItem(blocked, "run", new ItemStack(Items.STONE, 3), provider());
         ChunkVaultStorage.flushPending();

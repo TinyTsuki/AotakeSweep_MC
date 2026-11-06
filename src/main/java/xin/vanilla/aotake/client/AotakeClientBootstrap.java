@@ -3,7 +3,6 @@ package xin.vanilla.aotake.client;
 import xin.vanilla.banira.api.BaniraConfigs;
 
 import net.minecraft.client.Minecraft;
-import net.minecraft.resources.ResourceLocation;
 import xin.vanilla.aotake.AotakeComponent;
 import xin.vanilla.aotake.AotakeSweep;
 import xin.vanilla.aotake.Identifier;
@@ -46,7 +45,7 @@ public final class AotakeClientBootstrap {
         xin.vanilla.aotake.internal.client.dev.AotakeNetworkSmokeClientRunner.register();
 
         BaniraClientEvents.ModLifecycle.onClientSetup(event -> {
-            ResourceLocation texture = Identifier.id().create("gui/quick_icon.png");
+            net.minecraft.resources.Identifier texture = Identifier.id().create("gui/quick_icon.png");
             Component label = AotakeComponent.get().transClient("key.aotake_sweep.categories");
             QuickActionContextMenuItem editClientConfig = new QuickActionContextMenuItem(AotakeComponent.get().transClientAuto("edit_client_config"), ctx ->
                     ConfigEditorScreen.open(BaniraConfigs.holder(ClientConfig.class), ctx.currentScreen())

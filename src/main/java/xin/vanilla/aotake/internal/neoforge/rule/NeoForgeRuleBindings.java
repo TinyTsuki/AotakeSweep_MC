@@ -149,7 +149,7 @@ public final class NeoForgeRuleBindings {
                 readers.add(value -> {
                     if (!(value instanceof CollectionTag))
                         throw new IllegalStateException("Expected NBT list at " + key);
-                    CollectionTag<?> list = (CollectionTag<?>) value;
+                    CollectionTag list = (CollectionTag) value;
                     return index < list.size() ? list.get(index) : null;
                 });
             }
@@ -166,10 +166,10 @@ public final class NeoForgeRuleBindings {
 
     private static Object nbtValue(Tag tag, Class<?> type) {
         Object result;
-        if (tag instanceof NumericTag) result = ((NumericTag) tag).getAsNumber();
-        else if (tag instanceof StringTag) result = tag.getAsString();
+        if (tag instanceof NumericTag) result = ((NumericTag) tag).box();
+        else if (tag instanceof StringTag) result = ((StringTag) tag).value();
         else if (tag instanceof CollectionTag && (type.isArray() || type == List.class || type == Collection.class)) {
-            CollectionTag<?> list = (CollectionTag<?>) tag;
+            CollectionTag list = (CollectionTag) tag;
             Class<?> element = type.isArray() ? box(type.getComponentType()) : Object.class;
             Object array = type.isArray() ? Array.newInstance(type.getComponentType(), list.size()) : null;
             List<Object> items = array == null ? new ArrayList<>(list.size()) : null;

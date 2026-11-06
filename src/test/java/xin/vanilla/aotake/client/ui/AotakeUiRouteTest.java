@@ -1,6 +1,7 @@
 package xin.vanilla.aotake.client.ui;
 
 import org.junit.BeforeClass;
+import org.junit.Rule;
 import org.junit.Test;
 import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.tree.*;
@@ -16,6 +17,9 @@ import java.util.concurrent.atomic.AtomicInteger;
 import static org.junit.Assert.*;
 
 public class AotakeUiRouteTest {
+    @Rule
+    public final xin.vanilla.aotake.test.NativeClientRule nativeClient = new xin.vanilla.aotake.test.NativeClientRule();
+
     @BeforeClass
     public static void bootstrap() {
         DustbinUiSessionTest.bootstrap();
