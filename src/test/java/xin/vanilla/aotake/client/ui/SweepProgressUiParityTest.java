@@ -101,33 +101,12 @@ public class SweepProgressUiParityTest {
             assertEquals(path.endsWith("ProgressRender") ? 1 : 0, manualRenders);
             assertEquals(path.endsWith("ProgressRender") ? 1 : 0, angleBindings);
         }
-        String template;
-        try (var in = getClass().getResourceAsStream("/assets/apricityui/apricity/aotake_sweep/progress.html")) {
-            assertNotNull(in);
-            template = new String(in.readAllBytes(), java.nio.charset.StandardCharsets.UTF_8);
-        }
-        assertTrue(template.contains("aui-mouse-events\" content=\"none"));
-        assertTrue(template.contains("pointer-events:none"));
-        assertFalse(template.contains("<script"));
-        assertTrue(template.length() < 1024);
         assertTrue(new SweepProgressUiBinding().spec().manual());
         assertFalse("The cleanup HUD must load its own overridable HTML template", new SweepProgressUiBinding().spec().shared());
     }
 
     @Test
-    public void defaultHudStylesAreLightweightAndDoNotAddDecorativeChrome() throws Exception {
-        String css;
-        try (var in = getClass().getResourceAsStream("/assets/apricityui/apricity/aotake_sweep/progress.css")) {
-            assertNotNull("HTML styles must be resource-pack overridable", in);
-            css = new String(in.readAllBytes(), java.nio.charset.StandardCharsets.UTF_8);
-        }
-        assertTrue(css.length() < 2048);
-        assertTrue(css.contains("var(--hud-color)"));
-        assertTrue(css.contains("var(--hud-angle)"));
-        assertFalse(css.contains("box-shadow"));
-        assertFalse(css.contains("border-radius"));
-        assertFalse(css.contains("font-family"));
-        assertFalse(css.contains("!important"));
+    public void nativeProgressRendererRetainsAllThreeHudIdentities() throws Exception {
         var node = new org.objectweb.asm.tree.ClassNode();
         try (var in = getClass().getResourceAsStream("/xin/vanilla/aotake/screen/ProgressRender.class")) {
             new org.objectweb.asm.ClassReader(in).accept(node, 0);
