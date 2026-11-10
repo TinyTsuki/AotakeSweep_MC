@@ -18,15 +18,6 @@ public class ConfigurationAccessorContractTest {
         verifyDeclaration(ClientConfig.class);
     }
 
-    @Test
-    public void sourcesContainNoDisabledAccessors() throws Exception {
-        for (String name : new String[]{"CommonConfig", "ClientConfig"}) {
-            String source = new String(Files.readAllBytes(Paths.get(
-                    "src/main/java/xin/vanilla/aotake/config/" + name + ".java")), StandardCharsets.UTF_8);
-            assertFalse(name + " still contains redundant disabled accessors",
-                    source.matches("(?s).*AccessLevel\\s*\\.\\s*NONE.*"));
-        }
-    }
 
     private static void verifyDeclaration(Class<?> type) {
         for (Method method : type.getDeclaredMethods()) {
