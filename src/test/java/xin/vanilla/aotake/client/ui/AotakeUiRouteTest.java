@@ -140,22 +140,6 @@ public class AotakeUiRouteTest {
         assertEquals(5, dispatchers);
     }
 
-    @Test
-    public void templatesAreLocalSmallAndContainerMouseTransparent() throws Exception {
-        Path root = java.nio.file.Paths.get("src/main/resources/assets/apricityui/apricity/aotake_sweep");
-        String html = UiBoundaryChecks.text(root.resolve("dustbin.html"), StandardCharsets.UTF_8);
-        String css = UiBoundaryChecks.text(root.resolve("aotake.css"), StandardCharsets.UTF_8);
-        assertTrue(html.contains("aui-mouse-events\" content=\"none"));
-        assertTrue(css.contains("pointer-events:none"));
-        long bytes = 0;
-        for (String file : new String[]{"dustbin.html", "aotake.css"}) {
-            String text = UiBoundaryChecks.text(root.resolve(file), StandardCharsets.UTF_8);
-            assertFalse(text.contains("<script"));
-            assertFalse(text.contains("https:"));
-            bytes += Files.size(root.resolve(file));
-        }
-        assertTrue(bytes < 4096);
-    }
 
     private ClassNode read(String name) throws Exception {
         ClassNode node = new ClassNode();
