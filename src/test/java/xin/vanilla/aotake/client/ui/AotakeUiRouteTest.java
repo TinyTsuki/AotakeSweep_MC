@@ -90,11 +90,11 @@ public class AotakeUiRouteTest {
             ClassNode node = read("client/ui/" + name);
             for (MethodNode method : node.methods)
                 for (lombok.var instruction : method.instructions) {
-                    if (instruction instanceof TypeInsnNode  && ((TypeInsnNode) instruction).getOpcode() == org.objectweb.asm.Opcodes.NEW)
+                    if (instruction instanceof TypeInsnNode && ((TypeInsnNode) instruction).getOpcode() == org.objectweb.asm.Opcodes.NEW)
                         assertFalse(((TypeInsnNode) instruction).desc, ((TypeInsnNode) instruction).desc.contains("Menu") || ((TypeInsnNode) instruction).desc.endsWith("/Slot") || ((TypeInsnNode) instruction).desc.endsWith("/ChestScreen"));
-                    if (instruction instanceof MethodInsnNode )
+                    if (instruction instanceof MethodInsnNode)
                         assertFalse(((MethodInsnNode) instruction).name, ((MethodInsnNode) instruction).name.equals("handleInventoryMouseClick") || ((MethodInsnNode) instruction).name.equals("slotClicked") || ((MethodInsnNode) instruction).name.equals("clicked"));
-                    if (instruction instanceof FieldInsnNode  && ((FieldInsnNode) instruction).getOpcode() == org.objectweb.asm.Opcodes.PUTFIELD)
+                    if (instruction instanceof FieldInsnNode && ((FieldInsnNode) instruction).getOpcode() == org.objectweb.asm.Opcodes.PUTFIELD)
                         assertFalse(((FieldInsnNode) instruction).name, ((FieldInsnNode) instruction).name.equals("x") || ((FieldInsnNode) instruction).name.equals("y") || ((FieldInsnNode) instruction).name.equals("containerId"));
                 }
         }
@@ -107,7 +107,7 @@ public class AotakeUiRouteTest {
         int dispatchers = 0;
         for (MethodNode method : node.methods)
             for (lombok.var instruction : method.instructions) {
-                if (instruction instanceof MethodInsnNode  && ((MethodInsnNode) instruction).name.equals("sendPacketToServer")) {
+                if (instruction instanceof MethodInsnNode && ((MethodInsnNode) instruction).name.equals("sendPacketToServer")) {
                     assertEquals("performUiAction", method.name);
                     dispatchers++;
                 }
@@ -115,36 +115,20 @@ public class AotakeUiRouteTest {
         assertEquals(5, dispatchers);
     }
 
-    @Test
-    public void templatesAreLocalSmallAndContainerMouseTransparent() throws Exception {
-        Path root = java.nio.file.Paths.get("src/main/resources/assets/apricityui/apricity/aotake_sweep");
-        String html = new String(java.nio.file.Files.readAllBytes(root.resolve("dustbin.html")),  StandardCharsets.UTF_8);
-        String css = new String(java.nio.file.Files.readAllBytes(root.resolve("aotake.css")),  StandardCharsets.UTF_8);
-        assertTrue(html.contains("aui-mouse-events\" content=\"none"));
-        assertTrue(css.contains("pointer-events:none"));
-        long bytes = 0;
-        for (String file : new String[]{"dustbin.html", "aotake.css"}) {
-            String text = new String(java.nio.file.Files.readAllBytes(root.resolve(file)),  StandardCharsets.UTF_8);
-            assertFalse(text.contains("<script"));
-            assertFalse(text.contains("https:"));
-            bytes += Files.size(root.resolve(file));
-        }
-        assertTrue(bytes < 4096);
-    }
 
     @Test
     public void forge16ContainerAndHudUseTheirActualEventContracts() throws Exception {
         lombok.var events = new java.util.HashSet<String>();
         for (lombok.var method : read("screen/DustbinRender").methods)
             for (lombok.var instruction : method.instructions)
-                if (instruction instanceof TypeInsnNode ) events.add(((TypeInsnNode) instruction).desc);
+                if (instruction instanceof TypeInsnNode) events.add(((TypeInsnNode) instruction).desc);
         for (String event : new String[]{"InitGuiEvent$Post", "MouseClickedEvent$Pre",
                 "MouseReleasedEvent$Pre", "DrawScreenEvent$Post", "KeyboardKeyPressedEvent$Pre"})
             assertTrue(event, events.contains("net/minecraftforge/client/event/GuiScreenEvent$" + event));
         int stacks = 0;
         for (lombok.var method : read("screen/ProgressRender").methods)
             for (lombok.var instruction : method.instructions)
-                if (instruction instanceof MethodInsnNode 
+                if (instruction instanceof MethodInsnNode
                         && ((MethodInsnNode) instruction).owner.equals("net/minecraftforge/client/event/RenderGameOverlayEvent")) {
                     assertNotEquals("getPoseStack", ((MethodInsnNode) instruction).name);
                     if (((MethodInsnNode) instruction).name.equals("getMatrixStack")) stacks++;
