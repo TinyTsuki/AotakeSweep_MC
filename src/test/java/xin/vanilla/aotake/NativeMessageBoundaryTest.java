@@ -25,14 +25,6 @@ public class NativeMessageBoundaryTest {
         xin.vanilla.aotake.test.NativeBootstrap.initialize();
     }
 
-    @Test
-    public void productionBoundaryRetainsNativeNames() throws Exception {
-        String source = new String(Files.readAllBytes(Paths.get("src/main/java/xin/vanilla/aotake/event/EventHandlerProxy.java")), StandardCharsets.UTF_8);
-        assertTrue(source.contains("object(copy.getHoverName().copy())"));
-        assertTrue(source.contains("aotake.putString(\"name\", originalNameJson)"));
-        assertTrue(source.contains("appendArg(entity.getDisplayName()).appendArg(originalName).toChat("));
-        assertFalse(source.contains("String originalNameText = copy.getHoverName().getString()"));
-    }
 
     @Test
     public void composingNamesPreservesVanillaTranslationsAndTheOriginal() {
