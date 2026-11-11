@@ -1,28 +1,28 @@
 package xin.vanilla.aotake.internal.client.dev;
 
-import net.minecraft.client.gui.GuiGraphics;
-import xin.vanilla.banira.api.BaniraConfigs;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.inventory.ContainerScreen;
+import net.minecraft.network.chat.Component;
 import net.minecraft.world.inventory.ChestMenu;
 import net.minecraft.world.inventory.Slot;
-import net.minecraft.network.chat.Component;
-import net.neoforged.neoforge.client.event.ScreenEvent;
-import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.bus.api.EventPriority;
 import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.neoforge.client.event.ScreenEvent;
+import net.neoforged.neoforge.common.NeoForge;
 import xin.vanilla.aotake.AotakeSweep;
 import xin.vanilla.aotake.config.ClientConfig;
 import xin.vanilla.aotake.enums.EnumDustbinClientUiStyle;
 import xin.vanilla.aotake.internal.dev.AotakeNetworkSmokeStatus;
 import xin.vanilla.aotake.screen.DustbinRender;
 import xin.vanilla.aotake.screen.PlayerConfigScreen;
+import xin.vanilla.banira.api.BaniraConfigs;
 import xin.vanilla.banira.client.gui.BaniraScreen;
 import xin.vanilla.banira.client.gui.ConfigEditorScreen;
 import xin.vanilla.banira.client.gui.tooltip.TooltipRequestCollector;
-import xin.vanilla.banira.client.gui.widget.CollapsiblePanelWidget;
 import xin.vanilla.banira.client.gui.widget.BaseWidget;
+import xin.vanilla.banira.client.gui.widget.CollapsiblePanelWidget;
 import xin.vanilla.banira.client.gui.widget.IWidget;
 import xin.vanilla.banira.client.gui.widget.TooltipWidget;
 
@@ -33,7 +33,9 @@ import java.lang.reflect.Method;
 import java.util.List;
 import java.util.function.BooleanSupplier;
 
-/** Dev-only wrappers retain the real chest mixins, sidebar events and Banira editor renderers. */
+/**
+ * Dev-only wrappers retain the real chest mixins, sidebar events and Banira editor renderers.
+ */
 public final class AotakeNetworkSmokeScreens {
     private final BooleanSupplier sampling;
     private final Metrics vanilla;
@@ -316,7 +318,8 @@ public final class AotakeNetworkSmokeScreens {
             boolean visible = widget.bounds().width() > 0 && widget.bounds().height() > 0
                     && x > 0 && x < screen.width && y > 40 && y < screen.height - 40;
             for (IWidget parent = widget.parent(); visible && parent != null; parent = parent.parent()) {
-                if (parent instanceof CollapsiblePanelWidget && !((CollapsiblePanelWidget) parent).expanded()) visible = false;
+                if (parent instanceof CollapsiblePanelWidget && !((CollapsiblePanelWidget) parent).expanded())
+                    visible = false;
                 if (!parent.visible() || parent.bounds() == null || x < parent.absoluteX() || y < parent.absoluteY()
                         || x >= parent.absoluteX() + parent.bounds().width()
                         || y >= parent.absoluteY() + parent.bounds().height()) visible = false;

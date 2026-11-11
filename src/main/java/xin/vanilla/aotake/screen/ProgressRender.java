@@ -39,6 +39,7 @@ public final class ProgressRender {
         Minecraft mc = Minecraft.getInstance();
         return mc != null && mc.player != null && !mc.options.hideGui && !AotakeMinimapCountdown.snapshot().formattedTime().isEmpty();
     }
+
     private static AutoCloseable registration;
 
     private ProgressRender() {

@@ -1,27 +1,25 @@
 package xin.vanilla.aotake.internal.server.dev;
 
+import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.InteractionResult;
+import net.minecraft.world.SimpleContainer;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.Pose;
 import net.minecraft.world.entity.animal.Cow;
 import net.minecraft.world.entity.item.ItemEntity;
-import net.minecraft.server.level.ServerPlayer;
-import xin.vanilla.aotake.internal.dev.AotakeNetworkSmokeNotifications;
-import net.minecraft.world.SimpleContainer;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
-import net.minecraft.server.MinecraftServer;
-import net.minecraft.world.InteractionResult;
-import net.minecraft.world.InteractionHand;
 import net.minecraft.world.phys.Vec3;
-import net.minecraft.server.level.ServerLevel;
-import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.bus.api.IEventBus;
-import net.neoforged.fml.event.config.ModConfigEvent;
 import net.neoforged.fml.config.IConfigSpec;
-import net.neoforged.neoforge.event.tick.ServerTickEvent;
+import net.neoforged.fml.event.config.ModConfigEvent;
+import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.event.entity.player.PlayerInteractEvent;
-import xin.vanilla.aotake.AotakeSweep;
+import net.neoforged.neoforge.event.tick.ServerTickEvent;
 import xin.vanilla.aotake.config.CommonConfig;
 import xin.vanilla.aotake.config.CommonConfigView;
 import xin.vanilla.aotake.data.player.PlayerSweepData;
@@ -29,6 +27,7 @@ import xin.vanilla.aotake.data.world.WorldTrashData;
 import xin.vanilla.aotake.enums.EnumChunkCheckMode;
 import xin.vanilla.aotake.enums.EnumListType;
 import xin.vanilla.aotake.event.EventHandlerProxy;
+import xin.vanilla.aotake.internal.dev.AotakeNetworkSmokeNotifications;
 import xin.vanilla.aotake.internal.dev.AotakeNetworkSmokeStatus;
 import xin.vanilla.aotake.util.AotakeUtils;
 import xin.vanilla.banira.api.BaniraServer;
@@ -36,12 +35,12 @@ import xin.vanilla.banira.common.util.CommandUtils;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
-import java.util.List;
-import java.util.ArrayList;
-import java.util.Collections;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
@@ -310,7 +309,8 @@ public final class AotakeNetworkSmokeServerRunner {
             case WAIT_MEASURED_CHUNKS:
                 // Loading FULL chunks does not make their entity sections queryable yet.
                 if (!measuredWorkload.chunksReady()) {
-                    if (++measuredChunkWaitTicks > 200) throw new IllegalStateException("Measured chunks did not become ready");
+                    if (++measuredChunkWaitTicks > 200)
+                        throw new IllegalStateException("Measured chunks did not become ready");
                     return false;
                 }
                 AotakeNetworkSmokeStatus.append("PASS measured-chunks-ready chunks=4 wait-ticks=" + measuredChunkWaitTicks);
@@ -541,7 +541,9 @@ public final class AotakeNetworkSmokeServerRunner {
         COMPLETE
     }
 
-    /** Spark 1.10 sampler/export API, isolated from production dependencies. */
+    /**
+     * Spark 1.10 sampler/export API, isolated from production dependencies.
+     */
     @SuppressWarnings({"rawtypes", "unchecked"})
     private static final class ReflectiveSparkProfile {
         private final Object sampler, platform, plugin;
