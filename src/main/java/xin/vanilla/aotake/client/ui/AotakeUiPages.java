@@ -1,7 +1,7 @@
 package xin.vanilla.aotake.client.ui;
 
-import net.minecraft.client.Minecraft;
 import com.mojang.blaze3d.matrix.MatrixStack;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.gui.screen.inventory.ChestScreen;
 import xin.vanilla.aotake.AotakeComponent;
@@ -30,7 +30,7 @@ public final class AotakeUiPages {
     }
 
     public static void attach(Screen candidate) {
-        if (!registered || !(candidate instanceof ChestScreen )) return;
+        if (!registered || !(candidate instanceof ChestScreen)) return;
         ChestScreen chest = (ChestScreen) candidate;
         Minecraft mc = Minecraft.getInstance();
         if (mc.player == null || mc.player.containerMenu != chest.getMenu()
@@ -44,7 +44,7 @@ public final class AotakeUiPages {
         session = new DustbinUiSession(chest.getMenu(), chunk,
                 () -> mc.screen == chest && mc.player != null && mc.player.containerMenu == chest.getMenu(),
                 action -> DustbinRender.performUiAction(chunk, action), chest::onClose, () -> mc.player == null
-                        ? net.minecraft.item.ItemStack.EMPTY : mc.player.inventory.getCarried());
+                ? net.minecraft.item.ItemStack.EMPTY : mc.player.inventory.getCarried());
     }
 
     public static boolean renderBackground(ChestScreen chest, MatrixStack graphics) {
@@ -148,13 +148,20 @@ public final class AotakeUiPages {
 
     private static String tooltipKey(DustbinUiSession.Action action) {
         switch (action) {
-            case CLEAR_CACHE: return "clear_cache";
-            case CLEAR_ALL: return "clear_all_dustbin";
-            case CLEAR_PAGE: return "clear_cur_dustbin";
-            case REFRESH: return "refresh_page";
-            case PREVIOUS: return "previous_page";
-            case NEXT: return "next_page";
-            default: throw new IllegalArgumentException("Unknown dustbin action");
+            case CLEAR_CACHE:
+                return "clear_cache";
+            case CLEAR_ALL:
+                return "clear_all_dustbin";
+            case CLEAR_PAGE:
+                return "clear_cur_dustbin";
+            case REFRESH:
+                return "refresh_page";
+            case PREVIOUS:
+                return "previous_page";
+            case NEXT:
+                return "next_page";
+            default:
+                throw new IllegalArgumentException("Unknown dustbin action");
         }
     }
 

@@ -1,12 +1,12 @@
 package xin.vanilla.aotake.screen;
 
-import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.matrix.MatrixStack;
+import com.mojang.blaze3d.systems.RenderSystem;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.widget.button.Button;
+import net.minecraft.client.entity.player.ClientPlayerEntity;
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.gui.screen.inventory.ChestScreen;
-import net.minecraft.client.entity.player.ClientPlayerEntity;
+import net.minecraft.client.gui.widget.button.Button;
 import net.minecraft.util.ResourceLocation;
 import net.minecraftforge.client.event.GuiScreenEvent;
 import org.lwjgl.glfw.GLFW;
@@ -205,7 +205,7 @@ public final class DustbinRender {
             return;
         }
 
-        if (event instanceof GuiScreenEvent.InitGuiEvent.Post ) {
+        if (event instanceof GuiScreenEvent.InitGuiEvent.Post) {
             nativeToolbar.clear();
             vanillaButtonTooltips.clear();
             xin.vanilla.aotake.client.ui.AotakeUiPages.attach(screen);
@@ -287,14 +287,14 @@ public final class DustbinRender {
                 dustbinNextButton = nextButton;
                 ((GuiScreenEvent.InitGuiEvent.Post) event).addWidget(nextButton);
             }
-        } else if (event instanceof GuiScreenEvent.MouseClickedEvent.Pre ) {
+        } else if (event instanceof GuiScreenEvent.MouseClickedEvent.Pre) {
             if (xin.vanilla.aotake.client.ui.AotakeUiPages.click(screen, ((GuiScreenEvent.MouseClickedEvent.Pre) event).getMouseX(), ((GuiScreenEvent.MouseClickedEvent.Pre) event).getMouseY(), ((GuiScreenEvent.MouseClickedEvent.Pre) event).getButton())) {
                 ((GuiScreenEvent.MouseClickedEvent.Pre) event).setCanceled(true);
             }
-        } else if (event instanceof GuiScreenEvent.MouseReleasedEvent.Pre ) {
+        } else if (event instanceof GuiScreenEvent.MouseReleasedEvent.Pre) {
             if (xin.vanilla.aotake.client.ui.AotakeUiPages.release(screen, ((GuiScreenEvent.MouseReleasedEvent.Pre) event).getButton()))
                 ((GuiScreenEvent.MouseReleasedEvent.Pre) event).setCanceled(true);
-        } else if (event instanceof GuiScreenEvent.DrawScreenEvent.Post ) {
+        } else if (event instanceof GuiScreenEvent.DrawScreenEvent.Post) {
             if (xin.vanilla.aotake.client.ui.AotakeUiPages.owns(screen)) {
                 xin.vanilla.aotake.client.ui.AotakeUiPages.tooltip(screen, ((GuiScreenEvent.DrawScreenEvent.Post) event).getMatrixStack(), ((GuiScreenEvent.DrawScreenEvent.Post) event).getMouseX(), ((GuiScreenEvent.DrawScreenEvent.Post) event).getMouseY());
                 return;
@@ -610,7 +610,8 @@ public final class DustbinRender {
     }
 
     public static List<ScreenCoordinate> nativeToolbarRegions(Screen screen) {
-        if (!isOurSpecialChestScreen(screen, Minecraft.getInstance())) return com.google.common.collect.ImmutableList.of();
+        if (!isOurSpecialChestScreen(screen, Minecraft.getInstance()))
+            return com.google.common.collect.ImmutableList.of();
         List<ScreenCoordinate> regions = new ArrayList<>();
         EnumDustbinClientUiStyle style = ClientConfig.get().dustbin().dustbinUiStyle();
         if (style == EnumDustbinClientUiStyle.VANILLA) {

@@ -3,8 +3,8 @@ package xin.vanilla.aotake.screen;
 import com.mojang.blaze3d.matrix.MatrixStack;
 import net.minecraft.client.Minecraft;
 import net.minecraft.util.ResourceLocation;
-import net.minecraftforge.client.event.RenderGameOverlayEvent;
 import net.minecraft.util.math.vector.Vector3f;
+import net.minecraftforge.client.event.RenderGameOverlayEvent;
 import xin.vanilla.aotake.Identifier;
 import xin.vanilla.aotake.client.minimap.AotakeMinimapCountdown;
 import xin.vanilla.aotake.client.ui.SweepProgressUiBinding;
@@ -104,12 +104,12 @@ public final class ProgressRender {
         if (parts.isEmpty() || BaniraUi.renderHud(SweepProgressUiBinding.ID, event.getMatrixStack())) return;
         MatrixStack ms = event.getMatrixStack();
         for (UiHudFrame.Part part : parts) {
-            if (part instanceof UiHudFrame.Sprite ) {
+            if (part instanceof UiHudFrame.Sprite) {
                 TransformArgs transformArgs = new TransformArgs(ms).angle(((UiHudFrame.Sprite) part).angleDegrees()).center(EnumPosition.CENTER)
                         .x(((UiHudFrame.Sprite) part).x()).y(((UiHudFrame.Sprite) part).y()).width(((UiHudFrame.Sprite) part).width()).height(((UiHudFrame.Sprite) part).height());
                 AbstractGuiUtils.renderByTransform(transformArgs, arg ->
                         blitProgressAtlas(ms, ((UiHudFrame.Sprite) part).texture(), (int) arg.x(), (int) arg.y(), (int) arg.width(), (int) arg.height()));
-            } else if (part instanceof UiHudFrame.Text ) {
+            } else if (part instanceof UiHudFrame.Text) {
                 drawProgressCountdownText(mc, ms, ((UiHudFrame.Text) part));
             }
         }

@@ -66,7 +66,7 @@ public final class SweepProgressUiBinding implements UiHudBinding {
 
         public Selection(List<EnumProgressBarType> types, boolean hideExperience) {
             types = com.google.common.collect.ImmutableList.copyOf(types);
-        
+
             this.types = types;
             this.hideExperience = hideExperience;
         }

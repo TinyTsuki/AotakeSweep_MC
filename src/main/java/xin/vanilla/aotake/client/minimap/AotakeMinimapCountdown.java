@@ -1,7 +1,6 @@
 package xin.vanilla.aotake.client.minimap;
 
 import net.minecraft.client.Minecraft;
-import net.minecraft.util.text.ITextComponent;
 import net.minecraft.util.ResourceLocation;
 import xin.vanilla.aotake.AotakeComponent;
 import xin.vanilla.aotake.config.ClientConfig;
@@ -21,7 +20,8 @@ public final class AotakeMinimapCountdown {
     public static void register() {
         BaniraMinimapLines.register(new MinimapLine(new ResourceLocation("aotake_sweep", "cleanup_countdown"),
                 new net.minecraft.util.text.TranslationTextComponent("word.aotake_sweep.minimap_cleanup_countdown"), () -> {
-            if (!ClientConfig.get().minimapCountdown().enabled()) return new net.minecraft.util.text.StringTextComponent("");
+            if (!ClientConfig.get().minimapCountdown().enabled())
+                return new net.minecraft.util.text.StringTextComponent("");
             String time = CONNECTION.formattedTime();
             return time.isEmpty() ? new net.minecraft.util.text.StringTextComponent("")
                     : new net.minecraft.util.text.StringTextComponent(AotakeComponent.get().transClientAuto("minimap_cleanup_countdown", time).toString());

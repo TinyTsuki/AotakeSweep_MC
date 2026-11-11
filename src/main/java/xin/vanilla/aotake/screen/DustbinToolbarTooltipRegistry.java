@@ -3,7 +3,9 @@ package xin.vanilla.aotake.screen;
 import java.util.ArrayList;
 import java.util.List;
 
-/** 保存原版按钮没有能力持有的 Tooltip 及其命中区域。 */
+/**
+ * 保存原版按钮没有能力持有的 Tooltip 及其命中区域。
+ */
 final class DustbinToolbarTooltipRegistry<T> {
     private final List<Entry<T>> entries = new ArrayList<>();
 
