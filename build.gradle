@@ -126,13 +126,9 @@ repositories {
 dependencies {
     implementation "net.neoforged:neoforge:${neo_version}"
 
-    testImplementation 'junit:junit:4.13.2'
-    testRuntimeOnly('maven.modrinth:spark:v5qtqRQi') { transitive = false }
 
     compileOnly 'org.projectlombok:lombok:1.18.48'
     annotationProcessor 'org.projectlombok:lombok:1.18.48'
-    testCompileOnly 'org.projectlombok:lombok:1.18.48'
-    testAnnotationProcessor 'org.projectlombok:lombok:1.18.48'
 
     implementation(baniraCodexCoords) {
         changing = true
