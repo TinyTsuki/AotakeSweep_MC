@@ -83,6 +83,9 @@ public final class AotakeNotificationTypes {
     };
 
     public static void registerAllOnServer() {
+        for (String type : ALL_TYPE_IDS) {
+            ServerNotificationTypeRegistry.registerImportance(type, defaultImportant(type));
+        }
         EnumNotificationTypeDisplayMode vanillaChat = EnumNotificationTypeDisplayMode.VANILLA_CHAT;
         ServerNotificationTypeRegistry.register(SWEEP_COUNTDOWN, EnumPosition.TOP_CENTER, EnumMoveType.AUTO);
         ServerNotificationTypeRegistry.register(SWEEP_RESULT_INTERACTIVE, EnumPosition.TOP_CENTER, EnumMoveType.AUTO, vanillaChat);
@@ -104,6 +107,11 @@ public final class AotakeNotificationTypes {
             return EnumNotificationTypeDisplayMode.VANILLA_CHAT;
         }
         return EnumNotificationTypeDisplayMode.OVERLAY;
+    }
+
+    public static boolean defaultImportant(String typeId) {
+        return CHUNK_CHECK_INTERACTIVE.equals(typeId) || CHUNK_CHECK_COMPACT.equals(typeId)
+                || ADMIN_BROADCAST.equals(typeId);
     }
 
     private AotakeNotificationTypes() {
