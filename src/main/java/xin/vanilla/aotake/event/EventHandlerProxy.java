@@ -1,9 +1,8 @@
 package xin.vanilla.aotake.event;
 
 import lombok.Getter;
-import net.minecraft.core.component.DataComponents;
-import xin.vanilla.banira.api.BaniraServer;
 import lombok.Setter;
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.ClickEvent;
 import net.minecraft.network.chat.HoverEvent;
@@ -43,14 +42,15 @@ import xin.vanilla.aotake.enums.EnumChunkCheckMode;
 import xin.vanilla.aotake.enums.EnumCommandType;
 import xin.vanilla.aotake.enums.EnumSelfCleanMode;
 import xin.vanilla.aotake.internal.fabric.FabricInteractionPolicy;
+import xin.vanilla.aotake.internal.server.AotakeRuleRuntime;
 import xin.vanilla.aotake.internal.server.AotakeSweepRuntime;
 import xin.vanilla.aotake.network.packet.GhostCameraToClient;
 import xin.vanilla.aotake.network.packet.SweepDataSyncToClient;
 import xin.vanilla.aotake.notification.AotakeNotificationTypes;
 import xin.vanilla.aotake.util.AotakeUtils;
-import xin.vanilla.aotake.internal.server.AotakeRuleRuntime;
 import xin.vanilla.aotake.util.EntitySweeper;
 import xin.vanilla.aotake.util.RateLimitedErrorLogger;
+import xin.vanilla.banira.api.BaniraServer;
 import xin.vanilla.banira.common.data.Component;
 import xin.vanilla.banira.common.data.KeyValue;
 import xin.vanilla.banira.common.data.WorldCoordinate;
@@ -58,7 +58,10 @@ import xin.vanilla.banira.common.enums.*;
 import xin.vanilla.banira.common.util.*;
 
 import javax.annotation.Nullable;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -80,6 +83,7 @@ public class EventHandlerProxy {
      * 与 {@code countdown/1000} 一致；仅在 warnKey 变化时发倒计时通知与 SweepTimeSync，避免同一秒内每 tick 重复发送约 20 次。
      */
     private static String lastCountdownWarningDispatchKey = null;
+
     public static void resetCleanupState() {
         nextSweepTime = 0;
         lastChunkCheckTime = 0;
@@ -98,6 +102,7 @@ public class EventHandlerProxy {
         lastChunkCheckTime = now;
         return true;
     }
+
     private static final Map<String, Long> lastHandledEntityUseTick = new ConcurrentHashMap<>();
     private static final Map<String, GhostState> ghostStates = new ConcurrentHashMap<>();
     private static final int ghostScanInterval = 20;
