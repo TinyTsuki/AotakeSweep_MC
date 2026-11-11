@@ -5,9 +5,9 @@ import net.minecraft.client.gui.screens.ConnectScreen;
 import net.minecraft.client.gui.screens.inventory.ContainerScreen;
 import net.minecraft.client.multiplayer.ServerData;
 import net.minecraft.client.multiplayer.resolver.ServerAddress;
+import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
-import net.minecraft.network.chat.Component;
 import net.minecraftforge.common.MinecraftForge;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -344,7 +344,9 @@ public final class AotakeNetworkSmokeClientRunner {
         }
     }
 
-    /** Spark 1.10 client plugin, Render thread only, native protobuf export. */
+    /**
+     * Spark 1.10 client plugin, Render thread only, native protobuf export.
+     */
     private static final class ReflectiveClientSparkProfile {
         private final Object sampler;
         private final Future<?> future;
@@ -442,7 +444,8 @@ public final class AotakeNetworkSmokeClientRunner {
 
         private static Class<?> base(Object plugin) {
             Class<?> type = plugin.getClass();
-            while (type != null && !type.getName().equals("me.lucko.spark.forge.plugin.ForgeSparkPlugin")) type = type.getSuperclass();
+            while (type != null && !type.getName().equals("me.lucko.spark.forge.plugin.ForgeSparkPlugin"))
+                type = type.getSuperclass();
             if (type == null) throw new IllegalStateException("Spark base plugin was not found");
             return type;
         }

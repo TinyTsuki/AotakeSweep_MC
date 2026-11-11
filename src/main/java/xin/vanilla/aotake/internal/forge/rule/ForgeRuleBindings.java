@@ -1,8 +1,8 @@
 package xin.vanilla.aotake.internal.forge.rule;
 
-import net.minecraft.world.entity.Entity;
 import net.minecraft.nbt.*;
 import net.minecraft.network.syncher.EntityDataAccessor;
+import net.minecraft.world.entity.Entity;
 import xin.vanilla.aotake.rule.RuleBindingPlan;
 import xin.vanilla.aotake.rule.RuleDiagnostic;
 
