@@ -57,6 +57,7 @@ public final class ClientModEventHandler {
      * 将说明保留为客户端翻译组件，交由 Banira 按当前语言渲染。
      */
     private static void registerNotificationType(String typeId, String descriptionKey) {
+        BaniraClientNotificationTypes.registerImportance(typeId, AotakeNotificationTypes.defaultImportant(typeId));
         BaniraClientNotificationTypes.register(typeId,
                 AotakeNotificationTypes.defaultDisplay(typeId),
                 AotakeComponent.get().transClientAuto(descriptionKey));
