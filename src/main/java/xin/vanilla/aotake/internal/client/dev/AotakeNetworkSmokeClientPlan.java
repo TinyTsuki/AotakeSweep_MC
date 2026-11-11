@@ -1,6 +1,8 @@
 package xin.vanilla.aotake.internal.client.dev;
 
-/** 网络 smoke 客户端在登录同步后的纯状态决策。 */
+/**
+ * 网络 smoke 客户端在登录同步后的纯状态决策。
+ */
 final class AotakeNetworkSmokeClientPlan {
     private AotakeNetworkSmokeClientPlan() {
     }

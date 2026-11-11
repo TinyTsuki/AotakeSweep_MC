@@ -18,7 +18,9 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 
-/** 自动连接独立服务端，并验证玩家偏好与垃圾箱容器同步。 */
+/**
+ * 自动连接独立服务端，并验证玩家偏好与垃圾箱容器同步。
+ */
 public final class AotakeNetworkSmokeClientRunner {
     private static final Logger LOGGER = LogManager.getLogger();
     private static final int TIMEOUT_TICKS = 2400;

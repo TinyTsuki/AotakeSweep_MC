@@ -15,7 +15,6 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.phys.EntityHitResult;
 import net.minecraft.world.phys.Vec3;
-import xin.vanilla.aotake.AotakeSweep;
 import xin.vanilla.aotake.config.CommonConfig;
 import xin.vanilla.aotake.config.CommonConfigView;
 import xin.vanilla.aotake.data.player.PlayerSweepData;
@@ -41,7 +40,9 @@ import java.util.List;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
-/** 真实专服内验证 Aotake 的玩法链、持久化与 Spark 原生报告。 */
+/**
+ * 真实专服内验证 Aotake 的玩法链、持久化与 Spark 原生报告。
+ */
 public final class AotakeNetworkSmokeServerRunner {
     private static final int SENTINEL_COUNT = 7;
     private static final int SENTINEL_CONFIG_VALUE = 11;
@@ -419,7 +420,9 @@ public final class AotakeNetworkSmokeServerRunner {
         COMPLETE
     }
 
-    /** Spark 的 Fabric 导出 API 没有跨版本承诺，烟测仅反射调用其原生 sampler。 */
+    /**
+     * Spark 的 Fabric 导出 API 没有跨版本承诺，烟测仅反射调用其原生 sampler。
+     */
     @SuppressWarnings({"rawtypes", "unchecked"})
     private static final class ReflectiveSparkProfile {
         private final Object plugin;

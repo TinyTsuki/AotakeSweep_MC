@@ -1,7 +1,7 @@
 package xin.vanilla.aotake.internal.server;
 
-import net.minecraft.world.entity.Entity;
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.world.entity.Entity;
 import org.apache.logging.log4j.LogManager;
 import xin.vanilla.aotake.AotakeSweep;
 import xin.vanilla.aotake.api.rule.EntityRule;

@@ -1,10 +1,9 @@
 package xin.vanilla.aotake.internal.fabric.modmenu;
 
-import xin.vanilla.banira.api.BaniraConfigs;
-
 import com.terraformersmc.modmenu.api.ConfigScreenFactory;
 import com.terraformersmc.modmenu.api.ModMenuApi;
 import xin.vanilla.aotake.config.ClientConfig;
+import xin.vanilla.banira.api.BaniraConfigs;
 import xin.vanilla.banira.client.gui.ConfigEditorScreen;
 
 /**
