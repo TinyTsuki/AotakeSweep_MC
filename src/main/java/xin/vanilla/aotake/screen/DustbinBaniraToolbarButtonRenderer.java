@@ -7,7 +7,9 @@ import xin.vanilla.banira.client.gui.widget.BaseShapeWidget;
 import xin.vanilla.banira.client.gui.widget.ButtonWidget;
 import xin.vanilla.banira.client.util.AbstractGuiUtils;
 
-/** 绘制 Banira 主题垃圾箱的操作轨与自绘图标按钮。 */
+/**
+ * 绘制 Banira 主题垃圾箱的操作轨与自绘图标按钮。
+ */
 public final class DustbinBaniraToolbarButtonRenderer {
 
     /**
