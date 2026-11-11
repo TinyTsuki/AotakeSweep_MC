@@ -1,15 +1,17 @@
 package xin.vanilla.aotake.screen;
 
-import org.joml.Matrix3x2fStack;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.inventory.ContainerScreen;
 import net.minecraft.client.player.LocalPlayer;
+import org.joml.Matrix3x2fStack;
 import xin.vanilla.aotake.AotakeComponent;
 import xin.vanilla.aotake.AotakeLang;
 import xin.vanilla.aotake.Identifier;
+import xin.vanilla.aotake.client.ui.AotakeUiPages;
+import xin.vanilla.aotake.client.ui.DustbinUiSession;
 import xin.vanilla.aotake.config.ClientConfig;
 import xin.vanilla.aotake.config.DustbinGuiConfig;
 import xin.vanilla.aotake.config.DustbinGuiLayoutCache;
@@ -27,8 +29,6 @@ import xin.vanilla.banira.api.client.BaniraKeyHandle;
 import xin.vanilla.banira.client.data.BaniraColorConfig;
 import xin.vanilla.banira.client.data.FontDrawArgs;
 import xin.vanilla.banira.client.data.ScreenCoordinate;
-import xin.vanilla.aotake.client.ui.AotakeUiPages;
-import xin.vanilla.aotake.client.ui.DustbinUiSession;
 import xin.vanilla.banira.client.gui.component.Text;
 import xin.vanilla.banira.client.gui.widget.ButtonWidget;
 import xin.vanilla.banira.client.gui.widget.TooltipWidget;

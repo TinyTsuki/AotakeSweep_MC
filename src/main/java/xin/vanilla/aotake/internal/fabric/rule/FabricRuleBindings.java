@@ -2,20 +2,19 @@ package xin.vanilla.aotake.internal.fabric.rule;
 
 import net.fabricmc.loader.api.FabricLoader;
 import net.fabricmc.loader.api.MappingResolver;
-
-import net.minecraft.world.entity.Entity;
 import net.minecraft.nbt.*;
 import net.minecraft.network.syncher.EntityDataAccessor;
+import net.minecraft.world.entity.Entity;
 import xin.vanilla.aotake.rule.RuleBindingPlan;
 import xin.vanilla.aotake.rule.RuleDiagnostic;
 
-import java.lang.reflect.*;
 import java.lang.invoke.MethodType;
+import java.lang.reflect.*;
 import java.util.*;
-import java.util.function.Supplier;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.Supplier;
 
 /**
  * Cold-path binding compilation. Missing paths are errors; optional values alone may be null.

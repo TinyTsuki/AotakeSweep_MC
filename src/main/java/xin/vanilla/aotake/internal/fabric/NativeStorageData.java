@@ -12,7 +12,8 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.storage.TagValueOutput;
 
 public final class NativeStorageData {
-    private NativeStorageData() { }
+    private NativeStorageData() {
+    }
 
     public static Tag item(ItemStack stack, HolderLookup.Provider registries) {
         return stack.isEmpty() ? new CompoundTag() : ItemStack.CODEC.encodeStart(
@@ -39,8 +40,13 @@ public final class NativeStorageData {
 
     private static TagValueOutput entityOutput(Entity entity) {
         return TagValueOutput.createWithContext(new ProblemReporter() {
-            @Override public ProblemReporter forChild(PathElement path) { return this; }
-            @Override public void report(Problem problem) {
+            @Override
+            public ProblemReporter forChild(PathElement path) {
+                return this;
+            }
+
+            @Override
+            public void report(Problem problem) {
                 throw new IllegalStateException("Cannot serialize entity " + entity.getUUID() + ": " + problem);
             }
         }, entity.registryAccess());

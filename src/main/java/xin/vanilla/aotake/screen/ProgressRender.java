@@ -1,9 +1,8 @@
 package xin.vanilla.aotake.screen;
 
-import org.joml.Matrix3x2fStack;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
-import org.joml.Quaternionf;
+import org.joml.Matrix3x2fStack;
 import xin.vanilla.aotake.Identifier;
 import xin.vanilla.aotake.client.minimap.AotakeMinimapCountdown;
 import xin.vanilla.aotake.client.ui.SweepProgressUiBinding;
@@ -38,6 +37,7 @@ public final class ProgressRender {
         Minecraft mc = Minecraft.getInstance();
         return mc != null && mc.player != null && !mc.options.hideGui && !AotakeMinimapCountdown.snapshot().formattedTime().isEmpty();
     }
+
     private static AutoCloseable registration;
 
     private ProgressRender() {

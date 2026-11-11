@@ -1,7 +1,5 @@
 package xin.vanilla.aotake.internal.client.dev;
 
-import xin.vanilla.banira.api.BaniraConfigs;
-
 import com.mojang.blaze3d.platform.InputConstants;
 import com.mojang.blaze3d.platform.NativeImage;
 import com.mojang.brigadier.CommandDispatcher;
@@ -10,7 +8,6 @@ import net.fabricmc.fabric.api.client.screen.v1.Screens;
 import net.fabricmc.fabric.api.event.player.UseItemCallback;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.Screenshot;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.BackupConfirmScreen;
 import net.minecraft.client.gui.screens.Screen;
@@ -42,6 +39,7 @@ import xin.vanilla.aotake.screen.DustbinRender;
 import xin.vanilla.aotake.screen.PlayerConfigScreen;
 import xin.vanilla.aotake.util.AotakeUtils;
 import xin.vanilla.banira.BaniraComponent;
+import xin.vanilla.banira.api.BaniraConfigs;
 import xin.vanilla.banira.api.client.hud.BaniraHudEvents;
 import xin.vanilla.banira.api.client.hud.BaniraHudRenderEvent;
 import xin.vanilla.banira.api.client.hud.HudOverlayElement;
@@ -507,7 +505,8 @@ public final class AotakeUiSmokeRunner {
                 return;
             }
             appendStatus("PASS hud-normal-events");
-            capture("04-gameplay-hud-normal", image -> { }, () -> {
+            capture("04-gameplay-hud-normal", image -> {
+            }, () -> {
                 setProgressKey(true);
                 resetHudObservations();
                 phase = Phase.HUD_HELD;
@@ -526,7 +525,8 @@ public final class AotakeUiSmokeRunner {
                 return;
             }
             appendStatus("PASS hud-held-events");
-            capture("05-gameplay-hud-progress", image -> { }, () -> {
+            capture("05-gameplay-hud-progress", image -> {
+            }, () -> {
                 setProgressKey(false);
                 client.setScreen(new InventoryScreen(client.player));
                 phase = Phase.QUICK_ACTION;
@@ -582,7 +582,8 @@ public final class AotakeUiSmokeRunner {
                 }
                 String name = String.format(Locale.ROOT, "%02d-dustbin-%s",
                         6 + dustbinStyleIndex, style.name().toLowerCase(Locale.ROOT));
-                capture(name, image -> { }, () -> {
+                capture(name, image -> {
+                }, () -> {
                     appendStatus("PASS dustbin-" + style.name().toLowerCase(Locale.ROOT));
                     dustbinStyleIndex++;
                     if (dustbinStyleIndex >= DUSTBIN_STYLES.length) finish(client);
@@ -713,7 +714,9 @@ public final class AotakeUiSmokeRunner {
     }
 
     private void capture(@Nonnull Minecraft client, @Nonnull String name) {
-        capture(name, image -> { }, () -> { });
+        capture(name, image -> {
+        }, () -> {
+        });
     }
 
     private void capture(String name, java.util.function.Consumer<NativeImage> check, Runnable next) {

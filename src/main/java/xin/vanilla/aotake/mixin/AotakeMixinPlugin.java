@@ -9,14 +9,35 @@ import java.util.List;
 import java.util.Set;
 
 public final class AotakeMixinPlugin implements IMixinConfigPlugin {
-    @Override public void onLoad(String mixinPackage) { }
-    @Override public String getRefMapperConfig() { return null; }
-    @Override public boolean shouldApplyMixin(String target, String mixin) {
+    @Override
+    public void onLoad(String mixinPackage) {
+    }
+
+    @Override
+    public String getRefMapperConfig() {
+        return null;
+    }
+
+    @Override
+    public boolean shouldApplyMixin(String target, String mixin) {
         return !mixin.endsWith(".SmokeScreenshotFrameMixin")
                 || FabricLoader.getInstance().isDevelopmentEnvironment() && Boolean.getBoolean("aotake.uiSmoke");
     }
-    @Override public void acceptTargets(Set<String> mine, Set<String> others) { }
-    @Override public List<String> getMixins() { return null; }
-    @Override public void preApply(String target, ClassNode node, String mixin, IMixinInfo info) { }
-    @Override public void postApply(String target, ClassNode node, String mixin, IMixinInfo info) { }
+
+    @Override
+    public void acceptTargets(Set<String> mine, Set<String> others) {
+    }
+
+    @Override
+    public List<String> getMixins() {
+        return null;
+    }
+
+    @Override
+    public void preApply(String target, ClassNode node, String mixin, IMixinInfo info) {
+    }
+
+    @Override
+    public void postApply(String target, ClassNode node, String mixin, IMixinInfo info) {
+    }
 }
