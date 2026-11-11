@@ -78,11 +78,8 @@ dependencies {
     modImplementation "net.fabricmc.fabric-api:fabric-networking-api-v1:${project.fabric_version}"
     modImplementation "net.fabricmc.fabric-api:fabric-lifecycle-events-v1:${project.fabric_version}"
 
-    testImplementation 'junit:junit:4.13.2'
     compileOnly 'org.projectlombok:lombok:1.18.34'
     annotationProcessor 'org.projectlombok:lombok:1.18.34'
-    testCompileOnly 'org.projectlombok:lombok:1.18.34'
-    testAnnotationProcessor 'org.projectlombok:lombok:1.18.34'
 
     implementation "com.google.code.findbugs:jsr305:3.0.2"
     implementation "org.apache.maven:maven-artifact:4.0.0-rc-3"
