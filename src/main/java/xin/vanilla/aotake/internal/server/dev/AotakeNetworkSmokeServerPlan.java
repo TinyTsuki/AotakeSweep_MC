@@ -1,6 +1,8 @@
 package xin.vanilla.aotake.internal.server.dev;
 
-/** 网络 smoke 服务端受控关停的纯状态决策。 */
+/**
+ * 网络 smoke 服务端受控关停的纯状态决策。
+ */
 final class AotakeNetworkSmokeServerPlan {
     private AotakeNetworkSmokeServerPlan() {
     }

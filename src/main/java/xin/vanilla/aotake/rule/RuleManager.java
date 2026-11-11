@@ -229,8 +229,7 @@ public final class RuleManager<S> implements AutoCloseable {
         if (rejected == null && active != null && active.isUsable()) {
             initialPublicationComplete = true;
             result.complete(active.id());
-        }
-        else {
+        } else {
             if (rejected == null) rejected = new RuleExecutionException(-1, "Rule selection changed after publication");
             unavailable = "Rule reload failed: " + rejected.getMessage();
             result.completeExceptionally(rejected);
