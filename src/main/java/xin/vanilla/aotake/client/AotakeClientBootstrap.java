@@ -1,7 +1,5 @@
 package xin.vanilla.aotake.client;
 
-import xin.vanilla.banira.api.BaniraConfigs;
-
 import net.minecraft.client.Minecraft;
 import xin.vanilla.aotake.AotakeComponent;
 import xin.vanilla.aotake.AotakeSweep;
@@ -13,6 +11,7 @@ import xin.vanilla.aotake.event.ClientModEventHandler;
 import xin.vanilla.aotake.internal.client.dev.AotakeUiSmokeRunner;
 import xin.vanilla.aotake.network.packet.OpenDustbinToServer;
 import xin.vanilla.aotake.screen.PlayerConfigScreen;
+import xin.vanilla.banira.api.BaniraConfigs;
 import xin.vanilla.banira.api.client.event.BaniraClientEvents;
 import xin.vanilla.banira.client.gui.ConfigEditorScreen;
 import xin.vanilla.banira.client.gui.quickaction.QuickActionContext;

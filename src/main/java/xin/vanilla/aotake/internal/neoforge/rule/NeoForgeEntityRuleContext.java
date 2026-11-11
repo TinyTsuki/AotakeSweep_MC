@@ -1,10 +1,10 @@
 package xin.vanilla.aotake.internal.neoforge.rule;
 
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
-import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.TamableAnimal;
-import net.minecraft.resources.Identifier;
+import net.minecraft.world.entity.item.ItemEntity;
 import net.neoforged.neoforge.common.UsernameCache;
 import xin.vanilla.aotake.api.rule.EntityAccess;
 import xin.vanilla.aotake.api.rule.EntityRule;

@@ -1,7 +1,7 @@
 package xin.vanilla.aotake.internal.server;
 
-import net.minecraft.world.entity.Entity;
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.world.entity.Entity;
 import org.apache.logging.log4j.LogManager;
 import xin.vanilla.aotake.AotakeSweep;
 import xin.vanilla.aotake.api.rule.EntityRule;
@@ -10,11 +10,11 @@ import xin.vanilla.aotake.config.CommonConfig;
 import xin.vanilla.aotake.internal.neoforge.rule.NeoForgeEntityRuleContext;
 import xin.vanilla.aotake.internal.neoforge.rule.NeoForgeNativeMembers;
 import xin.vanilla.aotake.rule.*;
+import xin.vanilla.banira.api.BaniraConfigs;
 import xin.vanilla.banira.api.script.BaniraScripts;
 import xin.vanilla.banira.api.script.ScriptFactory;
 import xin.vanilla.banira.api.script.ScriptLimits;
 import xin.vanilla.banira.api.script.ScriptSession;
-import xin.vanilla.banira.api.BaniraConfigs;
 
 import java.util.concurrent.*;
 

@@ -1,25 +1,25 @@
 package xin.vanilla.aotake.internal.server.dev;
 
-import net.minecraft.world.level.block.Blocks;
-import net.minecraft.world.entity.Entity;
-import net.minecraft.world.entity.EntityType;
-import net.minecraft.world.entity.Pose;
-import net.minecraft.world.entity.ExperienceOrb;
-import net.minecraft.world.entity.item.ItemEntity;
-import net.minecraft.world.entity.animal.cow.Cow;
-import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.SimpleContainer;
-import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.Items;
-import net.minecraft.world.level.block.entity.ChestBlockEntity;
-import net.minecraft.world.InteractionResult;
-import net.minecraft.world.InteractionHand;
-import net.minecraft.world.phys.AABB;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.component.DataComponents;
-import net.minecraft.world.item.component.CustomData;
-import net.minecraft.world.phys.Vec3;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.InteractionResult;
+import net.minecraft.world.SimpleContainer;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.ExperienceOrb;
+import net.minecraft.world.entity.Pose;
+import net.minecraft.world.entity.animal.cow.Cow;
+import net.minecraft.world.entity.item.ItemEntity;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
+import net.minecraft.world.item.component.CustomData;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.entity.ChestBlockEntity;
+import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.event.entity.player.PlayerInteractEvent;
 import xin.vanilla.aotake.config.CommonConfig;
 import xin.vanilla.aotake.data.world.WorldTrashData;
@@ -28,12 +28,7 @@ import xin.vanilla.aotake.event.EventHandlerProxy;
 import xin.vanilla.aotake.internal.dev.AotakeNetworkSmokeStatus;
 import xin.vanilla.aotake.util.AotakeUtils;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 /**
  * Bounded real-world cleanup operations; asynchronous latency is separate from synchronous submission cost.

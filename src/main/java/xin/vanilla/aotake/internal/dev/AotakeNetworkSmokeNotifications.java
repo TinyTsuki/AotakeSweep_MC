@@ -1,13 +1,13 @@
 package xin.vanilla.aotake.internal.dev;
 
-import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.network.chat.ClickEvent;
 import net.minecraft.network.chat.HoverEvent;
+import net.minecraft.server.level.ServerPlayer;
 import net.neoforged.fml.ModList;
 import xin.vanilla.aotake.AotakeComponent;
 import xin.vanilla.aotake.enums.EnumCommandType;
-import xin.vanilla.aotake.util.AotakeUtils;
 import xin.vanilla.aotake.notification.AotakeNotificationTypes;
+import xin.vanilla.aotake.util.AotakeUtils;
 import xin.vanilla.banira.BaniraCodex;
 import xin.vanilla.banira.api.Banira;
 import xin.vanilla.banira.common.data.Component;

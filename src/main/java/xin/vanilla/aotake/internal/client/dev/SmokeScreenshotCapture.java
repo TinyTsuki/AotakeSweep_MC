@@ -1,8 +1,8 @@
 package xin.vanilla.aotake.internal.client.dev;
 
+import com.mojang.blaze3d.platform.NativeImage;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.Screenshot;
-import com.mojang.blaze3d.platform.NativeImage;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -11,7 +11,9 @@ import java.util.Queue;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
 
-/** Capture the completed frame before the smoke runner changes screens. */
+/**
+ * Capture the completed frame before the smoke runner changes screens.
+ */
 public final class SmokeScreenshotCapture {
     private static final Queue<Request> REQUESTS = new ArrayDeque<>();
 
