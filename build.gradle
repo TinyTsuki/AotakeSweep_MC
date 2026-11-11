@@ -77,11 +77,8 @@ dependencies {
     implementation fabricApi.module('fabric-lifecycle-events-v1', project.fabric_version)
     compileOnly("com.terraformersmc:modmenu:${project.modmenu_version}")
 
-    testImplementation 'junit:junit:4.13.2'
     compileOnly 'org.projectlombok:lombok:1.18.48'
     annotationProcessor 'org.projectlombok:lombok:1.18.48'
-    testCompileOnly 'org.projectlombok:lombok:1.18.48'
-    testAnnotationProcessor 'org.projectlombok:lombok:1.18.48'
 
     implementation "com.google.code.findbugs:jsr305:3.0.2"
     implementation "org.apache.maven:maven-artifact:4.0.0-rc-3"
