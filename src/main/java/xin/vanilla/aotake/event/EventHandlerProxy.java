@@ -28,7 +28,6 @@ import org.apache.logging.log4j.Logger;
 import xin.vanilla.aotake.AotakeComponent;
 import xin.vanilla.aotake.AotakeSweep;
 import xin.vanilla.aotake.config.CommonConfig;
-import xin.vanilla.aotake.config.CommonConfigView;
 import xin.vanilla.aotake.data.ChunkKey;
 import xin.vanilla.aotake.data.ConcurrentShuffleList;
 import xin.vanilla.aotake.data.player.PlayerSweepData;
@@ -39,12 +38,12 @@ import xin.vanilla.aotake.data.world.WorldTrashData;
 import xin.vanilla.aotake.enums.EnumChunkCheckMode;
 import xin.vanilla.aotake.enums.EnumCommandType;
 import xin.vanilla.aotake.enums.EnumSelfCleanMode;
+import xin.vanilla.aotake.internal.server.AotakeRuleRuntime;
+import xin.vanilla.aotake.internal.server.AotakeSweepRuntime;
 import xin.vanilla.aotake.network.packet.GhostCameraToClient;
 import xin.vanilla.aotake.network.packet.SweepDataSyncToClient;
 import xin.vanilla.aotake.notification.AotakeNotificationTypes;
 import xin.vanilla.aotake.util.AotakeUtils;
-import xin.vanilla.aotake.internal.server.AotakeSweepRuntime;
-import xin.vanilla.aotake.internal.server.AotakeRuleRuntime;
 import xin.vanilla.aotake.util.EntitySweeper;
 import xin.vanilla.aotake.util.RateLimitedErrorLogger;
 import xin.vanilla.banira.api.BaniraServer;
@@ -54,7 +53,10 @@ import xin.vanilla.banira.common.data.WorldCoordinate;
 import xin.vanilla.banira.common.enums.*;
 import xin.vanilla.banira.common.util.*;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -76,6 +78,7 @@ public class EventHandlerProxy {
      * 与 {@code countdown/1000} 一致；仅在 warnKey 变化时发倒计时通知与 SweepTimeSync，避免同一秒内每 tick 重复发送约 20 次。
      */
     private static String lastCountdownWarningDispatchKey = null;
+
     public static void resetCleanupState() {
         nextSweepTime = 0;
         lastChunkCheckTime = 0;
@@ -94,6 +97,7 @@ public class EventHandlerProxy {
         lastChunkCheckTime = now;
         return true;
     }
+
     private static final Map<String, Long> lastCatchTick = new ConcurrentHashMap<>();
     private static final Map<String, Long> lastUseEntityTick = new ConcurrentHashMap<>();
     private static final Map<String, Long> suppressUseItemTick = new ConcurrentHashMap<>();
