@@ -56,6 +56,8 @@ public class SweepResult {
      */
     private String chunkVaultRunId;
 
+    private final java.util.Set<String> chunkVaultIds = new java.util.LinkedHashSet<>();
+
     public SweepResult plusItemCount() {
         this.itemCount++;
         return this;
