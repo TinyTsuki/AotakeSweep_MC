@@ -69,7 +69,7 @@ public final class AotakeUiPages {
                         () -> mc.screen == chest && mc.player != null && mc.player.containerMenu == chest.getMenu());
                 if (layer != null) {
                     session.bind(layer.view());
-                    layer.view().text("title", AotakeComponent.get().transClientAuto(chunk ? "chunk_vault" : "dustbin"));
+                    layer.view().text("title", AotakeComponent.get().transClientAuto(chunk ? "chunk_vault_title" : "title"));
                     layer.view().text("inventory_label", AotakeComponent.get().literal(net.minecraft.network.chat.Component.translatable("container.inventory").getString()));
                     String[] keys = {"clear_cache", "clear_all_dustbin", "clear_cur_dustbin", "refresh_page", "previous_page", "next_page"};
                     int i = 0;
