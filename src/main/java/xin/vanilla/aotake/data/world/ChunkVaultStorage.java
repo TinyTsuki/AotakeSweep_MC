@@ -129,6 +129,7 @@ public final class ChunkVaultStorage {
         if (AotakeServerRuntime.currentServer() == null) return;
         ChunkKey key = chunkKeyFromEntity(sourceEntity);
         String vaultId = resolveVaultId(key, batchContext);
+        if (batchContext != null) batchContext.getChunkVaultIds().add(vaultId);
         PENDING.computeIfAbsent(vaultId, k -> Collections.synchronizedList(new ArrayList<>())).add(stack.copy());
     }
 
