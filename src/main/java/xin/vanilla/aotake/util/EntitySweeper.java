@@ -185,6 +185,21 @@ public class EntitySweeper {
             PlayerSweepData playerData = PlayerSweepData.getData(p);
             if (playerData.isShowSweepResult()) {
                 String openCom = "/" + AotakeUtils.getCommand(EnumCommandType.DUSTBIN_OPEN);
+                if (result.isChunkOverloadVault()) {
+                    String root = "/" + AotakeUtils.getCommand(EnumCommandType.CHUNK_VAULT);
+                    openCom = result.getChunkVaultIds().isEmpty() ? root + " list"
+                            : root + " open " + result.getChunkVaultIds().iterator().next();
+                    if (!result.getChunkVaultIds().isEmpty()) {
+                        String grants = result.getChunkVaultIds().stream()
+                                .map(vault -> root + " grant " + vault + " " + p.getGameProfile().getName())
+                                .collect(java.util.stream.Collectors.joining("\n"));
+                        msg.append(AotakeComponent.get().transAuto("chunk_vault_contact_admin"))
+                                .append(AotakeComponent.get().literal(" [+]")
+                                        .hoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT,
+                                                AotakeComponent.get().transAuto("click_to_copy_grant").toVanilla(language)))
+                                        .clickEvent(new ClickEvent(ClickEvent.Action.COPY_TO_CLIPBOARD, grants)));
+                    }
+                }
                 msg.clickEvent(new ClickEvent(ClickEvent.Action.SUGGEST_COMMAND, openCom))
                         .hoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT
                                 , AotakeComponent.get().literal(openCom).toVanilla())

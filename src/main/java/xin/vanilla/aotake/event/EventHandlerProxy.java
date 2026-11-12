@@ -255,6 +255,8 @@ public class EventHandlerProxy {
                                         , AotakeComponent.get().literal(entityCoordinate.dimensionId()).toVanilla())
                                 )
                 );
+                if (!settings.chunkCheckOnlyNotice() && settings.chunkVaultEnabled())
+                    message.append(AotakeComponent.get().transAuto("chunk_vault_contact_admin"));
                 if (player.hasPermissions(1)
                         && PlayerSweepData.getData(player).isShowSweepResult()
                 ) {
@@ -265,20 +267,6 @@ public class EventHandlerProxy {
                                     )
                                     .clickEvent(new ClickEvent(ClickEvent.Action.SUGGEST_COMMAND
                                             , AotakeUtils.genTeleportCommand(entityCoordinate))
-                                    )
-                                    .append(AotakeComponent.get().literal("[+]")
-                                            .color(EnumMCColor.GREEN.getColor())
-                                            .hoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT
-                                                    , AotakeComponent.get().trans(EnumI18nType.WORD, "click_to_copy_detail")
-                                                    .toVanilla(language))
-                                            )
-                                            .clickEvent(new ClickEvent(ClickEvent.Action.COPY_TO_CLIPBOARD
-                                                    , overcrowdedChunks.stream()
-                                                    .map(entry -> String.format("%s, Entities: %s"
-                                                            , formatChunkKey(entry.getKey(), advanced)
-                                                            , entry.getValue().size()))
-                                                    .collect(Collectors.joining("\n")))
-                                            )
                                     )
                                     .append(AotakeComponent.get().literal("[x]")
                                             .color(EnumMCColor.RED.getColor())
