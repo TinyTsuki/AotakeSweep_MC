@@ -14,8 +14,8 @@ public class CompatNarcissus {
             Object coordinate = Enum.valueOf(type, "TP_COORDINATE");
             Class<?> utils = Class.forName("xin.vanilla.narcissus.util.NarcissusUtils");
             return (String) utils.getMethod("getCommand", type).invoke(null, coordinate);
-        } catch (ReflectiveOperationException ignored) {
-            return "narcissus tp";
+        } catch (ReflectiveOperationException | RuntimeException | LinkageError ignored) {
+            return null;
         }
     }
 }
