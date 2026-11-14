@@ -245,9 +245,10 @@ public class AotakeUtils {
      * 获取传送指令
      */
     public static String genTeleportCommand(WorldCoordinate coordinate) {
-        if (FabricLoader.getInstance().isModLoaded("narcissus_farewell")) {
+        String optionalCommand = FabricLoader.getInstance().isModLoaded("narcissus_farewell") ? CompatNarcissus.getTpCommand() : null;
+        if (optionalCommand != null && !optionalCommand.trim().isEmpty()) {
             return String.format("/%s %s %s %s safe %s"
-                    , CompatNarcissus.getTpCommand()
+                    , optionalCommand
                     , coordinate.xInt()
                     , coordinate.yInt()
                     , coordinate.zInt()
