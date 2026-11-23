@@ -11,7 +11,8 @@ import java.util.*;
 import java.util.regex.Pattern;
 
 final class LocalRuleSources {
-    private static final String DIRECTORY = "rules/local";
+    private static final String DIRECTORY = "scripts";
+    private static final String LEGACY_DIRECTORY = "rules/local";
     private static final String PACKAGE = "xin.vanilla.banira.generated.";
     private static final Pattern CLASS_NAME = Pattern.compile("[A-Za-z][A-Za-z0-9_]{0,79}");
 
@@ -19,24 +20,31 @@ final class LocalRuleSources {
     }
 
     static Map<String, byte[]> read(RuleFileStore store, int remainingCount, long remainingBytes) throws IOException {
-        Path directory = store.path(DIRECTORY);
-        if (!Files.exists(directory, LinkOption.NOFOLLOW_LINKS)) return Collections.emptyMap();
         Map<String, byte[]> files = new TreeMap<>();
+        remainingBytes = readDirectory(store, DIRECTORY, files, remainingCount, remainingBytes);
+        readDirectory(store, LEGACY_DIRECTORY, files, remainingCount, remainingBytes);
+        return files;
+    }
+
+    private static long readDirectory(RuleFileStore store, String relative, Map<String, byte[]> files,
+                                      int remainingCount, long remainingBytes) throws IOException {
+        Path directory = store.path(relative);
+        if (!Files.exists(directory, LinkOption.NOFOLLOW_LINKS)) return remainingBytes;
         try (DirectoryStream<Path> entries = Files.newDirectoryStream(directory, "*.java")) {
             for (Path path : entries) {
                 String file = path.getFileName().toString();
-                if (!file.endsWith(".java")) continue;
+                if (!file.endsWith(".java") || files.containsKey(file)) continue;
                 if (files.size() >= remainingCount) throw new IOException("Too many local entity rule scripts");
                 String className = file.substring(0, file.length() - 5);
                 if (!CLASS_NAME.matcher(className).matches())
                     throw new IOException("Invalid local rule filename: " + file);
-                byte[] bytes = store.read(DIRECTORY + "/" + file, RuleFileStore.MAX_SOURCE_BYTES);
+                byte[] bytes = store.read(relative + "/" + file, RuleFileStore.MAX_SOURCE_BYTES);
                 remainingBytes -= bytes.length;
                 if (remainingBytes < 0) throw new IOException("Rule catalog exceeds size limit");
                 files.put(file, bytes);
             }
         }
-        return files;
+        return remainingBytes;
     }
 
     static void add(Map<String, RuleSource> sources, Map<String, byte[]> files) throws IOException {
