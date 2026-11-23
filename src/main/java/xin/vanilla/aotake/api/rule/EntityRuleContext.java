@@ -1,5 +1,8 @@
 package xin.vanilla.aotake.api.rule;
 
+import java.util.List;
+import java.util.Map;
+
 /**
  * Valid only during the current entity evaluation, on its owning game thread.
  * Borrowed object views are suspended during nested callbacks and expire on return.
@@ -32,6 +35,48 @@ public interface EntityRuleContext {
      */
     default Integer persistentInt(String... path) {
         throw new UnsupportedOperationException("Persistent data is unavailable in this context");
+    }
+
+    /**
+     * Reads literal compound keys or decimal indexes into lists and arrays.
+     * Returns a Number, String, read-only List, read-only Map, or null for a missing path.
+     * Container snapshots are detached and bounded; request a narrower path for large containers.
+     * Forge and NeoForge read persistent data; Fabric reads serialized entity data for this evaluation.
+     */
+    default Object persistentValue(String... path) {
+        return persistentValue(Object.class, path);
+    }
+
+    /**
+     * Reads the requested Java type, or null for a missing path or a different type.
+     * Boxed numbers keep their NBT type. Boolean accepts only Byte 0 or 1.
+     */
+    default <T> T persistentValue(Class<T> type, String... path) {
+        throw new UnsupportedOperationException("Persistent data is unavailable in this context");
+    }
+
+    default boolean hasPersistentValue(String... path) {
+        return persistentValue(path) != null;
+    }
+
+    default Number persistentNumber(String... path) {
+        return persistentValue(Number.class, path);
+    }
+
+    default String persistentString(String... path) {
+        return persistentValue(String.class, path);
+    }
+
+    default Boolean persistentBoolean(String... path) {
+        return persistentValue(Boolean.class, path);
+    }
+
+    default List<?> persistentList(String... path) {
+        return persistentValue(List.class, path);
+    }
+
+    default Map<?, ?> persistentCompound(String... path) {
+        return persistentValue(Map.class, path);
     }
 
     <T> T value(int slot, Class<T> type);
