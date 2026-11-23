@@ -171,13 +171,20 @@ public final class NeoForgeEntityRuleContext extends LazyRuleContext<Entity> {
     @Override
     public Integer persistentInt(String... path) {
         checkAccess();
-        if (path.length == 0) throw new IllegalArgumentException("Empty persistent data path");
-        net.minecraft.nbt.Tag value = subject().getPersistentData();
-        for (String key : path) {
-            if (!(value instanceof net.minecraft.nbt.CompoundTag)) return null;
-            value = ((net.minecraft.nbt.CompoundTag) value).get(key);
-        }
+        net.minecraft.nbt.Tag value = RulePersistentData.find(subject().getPersistentData(), false, path);
         return value instanceof net.minecraft.nbt.NumericTag ? ((net.minecraft.nbt.NumericTag) value).getAsInt() : null;
+    }
+
+    @Override
+    public <T> T persistentValue(Class<T> type, String... path) {
+        checkAccess();
+        return RulePersistentData.read(RulePersistentData.find(subject().getPersistentData(), true, path), type);
+    }
+
+    @Override
+    public boolean hasPersistentValue(String... path) {
+        checkAccess();
+        return RulePersistentData.find(subject().getPersistentData(), true, path) != null;
     }
 
     @Override
