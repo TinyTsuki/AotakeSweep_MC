@@ -169,6 +169,18 @@ public final class ForgeEntityRuleContext extends LazyRuleContext<Entity> {
     }
 
     @Override
+    public Integer persistentInt(String... path) {
+        checkAccess();
+        if (path.length == 0) throw new IllegalArgumentException("Empty persistent data path");
+        net.minecraft.nbt.INBT value = subject().getPersistentData();
+        for (String key : path) {
+            if (!(value instanceof net.minecraft.nbt.CompoundNBT)) return null;
+            value = ((net.minecraft.nbt.CompoundNBT) value).get(key);
+        }
+        return value instanceof net.minecraft.nbt.NumberNBT ? ((net.minecraft.nbt.NumberNBT) value).getAsNumber().intValue() : null;
+    }
+
+    @Override
     protected void checkAccess() {
         if (Thread.currentThread() != owner || subject() == null)
             throw new IllegalStateException("Entity read outside evaluation");
