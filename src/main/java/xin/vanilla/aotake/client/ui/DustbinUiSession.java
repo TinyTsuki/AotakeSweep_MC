@@ -120,6 +120,12 @@ public final class DustbinUiSession implements UiPageSession {
         if (next.equals(layout)) return cachedRegions;
         Map<String, ScreenCoordinate> result = new LinkedHashMap<>();
         result.put("panel", new ScreenCoordinate(left, top, width, height));
+        int playerTop = slots.get(54).y - 13;
+        if (playerTop <= 16 || playerTop >= height - 2) return Collections.emptyMap();
+        result.put("cabinet_header", new ScreenCoordinate(left + 1, top + 1, width - 2, 15));
+        result.put("dustbin_surface", new ScreenCoordinate(left + 5, top + 16, width - 10, playerTop - 16));
+        result.put("inventory_surface", new ScreenCoordinate(left + 5, top + playerTop, width - 10, height - playerTop - 2));
+        result.put("hotbar_line", new ScreenCoordinate(left + 8, top + slots.get(81).y - 5, width - 16, 1));
         result.put("brand", new ScreenCoordinate(left + 7, top + 3, 11, 11));
         result.put("title", new ScreenCoordinate(left + 22, top + 4, width - 76, 11));
         result.put("page_label", new ScreenCoordinate(left + width - 51, top + 4, 30, 11));
@@ -129,7 +135,7 @@ public final class DustbinUiSession implements UiPageSession {
         for (int i = 0; i < slots.size(); i++) {
             Slot slot = slots.get(i);
             if (slot.x < 1 || slot.y < 1 || slot.x + 16 > width || slot.y + 16 > height) return Collections.emptyMap();
-            result.put("slot_" + i, new ScreenCoordinate(left + slot.x - 1, top + slot.y - 1, 18, 18));
+            result.put("slot_" + i, new ScreenCoordinate(left + slot.x - 1, top + slot.y - 1, 17, 17));
         }
         int y = top;
         for (Action action : Action.values()) {
