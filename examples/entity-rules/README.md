@@ -15,6 +15,18 @@ Do not use the red list to protect these items from cleanup. If a matching item
 has already been selected for cleanup, the red list prevents its recycling;
 the item is still removed.
 
+## Reading NBT in single-file rules
+
+- `persistentNumber(path...)` retains the original boxed byte, short, int, long, float, or double.
+- `persistentString(path...)`, `persistentBoolean(path...)` and `persistentValue(MyType.class, path...)` return `null` if the path is missing or has a different type. Boolean reads accept NBT byte values 0 and 1.
+- `persistentList(path...)` and `persistentCompound(path...)` return detached, read-only snapshots, including nested containers. Read a narrower path for large containers.
+- Each path argument is a literal compound key. A decimal path argument indexes a list or array when the current value is a container of that kind. Use `hasPersistentValue(path...)` to test for presence without copying the value.
+
+Forge and NeoForge use entity persistent NBT. Fabric uses the entity's serialized
+NBT for that evaluation; a mod-specific value is available only if the mod saves
+it there. The existing `persistentInt` keeps its original integer conversion and
+compound-only paths for scripts that already use it.
+
 Keep existing `rules/manifest.json`, `rules/sources/` and `rules/bindings/`:
 generated legacy rules still read their compiled binding layout there. Existing
 standalone files in `rules/local/` remain usable. You can move those files to

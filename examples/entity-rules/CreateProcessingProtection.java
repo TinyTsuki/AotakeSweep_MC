@@ -9,7 +9,7 @@ public final class CreateProcessingProtection implements EntityRule {
     @Override
     public boolean test(EntityRuleContext context) {
         if (!context.isItem()) return false;
-        Integer time = context.persistentInt(PROCESSING_TIME);
-        return time != null && time.intValue() > 0;
+        Number time = context.persistentNumber(PROCESSING_TIME);
+        return time != null && time.doubleValue() > 0.0;
     }
 }
