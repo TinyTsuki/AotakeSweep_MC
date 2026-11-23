@@ -138,6 +138,8 @@
 
 ## 实体过滤器
 
+服务端单文件规则及机械动力、Cobblemon 示例见[实体清理脚本](examples/entity-rules/)。
+
 实体过滤器表达式，为了方便说明，以下会将表达式称为 `AotakeEL`。
 其中支持 AotakeEL 的配置项有：`entityList`、`entityRedlist`、`catchEntity`、`chunkCheckEntityList`。
 
