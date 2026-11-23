@@ -192,10 +192,11 @@ public final class RuleMigrationTransaction {
             throw new IllegalStateException("Stale or consumed migration candidate");
         prepared.consumed = true;
         if (!prepared.migration) {
-            verifyCatalog(prepared.catalog);
+            prepared.catalog.verifyFiles(store);
             ConfigEditSnapshot current = holder.snapshotForEdit(PATHS);
             return current.getRevision().equals(prepared.snapshot.getRevision()) ? ConfigCommitResult.UNCHANGED : ConfigCommitResult.CONFLICT;
         }
+        prepared.catalog.verifyLocalFiles(store);
         JsonObject journal = RuleFileStore.versioned();
         journal.addProperty("transaction", prepared.id);
         journal.addProperty("state", "PREPARED");
@@ -236,13 +237,6 @@ public final class RuleMigrationTransaction {
         checkpoint.accept(Checkpoint.BEFORE_COMMITTED);
         finish(journal, "COMMITTED");
         return result;
-    }
-
-    private void verifyCatalog(RuleCatalog catalog) throws IOException {
-        if (catalog.originalManifest() == null && catalog.sources().isEmpty()) {
-            if (store.optional(RuleFileStore.MANIFEST, RuleFileStore.MAX_METADATA_BYTES) != null)
-                throw new IOException("Rule catalog created during preparation");
-        } else catalog.verifyFiles(store);
     }
 
     /**
