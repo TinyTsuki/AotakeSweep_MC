@@ -24,14 +24,16 @@ public final class RuleCatalog {
     private static final Pattern RESOURCE = Pattern.compile("(?:[a-z0-9_.-]+|\\*):(?:[a-z0-9_./-]+|\\*)");
     private final Map<String, RuleSource> sources;
     private final Map<String, byte[]> files;
+    private final Map<String, byte[]> localFiles;
     private final JsonObject manifest;
     private final byte[] originalManifest;
 
-    RuleCatalog(Map<String, RuleSource> sources, Map<String, byte[]> files, JsonObject manifest, byte[] originalManifest) {
+    RuleCatalog(Map<String, RuleSource> sources, Map<String, byte[]> files, Map<String, byte[]> localFiles, JsonObject manifest, byte[] originalManifest) {
         this.sources = Collections.unmodifiableMap(new LinkedHashMap<>(sources));
         Map<String, byte[]> copy = new LinkedHashMap<>();
         files.forEach((path, bytes) -> copy.put(path, bytes.clone()));
         this.files = Collections.unmodifiableMap(copy);
+        this.localFiles = Collections.unmodifiableMap(new TreeMap<>(localFiles));
         this.manifest = copyJson(manifest);
         this.originalManifest = originalManifest == null ? null : originalManifest.clone();
     }
@@ -43,8 +45,9 @@ public final class RuleCatalog {
     Map<String, NativeMembers> prepareMembers(Map<String, EntityRule> compiled,
                                               BiFunction<List<NativeMemberSpec>, ClassLoader, NativeMembers> binder) throws IOException {
         Map<String, NativeMembers> result = new LinkedHashMap<>();
-        for (String id : sources.keySet()) {
-            JsonObject metadata = manifest.getAsJsonObject("rules").getAsJsonObject(id);
+        for (Map.Entry<String, JsonElement> entry : manifest.getAsJsonObject("rules").entrySet()) {
+            String id = entry.getKey();
+            JsonObject metadata = entry.getValue().getAsJsonObject();
             NativeMemberDeclarations declarations = NativeMemberDeclarations.read(metadata.has("nativeMembers") ? metadata.get("nativeMembers") : new JsonArray());
             result.put(id, declarations.prepare(Objects.requireNonNull(compiled.get(id), "Compiled rule missing: " + id).getClass().getClassLoader(), binder));
         }
@@ -112,8 +115,22 @@ public final class RuleCatalog {
             if (!Arrays.equals(entry.getValue(), store.read(entry.getKey(), RuleFileStore.MAX_SOURCE_BYTES)))
                 throw new IOException("Rule changed after preparation: " + entry.getKey());
         }
-        if (!Arrays.equals(manifestBytes(), store.read(RuleFileStore.MANIFEST, RuleFileStore.MAX_METADATA_BYTES)))
+        byte[] expected = originalManifest == null && manifest.getAsJsonObject("rules").size() == 0 ? null : manifestBytes();
+        if (!Arrays.equals(expected, store.optional(RuleFileStore.MANIFEST, RuleFileStore.MAX_METADATA_BYTES)))
             throw new IOException("Rule manifest changed after preparation");
+        verifyLocalFiles(store);
+    }
+
+    void verifyLocalFiles(RuleFileStore store) throws IOException {
+        Map<String, byte[]> latest = LocalRuleSources.read(store,
+                RuleFileStore.MAX_SCRIPTS - manifest.getAsJsonObject("rules").size(),
+                RuleFileStore.MAX_CONFIG_BYTES - size(files));
+        if (!localFiles.keySet().equals(latest.keySet()))
+            throw new IOException("Local entity rule files changed after preparation");
+        for (Map.Entry<String, byte[]> entry : localFiles.entrySet()) {
+            if (!Arrays.equals(entry.getValue(), latest.get(entry.getKey())))
+                throw new IOException("Local entity rule changed after preparation: " + entry.getKey());
+        }
     }
 
     static RuleCatalog load(RuleFileStore store) throws IOException {
@@ -145,7 +162,10 @@ public final class RuleCatalog {
         } catch (RuntimeException error) {
             throw new IOException("Invalid rule catalog", error);
         }
-        return new RuleCatalog(sources, files, manifest, original);
+        Map<String, byte[]> localFiles = LocalRuleSources.read(store, RuleFileStore.MAX_SCRIPTS - sources.size(),
+                RuleFileStore.MAX_CONFIG_BYTES - size);
+        LocalRuleSources.add(sources, localFiles);
+        return new RuleCatalog(sources, files, localFiles, manifest, original);
     }
 
     static String sourcePath(String id) {
@@ -220,9 +240,14 @@ public final class RuleCatalog {
             info.addProperty("sourceHash", source.sourceHash());
             manifest.getAsJsonObject("rules").add(id, info);
         }
-        long total = 0;
-        for (byte[] bytes : files.values()) total += bytes.length;
-        if (total > RuleFileStore.MAX_CONFIG_BYTES) throw new IOException("Generated rules exceed total limit");
-        return new RuleCatalog(sources, files, manifest, existing.originalManifest);
+        if (size(files) + size(existing.localFiles) > RuleFileStore.MAX_CONFIG_BYTES)
+            throw new IOException("Generated rules exceed total limit");
+        return new RuleCatalog(sources, files, existing.localFiles, manifest, existing.originalManifest);
+    }
+
+    private static long size(Map<String, byte[]> files) {
+        long result = 0;
+        for (byte[] bytes : files.values()) result += bytes.length;
+        return result;
     }
 }

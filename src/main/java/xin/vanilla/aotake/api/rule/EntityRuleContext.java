@@ -27,6 +27,13 @@ public interface EntityRuleContext {
 
     boolean isItem();
 
+    /**
+     * Reads a numeric value from entity persistent data without a legacy binding file.
+     */
+    default Integer persistentInt(String... path) {
+        throw new UnsupportedOperationException("Persistent data is unavailable in this context");
+    }
+
     <T> T value(int slot, Class<T> type);
 
     default EntityAccess entity() {
