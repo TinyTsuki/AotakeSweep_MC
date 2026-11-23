@@ -165,13 +165,20 @@ public final class FabricEntityRuleContext extends LazyRuleContext<Entity> {
     @Override
     public Integer persistentInt(String... path) {
         checkAccess();
-        if (path.length == 0) throw new IllegalArgumentException("Empty persistent data path");
-        net.minecraft.nbt.Tag value = entityNbt();
-        for (String key : path) {
-            if (!(value instanceof net.minecraft.nbt.CompoundTag)) return null;
-            value = ((net.minecraft.nbt.CompoundTag) value).get(key);
-        }
+        net.minecraft.nbt.Tag value = RulePersistentData.find(entityNbt(), false, path);
         return value instanceof net.minecraft.nbt.NumericTag ? ((net.minecraft.nbt.NumericTag) value).box().intValue() : null;
+    }
+
+    @Override
+    public <T> T persistentValue(Class<T> type, String... path) {
+        checkAccess();
+        return RulePersistentData.read(RulePersistentData.find(entityNbt(), true, path), type);
+    }
+
+    @Override
+    public boolean hasPersistentValue(String... path) {
+        checkAccess();
+        return RulePersistentData.find(entityNbt(), true, path) != null;
     }
 
     @Override
